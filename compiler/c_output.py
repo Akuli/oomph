@@ -1,3 +1,4 @@
+# TODO: separate type checking and c output
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
 
 from compiler.parser import (INT, Call, Expression, ExpressionStatement,
