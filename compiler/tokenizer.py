@@ -1,5 +1,5 @@
 import re
-
+from typing import Iterator, Tuple
 
 _TOKEN_REGEX = (
     r'(?P<keyword>\blet\b|\bfunc\b|\bvoid\b)|'
@@ -11,12 +11,13 @@ _TOKEN_REGEX = (
 )
 
 
-def _raw_tokenize(code):
+def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
     if not code.endswith('\n'):
         code += '\n'
 
     for match in re.finditer(_TOKEN_REGEX, code):
         tokentype = match.lastgroup
+        assert tokentype is not None
         value = match.group()
         assert tokentype != 'error', value
         if tokentype != 'ignore':
@@ -24,7 +25,7 @@ def _raw_tokenize(code):
     yield ('end', '')
 
 
-def _clean_newlines(tokens):
+def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
     previous_value = None
     for tokentype, value in tokens:
         # Skip newline in beginning of file and double newlines
@@ -33,5 +34,5 @@ def _clean_newlines(tokens):
         previous_value = value
 
 
-def tokenize(code):
+def tokenize(code: str) -> Iterator[Tuple[str, str]]:
     return _clean_newlines(_raw_tokenize(code))

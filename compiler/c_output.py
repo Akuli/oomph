@@ -1,17 +1,27 @@
-def _find_type(var_types, ast):
-    if ast[0] == 'int':
-        return 'int'
-    if ast[0] == 'call':
-        literally_func, arg_types, returntype = _find_type(var_types, ast[1])
-        assert literally_func == 'func'
-        assert returntype is not None
-        return returntype
-    if ast[0] == 'var':
-        return var_types[ast[1]]
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, TypeVar
+
+from compiler.parser import (INT, Call, Expression, ExpressionStatement,
+                             FuncDef, FunctionType, GetVar, IntConstant,
+                             LetStatement, Statement, Type)
+
+
+def _find_type(var_types: Dict[str, Type], ast: Expression) -> Type:
+    if isinstance(ast, IntConstant):
+        return INT
+    if isinstance(ast, Call):
+        functype = _find_type(var_types, ast.func)
+        assert isinstance(functype, FunctionType)
+        assert functype.returntype is not None
+        return functype.returntype
+    if isinstance(ast, GetVar):
+        return var_types[ast.varname]
     raise NotImplementedError(ast)
 
 
-def _emit_commasep(items, callback):
+_T = TypeVar('_T')
+
+
+def _emit_commasep(items: Iterable[_T], callback: Callable[[_T], object]) -> None:
     first = True
     for item in items:
         if not first:
@@ -20,33 +30,31 @@ def _emit_commasep(items, callback):
         callback(item)
 
 
-def _emit_expression(var_types, ast):
-    if ast[0] == 'int':
-        assert -(2**63) <= ast[1] < 2**63
-        print(f'((int64_t){ast[1]}LL)', end='')
-        return 'int'
-    elif ast[0] == 'call':
+def _emit_expression(var_types: Dict[str, Type], ast: Expression) -> Type:
+    if isinstance(ast, IntConstant):
+        assert -(2**63) <= ast.value < 2**63
+        print(f'((int64_t){ast.value}LL)', end='')
+        return INT
+    elif isinstance(ast, Call):
         print('(', end='')
-        func, args = ast[1:]
-        functype = _emit_expression(var_types, func)
-        assert functype[0] == 'func', functype
-        argtypes, returntype = functype[1:]
-        assert len(args) == len(argtypes)
-        for arg, argtype in zip(args, argtypes):
+        functype = _emit_expression(var_types, ast.func)
+        assert isinstance(functype, FunctionType)
+        assert len(ast.args) == len(functype.argtypes)
+        for arg, argtype in zip(ast.args, functype.argtypes):
             assert _find_type(var_types, arg) == argtype
         print('(', end='')
-        _emit_commasep(args, (lambda arg: _emit_expression(var_types, arg)))
+        _emit_commasep(ast.args, (lambda arg: _emit_expression(var_types, arg)))
         print('))', end='')
-        return ('func', argtypes, returntype)
-    elif ast[0] == 'var':
-        print('var_' + ast[1], end='')
-        return var_types[ast[1]]
+        return functype
+    elif isinstance(ast, GetVar):
+        print('var_' + ast.varname, end='')
+        return var_types[ast.varname]
     else:
         raise NotImplementedError(ast)
 
 
-def _emit_type(the_type):
-    if the_type == 'int':
+def _emit_type(the_type: Optional[Type]) -> None:
+    if the_type is INT:
         print('int64_t', end=' ')
     elif the_type is None:
         print('void', end=' ')
@@ -54,46 +62,44 @@ def _emit_type(the_type):
         raise NotImplementedError(the_type)
 
 
-def _emit_statement(var_types, ast):
-    if ast[0] == 'let':
-        literally_let, varname, value = ast
-        assert varname not in var_types
-        var_types[varname] = _find_type(var_types, value)
-        _emit_type(var_types[varname])
-        print('var_' + varname, '=', end='')
-        _emit_expression(var_types, value)
-    else:
+def _emit_statement(var_types: Dict[str, Type], ast: Statement) -> None:
+    if isinstance(ast, LetStatement):
+        assert ast.varname not in var_types
+        var_types[ast.varname] = _find_type(var_types, ast.value)
+        _emit_type(var_types[ast.varname])
+        print('var_' + ast.varname, '=', end='')
+        _emit_expression(var_types, ast.value)
+    elif isinstance(ast, ExpressionStatement):
         print('(void)', end='')
-        _emit_expression(var_types, ast)
+        _emit_expression(var_types, ast.expression)
+    else:
+        raise NotImplementedError(ast)
     print(';\n\t', end='')
 
 
-def _emit_block(var_types, body):
+def _emit_block(var_types: Dict[str, Type], body: List[Statement]) -> None:
     print('{\n\t', end='')
     for statement in body:
         _emit_statement(var_types, statement)
     print('\n}')
 
 
-def _emit_arg_def(pair):
+def _emit_arg_def(pair: Tuple[Type, str]) -> None:
     the_type, name = pair
     _emit_type(the_type)
     print('var_' + name, end='')
 
 
-def emit_toplevel(var_types, toplevel):
-    if toplevel[0] == 'func':
-        name, args, returntype, body = toplevel[1:]
-        var_types[name] = ('func', [the_type for the_type, name in args], returntype)
-        _emit_type(returntype)
-        if args:
-            print(f'var_{name}(', end='')
-            _emit_commasep(args, _emit_arg_def)
-            print(')')
-        else:
-            print(f'var_{name}(void)')
-        local_vars = var_types.copy()
-        local_vars.update({arg: typ for typ, arg in args})
-        _emit_block(local_vars, body)
+def emit_funcdef(var_types: Dict[str, Type], funcdef: FuncDef) -> None:
+    var_types[funcdef.name] = funcdef.type
+    _emit_type(funcdef.type.returntype)
+    assert len(funcdef.type.argtypes) == len(funcdef.argnames)
+    if funcdef.argnames:
+        print(f'var_{funcdef.name}(', end='')
+        _emit_commasep(zip(funcdef.type.argtypes, funcdef.argnames), _emit_arg_def)
+        print(')')
     else:
-        raise NotImplementedError(toplevel)
+        print(f'var_{funcdef.name}(void)')
+    local_vars = var_types.copy()
+    local_vars.update(zip(funcdef.argnames, funcdef.type.argtypes))
+    _emit_block(local_vars, funcdef.body)

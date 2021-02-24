@@ -1,7 +1,10 @@
-from compiler import tokenizer, parser, c_output
+from typing import Dict
+
+from compiler import c_output, parser, tokenizer
+from compiler.parser import INT, FunctionType, Type
 
 
-def main():
+def main() -> None:
     print('#include <stdint.h>')
     print('#include <stdio.h>')
     print(r'void var_print_int(int64_t x){ printf("%lld\n", (long long)x); }')
@@ -19,10 +22,10 @@ func main() -> void {
     print_int(add(1, 2))
 }
 '''
-    var_types = {'add': ('func', ['int', 'int'], 'int'), 'print_int': ('func', ['int'], None)}
+    var_types: Dict[str, Type] = {'add': FunctionType([INT, INT], INT), 'print_int': FunctionType([INT], None)}
     parsed = parser.parse_file(tokenizer.tokenize(code))
-    for toplevel in parsed:
-        c_output.emit_toplevel(var_types, toplevel)
+    for funcdef in parsed:
+        c_output.emit_funcdef(var_types, funcdef)
     print('int main(void) { var_main(); return 0; }')
 
 
