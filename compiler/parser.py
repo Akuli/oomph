@@ -68,18 +68,18 @@ def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
         result = uast.LetStatement(varname, _parse_expression(token_iter))
     else:
         call = _parse_expression(token_iter)
-        assert isinstance(call, uast.Call)
+        assert isinstance(call, uast.Call), call
         result = call
 
     _get_token(token_iter, 'op', '\n')
     return result
 
 
-def _parse_block(token_iter: _TokenIter) -> List[uast.Statement]:
+def _parse_block(token_iter: _TokenIter, callback: Callable[[_TokenIter], _T]) -> List[_T]:
     _get_token(token_iter, 'begin_block', ':')
     result = []
     while token_iter and token_iter.peek(None) != ('end_block', ''):
-        result.append(_parse_statement(token_iter))
+        result.append(callback(token_iter))
     _get_token(token_iter, 'end_block', '')
     return result
 
@@ -94,26 +94,41 @@ def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[str, str]:
     return (type_name, arg_name)
 
 
+def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
+    name = _get_token(token_iter, 'var')[1]
+    args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
+    _get_token(token_iter, 'op', '->')
+    # TODO: accept return types
+    _get_token(token_iter, 'keyword', 'void')
+    return uast.FuncDef(
+        name,
+        args,
+        None,
+        _parse_block(token_iter, _parse_statement),
+    )
+
+
+def _parse_method(token_iter: _TokenIter) -> uast.FuncDef:
+    _get_token(token_iter, 'keyword', 'meth')
+    return _parse_function_or_method(token_iter)
+
+
 def _parse_toplevel(token_iter: _TokenIter) -> uast.ToplevelStatement:
     if token_iter.peek() == ('keyword', 'func'):
         _get_token(token_iter, 'keyword', 'func')
-        name = _get_token(token_iter, 'var')[1]
-        args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
-        _get_token(token_iter, 'op', '->')
-        # TODO: accept return types
-        _get_token(token_iter, 'keyword', 'void')
-        return uast.FuncDef(
-            name,
-            args,
-            None,
-            _parse_block(token_iter),
-        )
+        return _parse_function_or_method(token_iter)
+
     if token_iter.peek() == ('keyword', 'class'):
         _get_token(token_iter, 'keyword', 'class')
         name = _get_token(token_iter, 'var')[1]
         args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
-        _get_token(token_iter, 'op', '\n')
-        return uast.ClassDef(name, args)
+        if token_iter.peek(None) == ('begin_block', ':'):
+            body = _parse_block(token_iter, _parse_method)
+        else:
+            body = []
+            _get_token(token_iter, 'op', '\n')
+        return uast.ClassDef(name, args, body)
+
     raise NotImplementedError(token_iter.peek())
 
 

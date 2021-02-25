@@ -63,3 +63,4 @@ class FuncDef(ToplevelStatement):
 class ClassDef(ToplevelStatement):
     name: str
     members: List[Tuple[str, str]]
+    body: List[FuncDef]

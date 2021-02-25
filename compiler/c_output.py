@@ -19,9 +19,15 @@ def _emit_commasep(file: IO[str], items: Iterable[_T], callback: Callable[[_T], 
 
 def _emit_call(file: IO[str], ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
     file.write('(')
-    _emit_expression(file, ast.func)
+    if isinstance(ast.func, tast.GetMethod):
+        file.write(f'meth_{ast.func.obj.type.name}_{ast.func.name}')
+        args = [ast.func.obj] + ast.args
+    else:
+        _emit_expression(file, ast.func)
+        args = ast.args
+
     file.write('(')
-    _emit_commasep(file, ast.args, (lambda arg: _emit_expression(file, arg)))
+    _emit_commasep(file, args, (lambda arg: _emit_expression(file, arg)))
     file.write('))')
 
 
@@ -42,6 +48,9 @@ def _emit_expression(file: IO[str], ast: tast.Expression) -> None:
         file.write('((')
         _emit_expression(file, ast.obj)
         file.write(f')->memb_{ast.attribute})')
+    elif isinstance(ast, tast.GetMethod):
+        # This should return some kind of partial function, which isn't possible yet
+        raise NotImplementedError
     else:
         raise NotImplementedError(ast)
 
@@ -90,16 +99,22 @@ def _emit_arg_def(file: IO[str], pair: Tuple[Type, str]) -> None:
     file.write('var_' + name)
 
 
+def _emit_func_def(file: IO[str], funcdef: tast.FuncDef, c_name: str) -> None:
+    _emit_type(file, funcdef.type.returntype)
+    if funcdef.argnames:
+        file.write(c_name)
+        file.write('(')
+        _emit_commasep(file, zip(funcdef.type.argtypes, funcdef.argnames), partial(_emit_arg_def, file))
+        file.write(')')
+    else:
+        file.write(c_name)
+        file.write('(void)')
+    _emit_block(file, funcdef.body)
+
+
 def emit_toplevel_statement(file: IO[str], top_statement: tast.ToplevelStatement) -> None:
     if isinstance(top_statement, tast.FuncDef):
-        _emit_type(file, top_statement.type.returntype)
-        if top_statement.argnames:
-            file.write(f'var_{top_statement.name}(')
-            _emit_commasep(file, zip(top_statement.type.argtypes, top_statement.argnames), partial(_emit_arg_def, file))
-            file.write(')')
-        else:
-            file.write(f'var_{top_statement.name}(void)')
-        _emit_block(file, top_statement.body)
+        _emit_func_def(file, top_statement, 'var_' + top_statement.name)
 
     elif isinstance(top_statement, tast.ClassDef):
         # struct
@@ -121,6 +136,10 @@ def emit_toplevel_statement(file: IO[str], top_statement: tast.ToplevelStatement
         for the_type, name in top_statement.type.members:
             file.write(f'\tobj->memb_{name} = var_{name};\n')
         file.write('\treturn obj;\n}\n')
+
+        # methods
+        for method in top_statement.body:
+            _emit_func_def(file, method, f'meth_{top_statement.type.name}_{method.name}')
 
     else:
         raise NotImplementedError(top_statement)

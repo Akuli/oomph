@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 
 
 @dataclass
@@ -25,3 +25,4 @@ class FunctionType(Type):
 class ClassType(Type):
     name: str
     members: List[Tuple[Type, str]]
+    methods: Dict[str, FunctionType]

@@ -1,3 +1,4 @@
+import copy
 import itertools
 from typing import Dict, List, Union
 
@@ -55,6 +56,11 @@ class _BlockTyper:
                 for the_type, name in obj.type.members:
                     if name == ast.attribute:
                         return tast.GetAttribute(the_type, obj, name)
+                for name, the_type in obj.type.methods.items():
+                    if name == ast.attribute:
+                        the_type = copy.copy(the_type)
+                        the_type.argtypes = the_type.argtypes[1:]
+                        return tast.GetMethod(the_type, obj, name)
             raise LookupError(ast.attribute)
         raise NotImplementedError(ast)
 
@@ -79,39 +85,61 @@ class _BlockTyper:
         return newrefs + typed_statements + decrefs[::-1]
 
 
+def _do_funcdef(
+    variables: Dict[str, Type],
+    types: Dict[str, Type],
+    funcdef: uast.FuncDef,
+    create_variable: bool,
+) -> tast.FuncDef:
+    functype = FunctionType(
+        False,
+        [types[typename] for typename, argname in funcdef.args],
+        None if funcdef.returntype is None else types[funcdef.returntype],
+    )
+    if create_variable:
+        assert funcdef.name not in variables
+        variables[funcdef.name] = functype
+
+    local_vars = variables.copy()
+    for (typename, argname), the_type in zip(funcdef.args, functype.argtypes):
+        assert argname not in local_vars
+        local_vars[argname] = the_type
+
+    return tast.FuncDef(
+        funcdef.name,
+        functype,
+        [argname for typename, argname in funcdef.args],
+        _BlockTyper(local_vars, types).do_block(funcdef.body),
+    )
+
+
 def _do_toplevel_statement(
     variables: Dict[str, Type],
     types: Dict[str, Type],
     top_statement: uast.ToplevelStatement,
 ) -> tast.ToplevelStatement:
     if isinstance(top_statement, uast.FuncDef):
-        assert top_statement.name not in variables
-        functype = FunctionType(
-            False,
-            [types[typename] for typename, argname in top_statement.args],
-            None if top_statement.returntype is None else types[top_statement.returntype],
-        )
-        variables[top_statement.name] = functype
-        local_vars = variables.copy()
-        for (typename, argname), the_type in zip(top_statement.args, functype.argtypes):
-            assert argname not in local_vars
-            local_vars[argname] = the_type
-        return tast.FuncDef(
-            top_statement.name,
-            functype,
-            [argname for typename, argname in top_statement.args],
-            _BlockTyper(local_vars, types).do_block(top_statement.body),
-        )
-    elif isinstance(top_statement, uast.ClassDef):
+        return _do_funcdef(variables, types, top_statement, create_variable=True)
+
+    if isinstance(top_statement, uast.ClassDef):
         classtype = ClassType(
             True,
             top_statement.name,
             [(types[typename], membername) for typename, membername in top_statement.members],
+            {},
         )
-        result = tast.ClassDef(classtype)
         assert top_statement.name not in types
         types[top_statement.name] = classtype
-        return result
+
+        typed_method_defs = []
+        for method_def in top_statement.body:
+            method_def.args.insert(0, (top_statement.name, 'self'))
+            typed_def = _do_funcdef(variables, types, method_def, create_variable=False)
+            classtype.methods[method_def.name] = typed_def.type
+            typed_method_defs.append(typed_def)
+
+        return tast.ClassDef(classtype, typed_method_defs)
+
     raise NotImplementedError(top_statement)
 
 

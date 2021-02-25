@@ -26,6 +26,12 @@ class GetAttribute(Expression):
 
 
 @dataclass
+class GetMethod(Expression):
+    obj: Expression
+    name: str
+
+
+@dataclass
 class IntConstant(Expression):
     value: int
 
@@ -64,6 +70,7 @@ class FuncDef(ToplevelStatement):
 @dataclass
 class ClassDef(ToplevelStatement):
     type: ClassType
+    body: List[FuncDef]
 
 
 @dataclass
