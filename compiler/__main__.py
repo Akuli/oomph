@@ -1,4 +1,4 @@
-import sys
+import fileinput
 
 from compiler import c_output, parser, tokenizer, typecheck
 
@@ -6,7 +6,7 @@ from compiler import c_output, parser, tokenizer, typecheck
 def main() -> None:
     print('#include "../lib/lib.h"')
 
-    parsed = parser.parse_file(tokenizer.tokenize(sys.stdin.read()))
+    parsed = parser.parse_file(tokenizer.tokenize(''.join(fileinput.input())))
     typecheck.check_program(parsed)
     for toplevel_statement in parsed:
         c_output.emit_toplevel_statement(toplevel_statement)
