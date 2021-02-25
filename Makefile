@@ -4,6 +4,8 @@ CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers
 CFLAGS += -Werror=stack-usage=50000
+CFLAGS += -Wno-unused-parameter
+CFLAGS += -Wno-unused-variable
 CFLAGS += -g
 
 SRC := $(wildcard lib/*.c)
