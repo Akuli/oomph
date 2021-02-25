@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass
@@ -12,7 +12,7 @@ class _NamedType(Type):
     name: str
 
 
-INT = _NamedType(False, 'int')
+INT = _NamedType(False, "int")
 
 
 @dataclass

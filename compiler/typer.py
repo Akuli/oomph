@@ -6,17 +6,18 @@ from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
 from compiler.types import INT, ClassType, FunctionType, Type
 
-_ref_names = (f'ref{n}' for n in itertools.count())
+_ref_names = (f"ref{n}" for n in itertools.count())
 
 
 class _BlockTyper:
-
     def __init__(self, variables: Dict[str, Type], types: Dict[str, Type]):
         self.variables = variables
         self.types = types
         self.reflist: List[str] = []
 
-    def do_call(self, ast: uast.Call) -> Union[tast.VoidCall, tast.ReturningCall, tast.SetRef]:
+    def do_call(
+        self, ast: uast.Call
+    ) -> Union[tast.VoidCall, tast.ReturningCall, tast.SetRef]:
         func = self.do_expression(ast.func)
         assert isinstance(func.type, FunctionType)
         args = [self.do_expression(arg) for arg in ast.args]
@@ -28,7 +29,7 @@ class _BlockTyper:
             return tast.VoidCall(func, args)
 
         result = tast.ReturningCall(func.type.returntype, func, args)
-        if result.type.refcounted:   # TODO: what else needs ref holding?
+        if result.type.refcounted:  # TODO: what else needs ref holding?
             refname = next(_ref_names)
             self.reflist.append(refname)
             return tast.SetRef(result.type, refname, result)
@@ -36,7 +37,7 @@ class _BlockTyper:
 
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
         if isinstance(ast, uast.IntConstant):
-            assert -(2**63) <= ast.value < 2**63
+            assert -(2 ** 63) <= ast.value < 2 ** 63
             return tast.IntConstant(INT, ast.value)
         if isinstance(ast, uast.Call):
             call = self.do_call(ast)
@@ -48,8 +49,11 @@ class _BlockTyper:
             klass = self.types[ast.type]
             assert isinstance(klass, ClassType)
             return tast.Constructor(
-                FunctionType(False, [the_type for the_type, name in klass.members], klass),
-                klass)
+                FunctionType(
+                    False, [the_type for the_type, name in klass.members], klass
+                ),
+                klass,
+            )
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
             if isinstance(obj.type, ClassType):
@@ -80,8 +84,12 @@ class _BlockTyper:
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
         typed_statements = [self.do_statement(s) for s in block]
 
-        newrefs: List[tast.Statement] = [tast.NewRef(refname) for refname in self.reflist]
-        decrefs: List[tast.Statement] = [tast.DecRef(varname) for varname in self.reflist]
+        newrefs: List[tast.Statement] = [
+            tast.NewRef(refname) for refname in self.reflist
+        ]
+        decrefs: List[tast.Statement] = [
+            tast.DecRef(varname) for varname in self.reflist
+        ]
         return newrefs + typed_statements + decrefs[::-1]
 
 
@@ -125,7 +133,10 @@ def _do_toplevel_statement(
         classtype = ClassType(
             True,
             top_statement.name,
-            [(types[typename], membername) for typename, membername in top_statement.members],
+            [
+                (types[typename], membername)
+                for typename, membername in top_statement.members
+            ],
             {},
         )
         assert top_statement.name not in types
@@ -133,7 +144,7 @@ def _do_toplevel_statement(
 
         typed_method_defs = []
         for method_def in top_statement.body:
-            method_def.args.insert(0, (top_statement.name, 'self'))
+            method_def.args.insert(0, (top_statement.name, "self"))
             typed_def = _do_funcdef(variables, types, method_def, create_variable=False)
             classtype.methods[method_def.name] = typed_def.type
             typed_method_defs.append(typed_def)
@@ -143,11 +154,15 @@ def _do_toplevel_statement(
     raise NotImplementedError(top_statement)
 
 
-def convert_program(program: List[uast.ToplevelStatement]) -> List[tast.ToplevelStatement]:
-    types: Dict[str, Type] = {'int': INT}
+def convert_program(
+    program: List[uast.ToplevelStatement],
+) -> List[tast.ToplevelStatement]:
+    types: Dict[str, Type] = {"int": INT}
     variables: Dict[str, Type] = {
-        'add': FunctionType(False, [INT, INT], INT),
-        'print_int': FunctionType(False, [INT], None),
+        "add": FunctionType(False, [INT, INT], INT),
+        "print_int": FunctionType(False, [INT], None),
     }
-    return [_do_toplevel_statement(variables, types, toplevel_statement)
-            for toplevel_statement in program]
+    return [
+        _do_toplevel_statement(variables, types, toplevel_statement)
+        for toplevel_statement in program
+    ]

@@ -3,8 +3,9 @@ Commands:
 ```
 python3 -m venv env
 . env/bin/activate
-pip install more_itertools mypy isort pyflakes
+pip install more_itertools black isort mypy pyflakes
 ./test
+black compiler
 isort compiler
 mypy --strict compiler
 pyflakes compiler
