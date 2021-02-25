@@ -52,7 +52,6 @@ def _emit_statement(ast: tast.Statement) -> None:
     elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
         _emit_call(ast)
     elif isinstance(ast, tast.NewRef):
-        # TODO: get rid of void* typing
         print(f'void *{ast.refname} = NULL', end='')
     elif isinstance(ast, tast.DecRef):
         print(f'if ({ast.refname}) decref({ast.refname})', end='')
