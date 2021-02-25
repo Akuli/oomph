@@ -20,9 +20,9 @@ def _get_token(
 ) -> Tuple[str, str]:
     tokentype, value = next(token_iter)
     if required_type is not None:
-        assert tokentype == required_type, (tokentype, required_type)
+        assert tokentype == required_type, (required_type, required_value, tokentype, value)
     if required_value is not None:
-        assert value == required_value, (value, required_value)
+        assert value == required_value, (required_type, required_value, tokentype, value)
     return (tokentype, value)
 
 
@@ -102,13 +102,11 @@ def _parse_statement(token_iter: _TokenIter) -> Statement:
 
 
 def _parse_block(token_iter: _TokenIter) -> List[Statement]:
-    _get_token(token_iter, 'op', '{')
-    _get_token(token_iter, 'op', '\n')
+    _get_token(token_iter, 'begin_block', ':')
     result = []
-    while token_iter.peek() != ('op', '}'):
+    while token_iter and token_iter.peek(None) != ('end_block', ''):
         result.append(_parse_statement(token_iter))
-    _get_token(token_iter, 'op', '}')
-    _get_token(token_iter, 'op', '\n')
+    _get_token(token_iter, 'end_block', '')
     return result
 
 
@@ -153,6 +151,6 @@ def _parse_toplevel(token_iter: _TokenIter) -> FuncDef:
 def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[FuncDef]:
     token_iter = more_itertools.peekable(tokens)
     result = []
-    while token_iter.peek() != ('end', ''):
+    while token_iter:
         result.append(_parse_toplevel(token_iter))
     return result

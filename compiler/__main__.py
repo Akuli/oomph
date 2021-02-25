@@ -11,16 +11,14 @@ def main() -> None:
     print(r'int64_t var_add(int64_t x, int64_t y){ return x+y; }')
 
     code = '''
-func foo(int x) -> void {
+func foo(int x) -> void:
     print_int(x)
-}
 
-func main() -> void {
+func main() -> void:
     foo(12345)
     let x = add(1, 2)
     print_int(x)
     print_int(add(1, 2))
-}
 '''
     var_types: Dict[str, Type] = {
         'add': FunctionType([INT, INT], INT),

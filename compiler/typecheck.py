@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
-from compiler.parser import (Call, Expression, FuncDef,
-                             GetVar, IntConstant, LetStatement, Statement)
+from compiler.parser import (Call, Expression, FuncDef, GetVar, IntConstant,
+                             LetStatement, Statement)
 from compiler.types import INT, FunctionType, Type
 
 

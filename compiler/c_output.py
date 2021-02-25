@@ -1,8 +1,8 @@
 from typing import Callable, Iterable, List, Optional, Tuple, TypeVar
 
-from compiler.parser import (INT, Call, Expression,
-                             FuncDef, GetVar, IntConstant, LetStatement,
-                             Statement, Type)
+from compiler.parser import (Call, Expression, FuncDef, GetVar, IntConstant,
+                             LetStatement, Statement)
+from compiler.types import INT, Type
 
 _T = TypeVar('_T')
 
