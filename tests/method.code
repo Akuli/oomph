@@ -1,13 +1,12 @@
-# TODO: adding blank lines breaks something
 class Point(int x, int y):
     meth print() -> void:
         print_int(self.x)
         print_int(self.y)
-    meth add(Point other) -> void:
-        new Point(add(self.x, other.x), add(self.y, other.y)).print()
+    meth add(Point other) -> Point:
+        return new Point(add(self.x, other.x), add(self.y, other.y))
 
 
 func main() -> void:
+    new Point(100, 200).print()
     let p = new Point(100, 200)
-    p.print()
-    p.add(new Point(1, 2))
+    p.add(new Point(1, 2)).print()

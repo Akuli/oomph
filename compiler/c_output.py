@@ -72,6 +72,9 @@ def _emit_statement(file: IO[str], ast: tast.Statement) -> None:
         file.write("decref(")
         _emit_expression(file, ast.value)
         file.write(")")
+    elif isinstance(ast, tast.ReturnStatement):
+        file.write("return ")
+        _emit_expression(file, ast.value)
     else:
         raise NotImplementedError(ast)
     file.write(";\n\t")

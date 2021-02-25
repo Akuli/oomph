@@ -55,6 +55,11 @@ class LetStatement(Statement):
 
 
 @dataclass
+class ReturnStatement(Statement):
+    value: Expression
+
+
+@dataclass
 class ToplevelStatement:
     pass
 

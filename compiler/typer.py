@@ -79,6 +79,8 @@ class _BlockTyper:
             value = self.do_expression(ast.value)
             self.variables[ast.varname] = value.type
             return tast.LetStatement(ast.varname, value)
+        if isinstance(ast, uast.ReturnStatement):
+            return tast.ReturnStatement(self.do_expression(ast.value))
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:

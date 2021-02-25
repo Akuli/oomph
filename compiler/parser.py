@@ -88,6 +88,9 @@ def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
         varname = _get_token(token_iter, "var")[1]
         _get_token(token_iter, "op", "=")
         result = uast.LetStatement(varname, _parse_expression(token_iter))
+    elif token_iter.peek() == ("keyword", "return"):
+        _get_token(token_iter, "keyword", "return")
+        result = uast.ReturnStatement(_parse_expression(token_iter))
     else:
         call = _parse_expression(token_iter)
         assert isinstance(call, uast.Call), call
@@ -121,13 +124,18 @@ def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[str, str]:
 def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
     name = _get_token(token_iter, "var")[1]
     args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
+
     _get_token(token_iter, "op", "->")
-    # TODO: accept return types
-    _get_token(token_iter, "keyword", "void")
+    if token_iter.peek() == ("keyword", "void"):
+        returntype = None
+        _get_token(token_iter, "keyword", "void")
+    else:
+        returntype = _parse_type(token_iter)
+
     return uast.FuncDef(
         name,
         args,
-        None,
+        returntype,
         _parse_block(token_iter, _parse_statement),
     )
 
