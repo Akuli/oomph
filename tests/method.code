@@ -1,7 +1,9 @@
 class Point(int x, int y):
+
     meth print() -> void:
         print_int(self.x)
         print_int(self.y)
+
     meth add(Point other) -> Point:
         return new Point(add(self.x, other.x), add(self.y, other.y))
 

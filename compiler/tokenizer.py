@@ -8,7 +8,7 @@ _TOKEN_REGEX = (
     r"(?P<var>[A-Za-z_][A-Za-z0-9_]*)|"
     r"(?P<int>[1-9][0-9]*|0)|"
     r"(?P<op>[=+(),\n:\.]|->)|"
-    r"(?P<indent>(?<=\n) +(?!\n))|"
+    r"(?P<indent>(?<=\n) +(?=[^ #\n]))|"
     r"(?P<ignore> |#.*)|"
     r"(?P<error>.)"
 )
@@ -87,4 +87,4 @@ def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, st
 
 
 def tokenize(code: str) -> Iterator[Tuple[str, str]]:
-    return _clean_newlines(_find_blocks(_raw_tokenize(code)))
+    return _clean_newlines(_find_blocks(_clean_newlines(_raw_tokenize(code))))

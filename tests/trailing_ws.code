@@ -1,0 +1,23 @@
+#
+# I have very carefully commented where trailing whitespace is,
+# because editors tend to strip it away...
+#
+
+
+# The following line has trailing whitespace:
+  
+# That should not cause a problem.
+
+func main() -> void:
+    # The following line has trailing whitespace too:
+      
+    add(1, 2)
+    # And the following line:
+          
+    add(3, 4)
+
+    # And the following two lines:
+        
+    
+    # This comment ensures that the last whitespaces don't end up at end
+    # of file, and that way get stripped away.
