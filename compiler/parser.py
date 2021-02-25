@@ -3,11 +3,8 @@ from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
 
 import more_itertools
 
-<<<<<<< HEAD
 from compiler.types import FunctionType, Type, NamedType
-=======
 from compiler import untyped_ast as uast
->>>>>>> master
 
 if TYPE_CHECKING:
     _TokenIter = more_itertools.peekable[Tuple[str, str]]
