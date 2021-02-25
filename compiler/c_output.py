@@ -51,7 +51,7 @@ def _emit_statement(ast: tast.Statement) -> None:
         # TODO: get rid of void* typing
         print(f'void *{ast.refname} = NULL', end='')
     elif isinstance(ast, tast.DecRef):
-        print(f'decref({ast.refname})', end='')
+        print(f'if ({ast.refname}) decref({ast.refname})', end='')
     elif isinstance(ast, tast.DecRefObject):
         print('decref(', end='')
         _emit_expression(ast.value)
