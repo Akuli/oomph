@@ -5,7 +5,6 @@ from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
 from compiler.types import INT, ClassType, FunctionType, Type
 
-
 _ref_names = (f'ref{n}' for n in itertools.count())
 
 

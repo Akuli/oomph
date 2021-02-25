@@ -1,5 +1,6 @@
 from functools import partial
-from typing import Callable, Iterable, List, Optional, Tuple, TypeVar, Union, IO
+from typing import (IO, Callable, Iterable, List, Optional, Tuple, TypeVar,
+                    Union)
 
 import compiler.typed_ast as tast
 from compiler.types import INT, ClassType, Type
