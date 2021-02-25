@@ -21,3 +21,5 @@ build/%: temp/%.c $(OBJ) $(HEADERS)
 
 clean:
 	rm -rvf temp obj build
+
+.PRECIOUS: obj/%.o
