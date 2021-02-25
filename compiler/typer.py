@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
-                    Tuple, TypeVar)
+from typing import List
 
 from compiler.types import ClassType, FunctionType, Type
 

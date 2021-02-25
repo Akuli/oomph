@@ -1,7 +1,6 @@
 # This ast has strings representing types
 from dataclasses import dataclass
-from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
-                    Tuple, TypeVar)
+from typing import List, Optional, Tuple
 
 
 @dataclass
