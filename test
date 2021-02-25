@@ -6,8 +6,18 @@ for file in tests/*.code; do
     compiled=build/$cutted
     echo -e "
 Running test: make build/$cutted"
-    make build/$cutted
-    diff --color -u tests/output/$(basename $cutted).txt <(build/$cutted)
+    if [[ $file == tests/*_error.code ]]; then
+        if make build/$cutted 2>/dev/null; then
+            echo "========== SHOULD HAVE ERRORED but it didn't"
+            exit 1
+        fi
+    else
+        if ! make build/$cutted; then
+            echo "========== ERROR"
+            exit 1
+        fi
+        diff --color -u tests/output/$(basename $cutted).txt <(build/$cutted)
+    fi
 done
 
 

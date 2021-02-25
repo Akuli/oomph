@@ -9,7 +9,7 @@ _TOKEN_REGEX = (
     r"(?P<int>[1-9][0-9]*|0)|"
     r"(?P<op>[=+(),\n:\.]|->)|"
     r"(?P<indent>(?<=\n) +(?=[^ #\n]))|"
-    r"(?P<ignore> |#.*)|"
+    r"(?P<ignore>(?<=[\S\s]) |#.*)|"
     r"(?P<error>.)"
 )
 
