@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+for file in tests/*.code; do
+    cutted=$(echo $file | cut -d. -f1)
+    compiled=build/$cutted
+    echo -e "
+Running test: make build/$cutted
+"
+    make build/$cutted
+    diff --color -u tests/output/$(basename $cutted).txt <(build/$cutted)
+done
+
+
+echo "
+
+============================= success ============================="

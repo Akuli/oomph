@@ -1,8 +1,5 @@
 class Point(int x, int y)
 
-func foo(int x) -> void:
-    print_int(x)
-
 # FIXME: adding a comment in beginning of function body is broken
 func print_point(Point p) -> void:
     print_int(p.x)
@@ -11,8 +8,5 @@ func print_point(Point p) -> void:
 func main() -> void:
     new Point(1, 2)
     let p = new Point(123, 456)
-    foo(12345)
-    let x = add(1, 2)
-    print_int(x)
-    print_int(add(1, 2))
     print_point(p)
+    print_point(new Point(111, 222))

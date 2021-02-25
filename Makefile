@@ -13,7 +13,7 @@ OBJ := $(SRC:lib/%.c=obj/%.o)
 HEADERS := lib/lib.h
 
 temp/%.c: %.code $(wildcard compiler/*.py)
-	mkdir -p $(@D) && python3 -m compiler $< > $@
+	mkdir -p $(@D) && python3 -m compiler $< $@
 
 obj/%.o: lib/%.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)

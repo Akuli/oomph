@@ -1,4 +1,5 @@
-from typing import Callable, Iterable, List, Optional, Tuple, TypeVar, Union
+from functools import partial
+from typing import Callable, Iterable, List, Optional, Tuple, TypeVar, Union, IO
 
 import compiler.typed_ast as tast
 from compiler.types import INT, ClassType, Type
@@ -6,120 +7,119 @@ from compiler.types import INT, ClassType, Type
 _T = TypeVar('_T')
 
 
-def _emit_commasep(items: Iterable[_T], callback: Callable[[_T], object]) -> None:
+def _emit_commasep(file: IO[str], items: Iterable[_T], callback: Callable[[_T], object]) -> None:
     first = True
     for item in items:
         if not first:
-            print(',', end=' ')
+            file.write(',')
         first = False
         callback(item)
 
 
-def _emit_call(ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
-    print('(', end='')
-    _emit_expression(ast.func)
-    print('(', end='')
-    _emit_commasep(ast.args, (lambda arg: _emit_expression(arg)))
-    print('))', end='')
+def _emit_call(file: IO[str], ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
+    file.write('(')
+    _emit_expression(file, ast.func)
+    file.write('(')
+    _emit_commasep(file, ast.args, (lambda arg: _emit_expression(file, arg)))
+    file.write('))')
 
 
-def _emit_expression(ast: tast.Expression) -> None:
+def _emit_expression(file: IO[str], ast: tast.Expression) -> None:
     if isinstance(ast, tast.IntConstant):
-        print(f'((int64_t){ast.value}LL)', end='')
+        file.write(f'((int64_t){ast.value}LL)')
     elif isinstance(ast, tast.ReturningCall):
-        _emit_call(ast)
+        _emit_call(file, ast)
     elif isinstance(ast, tast.GetVar):
-        print('var_' + ast.varname, end='')
+        file.write('var_' + ast.varname)
     elif isinstance(ast, tast.Constructor):
-        print('ctor_' + ast.class_to_construct.name, end='')
+        file.write('ctor_' + ast.class_to_construct.name)
     elif isinstance(ast, tast.SetRef):
-        print(f'({ast.refname} =', end=' ')
-        _emit_expression(ast.value)
-        print(')', end='')
+        file.write(f'({ast.refname} = ')
+        _emit_expression(file, ast.value)
+        file.write(')')
     elif isinstance(ast, tast.GetAttribute):
-        print('((', end='')
-        _emit_expression(ast.obj)
-        print(f')->memb_{ast.attribute})', end='')
+        file.write('((')
+        _emit_expression(file, ast.obj)
+        file.write(f')->memb_{ast.attribute})')
     else:
         raise NotImplementedError(ast)
 
 
-def _emit_statement(ast: tast.Statement) -> None:
+def _emit_statement(file: IO[str], ast: tast.Statement) -> None:
     if isinstance(ast, tast.LetStatement):
-        _emit_type(ast.value.type)
-        print(f'var_{ast.varname} =', end=' ')
-        _emit_expression(ast.value)
+        _emit_type(file, ast.value.type)
+        file.write(f'var_{ast.varname} = ')
+        _emit_expression(file, ast.value)
     elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
-        _emit_call(ast)
+        _emit_call(file, ast)
     elif isinstance(ast, tast.NewRef):
-        print(f'void *{ast.refname} = NULL', end='')
+        file.write(f'void *{ast.refname} = NULL')
     elif isinstance(ast, tast.DecRef):
-        print(f'if ({ast.refname}) decref({ast.refname})', end='')
+        file.write(f'if ({ast.refname}) decref({ast.refname})')
     elif isinstance(ast, tast.DecRefObject):
-        print('decref(', end='')
-        _emit_expression(ast.value)
-        print(')', end='')
+        file.write('decref(')
+        _emit_expression(file, ast.value)
+        file.write(')')
     else:
         raise NotImplementedError(ast)
-    print(';\n\t', end='')
+    file.write(';\n\t')
 
 
-def _emit_type(the_type: Optional[tast.Type]) -> None:
+def _emit_type(file: IO[str], the_type: Optional[Type]) -> None:
     if the_type is INT:
-        print('int64_t', end=' ')
+        file.write('int64_t ')
     elif isinstance(the_type, ClassType):
-        print(f'struct class_{the_type.name} *', end='')
+        file.write(f'struct class_{the_type.name} *')
     elif the_type is None:
-        print('void', end=' ')
+        file.write('void ')
     else:
         raise NotImplementedError(the_type)
 
 
-def _emit_block(body: List[tast.Statement]) -> None:
-    print('{\n\t', end='')
+def _emit_block(file: IO[str], body: List[tast.Statement]) -> None:
+    file.write('{\n\t')
     for statement in body:
-        _emit_statement(statement)
-    print('\n}')
+        _emit_statement(file, statement)
+    file.write('\n}\n')
 
 
-def _emit_arg_def(pair: Tuple[Type, str]) -> None:
+def _emit_arg_def(file: IO[str], pair: Tuple[Type, str]) -> None:
     the_type, name = pair
-    _emit_type(the_type)
-    print('var_' + name, end='')
+    _emit_type(file, the_type)
+    file.write('var_' + name)
 
 
-def emit_toplevel_statement(top_statement: tast.ToplevelStatement) -> None:
+def emit_toplevel_statement(file: IO[str], top_statement: tast.ToplevelStatement) -> None:
     if isinstance(top_statement, tast.FuncDef):
-        _emit_type(top_statement.type.returntype)
+        _emit_type(file, top_statement.type.returntype)
         if top_statement.argnames:
-            print(f'var_{top_statement.name}(', end='')
-            _emit_commasep(zip(top_statement.type.argtypes, top_statement.argnames), _emit_arg_def)
-            print(')')
+            file.write(f'var_{top_statement.name}(')
+            _emit_commasep(file, zip(top_statement.type.argtypes, top_statement.argnames), partial(_emit_arg_def, file))
+            file.write(')')
         else:
-            print(f'var_{top_statement.name}(void)')
-        _emit_block(top_statement.body)
+            file.write(f'var_{top_statement.name}(void)')
+        _emit_block(file, top_statement.body)
 
     elif isinstance(top_statement, tast.ClassDef):
         # struct
-        print('struct class_%s {' % top_statement.type.name)
-        print('\tREFCOUNT_HEADER')
+        file.write('struct class_%s {\n' % top_statement.type.name)
+        file.write('\tREFCOUNT_HEADER\n\t')
         for the_type, name in top_statement.type.members:
-            _emit_type(the_type)
-            print('memb_' + name + ';')
-        print('};')
+            _emit_type(file, the_type)
+            file.write('memb_' + name + ';\n\t')
+        file.write('\n};\n')
 
         # constructor
-        _emit_type(top_statement.type)
-        print(f'ctor_{top_statement.type.name}(')
-        _emit_commasep(top_statement.type.members, _emit_arg_def)
-        print(') {', end='\n\t')
-        _emit_type(top_statement.type)
-        print('obj = malloc(sizeof(*obj));')
-        print('\tobj->refcount = 1;')
+        _emit_type(file, top_statement.type)
+        file.write(f'ctor_{top_statement.type.name}(')
+        _emit_commasep(file, top_statement.type.members, partial(_emit_arg_def, file))
+        file.write(') {\n\t')
+        _emit_type(file, top_statement.type)
+        file.write('obj = malloc(sizeof(*obj));\n')
+        file.write('\tobj->refcount = 1;\n')
         for the_type, name in top_statement.type.members:
-            print(f'\tobj->memb_{name} = var_{name};')
-        print('\treturn obj;')
-        print('}')
+            file.write(f'\tobj->memb_{name} = var_{name};\n')
+        file.write('\treturn obj;\n}\n')
 
     else:
         raise NotImplementedError(top_statement)
