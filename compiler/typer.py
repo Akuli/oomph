@@ -28,7 +28,7 @@ class _BlockTyper:
             return tast.VoidCall(func, args)
 
         result = tast.ReturningCall(func.type.returntype, func, args)
-        if result.type.refcounted:
+        if result.type.refcounted:   # TODO: what else needs ref holding?
             refname = next(_ref_names)
             self.reflist.append(refname)
             return tast.SetRef(result.type, refname, result)
