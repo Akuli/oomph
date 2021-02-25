@@ -1,6 +1,6 @@
 from typing import Dict
 
-from compiler import c_output, parser, tokenizer
+from compiler import c_output, parser, tokenizer, typecheck
 from compiler.parser import INT, FunctionType, Type
 
 
@@ -22,10 +22,15 @@ func main() -> void {
     print_int(add(1, 2))
 }
 '''
-    var_types: Dict[str, Type] = {'add': FunctionType([INT, INT], INT), 'print_int': FunctionType([INT], None)}
+    var_types: Dict[str, Type] = {
+        'add': FunctionType([INT, INT], INT),
+        'print_int': FunctionType([INT], None),
+    }
     parsed = parser.parse_file(tokenizer.tokenize(code))
     for funcdef in parsed:
-        c_output.emit_funcdef(var_types, funcdef)
+        typecheck.check_funcdef(var_types, funcdef)
+    for funcdef in parsed:
+        c_output.emit_funcdef(funcdef)
     print('int main(void) { var_main(); return 0; }')
 
 

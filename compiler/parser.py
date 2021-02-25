@@ -81,6 +81,7 @@ class Statement:
 class LetStatement(Statement):
     varname: str
     value: Expression
+    value_type: Optional['Type']
 
 
 @dataclass
@@ -94,7 +95,7 @@ def _parse_statement(token_iter: _TokenIter) -> Statement:
         _get_token(token_iter, 'keyword', 'let')
         varname = _get_token(token_iter, 'var')[1]
         _get_token(token_iter, 'op', '=')
-        result = LetStatement(varname, _parse_expression(token_iter))
+        result = LetStatement(varname, _parse_expression(token_iter), None)
     else:
         result = ExpressionStatement(_parse_expression(token_iter))
 
