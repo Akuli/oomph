@@ -1,5 +1,5 @@
-foo.c
-*.o
-foo
+build/
+temp/
+obj/
 __pycache__/
 env/

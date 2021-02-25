@@ -6,10 +6,7 @@ from compiler.types import INT, FunctionType, Type
 
 
 def main() -> None:
-    print('#include <stdint.h>')
-    print('#include <stdio.h>')
-    print(r'void var_print_int(int64_t x){ printf("%lld\n", (long long)x); }')
-    print(r'int64_t var_add(int64_t x, int64_t y){ return x+y; }')
+    print('#include "../lib/lib.h"')
 
     var_types: Dict[str, Type] = {
         'add': FunctionType([INT, INT], INT),
@@ -20,7 +17,6 @@ def main() -> None:
         typecheck.check_funcdef(var_types, funcdef)
     for funcdef in parsed:
         c_output.emit_funcdef(funcdef)
-    print('int main(void) { var_main(); return 0; }')
 
 
 main()
