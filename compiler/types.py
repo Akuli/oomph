@@ -16,3 +16,9 @@ class NamedType(Type):
 class FunctionType(Type):
     argtypes: List[Type]
     returntype: Optional[Type]
+
+
+@dataclass
+class ClassType(Type):
+    name: str
+    constructor_type: FunctionType

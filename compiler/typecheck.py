@@ -44,7 +44,7 @@ class _BlockChecker:
         else:
             raise NotImplementedError(ast)
 
-    def run(self, block: List[Statement]):
+    def run(self, block: List[Statement]) -> None:
         for statement in block:
             self._check_statement(statement)
         for varname in reversed(self.decref_list):

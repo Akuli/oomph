@@ -4,7 +4,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
 
 import more_itertools
 
-from compiler.types import FunctionType, NamedType, Type
+from compiler.types import FunctionType, Type, NamedType
 
 if TYPE_CHECKING:
     _TokenIter = more_itertools.peekable[Tuple[str, str]]
@@ -54,6 +54,11 @@ class GetVar(Expression):
 
 
 @dataclass
+class Constructor(Expression):
+    type: Type
+
+
+@dataclass
 class IntConstant(Expression):
     value: int
 
@@ -64,12 +69,21 @@ class Call(Expression, Statement):
     args: List[Expression]
 
 
+def _parse_type(token_iter: _TokenIter) -> Type:
+    tokentype, value = next(token_iter)
+    assert tokentype == 'var'
+    return NamedType(value)
+
+
 def _parse_expression(token_iter: _TokenIter) -> Expression:
     result: Expression
     if token_iter.peek()[0] == 'var':
         result = GetVar(_get_token(token_iter, 'var')[1])
     elif token_iter.peek()[0] == 'int':
         result = IntConstant(int(_get_token(token_iter, 'int')[1]))
+    elif token_iter.peek() == ('keyword', 'new'):
+        _get_token(token_iter, 'keyword', 'new')
+        result = Constructor(_parse_type(token_iter))
     else:
         raise NotImplementedError(token_iter.peek())
 
@@ -114,12 +128,6 @@ def _parse_block(token_iter: _TokenIter) -> List[Statement]:
         result.append(_parse_statement(token_iter))
     _get_token(token_iter, 'end_block', '')
     return result
-
-
-def _parse_type(token_iter: _TokenIter) -> Type:
-    tokentype, value = next(token_iter)
-    assert tokentype == 'var'
-    return NamedType(value)
 
 
 def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[Type, str]:

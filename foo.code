@@ -9,6 +9,7 @@ func print_point(Point p) -> void:
     print_int(2)
 
 func main() -> void:
+    let p = new Point(1, 2)
     foo(12345)
     let x = add(1, 2)
     print_int(x)
