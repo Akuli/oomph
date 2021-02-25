@@ -7,7 +7,7 @@ _TOKEN_REGEX = (
     r'(?P<keyword>\b(let|func|void|class|new)\b)|'
     r'(?P<var>[A-Za-z_][A-Za-z0-9_]*)|'
     r'(?P<int>[1-9][0-9]*|0)|'
-    r'(?P<op>[=+(),\n:]|->)|'
+    r'(?P<op>[=+(),\n:\.]|->)|'
     r'(?P<indent>(?<=\n) +(?!\n))|'
     r'(?P<ignore> |#.*)|'
     r'(?P<error>.)'

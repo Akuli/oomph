@@ -36,6 +36,10 @@ def _emit_expression(ast: tast.Expression) -> None:
         print(f'({ast.refname} =', end=' ')
         _emit_expression(ast.value)
         print(')', end='')
+    elif isinstance(ast, tast.GetAttribute):
+        print('((', end='')
+        _emit_expression(ast.obj)
+        print(f')->memb_{ast.attribute})', end='')
     else:
         raise NotImplementedError(ast)
 

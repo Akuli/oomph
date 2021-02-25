@@ -50,6 +50,13 @@ class _BlockTyper:
             return tast.Constructor(
                 FunctionType(False, [the_type for the_type, name in klass.members], klass),
                 klass)
+        if isinstance(ast, uast.GetAttribute):
+            obj = self.do_expression(ast.obj)
+            if isinstance(obj.type, ClassType):
+                for the_type, name in obj.type.members:
+                    if name == ast.attribute:
+                        return tast.GetAttribute(the_type, obj, name)
+            raise LookupError(ast.attribute)
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> tast.Statement:

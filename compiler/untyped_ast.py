@@ -19,6 +19,12 @@ class GetVar(Expression):
 
 
 @dataclass
+class GetAttribute(Expression):
+    obj: Expression
+    attribute: str
+
+
+@dataclass
 class IntConstant(Expression):
     value: int
 

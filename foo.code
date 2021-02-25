@@ -5,13 +5,14 @@ func foo(int x) -> void:
 
 # FIXME: adding a comment in beginning of function body is broken
 func print_point(Point p) -> void:
-    print_int(1)
-    print_int(2)
+    print_int(p.x)
+    print_int(p.y)
 
 func main() -> void:
     new Point(1, 2)
-    let p = new Point(1, 2)
+    let p = new Point(123, 456)
     foo(12345)
     let x = add(1, 2)
     print_int(x)
     print_int(add(1, 2))
+    print_point(p)

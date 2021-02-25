@@ -49,9 +49,14 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     else:
         raise NotImplementedError(token_iter.peek())
 
-    while token_iter.peek() == ('op', '('):
-        result = uast.Call(result, _parse_commasep_in_parens(token_iter, _parse_expression))
-    return result
+    while True:
+        if token_iter.peek() == ('op', '('):
+            result = uast.Call(result, _parse_commasep_in_parens(token_iter, _parse_expression))
+        elif token_iter.peek() == ('op', '.'):
+            _get_token(token_iter, 'op', '.')
+            result = uast.GetAttribute(result, _get_token(token_iter, 'var')[1])
+        else:
+            return result
 
 
 def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
