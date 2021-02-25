@@ -16,7 +16,7 @@ def _emit_commasep(items: Iterable[_T], callback: Callable[[_T], object]) -> Non
         callback(item)
 
 
-def _emit_expression(ast: Expression) -> Type:
+def _emit_expression(ast: Expression) -> None:
     if isinstance(ast, IntConstant):
         print(f'((int64_t){ast.value}LL)', end='')
     elif isinstance(ast, Call):

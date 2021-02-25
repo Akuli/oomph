@@ -16,6 +16,7 @@ def _check_expression(var_types: Dict[str, Type], ast: Expression) -> Type:
         for arg, argtype in zip(ast.args, functype.argtypes):
             actual_argtype = _check_expression(var_types, arg)
             assert actual_argtype == argtype, (actual_argtype, argtype)
+        assert functype.returntype is not None
         return functype.returntype
     if isinstance(ast, GetVar):
         return var_types[ast.varname]
