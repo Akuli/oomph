@@ -1,8 +1,7 @@
+#include "lib.h"
 #include <stdlib.h>
 
-struct RefHeader {
-	size_t refcount;
-};
+struct RefHeader { REFCOUNT_HEADER };
 
 void decref(void *ptr)
 {

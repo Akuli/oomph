@@ -82,10 +82,11 @@ def emit_toplevel_statement(top_statement: tast.ToplevelStatement) -> None:
         else:
             print(f'var_{top_statement.name}(void)')
         _emit_block(top_statement.body)
+
     elif isinstance(top_statement, tast.ClassDef):
         # struct
         print('struct class_%s {' % top_statement.type.name)
-        print('\tsize_t refcount;')
+        print('\tREFCOUNT_HEADER')
         for the_type, name in top_statement.type.members:
             _emit_type(the_type)
             print('memb_' + name + ';')
