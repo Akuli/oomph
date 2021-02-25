@@ -1,10 +1,13 @@
-from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
                     Tuple, TypeVar)
 
 import more_itertools
 
+<<<<<<< HEAD
 from compiler.types import FunctionType, Type, NamedType
+=======
+from compiler import untyped_ast as uast
+>>>>>>> master
 
 if TYPE_CHECKING:
     _TokenIter = more_itertools.peekable[Tuple[str, str]]
@@ -38,49 +41,12 @@ def _parse_commasep_in_parens(token_iter: _TokenIter, content_callback: Callable
     return result
 
 
-@dataclass
-class Expression:
-    pass
-
-
-@dataclass
-class Statement:
-    pass
-
-
-@dataclass
-class GetVar(Expression):
-    varname: str
-
-
-@dataclass
-class Constructor(Expression):
-    type: Type
-
-
-@dataclass
-class IntConstant(Expression):
-    value: int
-
-
-@dataclass
-class Call(Expression, Statement):
-    func: Expression
-    args: List[Expression]
-
-
-def _parse_type(token_iter: _TokenIter) -> Type:
-    tokentype, value = next(token_iter)
-    assert tokentype == 'var'
-    return NamedType(value)
-
-
-def _parse_expression(token_iter: _TokenIter) -> Expression:
-    result: Expression
+def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
+    result: uast.Expression
     if token_iter.peek()[0] == 'var':
-        result = GetVar(_get_token(token_iter, 'var')[1])
+        result = uast.GetVar(_get_token(token_iter, 'var')[1])
     elif token_iter.peek()[0] == 'int':
-        result = IntConstant(int(_get_token(token_iter, 'int')[1]))
+        result = uast.IntConstant(int(_get_token(token_iter, 'int')[1]))
     elif token_iter.peek() == ('keyword', 'new'):
         _get_token(token_iter, 'keyword', 'new')
         result = Constructor(_parse_type(token_iter))
@@ -88,40 +54,27 @@ def _parse_expression(token_iter: _TokenIter) -> Expression:
         raise NotImplementedError(token_iter.peek())
 
     while token_iter.peek() == ('op', '('):
-        result = Call(result, _parse_commasep_in_parens(token_iter, _parse_expression))
+        result = uast.Call(result, _parse_commasep_in_parens(token_iter, _parse_expression))
     return result
 
 
-@dataclass
-class LetStatement(Statement):
-    varname: str
-    value: Expression
-    value_type: Optional[Type]
-
-
-# TODO: this is a bit weird
-@dataclass
-class DecRef(Statement):
-    varname: str
-
-
-def _parse_statement(token_iter: _TokenIter) -> Statement:
-    result: Statement
+def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
+    result: uast.Statement
     if token_iter.peek() == ('keyword', 'let'):
         _get_token(token_iter, 'keyword', 'let')
         varname = _get_token(token_iter, 'var')[1]
         _get_token(token_iter, 'op', '=')
-        result = LetStatement(varname, _parse_expression(token_iter), None)
+        result = uast.LetStatement(varname, _parse_expression(token_iter))
     else:
         call = _parse_expression(token_iter)
-        assert isinstance(call, Call)
+        assert isinstance(call, uast.Call)
         result = call
 
     _get_token(token_iter, 'op', '\n')
     return result
 
 
-def _parse_block(token_iter: _TokenIter) -> List[Statement]:
+def _parse_block(token_iter: _TokenIter) -> List[uast.Statement]:
     _get_token(token_iter, 'begin_block', ':')
     result = []
     while token_iter and token_iter.peek(None) != ('end_block', ''):
@@ -130,32 +83,17 @@ def _parse_block(token_iter: _TokenIter) -> List[Statement]:
     return result
 
 
-def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[Type, str]:
-    the_type = _parse_type(token_iter)
-    name = _get_token(token_iter, 'var')[1]
-    return (the_type, name)
+def _parse_type(token_iter: _TokenIter) -> str:
+    return _get_token(token_iter, 'var')[1]
 
 
-@dataclass
-class ToplevelStatement:
-    pass
+def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[str, str]:
+    type_name = _parse_type(token_iter)
+    arg_name = _get_token(token_iter, 'var')[1]
+    return (type_name, arg_name)
 
 
-@dataclass
-class FuncDef(ToplevelStatement):
-    name: str
-    type: FunctionType
-    argnames: List[str]
-    body: List[Statement]
-
-
-@dataclass
-class ClassDef(ToplevelStatement):
-    name: str
-    members: List[Tuple[Type, str]]
-
-
-def _parse_toplevel(token_iter: _TokenIter) -> ToplevelStatement:
+def _parse_toplevel(token_iter: _TokenIter) -> uast.ToplevelStatement:
     if token_iter.peek() == ('keyword', 'func'):
         _get_token(token_iter, 'keyword', 'func')
         name = _get_token(token_iter, 'var')[1]
@@ -163,10 +101,10 @@ def _parse_toplevel(token_iter: _TokenIter) -> ToplevelStatement:
         _get_token(token_iter, 'op', '->')
         # TODO: accept return types
         _get_token(token_iter, 'keyword', 'void')
-        return FuncDef(
+        return uast.FuncDef(
             name,
-            FunctionType([argtype for argtype, name in args], None),
-            [name for argtype, name in args],
+            args,
+            None,
             _parse_block(token_iter),
         )
     if token_iter.peek() == ('keyword', 'class'):
@@ -174,11 +112,11 @@ def _parse_toplevel(token_iter: _TokenIter) -> ToplevelStatement:
         name = _get_token(token_iter, 'var')[1]
         args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
         _get_token(token_iter, 'op', '\n')
-        return ClassDef(name, args)
+        return uast.ClassDef(name, args)
     raise NotImplementedError(token_iter.peek())
 
 
-def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[ToplevelStatement]:
+def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[uast.ToplevelStatement]:
     token_iter = more_itertools.peekable(tokens)
     result = []
     while token_iter:
