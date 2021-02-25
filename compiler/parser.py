@@ -4,7 +4,7 @@ from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
 
 import more_itertools
 
-from compiler.types import INT, FunctionType, Type
+from compiler.types import FunctionType, NamedType, Type
 
 if TYPE_CHECKING:
     _TokenIter = more_itertools.peekable[Tuple[str, str]]
@@ -117,10 +117,9 @@ def _parse_block(token_iter: _TokenIter) -> List[Statement]:
 
 
 def _parse_type(token_iter: _TokenIter) -> Type:
-    if token_iter.peek() == ('var', 'int'):
-        _get_token(token_iter, 'var', 'int')
-        return INT
-    raise NotImplementedError(token_iter.peek())
+    tokentype, value = next(token_iter)
+    assert tokentype == 'var'
+    return NamedType(value)
 
 
 def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[Type, str]:
@@ -130,14 +129,25 @@ def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[Type, str]:
 
 
 @dataclass
-class FuncDef:
+class ToplevelStatement:
+    pass
+
+
+@dataclass
+class FuncDef(ToplevelStatement):
     name: str
     type: FunctionType
     argnames: List[str]
     body: List[Statement]
 
 
-def _parse_toplevel(token_iter: _TokenIter) -> FuncDef:
+@dataclass
+class ClassDef(ToplevelStatement):
+    name: str
+    members: List[Tuple[Type, str]]
+
+
+def _parse_toplevel(token_iter: _TokenIter) -> ToplevelStatement:
     if token_iter.peek() == ('keyword', 'func'):
         _get_token(token_iter, 'keyword', 'func')
         name = _get_token(token_iter, 'var')[1]
@@ -151,10 +161,16 @@ def _parse_toplevel(token_iter: _TokenIter) -> FuncDef:
             [name for argtype, name in args],
             _parse_block(token_iter),
         )
+    if token_iter.peek() == ('keyword', 'class'):
+        _get_token(token_iter, 'keyword', 'class')
+        name = _get_token(token_iter, 'var')[1]
+        args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
+        _get_token(token_iter, 'op', '\n')
+        return ClassDef(name, args)
     raise NotImplementedError(token_iter.peek())
 
 
-def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[FuncDef]:
+def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[ToplevelStatement]:
     token_iter = more_itertools.peekable(tokens)
     result = []
     while token_iter:

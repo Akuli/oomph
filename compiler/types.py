@@ -8,11 +8,8 @@ class Type:
 
 
 @dataclass
-class SpecialType(Type):
+class NamedType(Type):
     name: str
-
-
-INT = SpecialType('int')
 
 
 @dataclass

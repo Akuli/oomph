@@ -1,5 +1,12 @@
+class Point(int x, int y)
+
 func foo(int x) -> void:
     print_int(x)
+
+# FIXME: adding a comment in beginning of function body is broken
+func print_point(Point p) -> void:
+    print_int(1)
+    print_int(2)
 
 func main() -> void:
     foo(12345)
