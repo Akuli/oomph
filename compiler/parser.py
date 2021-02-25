@@ -1,9 +1,10 @@
-# TODO: separate types and parsing
 from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
                     Tuple, TypeVar)
 
 import more_itertools
+
+from compiler.types import INT, FunctionType, Type
 
 if TYPE_CHECKING:
     _TokenIter = more_itertools.peekable[Tuple[str, str]]
@@ -81,7 +82,7 @@ class Statement:
 class LetStatement(Statement):
     varname: str
     value: Expression
-    value_type: Optional['Type']
+    value_type: Optional[Type]
 
 
 @dataclass
@@ -114,19 +115,6 @@ def _parse_block(token_iter: _TokenIter) -> List[Statement]:
     return result
 
 
-@dataclass
-class Type:
-    pass
-
-
-@dataclass
-class SpecialType(Type):
-    name: str
-
-
-INT = SpecialType('int')
-
-
 def _parse_type(token_iter: _TokenIter) -> Type:
     if token_iter.peek() == ('var', 'int'):
         _get_token(token_iter, 'var', 'int')
@@ -138,12 +126,6 @@ def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[Type, str]:
     the_type = _parse_type(token_iter)
     name = _get_token(token_iter, 'var')[1]
     return (the_type, name)
-
-
-@dataclass
-class FunctionType(Type):
-    argtypes: List[Type]
-    returntype: Optional[Type]
 
 
 @dataclass

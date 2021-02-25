@@ -1,8 +1,8 @@
 from typing import Dict
 
-from compiler.parser import (INT, Call, Expression, ExpressionStatement,
-                             FuncDef, FunctionType, GetVar, IntConstant,
-                             LetStatement, Statement, Type)
+from compiler.parser import (Call, Expression, ExpressionStatement, FuncDef,
+                             GetVar, IntConstant, LetStatement, Statement)
+from compiler.types import INT, FunctionType, Type
 
 
 def _check_expression(var_types: Dict[str, Type], ast: Expression) -> Type:

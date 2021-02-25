@@ -1,7 +1,7 @@
 from typing import Dict
 
 from compiler import c_output, parser, tokenizer, typecheck
-from compiler.parser import INT, FunctionType, Type
+from compiler.types import INT, FunctionType, Type
 
 
 def main() -> None:
