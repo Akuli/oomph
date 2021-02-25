@@ -26,10 +26,15 @@ class IntConstant(Expression):
 
 
 @dataclass
-class Call(Expression, Statement):
+class VoidCall(Statement):
     func: Expression
     args: List[Expression]
 
+
+@dataclass
+class ReturningCall(Expression, Statement):
+    func: Expression
+    args: List[Expression]
 
 
 @dataclass

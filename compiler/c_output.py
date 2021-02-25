@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, List, Optional, Tuple, TypeVar
+from typing import Callable, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import compiler.typed_ast as tast
 from compiler.types import Type, INT, ClassType
@@ -15,19 +15,35 @@ def _emit_commasep(items: Iterable[_T], callback: Callable[[_T], object]) -> Non
         callback(item)
 
 
+def _emit_call(ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
+    print('(', end='')
+    _emit_expression(ast.func)
+    print('(', end='')
+    _emit_commasep(ast.args, (lambda arg: _emit_expression(arg)))
+    print('))', end='')
+
+
 def _emit_expression(ast: tast.Expression) -> None:
     if isinstance(ast, tast.IntConstant):
         print(f'((int64_t){ast.value}LL)', end='')
-    elif isinstance(ast, tast.Call):
-        print('(', end='')
-        _emit_expression(ast.func)
-        print('(', end='')
-        _emit_commasep(ast.args, (lambda arg: _emit_expression(arg)))
-        print('))', end='')
+    elif isinstance(ast, tast.ReturningCall):
+        _emit_call(ast)
     elif isinstance(ast, tast.GetVar):
         print('var_' + ast.varname, end='')
     else:
         raise NotImplementedError(ast)
+
+
+def _emit_statement(ast: tast.Statement) -> None:
+    if isinstance(ast, tast.LetStatement):
+        _emit_type(ast.value.type)
+        print(f'var_{ast.varname} =', end=' ')
+        _emit_expression(ast.value)
+    elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
+        _emit_call(ast)
+    else:
+        raise NotImplementedError(ast)
+    print(';\n\t', end='')
 
 
 def _emit_type(the_type: Optional[tast.Type]) -> None:
@@ -39,18 +55,6 @@ def _emit_type(the_type: Optional[tast.Type]) -> None:
         print('void', end=' ')
     else:
         raise NotImplementedError(the_type)
-
-
-def _emit_statement(ast: tast.Statement) -> None:
-    if isinstance(ast, tast.LetStatement):
-        _emit_type(ast.value.type)
-        print(f'var_{ast.varname} =', end=' ')
-        _emit_expression(ast.value)
-    elif isinstance(ast, tast.Call):
-        _emit_expression(ast)
-    else:
-        raise NotImplementedError(ast)
-    print(';\n\t', end='')
 
 
 def _emit_block(body: List[tast.Statement]) -> None:
