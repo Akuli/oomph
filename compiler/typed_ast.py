@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
                     Tuple, TypeVar)
 
-from compiler.types import FunctionType, Type
+from compiler.types import ClassType, FunctionType, Type
 
 
 @dataclass
@@ -58,10 +58,14 @@ class FuncDef(ToplevelStatement):
 
 @dataclass
 class ClassDef(ToplevelStatement):
-    name: str
-    members: List[Tuple[Type, str]]
+    type: ClassType
 
 
 @dataclass
 class DecRef(Statement):
     varname: str
+
+
+@dataclass
+class Constructor(Expression):
+    class_to_construct: ClassType

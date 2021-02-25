@@ -1,7 +1,7 @@
 from typing import Callable, Iterable, List, Optional, Tuple, TypeVar, Union
 
 import compiler.typed_ast as tast
-from compiler.types import Type, INT, ClassType
+from compiler.types import INT, ClassType, Type
 
 _T = TypeVar('_T')
 
@@ -30,6 +30,8 @@ def _emit_expression(ast: tast.Expression) -> None:
         _emit_call(ast)
     elif isinstance(ast, tast.GetVar):
         print('var_' + ast.varname, end='')
+    elif isinstance(ast, tast.Constructor):
+        print('ctor_' + ast.class_to_construct.name, end='')
     else:
         raise NotImplementedError(ast)
 
@@ -81,10 +83,26 @@ def emit_toplevel_statement(top_statement: tast.ToplevelStatement) -> None:
             print(f'var_{top_statement.name}(void)')
         _emit_block(top_statement.body)
     elif isinstance(top_statement, tast.ClassDef):
-        print('struct class_%s {' % top_statement.name, end='\n\t')
-        for the_type, name in top_statement.members:
+        # struct
+        print('struct class_%s {' % top_statement.type.name)
+        print('\tsize_t refcount;')
+        for the_type, name in top_statement.type.members:
             _emit_type(the_type)
-            print(name + ';', end='\n\t')
-        print('\n};')
+            print('memb_' + name + ';')
+        print('};')
+
+        # constructor
+        _emit_type(top_statement.type)
+        print(f'ctor_{top_statement.type.name}(')
+        _emit_commasep(top_statement.type.members, _emit_arg_def)
+        print(') {', end='\n\t')
+        _emit_type(top_statement.type)
+        print('obj = malloc(sizeof(*obj));')
+        print('\tobj->refcount = 1;')
+        for the_type, name in top_statement.type.members:
+            print(f'\tobj->memb_{name} = var_{name};')
+        print('\treturn obj;')
+        print('}')
+
     else:
         raise NotImplementedError(top_statement)

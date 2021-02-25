@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 @dataclass
@@ -24,4 +24,4 @@ class FunctionType(Type):
 @dataclass
 class ClassType(Type):
     name: str
-    constructor_type: FunctionType
+    members: List[Tuple[Type, str]]

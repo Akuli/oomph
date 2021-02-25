@@ -2,13 +2,14 @@ from typing import Dict, List, Optional, Set, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
-from compiler.types import INT, FunctionType, Type, ClassType
+from compiler.types import INT, ClassType, FunctionType, Type
 
 
 class _BlockTyper:
 
-    def __init__(self, variables: Dict[str, Type]):
+    def __init__(self, variables: Dict[str, Type], types: Dict[str, Type]):
         self.variables = variables
+        self.types = types
         self.decref_list: List[str] = []
 
     def do_call(self, ast: uast.Call) -> Union[tast.VoidCall, tast.ReturningCall]:
@@ -33,6 +34,11 @@ class _BlockTyper:
             return call
         if isinstance(ast, uast.GetVar):
             return tast.GetVar(self.variables[ast.varname], ast.varname)
+        if isinstance(ast, uast.Constructor):
+            klass = self.types[ast.type]
+            return tast.Constructor(
+                FunctionType([the_type for the_type, name in klass.members], klass),
+                klass)
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> tast.Statement:
@@ -51,7 +57,11 @@ class _BlockTyper:
         return typed_statements + decrefs[::-1]
 
 
-def _do_toplevel_statement(variables: Dict[str, Type], types: Dict[str, Type], top_statement: uast.ToplevelStatement) -> tast.ToplevelStatement:
+def _do_toplevel_statement(
+    variables: Dict[str, Type],
+    types: Dict[str, Type],
+    top_statement: uast.ToplevelStatement,
+) -> tast.ToplevelStatement:
     if isinstance(top_statement, uast.FuncDef):
         assert top_statement.name not in variables
         functype = FunctionType(
@@ -67,14 +77,16 @@ def _do_toplevel_statement(variables: Dict[str, Type], types: Dict[str, Type], t
             top_statement.name,
             functype,
             [argname for typename, argname in top_statement.args],
-            _BlockTyper(local_vars).do_block(top_statement.body),
+            _BlockTyper(local_vars, types).do_block(top_statement.body),
         )
     elif isinstance(top_statement, uast.ClassDef):
-        result = tast.ClassDef(
+        classtype = ClassType(
             top_statement.name,
             [(types[typename], membername) for typename, membername in top_statement.members],
         )
-        types[top_statement.name] = ClassType(top_statement.name)
+        result = tast.ClassDef(classtype)
+        assert top_statement.name not in types
+        types[top_statement.name] = classtype
         return result
     raise NotImplementedError(top_statement)
 

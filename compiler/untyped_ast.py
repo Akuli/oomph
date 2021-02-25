@@ -25,10 +25,14 @@ class IntConstant(Expression):
 
 
 @dataclass
+class Constructor(Expression):
+    type: str
+
+
+@dataclass
 class Call(Expression, Statement):
     func: Expression
     args: List[Expression]
-
 
 
 @dataclass

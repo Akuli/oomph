@@ -3,7 +3,6 @@ from typing import (TYPE_CHECKING, Any, Callable, Iterable, List, Optional,
 
 import more_itertools
 
-from compiler.types import FunctionType, Type, NamedType
 from compiler import untyped_ast as uast
 
 if TYPE_CHECKING:
@@ -46,7 +45,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
         result = uast.IntConstant(int(_get_token(token_iter, 'int')[1]))
     elif token_iter.peek() == ('keyword', 'new'):
         _get_token(token_iter, 'keyword', 'new')
-        result = Constructor(_parse_type(token_iter))
+        result = uast.Constructor(_parse_type(token_iter))
     else:
         raise NotImplementedError(token_iter.peek())
 
