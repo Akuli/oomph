@@ -20,6 +20,7 @@ def _emit_commasep(file: IO[str], items: Iterable[_T], callback: Callable[[_T], 
 def _emit_call(file: IO[str], ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
     file.write('(')
     if isinstance(ast.func, tast.GetMethod):
+        assert isinstance(ast.func.obj.type, ClassType)
         file.write(f'meth_{ast.func.obj.type.name}_{ast.func.name}')
         args = [ast.func.obj] + ast.args
     else:
