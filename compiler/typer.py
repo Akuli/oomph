@@ -36,6 +36,7 @@ class _BlockTyper:
             return tast.GetVar(self.variables[ast.varname], ast.varname)
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
+            assert isinstance(klass, ClassType)
             return tast.Constructor(
                 FunctionType([the_type for the_type, name in klass.members], klass),
                 klass)
