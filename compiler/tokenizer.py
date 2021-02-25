@@ -27,23 +27,6 @@ def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
             yield (tokentype, match.group())
 
 
-def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
-    token_iter = more_itertools.peekable(tokens)
-
-    # Ignore newlines in beginning
-    while token_iter.peek(None) == ('op', '\n'):
-        next(token_iter)
-
-    while True:
-        try:
-            token = next(token_iter)
-        except StopIteration:
-            break
-        while token == ('op', '\n') and token_iter.peek(None) == ('op', '\n'):
-            next(token_iter)
-        yield token
-
-
 def _find_blocks(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
     indent_level = 0
     while True:
@@ -75,5 +58,26 @@ def _find_blocks(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]
                 indent_level -= 1
 
 
+def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
+    token_iter = more_itertools.peekable(tokens)
+
+    # Ignore newlines in beginning
+    while token_iter.peek(None) == ('op', '\n'):
+        next(token_iter)
+
+    while True:
+        try:
+            token = next(token_iter)
+        except StopIteration:
+            break
+
+        # Ignore newlines after beginning of block, end of block, or another newline
+        while (token in {('op', '\n'), ('begin_block', ':'), ('end_block', '')} and
+               token_iter.peek(None) == ('op', '\n')):
+            next(token_iter)
+
+        yield token
+
+
 def tokenize(code: str) -> Iterator[Tuple[str, str]]:
-    return _find_blocks(_clean_newlines(_raw_tokenize(code)))
+    return _clean_newlines(_find_blocks(_raw_tokenize(code)))

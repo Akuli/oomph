@@ -1,0 +1,7 @@
+# comment
+func main() -> void:  # comment
+    # comment
+    print_int(1)  # comment
+    # comment
+    print_int(2)
+    # comment
