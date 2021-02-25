@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 
 @dataclass
 class Type:
-    pass
+    refcounted: bool
 
 
 @dataclass
@@ -12,7 +12,7 @@ class _NamedType(Type):
     name: str
 
 
-INT = _NamedType('int')
+INT = _NamedType(False, 'int')
 
 
 @dataclass

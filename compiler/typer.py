@@ -1,3 +1,4 @@
+import itertools
 from typing import Dict, List, Union
 
 from compiler import typed_ast as tast
@@ -5,14 +6,17 @@ from compiler import untyped_ast as uast
 from compiler.types import INT, ClassType, FunctionType, Type
 
 
+_ref_names = (f'ref{n}' for n in itertools.count())
+
+
 class _BlockTyper:
 
     def __init__(self, variables: Dict[str, Type], types: Dict[str, Type]):
         self.variables = variables
         self.types = types
-        self.decref_list: List[str] = []
+        self.reflist: List[str] = []
 
-    def do_call(self, ast: uast.Call) -> Union[tast.VoidCall, tast.ReturningCall]:
+    def do_call(self, ast: uast.Call) -> Union[tast.VoidCall, tast.ReturningCall, tast.SetRef]:
         func = self.do_expression(ast.func)
         assert isinstance(func.type, FunctionType)
         args = [self.do_expression(arg) for arg in ast.args]
@@ -22,7 +26,13 @@ class _BlockTyper:
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
-        return tast.ReturningCall(func.type.returntype, func, args)
+
+        result = tast.ReturningCall(func.type.returntype, func, args)
+        if result.type.refcounted:
+            refname = next(_ref_names)
+            self.reflist.append(refname)
+            return tast.SetRef(result.type, refname, result)
+        return result
 
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
         if isinstance(ast, uast.IntConstant):
@@ -38,13 +48,16 @@ class _BlockTyper:
             klass = self.types[ast.type]
             assert isinstance(klass, ClassType)
             return tast.Constructor(
-                FunctionType([the_type for the_type, name in klass.members], klass),
+                FunctionType(False, [the_type for the_type, name in klass.members], klass),
                 klass)
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> tast.Statement:
         if isinstance(ast, uast.Call):
-            return self.do_call(ast)
+            result = self.do_call(ast)
+            if isinstance(result, tast.SetRef):
+                return tast.DecRefObject(result.value)
+            return result
         if isinstance(ast, uast.LetStatement):
             assert ast.varname not in self.variables
             value = self.do_expression(ast.value)
@@ -54,8 +67,10 @@ class _BlockTyper:
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
         typed_statements = [self.do_statement(s) for s in block]
-        decrefs: List[tast.Statement] = [tast.DecRef(varname) for varname in self.decref_list]
-        return typed_statements + decrefs[::-1]
+
+        newrefs: List[tast.Statement] = [tast.NewRef(refname) for refname in self.reflist]
+        decrefs: List[tast.Statement] = [tast.DecRef(varname) for varname in self.reflist]
+        return newrefs + typed_statements + decrefs[::-1]
 
 
 def _do_toplevel_statement(
@@ -66,6 +81,7 @@ def _do_toplevel_statement(
     if isinstance(top_statement, uast.FuncDef):
         assert top_statement.name not in variables
         functype = FunctionType(
+            False,
             [types[typename] for typename, argname in top_statement.args],
             None if top_statement.returntype is None else types[top_statement.returntype],
         )
@@ -82,6 +98,7 @@ def _do_toplevel_statement(
         )
     elif isinstance(top_statement, uast.ClassDef):
         classtype = ClassType(
+            True,
             top_statement.name,
             [(types[typename], membername) for typename, membername in top_statement.members],
         )
@@ -95,8 +112,8 @@ def _do_toplevel_statement(
 def convert_program(program: List[uast.ToplevelStatement]) -> List[tast.ToplevelStatement]:
     types: Dict[str, Type] = {'int': INT}
     variables: Dict[str, Type] = {
-        'add': FunctionType([INT, INT], INT),
-        'print_int': FunctionType([INT], None),
+        'add': FunctionType(False, [INT, INT], INT),
+        'print_int': FunctionType(False, [INT], None),
     }
     return [_do_toplevel_statement(variables, types, toplevel_statement)
             for toplevel_statement in program]

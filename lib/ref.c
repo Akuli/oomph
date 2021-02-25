@@ -5,7 +5,9 @@ struct RefHeader { REFCOUNT_HEADER };
 
 void decref(void *ptr)
 {
-	struct RefHeader *hdr = ptr;
-	if (--hdr->refcount == 0)
-		free(ptr);
+	if (ptr) {
+		struct RefHeader *hdr = ptr;
+		if (--hdr->refcount == 0)
+			free(ptr);
+	}
 }

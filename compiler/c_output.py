@@ -32,6 +32,10 @@ def _emit_expression(ast: tast.Expression) -> None:
         print('var_' + ast.varname, end='')
     elif isinstance(ast, tast.Constructor):
         print('ctor_' + ast.class_to_construct.name, end='')
+    elif isinstance(ast, tast.SetRef):
+        print(f'({ast.refname} =', end=' ')
+        _emit_expression(ast.value)
+        print(')', end='')
     else:
         raise NotImplementedError(ast)
 
@@ -43,6 +47,15 @@ def _emit_statement(ast: tast.Statement) -> None:
         _emit_expression(ast.value)
     elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
         _emit_call(ast)
+    elif isinstance(ast, tast.NewRef):
+        # TODO: get rid of void* typing
+        print(f'void *{ast.refname} = NULL', end='')
+    elif isinstance(ast, tast.DecRef):
+        print(f'decref({ast.refname})', end='')
+    elif isinstance(ast, tast.DecRefObject):
+        print('decref(', end='')
+        _emit_expression(ast.value)
+        print(')', end='')
     else:
         raise NotImplementedError(ast)
     print(';\n\t', end='')

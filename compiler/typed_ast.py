@@ -61,8 +61,29 @@ class ClassDef(ToplevelStatement):
 
 
 @dataclass
+class DeclareRef(Statement):
+    refname: str
+
+
+@dataclass
+class NewRef(Statement):
+    refname: str
+
+
+@dataclass
+class SetRef(Expression):
+    refname: str
+    value: Expression
+
+
+@dataclass
 class DecRef(Statement):
-    varname: str
+    refname: str
+
+
+@dataclass
+class DecRefObject(Statement):
+    value: Expression
 
 
 @dataclass
