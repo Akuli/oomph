@@ -1,4 +1,4 @@
-#CFLAGS += -fsanitize=undefined -fsanitize=address
+CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration

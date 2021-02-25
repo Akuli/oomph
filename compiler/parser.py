@@ -85,6 +85,12 @@ class LetStatement(Statement):
     value_type: Optional[Type]
 
 
+# TODO: this is a bit weird
+@dataclass
+class DecRef(Statement):
+    varname: str
+
+
 def _parse_statement(token_iter: _TokenIter) -> Statement:
     result: Statement
     if token_iter.peek() == ('keyword', 'let'):
