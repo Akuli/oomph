@@ -1,4 +1,5 @@
-out.c
-out
+foo.c
+*.o
+foo
 __pycache__/
 env/

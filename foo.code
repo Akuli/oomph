@@ -1,0 +1,8 @@
+func foo(int x) -> void:
+    print_int(x)
+
+func main() -> void:
+    foo(12345)
+    let x = add(1, 2)
+    print_int(x)
+    print_int(add(1, 2))
