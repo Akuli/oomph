@@ -1,6 +1,6 @@
 from typing import Callable, Iterable, List, Optional, Tuple, TypeVar
 
-from compiler.parser import (INT, Call, Expression, ExpressionStatement,
+from compiler.parser import (INT, Call, Expression,
                              FuncDef, GetVar, IntConstant, LetStatement,
                              Statement, Type)
 
@@ -46,9 +46,8 @@ def _emit_statement(ast: Statement) -> None:
         _emit_type(ast.value_type)
         print(f'var_{ast.varname} =', end=' ')
         _emit_expression(ast.value)
-    elif isinstance(ast, ExpressionStatement):
-        print('(void)', end=' ')
-        _emit_expression(ast.expression)
+    elif isinstance(ast, Call):
+        _emit_expression(ast)
     else:
         raise NotImplementedError(ast)
     print(';\n\t', end='')

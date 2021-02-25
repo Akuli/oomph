@@ -44,6 +44,11 @@ class Expression:
 
 
 @dataclass
+class Statement:
+    pass
+
+
+@dataclass
 class GetVar(Expression):
     varname: str
 
@@ -54,7 +59,7 @@ class IntConstant(Expression):
 
 
 @dataclass
-class Call(Expression):
+class Call(Expression, Statement):
     func: Expression
     args: List[Expression]
 
@@ -74,20 +79,10 @@ def _parse_expression(token_iter: _TokenIter) -> Expression:
 
 
 @dataclass
-class Statement:
-    pass
-
-
-@dataclass
 class LetStatement(Statement):
     varname: str
     value: Expression
     value_type: Optional[Type]
-
-
-@dataclass
-class ExpressionStatement(Statement):
-    expression: Expression
 
 
 def _parse_statement(token_iter: _TokenIter) -> Statement:
@@ -98,7 +93,9 @@ def _parse_statement(token_iter: _TokenIter) -> Statement:
         _get_token(token_iter, 'op', '=')
         result = LetStatement(varname, _parse_expression(token_iter), None)
     else:
-        result = ExpressionStatement(_parse_expression(token_iter))
+        call = _parse_expression(token_iter)
+        assert isinstance(call, Call)
+        result = call
 
     _get_token(token_iter, 'op', '\n')
     return result
