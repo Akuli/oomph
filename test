@@ -1,38 +1,57 @@
 #!/bin/bash
 set -e
 
+if [ $1 == -x ]; then
+    stop_on_fail=yes
+    shift
+else
+    stop_on_fail=no
+fi
+
 make
-result=success
+
+success=0
+fail=0
 
 for file in tests/*.code; do
     echo "python3 -m compiler $@ $file"
     if [[ $file == tests/*_error.code ]]; then
         if python3 -m compiler "$@" $file 2>test.out; then
             echo "========== SHOULD HAVE ERRORED but it didn't"
-            result=fail
+            fail=$((fail+1))
         fi
     else
-        if ! python3 -m compiler "$@" $file > test.out; then
+        if python3 -m compiler "$@" $file > test.out; then
+            outfile=tests/output/$(basename $file | cut -d. -f1).txt
+            if [ ! -f $outfile ]; then
+                echo "Creating $outfile automatically"
+                cp test.out $outfile
+                cat -n $outfile
+            fi
+            if diff --color -u $outfile test.out; then
+                success=$((success+1))
+            else
+                fail=$((fail+1))
+            fi
+        else
             echo "========== ERROR"
-            result=fail
-            continue
+            fail=$((fail+1))
         fi
+    fi
 
-        outfile=tests/output/$(basename $file | cut -d. -f1).txt
-        if [ ! -f $outfile ]; then
-            echo "Creating $outfile automatically"
-            cp test.out $outfile
-            cat -n $outfile
-        fi
-
-        if ! diff --color -u tests/output/$(basename $file | cut -d. -f1).txt test.out; then
-            result=fail
-        fi
+    if [ $stop_on_fail = yes ] && [ $fail != 0 ]; then
+        break
     fi
 done
 
-echo "
-============================= $result ============================="
-if [ result == fail ]; then
+if [ $fail == 0 ]; then
+    failmsg="0 failed"
+else
+    failmsg="\u001b[31m$fail failed\u001b[0m"
+fi
+echo -e "
+======================== $success succeeded, $failmsg ========================"
+
+if [ $fail != 0 ]; then
     exit 1
 fi
