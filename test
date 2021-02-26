@@ -2,7 +2,7 @@
 set -e
 
 for file in tests/*.code; do
-    echo $file
+    echo "python3 -m compiler $file"
     if [[ $file == tests/*_error.code ]]; then
         if python3 -m compiler $file 2>test.out; then
             echo "========== SHOULD HAVE ERRORED but it didn't"
@@ -17,7 +17,5 @@ for file in tests/*.code; do
     fi
 done
 
-
 echo "
-
 ============================= success ============================="
