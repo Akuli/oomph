@@ -5,6 +5,7 @@ import pathlib
 import shlex
 import subprocess
 import sys
+from typing import Any, IO
 
 from compiler import c_output, parser, tokenizer, typer
 
@@ -33,17 +34,33 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen:
     )
 
 
+def produce_c_code(args: Any, dest: IO[str]) -> None:
+    with args.infile:
+        code = args.infile.read()
+
+    dest.write('#include "lib/lib.h"\n')
+    for toplevel_statement in typer.convert_program(
+        parser.parse_file(tokenizer.tokenize(code))
+    ):
+        c_output.emit_toplevel_statement(dest, toplevel_statement)
+
+
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=argparse.FileType("r", encoding="utf-8"))
+    arg_parser.add_argument("--valgrind", action='store_true')
+    arg_parser.add_argument("--c-code", action='store_true')
     args = arg_parser.parse_args()
 
     input_path = pathlib.Path(args.infile.name).absolute()
+    if args.c_code:
+        produce_c_code(args, sys.stdout)
+        return
+
     exe_path = input_path.parent / ".compiler-cache" / input_path.name
     exe_path.parent.mkdir(exist_ok=True)
 
     compile_deps = [input_path] + list(project_root.glob("obj/*"))
-
     try:
         exe_mtime = exe_path.stat().st_mtime
         skip_recompiling = all(exe_mtime > dep.stat().st_mtime for dep in compile_deps)
@@ -51,25 +68,21 @@ def main() -> None:
         skip_recompiling = False
 
     if not skip_recompiling:
-        print("Compiling", file=sys.stderr)
-        with args.infile:
-            code = args.infile.read()
-
+        print("Compiling...", file=sys.stderr)
         with invoke_c_compiler(exe_path) as compiler_process:
             stdin = io.TextIOWrapper(compiler_process.stdin)
-            stdin.write('#include "lib/lib.h"\n')
-            for toplevel_statement in typer.convert_program(
-                parser.parse_file(tokenizer.tokenize(code))
-            ):
-                c_output.emit_toplevel_statement(stdin, toplevel_statement)
-
+            produce_c_code(args, stdin)
             stdin.close()
 
             status = compiler_process.wait()
             if status != 0:
                 sys.exit(status)
 
-    sys.exit(subprocess.run([exe_path]).returncode)
+    if args.valgrind:
+        command = ["valgrind", str(exe_path)]
+    else:
+        command = [str(exe_path)]
+    sys.exit(subprocess.run(command).returncode)
 
 
 main()
