@@ -80,7 +80,13 @@ def main() -> None:
                 sys.exit(status)
 
     if args.valgrind:
-        command = ["valgrind", "-q", "--leak-check=full", "--show-leak-kinds=all", str(exe_path)]
+        command = [
+            "valgrind",
+            "-q",
+            "--leak-check=full",
+            "--show-leak-kinds=all",
+            str(exe_path),
+        ]
     else:
         command = [str(exe_path)]
     sys.exit(subprocess.run(command).returncode)

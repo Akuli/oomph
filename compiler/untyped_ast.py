@@ -52,6 +52,11 @@ class ReturnStatement(Statement):
 
 
 @dataclass
+class PassStatement(Statement):
+    pass
+
+
+@dataclass
 class ToplevelStatement:
     pass
 

@@ -1,6 +1,6 @@
 import copy
 import itertools
-from typing import Dict, List, Union, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
@@ -68,7 +68,7 @@ class _BlockTyper:
             raise LookupError(ast.attribute)
         raise NotImplementedError(ast)
 
-    def do_statement(self, ast: uast.Statement) -> tast.Statement:
+    def do_statement(self, ast: uast.Statement) -> Optional[tast.Statement]:
         if isinstance(ast, uast.Call):
             result = self.do_call(ast)
             if isinstance(result, tast.SetRef):
@@ -79,12 +79,19 @@ class _BlockTyper:
             value = self.do_expression(ast.value)
             self.variables[ast.varname] = value.type
             return tast.LetStatement(ast.varname, value)
+        if isinstance(ast, uast.PassStatement):
+            return None
         if isinstance(ast, uast.ReturnStatement):
             return tast.ReturnStatement(self.do_expression(ast.value))
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
-        return [self.do_statement(statement) for statement in block]
+        result = []
+        for statement in block:
+            typed_statement = self.do_statement(statement)
+            if typed_statement is not None:
+                result.append(typed_statement)
+        return result
 
 
 def _do_funcdef(

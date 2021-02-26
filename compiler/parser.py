@@ -81,7 +81,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
             return result
 
 
-def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
+def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
     result: uast.Statement
     if token_iter.peek() == ("keyword", "let"):
         _get_token(token_iter, "keyword", "let")
@@ -91,6 +91,9 @@ def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
     elif token_iter.peek() == ("keyword", "return"):
         _get_token(token_iter, "keyword", "return")
         result = uast.ReturnStatement(_parse_expression(token_iter))
+    elif token_iter.peek() == ("keyword", "pass"):
+        _get_token(token_iter, "keyword", "pass")
+        result = uast.PassStatement()
     else:
         call = _parse_expression(token_iter)
         assert isinstance(call, uast.Call), call
@@ -136,7 +139,11 @@ def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
         name,
         args,
         returntype,
-        _parse_block(token_iter, _parse_statement),
+        [
+            item
+            for item in _parse_block(token_iter, _parse_statement)
+            if item is not None
+        ],
     )
 
 
