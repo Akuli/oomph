@@ -115,7 +115,8 @@ def _emit_func_def(file: IO[str], funcdef: tast.FuncDef, c_name: str) -> None:
 
     file.write("{\n\t")
     if funcdef.type.returntype is not None:
-        file.write("void *retval = NULL;\n\t")
+        _emit_type(file, funcdef.type.returntype)
+        file.write("retval;\n\t")
     for refname, reftype in funcdef.refs:
         _emit_type(file, reftype)
         file.write(f"{refname} = NULL;\n\t")
@@ -128,7 +129,7 @@ def _emit_func_def(file: IO[str], funcdef: tast.FuncDef, c_name: str) -> None:
     for refname, reftype in reversed(funcdef.refs):
         file.write(f"if ({refname}) decref({refname});\n\t")
     if funcdef.type.returntype is not None:
-        file.write("assert(retval); return retval;\n\t")
+        file.write("return retval;\n\t")
     file.write("\n}\n")
 
 

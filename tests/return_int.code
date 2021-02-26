@@ -1,0 +1,5 @@
+func foo() -> int:
+    return 123
+
+func main() -> void:
+    print_int(foo())
