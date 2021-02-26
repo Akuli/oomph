@@ -1,0 +1,4 @@
+func main() -> void:
+    print_int(123)
+    return
+    print_int(456)

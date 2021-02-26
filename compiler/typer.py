@@ -82,7 +82,9 @@ class _BlockTyper:
         if isinstance(ast, uast.PassStatement):
             return None
         if isinstance(ast, uast.ReturnStatement):
-            return tast.ReturnStatement(self.do_expression(ast.value))
+            return tast.ReturnStatement(
+                None if ast.value is None else self.do_expression(ast.value)
+            )
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:

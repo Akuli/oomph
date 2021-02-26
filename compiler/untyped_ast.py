@@ -48,7 +48,7 @@ class LetStatement(Statement):
 
 @dataclass
 class ReturnStatement(Statement):
-    value: Expression
+    value: Optional[Expression]
 
 
 @dataclass

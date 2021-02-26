@@ -69,7 +69,7 @@ def _emit_statement(file: IO[str], ast: tast.Statement) -> None:
         _emit_expression(file, ast.value)
         file.write(")")
     elif isinstance(ast, tast.ReturnStatement):
-        if ast.value:
+        if ast.value is not None:
             file.write("retval = ")
             _emit_expression(file, ast.value)
             file.write(";")

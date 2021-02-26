@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from compiler.types import ClassType, FunctionType, Type
 
@@ -56,7 +56,7 @@ class LetStatement(Statement):
 
 @dataclass
 class ReturnStatement(Statement):
-    value: Expression
+    value: Optional[Expression]
 
 
 @dataclass
