@@ -1,4 +1,4 @@
-CFLAGS += -fsanitize=undefined -fsanitize=address
+#CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
@@ -6,6 +6,7 @@ CFLAGS += -Werror=discarded-qualifiers
 CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-label
 CFLAGS += -g
 
 SRC := $(wildcard lib/*.c)
@@ -20,6 +21,8 @@ obj/%.o: lib/%.c $(HEADERS)
 
 build/%: temp/%.c $(OBJ) $(HEADERS)
 	mkdir -p $(@D) && $(CC) $(CFLAGS) $< $(OBJ) -o $@ $(LDFLAGS)
+
+all: $(OBJ)
 
 clean:
 	rm -rvf temp obj build

@@ -84,15 +84,7 @@ class _BlockTyper:
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
-        typed_statements = [self.do_statement(s) for s in block]
-
-        newrefs: List[tast.Statement] = [
-            tast.NewRef(refname) for refname in self.reflist
-        ]
-        decrefs: List[tast.Statement] = [
-            tast.DecRef(varname) for varname in self.reflist
-        ]
-        return newrefs + typed_statements + decrefs[::-1]
+        return [self.do_statement(statement) for statement in block]
 
 
 def _do_funcdef(
@@ -115,11 +107,14 @@ def _do_funcdef(
         assert argname not in local_vars
         local_vars[argname] = the_type
 
+    typer = _BlockTyper(local_vars, types)
+    body = typer.do_block(funcdef.body)
     return tast.FuncDef(
         funcdef.name,
         functype,
         [argname for typename, argname in funcdef.args],
-        _BlockTyper(local_vars, types).do_block(funcdef.body),
+        body,
+        typer.reflist,
     )
 
 

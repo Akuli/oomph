@@ -70,6 +70,7 @@ class FuncDef(ToplevelStatement):
     type: FunctionType
     argnames: List[str]
     body: List[Statement]
+    refnames: List[str]
 
 
 @dataclass
@@ -79,24 +80,9 @@ class ClassDef(ToplevelStatement):
 
 
 @dataclass
-class DeclareRef(Statement):
-    refname: str
-
-
-@dataclass
-class NewRef(Statement):
-    refname: str
-
-
-@dataclass
 class SetRef(Expression):
     refname: str
     value: Expression
-
-
-@dataclass
-class DecRef(Statement):
-    refname: str
 
 
 @dataclass

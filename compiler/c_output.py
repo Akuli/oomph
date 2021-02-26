@@ -64,17 +64,18 @@ def _emit_statement(file: IO[str], ast: tast.Statement) -> None:
         _emit_expression(file, ast.value)
     elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
         _emit_call(file, ast)
-    elif isinstance(ast, tast.NewRef):
-        file.write(f"void *{ast.refname} = NULL")
-    elif isinstance(ast, tast.DecRef):
-        file.write(f"if ({ast.refname}) decref({ast.refname})")
     elif isinstance(ast, tast.DecRefObject):
         file.write("decref(")
         _emit_expression(file, ast.value)
         file.write(")")
     elif isinstance(ast, tast.ReturnStatement):
-        file.write("return ")
-        _emit_expression(file, ast.value)
+        if ast.value:
+            file.write("retval = ")
+            _emit_expression(file, ast.value)
+            file.write(";")
+            if ast.value.type.refcounted:
+                file.write("incref(retval);")
+        file.write("goto out")
     else:
         raise NotImplementedError(ast)
     file.write(";\n\t")
@@ -89,13 +90,6 @@ def _emit_type(file: IO[str], the_type: Optional[Type]) -> None:
         file.write("void ")
     else:
         raise NotImplementedError(the_type)
-
-
-def _emit_block(file: IO[str], body: List[tast.Statement]) -> None:
-    file.write("{\n\t")
-    for statement in body:
-        _emit_statement(file, statement)
-    file.write("\n}\n")
 
 
 def _emit_arg_def(file: IO[str], pair: Tuple[Type, str]) -> None:
@@ -118,7 +112,20 @@ def _emit_func_def(file: IO[str], funcdef: tast.FuncDef, c_name: str) -> None:
     else:
         file.write(c_name)
         file.write("(void)")
-    _emit_block(file, funcdef.body)
+
+    file.write("{\n\t")
+    if funcdef.type.returntype is not None:
+        file.write("void *retval = NULL;\n\t")
+    for refname in funcdef.refnames:
+        file.write(f"void *{refname} = NULL;\n\t")
+    for statement in funcdef.body:
+        _emit_statement(file, statement)
+    file.write("out:\n\t")
+    for refname in reversed(funcdef.refnames):
+        file.write(f"if ({refname}) decref({refname});\n\t")
+    if funcdef.type.returntype is not None:
+        file.write("assert(retval); return retval;\n\t")
+    file.write("\n}\n")
 
 
 def emit_toplevel_statement(

@@ -3,6 +3,12 @@
 
 struct RefHeader { REFCOUNT_HEADER };
 
+void incref(void *ptr)
+{
+	struct RefHeader *hdr = ptr;
+	hdr->refcount++;
+}
+
 void decref(void *ptr)
 {
 	struct RefHeader *hdr = ptr;

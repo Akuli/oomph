@@ -1,0 +1,9 @@
+class Foo()
+
+func bar() -> Foo:
+    let f1 = new Foo()
+    let f2 = new Foo()
+    return f2
+
+func main() -> void:
+    bar()
