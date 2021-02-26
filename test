@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+make
+
 for file in tests/*.code; do
     echo "python3 -m compiler $file"
     if [[ $file == tests/*_error.code ]]; then
