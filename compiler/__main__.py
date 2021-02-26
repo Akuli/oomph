@@ -58,7 +58,7 @@ def main() -> None:
         produce_c_code(args, sys.stdout)
         return
 
-    exe_path = input_path.parent / ".compiler-cache" / input_path.name
+    exe_path = input_path.parent / ".compiler-cache" / input_path.stem
     exe_path.parent.mkdir(exist_ok=True)
 
     compile_deps = [input_path] + list(project_root.glob("obj/*"))
