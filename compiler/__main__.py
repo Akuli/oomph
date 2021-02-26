@@ -12,7 +12,7 @@ from compiler import c_output, parser, tokenizer, typer
 project_root = pathlib.Path(__file__).absolute().parent.parent
 
 
-def invoke_c_compiler(code: str, outpath: pathlib.Path) -> subprocess.Popen:
+def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen:
     compile_info = {}
     with open("obj/compile_info.txt") as file:
         for line in file:
@@ -25,7 +25,7 @@ def invoke_c_compiler(code: str, outpath: pathlib.Path) -> subprocess.Popen:
         + shlex.split(os.environ.get("CFLAGS", ""))
         + [str(path) for path in project_root.glob("obj/*") if path.suffix != ".txt"]
         + ["-x", "c", "-"]
-        + ["-o", str(outpath)]
+        + ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"])
         + shlex.split(os.environ.get("LDFLAGS", "")),
         stdin=subprocess.PIPE,
@@ -55,18 +55,19 @@ def main() -> None:
         with args.infile:
             code = args.infile.read()
 
-        compiler_process = invoke_c_compiler()
-        stdin = io.TextIOWrapper(compiler_process.stdin)
-        stdin.write('#include "lib/lib.h"\n')
-        for toplevel_statement in typer.convert_program(
-            parser.parse_file(tokenizer.tokenize(code))
-        ):
-            c_output.emit_toplevel_statement(stdin, toplevel_statement)
+        with invoke_c_compiler(exe_path) as compiler_process:
+            stdin = io.TextIOWrapper(compiler_process.stdin)
+            stdin.write('#include "lib/lib.h"\n')
+            for toplevel_statement in typer.convert_program(
+                parser.parse_file(tokenizer.tokenize(code))
+            ):
+                c_output.emit_toplevel_statement(stdin, toplevel_statement)
 
-        stdin.close()
-        status = compiler_process.wait()
-        if status != 0:
-            sys.exit(status)
+            stdin.close()
+
+            status = compiler_process.wait()
+            if status != 0:
+                sys.exit(status)
 
     sys.exit(subprocess.run([exe_path]).returncode)
 
