@@ -7,16 +7,29 @@ for file in tests/*.code; do
     echo -e "
 Running test: make build/$cutted"
     if [[ $file == tests/*_error.code ]]; then
-        if make build/$cutted 2>/dev/null; then
+        if make temp/$cutted.c 2>/dev/null; then
             echo "========== SHOULD HAVE ERRORED but it didn't"
             exit 1
         fi
     else
-        if ! make build/$cutted; then
-            echo "========== ERROR"
+        if ! make temp/$cutted.c; then
+            echo "========== C CODE CREATION ERROR"
             exit 1
         fi
-        diff --color -u tests/output/$(basename $cutted).txt <(build/$cutted)
+        diff --color -u tests/c_code/$(basename $cutted).c <(grep -v '#include' temp/$cutted.c) || {
+            echo "
+If this diff doesn't look like an actual problem, you can make the test pass by running:
+
+    grep -v '#include' temp/tests/method.c > tests/c_code/method.txt
+"
+            exit 1
+        }
+
+        if ! make build/$cutted; then
+            echo "========== C COMPILER ERROR"
+            exit 1
+        fi
+        diff --color -u tests/stdout/$(basename $cutted).txt <(build/$cutted)
     fi
 done
 

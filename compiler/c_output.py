@@ -123,6 +123,7 @@ def _emit_func_def(file: IO[str], funcdef: tast.FuncDef, c_name: str) -> None:
     file.write("out:\n\t")
     for refname in reversed(funcdef.refnames):
         file.write(f"if ({refname}) decref({refname});\n\t")
+    file.write('(void)0;')   # label can't end function definition
     if funcdef.type.returntype is not None:
         file.write("assert(retval); return retval;\n\t")
     file.write("\n}\n")
