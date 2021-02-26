@@ -2,18 +2,20 @@
 set -e
 
 make
+result=success
 
 for file in tests/*.code; do
     echo "python3 -m compiler $@ $file"
     if [[ $file == tests/*_error.code ]]; then
         if python3 -m compiler "$@" $file 2>test.out; then
             echo "========== SHOULD HAVE ERRORED but it didn't"
-            exit 1
+            result=fail
         fi
     else
         if ! python3 -m compiler "$@" $file > test.out; then
             echo "========== ERROR"
-            exit 1
+            result=fail
+            continue
         fi
 
         outfile=tests/output/$(basename $file | cut -d. -f1).txt
@@ -22,9 +24,15 @@ for file in tests/*.code; do
             cp test.out $outfile
             cat -n $outfile
         fi
-        diff --color -u tests/output/$(basename $file | cut -d. -f1).txt test.out
+
+        if ! diff --color -u tests/output/$(basename $file | cut -d. -f1).txt test.out; then
+            result=fail
+        fi
     fi
 done
 
 echo "
-============================= success ============================="
+============================= $result ============================="
+if [ result == fail ]; then
+    exit 1
+fi
