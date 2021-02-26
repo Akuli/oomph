@@ -1,0 +1,6 @@
+# TODO: can't make instances of classes like this
+class SelfRef(SelfRef x)
+
+func main() -> void:
+    # TODO: add 'pass' statement
+    add(1, 2)

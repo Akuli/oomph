@@ -127,17 +127,13 @@ def _do_toplevel_statement(
         return _do_funcdef(variables, types, top_statement, create_variable=True)
 
     if isinstance(top_statement, uast.ClassDef):
-        classtype = ClassType(
-            True,
-            top_statement.name,
-            [
-                (types[typename], membername)
-                for typename, membername in top_statement.members
-            ],
-            {},
-        )
+        classtype = ClassType(True, top_statement.name, [], {})
         assert top_statement.name not in types
         types[top_statement.name] = classtype
+        classtype.members.extend(
+            (types[typename], membername)
+            for typename, membername in top_statement.members
+        )
 
         typed_method_defs = []
         for method_def in top_statement.body:
