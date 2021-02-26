@@ -1,19 +1,19 @@
+from __future__ import annotations
+
 import argparse
-import io
 import os
 import pathlib
 import shlex
 import subprocess
 import sys
-from typing import Any, IO
+from typing import IO, Any
 
 from compiler import c_output, parser, tokenizer, typer
-
 
 project_root = pathlib.Path(__file__).absolute().parent.parent
 
 
-def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen:
+def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
     compile_info = {}
     with open("obj/compile_info.txt") as file:
         for line in file:
@@ -29,6 +29,7 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen:
         + ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"])
         + shlex.split(os.environ.get("LDFLAGS", "")),
+        encoding="utf-8",
         stdin=subprocess.PIPE,
         cwd=project_root,
     )
@@ -48,8 +49,8 @@ def produce_c_code(args: Any, dest: IO[str]) -> None:
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=argparse.FileType("r", encoding="utf-8"))
-    arg_parser.add_argument("--valgrind", action='store_true')
-    arg_parser.add_argument("--c-code", action='store_true')
+    arg_parser.add_argument("--valgrind", action="store_true")
+    arg_parser.add_argument("--c-code", action="store_true")
     args = arg_parser.parse_args()
 
     input_path = pathlib.Path(args.infile.name).absolute()
@@ -70,9 +71,9 @@ def main() -> None:
     if not skip_recompiling:
         print("Compiling...", file=sys.stderr)
         with invoke_c_compiler(exe_path) as compiler_process:
-            stdin = io.TextIOWrapper(compiler_process.stdin)
-            produce_c_code(args, stdin)
-            stdin.close()
+            assert compiler_process.stdin is not None
+            produce_c_code(args, compiler_process.stdin)
+            compiler_process.stdin.close()
 
             status = compiler_process.wait()
             if status != 0:
