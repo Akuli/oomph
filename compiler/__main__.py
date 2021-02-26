@@ -12,14 +12,14 @@ from compiler import c_output, parser, tokenizer, typer
 project_root = pathlib.Path(__file__).absolute().parent.parent
 
 
-def invoke_c_compiler(code: str, outpath: pathlib.Path) -> None:
+def invoke_c_compiler(code: str, outpath: pathlib.Path) -> subprocess.Popen:
     compile_info = {}
     with open("obj/compile_info.txt") as file:
         for line in file:
             key, value = line.rstrip("\n").split("=", maxsplit=1)
             compile_info[key] = value
 
-    result = subprocess.run(
+    return subprocess.Popen(
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
         + shlex.split(os.environ.get("CFLAGS", ""))
@@ -28,11 +28,9 @@ def invoke_c_compiler(code: str, outpath: pathlib.Path) -> None:
         + ["-o", str(outpath)]
         + shlex.split(compile_info["ldflags"])
         + shlex.split(os.environ.get("LDFLAGS", "")),
-        input=code.encode("utf-8"),
+        stdin=subprocess.PIPE,
         cwd=project_root,
     )
-    if result.returncode != 0:
-        sys.exit(1)
 
 
 def main() -> None:
@@ -57,13 +55,18 @@ def main() -> None:
         with args.infile:
             code = args.infile.read()
 
-        fake_file = io.StringIO()
-        fake_file.write('#include "lib/lib.h"\n')
+        compiler_process = invoke_c_compiler()
+        stdin = io.TextIOWrapper(compiler_process.stdin)
+        stdin.write('#include "lib/lib.h"\n')
         for toplevel_statement in typer.convert_program(
             parser.parse_file(tokenizer.tokenize(code))
         ):
-            c_output.emit_toplevel_statement(fake_file, toplevel_statement)
-        invoke_c_compiler(fake_file.getvalue(), exe_path)
+            c_output.emit_toplevel_statement(stdin, toplevel_statement)
+
+        stdin.close()
+        status = compiler_process.wait()
+        if status != 0:
+            sys.exit(status)
 
     sys.exit(subprocess.run([exe_path]).returncode)
 
