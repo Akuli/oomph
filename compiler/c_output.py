@@ -118,9 +118,12 @@ def _emit_func_def(file: IO[str], funcdef: tast.FuncDef, c_name: str) -> None:
         file.write("void *retval = NULL;\n\t")
     for refname in funcdef.refnames:
         file.write(f"void *{refname} = NULL;\n\t")
+
     for statement in funcdef.body:
         _emit_statement(file, statement)
-    file.write("out:\n\t")
+
+    # avoid problem with 'out:' being last thing in function
+    file.write("out: (void)0;\n\t")
     for refname in reversed(funcdef.refnames):
         file.write(f"if ({refname}) decref({refname});\n\t")
     if funcdef.type.returntype is not None:
