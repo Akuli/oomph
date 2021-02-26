@@ -1,5 +1,5 @@
-build/
-temp/
+.compiler-cache
 obj/
 __pycache__/
 env/
+test.out

@@ -13,18 +13,14 @@ SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)
 HEADERS := lib/lib.h
 
-temp/%.c: %.code $(wildcard compiler/*.py)
-	mkdir -p $(@D) && python3 -m compiler $< $@
+all: $(OBJ) obj/compile_info.txt
 
 obj/%.o: lib/%.c $(HEADERS)
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
 
-build/%: temp/%.c $(OBJ) $(HEADERS)
-	mkdir -p $(@D) && $(CC) $(CFLAGS) $< $(OBJ) -o $@ $(LDFLAGS)
-
-all: $(OBJ)
+obj/compile_info.txt:
+	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" > $@
 
 clean:
-	rm -rvf temp obj build
-
-.PRECIOUS: obj/%.o
+	rm -rvf obj test.out
+	find -name .compiler-cache -exec rm -rvf {} +

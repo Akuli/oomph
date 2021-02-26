@@ -2,21 +2,18 @@
 set -e
 
 for file in tests/*.code; do
-    cutted=$(echo $file | cut -d. -f1)
-    compiled=build/$cutted
-    echo -e "
-Running test: make build/$cutted"
+    echo $file
     if [[ $file == tests/*_error.code ]]; then
-        if make build/$cutted 2>/dev/null; then
+        if python3 -m compiler $file 2>test.out; then
             echo "========== SHOULD HAVE ERRORED but it didn't"
             exit 1
         fi
     else
-        if ! make build/$cutted; then
+        if ! python3 -m compiler $file > test.out; then
             echo "========== ERROR"
             exit 1
         fi
-        diff --color -u tests/output/$(basename $cutted).txt <(build/$cutted)
+        diff --color -u tests/output/$(basename $file | cut -d. -f1).txt test.out
     fi
 done
 
