@@ -10,7 +10,7 @@ from typing import IO, Any
 
 from compiler import c_output, parser, tokenizer, typer
 
-project_root = pathlib.Path(__file__).absolute().parent.parent
+python_code_dir = pathlib.Path(__file__).absolute().parent
 
 
 def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
@@ -24,14 +24,18 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
         + shlex.split(os.environ.get("CFLAGS", ""))
-        + [str(path) for path in project_root.glob("obj/*") if path.suffix != ".txt"]
+        + [
+            str(path)
+            for path in python_code_dir.parent.glob("obj/*")
+            if path.suffix != ".txt"
+        ]
         + ["-x", "c", "-"]
         + ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"])
         + shlex.split(os.environ.get("LDFLAGS", "")),
         encoding="utf-8",
         stdin=subprocess.PIPE,
-        cwd=project_root,
+        cwd=python_code_dir.parent,
     )
 
 
@@ -61,7 +65,11 @@ def main() -> None:
     exe_path = input_path.parent / ".compiler-cache" / input_path.stem
     exe_path.parent.mkdir(exist_ok=True)
 
-    compile_deps = [input_path] + list(project_root.glob("obj/*"))
+    compile_deps = (
+        [input_path]
+        + list(python_code_dir.rglob("*.py"))
+        + list(python_code_dir.parent.glob("obj/*"))
+    )
     try:
         exe_mtime = exe_path.stat().st_mtime
         skip_recompiling = all(exe_mtime > dep.stat().st_mtime for dep in compile_deps)
