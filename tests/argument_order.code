@@ -1,0 +1,9 @@
+func do_thing(int x) -> int:
+    print_int(x)
+    return x
+
+func ignore_all_args(int x, int y, int z) -> void:
+    pass
+
+func main() -> void:
+    ignore_all_args(do_thing(1), do_thing(2), do_thing(3))

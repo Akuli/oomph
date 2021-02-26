@@ -1,4 +1,5 @@
-from typing import IO, Callable, Iterable, Optional, Tuple, TypeVar, Union
+from typing import IO, Callable, Iterable, Optional, Tuple, TypeVar, Union, List
+import io
 
 import compiler.typed_ast as tast
 from compiler.types import INT, ClassType, Type
@@ -37,19 +38,33 @@ class _Emitter:
 
 
 class _FunctionEmitter(_Emitter):
+    def __init__(self, file: IO[str], funcdef: tast.FuncDef):
+        super().__init__(file)
+        self.funcdef = funcdef
+
     def _emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
         self.file.write("(")
+
+        if isinstance(ast.func, tast.GetMethod):
+            args = [ast.func.obj] + ast.args
+        else:
+            args = ast.args
+
+        temps = []
+        for arg in args:
+            temp = self.get_temp_var(arg.type)
+            temps.append(temp)
+            self.file.write(f"{temp} = (")
+            self._emit_expression(arg)
+            self.file.write("), ")
+
         if isinstance(ast.func, tast.GetMethod):
             assert isinstance(ast.func.obj.type, ClassType)
             self.file.write(f"meth_{ast.func.obj.type.name}_{ast.func.name}")
-            args = [ast.func.obj] + ast.args
         else:
             self._emit_expression(ast.func)
-            args = ast.args
 
-        self.file.write("(")
-        self._emit_commasep(args, self._emit_expression)
-        self.file.write("))")
+        self.file.write("(" + ",".join(temps) + "))")
 
     def _emit_expression(self, ast: tast.Expression) -> None:
         if isinstance(ast, tast.IntConstant):
@@ -97,20 +112,9 @@ class _FunctionEmitter(_Emitter):
             raise NotImplementedError(ast)
         self.file.write(";\n\t")
 
-    def emit_func_def(self, funcdef: tast.FuncDef, c_name: str) -> None:
-        self._emit_type(funcdef.type.returntype)
-        if funcdef.argnames:
-            self.file.write(c_name)
-            self.file.write("(")
-            self._emit_commasep(
-                zip(funcdef.type.argtypes, funcdef.argnames), self._emit_arg_def
-            )
-            self.file.write(")")
-        else:
-            self.file.write(c_name)
-            self.file.write("(void)")
+    def _emit_body(self, c_name: str) -> None:
+        funcdef = self.funcdef  # TODO: remove
 
-        self.file.write("{\n\t")
         if funcdef.type.returntype is not None:
             self._emit_type(funcdef.type.returntype)
             self.file.write("retval;\n\t")
@@ -127,14 +131,48 @@ class _FunctionEmitter(_Emitter):
             self.file.write(f"if ({refname}) decref({refname});\n\t")
         if funcdef.type.returntype is not None:
             self.file.write("return retval;\n\t")
+
+    def run(self, c_name: str) -> None:
+        funcdef = self.funcdef  # TODO: remove
+        self._emit_type(funcdef.type.returntype)
+        if funcdef.argnames:
+            self.file.write(c_name)
+            self.file.write("(")
+            self._emit_commasep(
+                zip(funcdef.type.argtypes, funcdef.argnames), self._emit_arg_def
+            )
+            self.file.write(")")
+        else:
+            self.file.write(c_name)
+            self.file.write("(void)")
+        self.file.write("{\n\t")
+
+        # First figure out what temp vars are needed
+        actual_file = self.file
+        self.file = io.StringIO()
+        temps: List[Type] = []
+        self.get_temp_var = lambda t: (f"temp{len(temps)}", temps.append(t))[0]
+        self._emit_body(c_name)
+
+        # Add temporary vars
+        self.file = actual_file
+        for i, vartype in enumerate(temps):
+            self._emit_type(vartype)
+            self.file.write(f"temp{i};\n\t")
+
+        # Run for real
+        iterator = (f"temp{i}" for i in range(len(temps)))
+        self.get_temp_var = (lambda t: next(iterator))
+        self._emit_body(c_name)
+
         self.file.write("\n}\n")
 
 
 class _TopLevelEmitter(_Emitter):
     def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> None:
         if isinstance(top_statement, tast.FuncDef):
-            _FunctionEmitter(self.file).emit_func_def(
-                top_statement, "var_" + top_statement.name
+            _FunctionEmitter(self.file, top_statement).run(
+                "var_" + top_statement.name
             )
 
         elif isinstance(top_statement, tast.ClassDef):
@@ -160,8 +198,8 @@ class _TopLevelEmitter(_Emitter):
 
             # methods
             for method in top_statement.body:
-                _FunctionEmitter(self.file).emit_func_def(
-                    method, f"meth_{top_statement.type.name}_{method.name}"
+                _FunctionEmitter(self.file,method).run(
+                    f"meth_{top_statement.type.name}_{method.name}"
                 )
 
         else:
