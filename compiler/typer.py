@@ -1,6 +1,6 @@
 import copy
 import itertools
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
@@ -13,7 +13,7 @@ class _BlockTyper:
     def __init__(self, variables: Dict[str, Type], types: Dict[str, Type]):
         self.variables = variables
         self.types = types
-        self.reflist: List[str] = []
+        self.reflist: List[Tuple[str, Type]] = []
 
     def do_call(
         self, ast: uast.Call
@@ -31,7 +31,7 @@ class _BlockTyper:
         result = tast.ReturningCall(func.type.returntype, func, args)
         if result.type.refcounted:  # TODO: what else needs ref holding?
             refname = next(_ref_names)
-            self.reflist.append(refname)
+            self.reflist.append((refname, result.type))
             return tast.SetRef(result.type, refname, result)
         return result
 

@@ -13,6 +13,13 @@ for file in tests/*.code; do
             echo "========== ERROR"
             exit 1
         fi
+
+        outfile=tests/output/$(basename $file | cut -d. -f1).txt
+        if [ ! -f $outfile ]; then
+            echo "Creating $outfile automatically"
+            cp test.out $outfile
+            cat -n $outfile
+        fi
         diff --color -u tests/output/$(basename $file | cut -d. -f1).txt test.out
     fi
 done

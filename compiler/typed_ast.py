@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 from compiler.types import ClassType, FunctionType, Type
 
@@ -70,7 +70,7 @@ class FuncDef(ToplevelStatement):
     type: FunctionType
     argnames: List[str]
     body: List[Statement]
-    refnames: List[str]
+    refs: List[Tuple[str, Type]]
 
 
 @dataclass
