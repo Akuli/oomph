@@ -175,7 +175,12 @@ class _FunctionEmitter(_Emitter):
             raise NotImplementedError(ast)
 
     def _emit_statement(self, ast: tast.Statement) -> None:
-        if isinstance(ast, tast.Let):
+        if isinstance(ast, tast.CreateLocalVar):
+            var = self.get_local_var(ast.value.type, ast.varname)
+            self.name_mapping[ast.varname] = var
+            self.file.write(f"{var} = ")
+            self._emit_expression(ast.value)
+        elif isinstance(ast, tast.SetLocalVar):
             var = self.get_local_var(ast.value.type, ast.varname)
             self.name_mapping[ast.varname] = var
             self.file.write(f"{var} = ")

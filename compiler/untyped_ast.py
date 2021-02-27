@@ -65,6 +65,12 @@ class Let(Statement):
 
 
 @dataclass
+class Assign(Statement):
+    varname: str
+    value: Expression
+
+
+@dataclass
 class Return(Statement):
     value: Optional[Expression]
 

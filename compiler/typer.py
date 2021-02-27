@@ -122,23 +122,36 @@ class _FunctionOrMethodTyper:
                 return tast.GetAttribute(obj, ast.attribute)
         raise NotImplementedError(ast)
 
-    def do_statement(self, ast: uast.Statement) -> Optional[tast.Statement]:
+    def do_statement(self, ast: uast.Statement) -> List[tast.Statement]:
         if isinstance(ast, uast.Call):
             result = self.do_call(ast)
             if isinstance(result, tast.SetRef):
-                return tast.DecRefObject(result.value)
-            return result
+                return [tast.DecRefObject(result.value)]
+            return [result]
         if isinstance(ast, uast.Let):
             assert ast.varname not in self.variables
             value = self.do_expression(ast.value)
             self.variables[ast.varname] = value.type
-            return tast.Let(ast.varname, value)
+            return [tast.CreateLocalVar(ast.varname, value)]
+        if isinstance(ast, uast.Assign):
+            # TODO: this assumes local variable without assert
+            vartype = self.variables[ast.varname]
+            value = self.do_expression(ast.value)
+            assert value.type is vartype
+
+            if vartype.refcounted:
+                return [
+                    tast.DecRefObject(tast.GetVar(vartype, ast.varname)),
+                    tast.SetLocalVar(ast.varname, value),
+                ]
+            return tast.SetLocalVar(ast.varname, value)
+            return [tast.SetLocalVar(ast.varname, value)]
         if isinstance(ast, uast.Pass):
-            return None
+            return []
         if isinstance(ast, uast.Return):
-            return tast.Return(
+            return [tast.Return(
                 None if ast.value is None else self.do_expression(ast.value)
-            )
+            )]
         if isinstance(ast, uast.If):
             untyped_condition, untyped_body = ast.ifs_and_elifs[0]
             condition = self.do_expression(untyped_condition)
@@ -149,15 +162,13 @@ class _FunctionOrMethodTyper:
                 otherwise = [uast.If(ast.ifs_and_elifs[1:], ast.else_block)]
             else:
                 otherwise = ast.else_block
-            return tast.If(condition, body, self.do_block(otherwise))
+            return [tast.If(condition, body, self.do_block(otherwise))]
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
         result = []
         for statement in block:
-            typed_statement = self.do_statement(statement)
-            if typed_statement is not None:
-                result.append(typed_statement)
+            result.extend(self.do_statement(statement))
         return result
 
 

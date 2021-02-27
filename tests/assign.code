@@ -1,0 +1,9 @@
+class Foo(int x):
+    meth show() -> void:
+        print_int(self.x)
+
+func main() -> void:
+    let f = new Foo(1)
+    f.show()
+    f = new Foo(2)
+    f.show()

@@ -1,3 +1,4 @@
+# TODO: rewrite into a class?
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -181,14 +182,13 @@ def _parse_statement_block(token_iter: _TokenIter) -> List[uast.Statement]:
 
 
 def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
-    result: uast.Statement
     if token_iter.peek() == ("keyword", "let"):
         _get_token(token_iter, "keyword", "let")
         varname = _get_token(token_iter, "var")[1]
         _get_token(token_iter, "op", "=")
-        result = uast.Let(varname, _parse_expression(token_iter))
+        value = _parse_expression(token_iter)
         _get_token(token_iter, "op", "\n")
-        return result
+        return uast.Let(varname, value)
 
     if token_iter.peek() == ("keyword", "return"):
         _get_token(token_iter, "keyword", "return")
@@ -201,9 +201,8 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
 
     if token_iter.peek() == ("keyword", "pass"):
         _get_token(token_iter, "keyword", "pass")
-        result = uast.Pass()
         _get_token(token_iter, "op", "\n")
-        return result
+        return uast.Pass()
 
     if token_iter.peek() == ("keyword", "if"):
         _get_token(token_iter, "keyword", "if")
@@ -225,10 +224,16 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
 
         return uast.If(ifs, else_body)
 
-    call = _parse_expression(token_iter)
-    assert isinstance(call, uast.Call), call
+    expr = _parse_expression(token_iter)
+    if isinstance(expr, uast.GetVar) and token_iter.peek(None) == ("op", "="):
+        _get_token(token_iter, "op", "=")
+        value = _parse_expression(token_iter)
+        _get_token(token_iter, "op", "\n")
+        return uast.Assign(expr.varname, value)
+
+    assert isinstance(expr, uast.Call), expr
     _get_token(token_iter, "op", "\n")
-    return call
+    return expr
 
 
 def _parse_type(token_iter: _TokenIter) -> str:

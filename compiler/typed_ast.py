@@ -176,7 +176,13 @@ class ReturningCall(Expression, Statement):
 
 
 @dataclass
-class Let(Statement):
+class CreateLocalVar(Statement):
+    varname: str
+    value: Expression
+
+
+@dataclass
+class SetLocalVar(Statement):
     varname: str
     value: Expression
 
