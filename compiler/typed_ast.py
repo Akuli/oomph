@@ -93,6 +93,11 @@ class NumberAdd(Expression):
 
 
 @dataclass
+class NumberNegation(Expression):
+    obj: Expression
+
+
+@dataclass
 class NumberSub(Expression):
     lhs: Expression
     rhs: Expression

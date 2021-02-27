@@ -155,6 +155,10 @@ class _FunctionEmitter(_Emitter):
             self.file.write("(!")
             self._emit_expression(ast.obj)
             self.file.write(")")
+        elif isinstance(ast, tast.NumberNegation):
+            self.file.write("(-")
+            self._emit_expression(ast.obj)
+            self.file.write(")")
         elif isinstance(ast, tast.GetMethod):
             # This should return some kind of partial function, which isn't possible yet
             raise NotImplementedError(

@@ -54,6 +54,8 @@ class _BlockTyper:
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
                 return tast.BoolNot(obj)
+            if obj.type in [INT, FLOAT] and ast.op == "-":
+                return tast.NumberNegation(obj.type, obj)
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
             lhs = self.do_expression(ast.lhs)

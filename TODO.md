@@ -3,7 +3,6 @@ Bugs:
 - new refs are not created in every case where they should be
 
 Missing features:
-- prefix minus (`-2` is currently invalid syntax)
 - float to int conversion
 - if, for, while
 - strings and other arrays

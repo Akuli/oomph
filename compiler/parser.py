@@ -89,13 +89,13 @@ def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expressi
             return result
 
 
-def _get_unary_operators(token_iter: _TokenIter) -> Iterator[str]:
-    while token_iter.peek() == ("keyword", "not"):
-        yield _get_token(token_iter)[1]
+def _get_unary_operators(token_iter: _TokenIter) -> Iterator[Tuple[int, str]]:
+    while token_iter.peek() in {("keyword", "not"), ("op", "-")}:
+        yield (1, _get_token(token_iter)[1])
 
 
 def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
-    magic_list: List[Union[str, uast.Expression]] = []
+    magic_list: List[Union[Tuple[int, str], uast.Expression]] = []
     magic_list.extend(_get_unary_operators(token_iter))
     magic_list.append(_parse_expression_without_operators(token_iter))
 
@@ -107,7 +107,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
         ("keyword", "and"),
         ("keyword", "or"),
     }:
-        magic_list.append(_get_token(token_iter)[1])
+        magic_list.append((2, _get_token(token_iter)[1]))
         magic_list.extend(_get_unary_operators(token_iter))
         magic_list.append(_parse_expression_without_operators(token_iter))
 
@@ -115,23 +115,39 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     # means "a and (b or c)"
     assert not ("and" in magic_list and "or" in magic_list)
 
+    # Disallow a--b and --a, require a-(-b) or -(-a)
+    assert not any(
+        first in [(1, "-"), (2, "-")] and second == (1, "-")
+        for first, second in zip(magic_list, magic_list[1:])
+    )
+
     # each operator of a group is considered to have same precedence
-    for op_group in [["*", "/"], ["+", "-"], ["not"], ["and", "or"]]:
+    for op_group in [
+        [(2, "*"), (2, "/")],
+        [(2, "+"), (2, "-"), (1, "-")],
+        [(1, "not")],
+        [(2, "and"), (2, "or")],
+    ]:
         while any(op in magic_list for op in op_group):
             where = min(magic_list.index(op) for op in op_group if op in magic_list)
             op = magic_list[where]
-            assert isinstance(op, str)
+            assert isinstance(op, tuple)
+            op_kind, op_string = op
 
-            if op == "not":
+            if op_kind == 1:  # Unary operator
                 operand = magic_list[where + 1]
                 assert isinstance(operand, uast.Expression)
-                magic_list[where : where + 2] = [uast.UnaryOperator(op, operand)]
-            else:
+                magic_list[where : where + 2] = [uast.UnaryOperator(op_string, operand)]
+            elif op_kind == 2:  # Binary operator
                 lhs = magic_list[where - 1]
                 rhs = magic_list[where + 1]
                 assert isinstance(lhs, uast.Expression)
                 assert isinstance(rhs, uast.Expression)
-                magic_list[where - 1 : where + 2] = [uast.BinaryOperator(lhs, op, rhs)]
+                magic_list[where - 1 : where + 2] = [
+                    uast.BinaryOperator(lhs, op_string, rhs)
+                ]
+            else:
+                raise NotImplementedError(op_kind)
 
     [expr] = magic_list
     assert isinstance(expr, uast.Expression)
