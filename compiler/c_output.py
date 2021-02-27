@@ -1,5 +1,15 @@
-from typing import IO, Callable, Iterable, Optional, Tuple, TypeVar, Union, List
-import io
+import os
+from typing import (
+    IO,
+    Callable,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import compiler.typed_ast as tast
 from compiler.types import INT, ClassType, Type
@@ -38,9 +48,24 @@ class _Emitter:
 
 
 class _FunctionEmitter(_Emitter):
-    def __init__(self, file: IO[str], funcdef: tast.FuncDef):
+    def __init__(self, file: IO[str], c_name: str, funcdef: tast.FuncDef):
         super().__init__(file)
+        self.c_name = c_name
         self.funcdef = funcdef
+
+        self.temp_vars: List[Tuple[Type, str]] = []
+        self.temp_var_iter: Optional[Iterator[Tuple[Type, str]]] = None
+
+    def get_temp_var(self, the_type: Type) -> str:
+        if self.temp_var_iter is None:
+            # First pass: create temporary variables
+            name = f"temp{len(self.temp_vars)}"
+            self.temp_vars.append((the_type, name))
+        else:
+            # Second pass: use variables created in first pass
+            var_type, name = next(self.temp_var_iter)
+            assert var_type == the_type
+        return name
 
     def _emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
         self.file.write("(")
@@ -50,10 +75,14 @@ class _FunctionEmitter(_Emitter):
         else:
             args = ast.args
 
-        temps = []
+        # In C, argument order is not guaranteed, but evaluation of comma
+        # expressions is guaranteed. Comma-expression-evaluate all arguments
+        # and put them to temporary variables, then do the call with the
+        # temporary variables as arguments.
+        temp_var_names = []
         for arg in args:
             temp = self.get_temp_var(arg.type)
-            temps.append(temp)
+            temp_var_names.append(temp)
             self.file.write(f"{temp} = (")
             self._emit_expression(arg)
             self.file.write("), ")
@@ -64,7 +93,7 @@ class _FunctionEmitter(_Emitter):
         else:
             self._emit_expression(ast.func)
 
-        self.file.write("(" + ",".join(temps) + "))")
+        self.file.write("(" + ",".join(temp_var_names) + "))")
 
     def _emit_expression(self, ast: tast.Expression) -> None:
         if isinstance(ast, tast.IntConstant):
@@ -113,67 +142,62 @@ class _FunctionEmitter(_Emitter):
         self.file.write(";\n\t")
 
     def _emit_body(self, c_name: str) -> None:
-        funcdef = self.funcdef  # TODO: remove
-
-        if funcdef.type.returntype is not None:
-            self._emit_type(funcdef.type.returntype)
+        if self.funcdef.type.returntype is not None:
+            self._emit_type(self.funcdef.type.returntype)
             self.file.write("retval;\n\t")
-        for refname, reftype in funcdef.refs:
+        for refname, reftype in self.funcdef.refs:
             self._emit_type(reftype)
             self.file.write(f"{refname} = NULL;\n\t")
 
-        for statement in funcdef.body:
+        for statement in self.funcdef.body:
             self._emit_statement(statement)
 
         # avoid problem with 'out:' being last thing in function
         self.file.write("out: (void)0;\n\t")
-        for refname, reftype in reversed(funcdef.refs):
+        for refname, reftype in reversed(self.funcdef.refs):
             self.file.write(f"if ({refname}) decref({refname});\n\t")
-        if funcdef.type.returntype is not None:
+        if self.funcdef.type.returntype is not None:
             self.file.write("return retval;\n\t")
 
-    def run(self, c_name: str) -> None:
-        funcdef = self.funcdef  # TODO: remove
-        self._emit_type(funcdef.type.returntype)
-        if funcdef.argnames:
-            self.file.write(c_name)
+    def run(self) -> None:
+        self._emit_type(self.funcdef.type.returntype)
+        if self.funcdef.argnames:
+            self.file.write(self.c_name)
             self.file.write("(")
             self._emit_commasep(
-                zip(funcdef.type.argtypes, funcdef.argnames), self._emit_arg_def
+                zip(self.funcdef.type.argtypes, self.funcdef.argnames),
+                self._emit_arg_def,
             )
             self.file.write(")")
         else:
-            self.file.write(c_name)
+            self.file.write(self.c_name)
             self.file.write("(void)")
         self.file.write("{\n\t")
 
         # First figure out what temp vars are needed
+        assert not self.temp_vars
         actual_file = self.file
-        self.file = io.StringIO()
-        temps: List[Type] = []
-        self.get_temp_var = lambda t: (f"temp{len(temps)}", temps.append(t))[0]
-        self._emit_body(c_name)
+        with open(os.devnull, "w") as self.file:
+            self._emit_body(self.c_name)
+        self.file = actual_file
 
         # Add temporary vars
-        self.file = actual_file
-        for i, vartype in enumerate(temps):
+        for vartype, name in self.temp_vars:
             self._emit_type(vartype)
-            self.file.write(f"temp{i};\n\t")
+            self.file.write(f"{name};\n\t")
 
         # Run for real
-        iterator = (f"temp{i}" for i in range(len(temps)))
-        self.get_temp_var = (lambda t: next(iterator))
-        self._emit_body(c_name)
-
+        self.temp_var_iter = iter(self.temp_vars)
+        self._emit_body(self.c_name)
         self.file.write("\n}\n")
 
 
 class _TopLevelEmitter(_Emitter):
     def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> None:
         if isinstance(top_statement, tast.FuncDef):
-            _FunctionEmitter(self.file, top_statement).run(
-                "var_" + top_statement.name
-            )
+            _FunctionEmitter(
+                self.file, "var_" + top_statement.name, top_statement
+            ).run()
 
         elif isinstance(top_statement, tast.ClassDef):
             # struct
@@ -198,9 +222,9 @@ class _TopLevelEmitter(_Emitter):
 
             # methods
             for method in top_statement.body:
-                _FunctionEmitter(self.file,method).run(
-                    f"meth_{top_statement.type.name}_{method.name}"
-                )
+                _FunctionEmitter(
+                    self.file, f"meth_{top_statement.type.name}_{method.name}", method
+                ).run()
 
         else:
             raise NotImplementedError(top_statement)
