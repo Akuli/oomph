@@ -7,3 +7,12 @@ func main() -> void:
     print_bool(true == false)
     print_bool(false == false)
     print_bool(false == true)
+
+    print_bool(1 != 1)
+    print_bool(1 != 2)
+    print_bool(1.0 != 1)
+    print_bool(0.1 + 0.2 != 0.3)   # false, just like in most other programming languages
+    print_bool(true != true)
+    print_bool(true != false)
+    print_bool(false != false)
+    print_bool(false != true)

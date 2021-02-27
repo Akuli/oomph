@@ -58,6 +58,10 @@ class _BlockTyper:
                 return tast.NumberNegation(obj.type, obj)
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
+            if ast.op == "!=":
+                return tast.BoolNot(
+                    self.do_expression(uast.BinaryOperator(ast.lhs, "==", ast.rhs))
+                )
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
             if lhs.type is INT and ast.op == "+" and rhs.type is INT:
@@ -90,7 +94,10 @@ class _BlockTyper:
                 return tast.BoolOr(lhs, rhs)
 
             if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
-                return tast.BoolOr(tast.BoolAnd(lhs, rhs), tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)))
+                return tast.BoolOr(
+                    tast.BoolAnd(lhs, rhs),
+                    tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)),
+                )
             if lhs.type is INT and ast.op == "==" and rhs.type is INT:
                 return tast.NumberEqual(lhs, rhs)
             if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:

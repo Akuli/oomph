@@ -105,6 +105,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
         ("op", "*"),
         ("op", "/"),
         ("op", "=="),
+        ("op", "!="),
         ("keyword", "and"),
         ("keyword", "or"),
     }:
@@ -116,6 +117,12 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     # means "a and (b or c)"
     assert not ("and" in magic_list and "or" in magic_list)
 
+    # a==b==c is not supported yet
+    assert not any(
+        first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
+        for first, second in zip(magic_list, magic_list[2:])
+    )
+
     # Disallow a--b and --a, require a-(-b) or -(-a)
     assert not any(
         first in [(1, "-"), (2, "-")] and second == (1, "-")
@@ -126,7 +133,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     for op_group in [
         [(2, "*"), (2, "/")],
         [(2, "+"), (2, "-"), (1, "-")],
-        [(2, "==")],
+        [(2, "=="), (2, "!=")],
         [(1, "not")],
         [(2, "and"), (2, "or")],
     ]:

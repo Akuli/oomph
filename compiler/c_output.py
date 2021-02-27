@@ -167,7 +167,7 @@ class _FunctionEmitter(_Emitter):
         elif isinstance(ast, tast.GetMethod):
             # This should return some kind of partial function, which isn't possible yet
             raise NotImplementedError(
-                "method objects without immediately calling don't work yet"
+                "method objects without immediate calling don't work yet"
             )
         else:
             raise NotImplementedError(ast)
