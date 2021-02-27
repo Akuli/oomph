@@ -1,4 +1,4 @@
-class Point(Int x, Int y)
+class Point(int x, int y)
 
 # FIXME: adding a comment in beginning of function body is broken
 func print_point(Point p) -> void:

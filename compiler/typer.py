@@ -159,7 +159,7 @@ def _do_toplevel_statement(
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
-    types: Dict[str, Type] = {"Int": INT}
+    types: Dict[str, Type] = {"int": INT}
     variables: Dict[str, Type] = {
         "add": FunctionType(False, [INT, INT], INT),
         "print_int": FunctionType(False, [INT], None),

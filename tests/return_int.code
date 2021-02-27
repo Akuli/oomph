@@ -1,4 +1,4 @@
-func foo() -> Int:
+func foo() -> int:
     return 123
 
 func main() -> void:

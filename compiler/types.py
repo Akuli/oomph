@@ -12,7 +12,7 @@ class _NamedType(Type):
     name: str
 
 
-INT = _NamedType(False, "Int")
+INT = _NamedType(False, "int")
 
 
 @dataclass
