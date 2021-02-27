@@ -96,12 +96,7 @@ class _BlockTyper:
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
             assert isinstance(klass, ClassType)
-            return tast.Constructor(
-                FunctionType(
-                    False, [the_type for the_type, name in klass.members], klass
-                ),
-                klass,
-            )
+            return tast.Constructor(klass.get_constructor_type(), klass)
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
             try:
@@ -145,7 +140,6 @@ def _do_funcdef(
     create_variable: bool,
 ) -> tast.FuncDef:
     functype = FunctionType(
-        False,
         [types[typename] for typename, argname in funcdef.args],
         None if funcdef.returntype is None else types[funcdef.returntype],
     )
@@ -178,7 +172,7 @@ def _do_toplevel_statement(
         return _do_funcdef(variables, types, top_statement, create_variable=True)
 
     if isinstance(top_statement, uast.ClassDef):
-        classtype = ClassType(True, top_statement.name, [], {})
+        classtype = ClassType(True, {}, top_statement.name, [])
         assert top_statement.name not in types
         types[top_statement.name] = classtype
         classtype.members.extend(
@@ -203,10 +197,10 @@ def convert_program(
 ) -> List[tast.ToplevelStatement]:
     types: Dict[str, Type] = {"int": INT}
     variables: Dict[str, Type] = {
-        "add": FunctionType(False, [INT, INT], INT),
-        "print_int": FunctionType(False, [INT], None),
-        "print_bool": FunctionType(False, [BOOL], None),
-        "print_float": FunctionType(False, [FLOAT], None),
+        "add": FunctionType([INT, INT], INT),  # TODO: delete
+        "print_int": FunctionType([INT], None),
+        "print_bool": FunctionType([BOOL], None),
+        "print_float": FunctionType([FLOAT], None),
     }
     return [
         _do_toplevel_statement(variables, types, toplevel_statement)
