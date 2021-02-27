@@ -129,8 +129,10 @@ class _FunctionEmitter(_Emitter):
                 tast.NumberAdd,
                 tast.NumberSub,
                 tast.NumberMul,
+                tast.NumberEqual,
                 tast.FloatDiv,
                 tast.BoolAnd,
+                tast.BoolOr,
             ),
         ):
             self.file.write("(")
@@ -141,10 +143,14 @@ class _FunctionEmitter(_Emitter):
                 self.file.write("-")
             elif isinstance(ast, tast.NumberMul):
                 self.file.write("*")
+            elif isinstance(ast, tast.NumberEqual):
+                self.file.write("==")
             elif isinstance(ast, tast.FloatDiv):
                 self.file.write("/")
             elif isinstance(ast, tast.BoolAnd):
                 self.file.write("&&")
+            elif isinstance(ast, tast.BoolOr):
+                self.file.write("||")
             else:
                 raise NotImplementedError
             # https://github.com/python/mypy/issues/10146

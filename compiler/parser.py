@@ -104,6 +104,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
         ("op", "-"),
         ("op", "*"),
         ("op", "/"),
+        ("op", "=="),
         ("keyword", "and"),
         ("keyword", "or"),
     }:
@@ -125,6 +126,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     for op_group in [
         [(2, "*"), (2, "/")],
         [(2, "+"), (2, "-"), (1, "-")],
+        [(2, "==")],
         [(1, "not")],
         [(2, "and"), (2, "or")],
     ]:

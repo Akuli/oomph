@@ -87,11 +87,16 @@ class _BlockTyper:
             if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
                 return tast.BoolAnd(lhs, rhs)
             if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
-                # a or b = not ((not a) and (not b))
-                # avoiding BoolOr class makes for less code
-                return tast.BoolNot(
-                    tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)),
-                )
+                return tast.BoolOr(lhs, rhs)
+
+            if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
+                return tast.BoolOr(tast.BoolAnd(lhs, rhs), tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)))
+            if lhs.type is INT and ast.op == "==" and rhs.type is INT:
+                return tast.NumberEqual(lhs, rhs)
+            if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:
+                # Float equality sucks, but maybe it can be useful for something
+                return tast.NumberEqual(lhs, rhs)
+
             raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]

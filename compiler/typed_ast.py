@@ -122,7 +122,29 @@ class FloatDiv(Expression):
 
 
 @dataclass
+class NumberEqual(Expression):
+    lhs: Expression
+    rhs: Expression
+
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(BOOL)
+        self.lhs = lhs
+        self.rhs = rhs
+
+
+@dataclass
 class BoolAnd(Expression):
+    lhs: Expression
+    rhs: Expression
+
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(BOOL)
+        self.lhs = lhs
+        self.rhs = rhs
+
+
+@dataclass
+class BoolOr(Expression):
     lhs: Expression
     rhs: Expression
 
