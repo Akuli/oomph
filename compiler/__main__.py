@@ -4,6 +4,7 @@ import argparse
 import os
 import pathlib
 import shlex
+import signal
 import subprocess
 import sys
 from typing import IO, Any
@@ -97,7 +98,16 @@ def main() -> None:
         ]
     else:
         command = [str(exe_path)]
-    sys.exit(subprocess.run(command).returncode)
+
+    result = subprocess.run(command).returncode
+    if result < 0:  # killed by signal
+        message = f"Program killed by signal {abs(result)}"
+        try:
+            message += f" ({signal.Signals(abs(result)).name})"
+        except ValueError:  # e.g. SIGRTMIN + 1
+            pass
+        print(message, file=sys.stderr)
+    sys.exit(result)
 
 
 main()

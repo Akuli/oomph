@@ -1,0 +1,7 @@
+func countdown(int n) -> void:
+    if n != 0:
+        print_int(n)
+        countdown(n-1)
+
+func main() -> void:
+    countdown(10)
