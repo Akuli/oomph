@@ -4,8 +4,12 @@ Bugs:
 
 Missing features:
 - implicit int to float conversion: `print_float(2)`
+- equality checking
 - if, for, while
-- strings and other arrays
+- strings
+- generics
+    - arrays
+    - optionals
 - non-ref-counted pass-by-value classes
 
 Messiness:
