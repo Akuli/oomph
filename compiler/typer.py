@@ -13,6 +13,8 @@ class _FunctionOrMethodTyper:
         self.variables = variables
         self.types = types
         self.reflist: List[Tuple[str, Type]] = []
+        self.loop_stack: List[str] = []
+        self.loop_counter = 0
 
     def do_call(
         self, ast: uast.Call
@@ -128,23 +130,31 @@ class _FunctionOrMethodTyper:
             if isinstance(result, tast.SetRef):
                 return [tast.DecRef(result.value)]
             return [result]
+
         if isinstance(ast, uast.Let):
-            assert ast.varname not in self.variables
+            assert ast.varname not in self.variables, (ast.varname, self.variables)
             value = self.do_expression(ast.value)
             self.variables[ast.varname] = value.type
             return [tast.CreateLocalVar(ast.varname, value)]
+
         if isinstance(ast, uast.Assign):
             # TODO: this assumes local variable without assert
             vartype = self.variables[ast.varname]
             value = self.do_expression(ast.value)
             assert value.type is vartype
             return [tast.SetLocalVar(ast.varname, value)]
+
         if isinstance(ast, uast.Pass):
             return []
+
+        if isinstance(ast, uast.Continue):
+            return [tast.Continue(self.loop_stack[-1])]
+
         if isinstance(ast, uast.Return):
             if ast.value is None:
                 return [tast.Return(None)]
             return [tast.Return(self.do_expression(ast.value))]
+
         if isinstance(ast, uast.If):
             untyped_condition, untyped_body = ast.ifs_and_elifs[0]
             condition = self.do_expression(untyped_condition)
@@ -158,6 +168,7 @@ class _FunctionOrMethodTyper:
             else:
                 otherwise = self.do_block(ast.else_block)
             return [tast.If(condition, body, otherwise)]
+
         if isinstance(ast, uast.For):
             init = [] if ast.init is None else self.do_statement(ast.init)
             cond = (
@@ -166,8 +177,17 @@ class _FunctionOrMethodTyper:
                 else self.do_expression(ast.cond)
             )
             incr = [] if ast.incr is None else self.do_statement(ast.incr)
+
+            loop_id = f"loop{self.loop_counter}"
+            self.loop_counter += 1
+
+            self.loop_stack.append(loop_id)
             body = self.do_block(ast.body)
-            return [tast.Loop(init, cond, incr, body)]
+            popped = self.loop_stack.pop()
+            assert popped == loop_id
+
+            return [tast.Loop(loop_id, init, cond, incr, body)]
+
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:

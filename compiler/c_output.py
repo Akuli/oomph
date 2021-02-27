@@ -181,6 +181,10 @@ class _FunctionEmitter(_Emitter):
         else:
             raise NotImplementedError(ast)
 
+    def _write_label(self, name: str) -> None:
+        # It's invalid c syntax to end a block with a label, (void)0 fixes
+        self.file.write(f"{name}: (void)0;\n\t")
+
     def _emit_statement(self, ast: tast.Statement) -> None:
         if isinstance(ast, tast.CreateLocalVar):
             var = self.get_local_var(ast.value.type, ast.varname)
@@ -197,6 +201,7 @@ class _FunctionEmitter(_Emitter):
 
         elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             self._emit_call(ast)
+            self.file.write(";\n\t")
 
         elif isinstance(ast, tast.DecRef):
             var = self.get_local_var(ast.value.type, "decreffing_var")
@@ -223,24 +228,27 @@ class _FunctionEmitter(_Emitter):
             for statement in ast.otherwise:
                 self._emit_statement(statement)
             self.file.write("}\n\t")
-            return  # no semicolon
 
         elif isinstance(ast, tast.Loop):
             # Can't use C's for loop because it's limited to one statement
             for statement in ast.init:
                 self._emit_statement(statement)
-            self.file.write('while(')
+            self.file.write("while(")
             self._emit_expression(ast.cond)
-            self.file.write('){\n\t')
-            for statement in ast.body + ast.incr:
+            self.file.write("){\n\t")
+            for statement in ast.body:
                 self._emit_statement(statement)
-            self.file.write('}\n\t')
-            return  # no semicolon
+            self._write_label(ast.loop_id)
+            for statement in ast.incr:
+                self._emit_statement(statement)
+            self.file.write("}\n\t")
+
+        elif isinstance(ast, tast.Continue):
+            # Can't use C's continue because continue must run condition
+            self.file.write(f"goto {ast.loop_id};\n\t")
 
         else:
             raise NotImplementedError(ast)
-
-        self.file.write(";\n\t")
 
     def _emit_body(self, c_name: str) -> None:
         if self.funcdef.type.returntype is not None:

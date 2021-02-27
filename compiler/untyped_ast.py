@@ -71,13 +71,18 @@ class Assign(Statement):
 
 
 @dataclass
-class Return(Statement):
-    value: Optional[Expression]
+class Pass(Statement):
+    pass
 
 
 @dataclass
-class Pass(Statement):
+class Continue(Statement):
     pass
+
+
+@dataclass
+class Return(Statement):
+    value: Optional[Expression]
 
 
 @dataclass

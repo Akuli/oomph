@@ -188,6 +188,11 @@ class SetLocalVar(Statement):
 
 
 @dataclass
+class Continue(Statement):
+    loop_id: str
+
+
+@dataclass
 class Return(Statement):
     value: Optional[Expression]
 
@@ -201,6 +206,7 @@ class If(Statement):
 
 @dataclass
 class Loop(Statement):
+    loop_id: str
     init: List[Statement]
     cond: Expression
     incr: List[Statement]

@@ -176,6 +176,10 @@ class _Parser:
             self.get_token("keyword", "pass")
             return uast.Pass()
 
+        if self.token_iter.peek() == ("keyword", "continue"):
+            self.get_token("keyword", "continue")
+            return uast.Continue()
+
         expr = self.parse_expression()
         if isinstance(expr, uast.GetVar) and self.token_iter.peek(None) == ("op", "="):
             self.get_token("op", "=")

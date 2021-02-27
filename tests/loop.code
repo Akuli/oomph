@@ -1,3 +1,9 @@
 func main() -> void:
     for let i=0; i != 10; i=i+1:
         print_int(i)
+
+    # FIXME: loop variable leaks, must use different var name
+    for let j=0; j != 10; j=j+1:
+        if j == 5 or j == 6:
+            continue
+        print_int(j)
