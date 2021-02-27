@@ -53,6 +53,8 @@ class _Emitter:
 
 
 class _FunctionEmitter(_Emitter):
+    loop_counter: int
+
     def __init__(self, file: IO[str], c_name: str, funcdef: tast.FuncDef):
         super().__init__(file)
         self.c_name = c_name
@@ -183,10 +185,12 @@ class _FunctionEmitter(_Emitter):
                 self.name_mapping[ast.varname] = var
             self.file.write(f"{var} = ")
             self._emit_expression(ast.value)
+            self.file.write(";\n\t")
 
         elif isinstance(ast, tast.SetLocalVar):
             self.file.write(f"{self.name_mapping[ast.varname]} = ")
             self._emit_expression(ast.value)
+            self.file.write(";\n\t")
 
         elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             self._emit_call(ast)
@@ -195,7 +199,16 @@ class _FunctionEmitter(_Emitter):
             var = self.get_local_var(ast.value.type, "decreffing_var")
             self.file.write(f"{var} = ")
             self._emit_expression(ast.value)
-            self.file.write(f"; if({var}) decref({var})")
+            self.file.write(f"; if({var}) decref({var});\n\t")
+
+        elif isinstance(ast, tast.Return):
+            if ast.value is not None:
+                self.file.write("retval = ")
+                self._emit_expression(ast.value)
+                self.file.write(";")
+                if ast.value.type.refcounted:
+                    self.file.write("incref(retval);")
+            self.file.write("goto out;\n\t")
 
         elif isinstance(ast, tast.If):
             self.file.write("if (")
@@ -209,16 +222,21 @@ class _FunctionEmitter(_Emitter):
             self.file.write("}\n\t")
             return  # no semicolon
 
-        elif isinstance(ast, tast.Return):
-            if ast.value is not None:
-                self.file.write("retval = ")
-                self._emit_expression(ast.value)
-                self.file.write(";")
-                if ast.value.type.refcounted:
-                    self.file.write("incref(retval);")
-            self.file.write("goto out")
+        elif isinstance(ast, tast.Loop):
+            # Can't use C's for loop because it's limited to one statement
+            for statement in ast.init:
+                self._emit_statement(statement)
+            self.file.write('while(')
+            self._emit_expression(ast.cond)
+            self.file.write('){\n\t')
+            for statement in ast.body + ast.incr:
+                self._emit_statement(statement)
+            self.file.write('}\n\t')
+            return  # no semicolon
+
         else:
             raise NotImplementedError(ast)
+
         self.file.write(";\n\t")
 
     def _emit_body(self, c_name: str) -> None:
@@ -255,6 +273,7 @@ class _FunctionEmitter(_Emitter):
         self.file.write("{\n\t")
 
         # First figure out what temp vars are needed
+        self.loop_counter = 0
         assert not self.local_vars
         actual_file = self.file
         with open(os.devnull, "w") as self.file:
@@ -267,6 +286,7 @@ class _FunctionEmitter(_Emitter):
             self.file.write(f"{name};\n\t")
 
         # Run for real
+        self.loop_counter = 0
         self.local_var_iter = iter(self.local_vars)
         self._emit_body(self.c_name)
         self.file.write("\n}\n")

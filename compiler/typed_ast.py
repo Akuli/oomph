@@ -200,6 +200,14 @@ class If(Statement):
 
 
 @dataclass
+class Loop(Statement):
+    init: List[Statement]
+    cond: Expression
+    incr: List[Statement]
+    body: List[Statement]
+
+
+@dataclass
 class ToplevelStatement:
     pass
 

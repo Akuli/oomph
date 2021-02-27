@@ -158,6 +158,16 @@ class _FunctionOrMethodTyper:
             else:
                 otherwise = self.do_block(ast.else_block)
             return [tast.If(condition, body, otherwise)]
+        if isinstance(ast, uast.For):
+            init = [] if ast.init is None else self.do_statement(ast.init)
+            cond = (
+                tast.BoolConstant(True)
+                if ast.cond is None
+                else self.do_expression(ast.cond)
+            )
+            incr = [] if ast.incr is None else self.do_statement(ast.incr)
+            body = self.do_block(ast.body)
+            return [tast.Loop(init, cond, incr, body)]
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:

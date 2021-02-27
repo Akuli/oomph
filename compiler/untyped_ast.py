@@ -81,6 +81,20 @@ class Pass(Statement):
 
 
 @dataclass
+class If(Statement):
+    ifs_and_elifs: List[Tuple[Expression, List[Statement]]]  # never empty list
+    else_block: List[Statement]
+
+
+@dataclass
+class For(Statement):
+    init: Optional[Statement]
+    cond: Optional[Expression]
+    incr: Optional[Statement]
+    body: List[Statement]
+
+
+@dataclass
 class ToplevelStatement:
     pass
 
@@ -91,12 +105,6 @@ class FuncDef(ToplevelStatement):
     args: List[Tuple[str, str]]  # first type, then name
     returntype: Optional[str]
     body: List[Statement]
-
-
-@dataclass
-class If(Statement):
-    ifs_and_elifs: List[Tuple[Expression, List[Statement]]]  # never empty list
-    else_block: List[Statement]
 
 
 @dataclass

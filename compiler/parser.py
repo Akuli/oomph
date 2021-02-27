@@ -8,7 +8,7 @@ _T = TypeVar("_T")
 
 
 class _Parser:
-    def __init__(self, token_iter: 'more_itertools.peekable[Tuple[str, str]]'):
+    def __init__(self, token_iter: "more_itertools.peekable[Tuple[str, str]]"):
         self.token_iter = token_iter
 
     def get_token(
@@ -165,6 +165,9 @@ class _Parser:
 
         if self.token_iter.peek() == ("keyword", "return"):
             self.get_token("keyword", "return")
+            # This is a weird way to check whether an expression is coming up.
+            # It doesn't work in e.g. first line of for loop, but if you think
+            # that returning there is a good idea, then wtf lol.
             if self.token_iter.peek() == ("op", "\n"):
                 return uast.Return(None)
             return uast.Return(self.parse_expression())
@@ -173,7 +176,14 @@ class _Parser:
             self.get_token("keyword", "pass")
             return uast.Pass()
 
-        raise ValueError(self.token_iter.peek())
+        expr = self.parse_expression()
+        if isinstance(expr, uast.GetVar) and self.token_iter.peek(None) == ("op", "="):
+            self.get_token("op", "=")
+            value = self.parse_expression()
+            return uast.Assign(expr.varname, value)
+
+        assert isinstance(expr, uast.Call), expr
+        return expr
 
     def parse_statement(self) -> uast.Statement:
         if self.token_iter.peek() == ("keyword", "if"):
@@ -196,25 +206,31 @@ class _Parser:
 
             return uast.If(ifs, else_body)
 
-        if self.token_iter.peek() in {
-            ("keyword", "let"),
-            ("keyword", "return"),
-            ("keyword", "pass"),
-        }:
-            result = self.parse_oneline_ish_statement()
-            self.get_token("op", "\n")
-            return result
+        if self.token_iter.peek() == ("keyword", "for"):
+            self.get_token("keyword", "for")
+            init = (
+                None
+                if self.token_iter.peek() == ("op", ";")
+                else self.parse_oneline_ish_statement()
+            )
+            self.get_token("op", ";")
+            cond = (
+                None
+                if self.token_iter.peek() == ("op", ";")
+                else self.parse_expression()
+            )
+            self.get_token("op", ";")
+            incr = (
+                None
+                if self.token_iter.peek() == ("op", ";")
+                else self.parse_oneline_ish_statement()
+            )
+            body = self.parse_block(self.parse_statement)
+            return uast.For(init, cond, incr, body)
 
-        expr = self.parse_expression()
-        if isinstance(expr, uast.GetVar) and self.token_iter.peek(None) == ("op", "="):
-            self.get_token("op", "=")
-            value = self.parse_expression()
-            self.get_token("op", "\n")
-            return uast.Assign(expr.varname, value)
-
-        assert isinstance(expr, uast.Call), expr
+        result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
-        return expr
+        return result
 
     def parse_type(self) -> str:
         return self.get_token("identifier")[1]
