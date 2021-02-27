@@ -62,8 +62,8 @@ def _parse_commasep_in_parens(
 
 def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expression:
     result: uast.Expression
-    if token_iter.peek()[0] == "var":
-        result = uast.GetVar(_get_token(token_iter, "var")[1])
+    if token_iter.peek()[0] == "identifier":
+        result = uast.GetVar(_get_token(token_iter, "identifier")[1])
     elif token_iter.peek()[0] == "int":
         result = uast.IntConstant(int(_get_token(token_iter, "int")[1]))
     elif token_iter.peek()[0] == "float":
@@ -85,7 +85,7 @@ def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expressi
             )
         elif token_iter.peek() == ("op", "."):
             _get_token(token_iter, "op", ".")
-            result = uast.GetAttribute(result, _get_token(token_iter, "var")[1])
+            result = uast.GetAttribute(result, _get_token(token_iter, "identifier")[1])
         else:
             return result
 
@@ -175,54 +175,56 @@ def _parse_block(
     return result
 
 
-def _parse_statement_block(token_iter: _TokenIter) -> List[uast.Statement]:
-    return [
-        item for item in _parse_block(token_iter, _parse_statement) if item is not None
-    ]
-
-
-def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
+def _parse_oneline_ish_statement(token_iter: _TokenIter) -> uast.Statement:
     if token_iter.peek() == ("keyword", "let"):
         _get_token(token_iter, "keyword", "let")
-        varname = _get_token(token_iter, "var")[1]
+        varname = _get_token(token_iter, "identifier")[1]
         _get_token(token_iter, "op", "=")
         value = _parse_expression(token_iter)
-        _get_token(token_iter, "op", "\n")
         return uast.Let(varname, value)
 
     if token_iter.peek() == ("keyword", "return"):
         _get_token(token_iter, "keyword", "return")
         if token_iter.peek() == ("op", "\n"):
-            result = uast.Return(None)
-        else:
-            result = uast.Return(_parse_expression(token_iter))
-        _get_token(token_iter, "op", "\n")
-        return result
+            return uast.Return(None)
+        return uast.Return(_parse_expression(token_iter))
 
     if token_iter.peek() == ("keyword", "pass"):
         _get_token(token_iter, "keyword", "pass")
-        _get_token(token_iter, "op", "\n")
         return uast.Pass()
 
+    raise ValueError(token_iter.peek())
+
+
+def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
     if token_iter.peek() == ("keyword", "if"):
         _get_token(token_iter, "keyword", "if")
         condition = _parse_expression(token_iter)
-        body = _parse_statement_block(token_iter)
+        body = _parse_block(token_iter, _parse_statement)
         ifs = [(condition, body)]
 
         while token_iter.peek() == ("keyword", "elif"):
             _get_token(token_iter, "keyword", "elif")
             condition = _parse_expression(token_iter)
-            body = _parse_statement_block(token_iter)
+            body = _parse_block(token_iter, _parse_statement)
             ifs.append((condition, body))
 
         if token_iter.peek() == ("keyword", "else"):
             _get_token(token_iter, "keyword", "else")
-            else_body = _parse_statement_block(token_iter)
+            else_body = _parse_block(token_iter, _parse_statement)
         else:
             else_body = []
 
         return uast.If(ifs, else_body)
+
+    if token_iter.peek() in {
+        ("keyword", "let"),
+        ("keyword", "return"),
+        ("keyword", "pass"),
+    }:
+        result = _parse_oneline_ish_statement(token_iter)
+        _get_token(token_iter, "op", "\n")
+        return result
 
     expr = _parse_expression(token_iter)
     if isinstance(expr, uast.GetVar) and token_iter.peek(None) == ("op", "="):
@@ -237,17 +239,17 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
 
 
 def _parse_type(token_iter: _TokenIter) -> str:
-    return _get_token(token_iter, "var")[1]
+    return _get_token(token_iter, "identifier")[1]
 
 
 def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[str, str]:
     type_name = _parse_type(token_iter)
-    arg_name = _get_token(token_iter, "var")[1]
+    arg_name = _get_token(token_iter, "identifier")[1]
     return (type_name, arg_name)
 
 
 def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
-    name = _get_token(token_iter, "var")[1]
+    name = _get_token(token_iter, "identifier")[1]
     args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
 
     _get_token(token_iter, "op", "->")
@@ -257,7 +259,9 @@ def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
     else:
         returntype = _parse_type(token_iter)
 
-    return uast.FuncDef(name, args, returntype, _parse_statement_block(token_iter))
+    return uast.FuncDef(
+        name, args, returntype, _parse_block(token_iter, _parse_statement)
+    )
 
 
 def _parse_method(token_iter: _TokenIter) -> uast.FuncDef:
@@ -272,7 +276,7 @@ def _parse_toplevel(token_iter: _TokenIter) -> uast.ToplevelStatement:
 
     if token_iter.peek() == ("keyword", "class"):
         _get_token(token_iter, "keyword", "class")
-        name = _get_token(token_iter, "var")[1]
+        name = _get_token(token_iter, "identifier")[1]
         args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
         if token_iter.peek(None) == ("begin_block", ":"):
             body = _parse_block(token_iter, _parse_method)
