@@ -116,7 +116,7 @@ class _FunctionEmitter(_Emitter):
             self.file.write("((")
             self._emit_expression(ast.obj)
             self.file.write(f")->memb_{ast.attribute})")
-        elif isinstance(ast, tast.BinaryOperation) and ast.op in {
+        elif isinstance(ast, tast.BinaryOperator) and ast.op in {
             "+",
             "-",
             "*",
@@ -127,6 +127,10 @@ class _FunctionEmitter(_Emitter):
             self._emit_expression(ast.lhs)
             self.file.write({"and": "&&", "or": "||"}.get(ast.op, ast.op))
             self._emit_expression(ast.rhs)
+            self.file.write(")")
+        elif isinstance(ast, tast.UnaryOperator) and ast.op == "not":
+            self.file.write("(!")
+            self._emit_expression(ast.obj)
             self.file.write(")")
         elif isinstance(ast, tast.GetMethod):
             # This should return some kind of partial function, which isn't possible yet

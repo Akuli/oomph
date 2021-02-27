@@ -49,13 +49,18 @@ class _BlockTyper:
             if ast.varname == "false":
                 return tast.BoolConstant(BOOL, False)
             return tast.GetVar(self.variables[ast.varname], ast.varname)
+        if isinstance(ast, uast.UnaryOperator):
+            obj = self.do_expression(ast.obj)
+            if obj.type is BOOL and ast.op == "not":
+                return tast.UnaryOperator(BOOL, "not", obj)
+            raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
             if lhs.type is INT and ast.op in {"+", "-", "*"} and rhs.type is INT:
-                return tast.BinaryOperation(INT, lhs, ast.op, rhs)
+                return tast.BinaryOperator(INT, lhs, ast.op, rhs)
             if lhs.type is BOOL and ast.op in {"and", "or"} and rhs.type is BOOL:
-                return tast.BinaryOperation(BOOL, lhs, ast.op, rhs)
+                return tast.BinaryOperator(BOOL, lhs, ast.op, rhs)
             raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]

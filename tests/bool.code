@@ -1,3 +1,21 @@
 func main() -> void:
     print_bool(true)
     print_bool(false)
+
+    print_bool(true and true)
+    print_bool(true and false)
+    print_bool(false and true)
+    print_bool(false and false)
+
+    print_bool(true or true)
+    print_bool(true or false)
+    print_bool(false or true)
+    print_bool(false or false)
+
+    print_bool(not true)
+    print_bool(not false)
+
+    print_bool(not true and not true)
+    print_bool(not true and not false)
+    print_bool(not false and not true)
+    print_bool(not false and not false)

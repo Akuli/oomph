@@ -3,6 +3,7 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    Iterator,
     List,
     Optional,
     Tuple,
@@ -86,31 +87,45 @@ def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expressi
             return result
 
 
+def _get_unary_operators(token_iter: _TokenIter) -> Iterator[str]:
+    while token_iter.peek() == ("keyword", "not"):
+        yield _get_token(token_iter)[1]
+
+
 def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
-    result: List[Union[uast.Expression, str]] = [
-        _parse_expression_without_operators(token_iter)
-    ]
+    magic_list: List[Union[str, uast.Expression]] = []
+    magic_list.extend(_get_unary_operators(token_iter))
+    magic_list.append(_parse_expression_without_operators(token_iter))
+
     while token_iter.peek() in {
         ("op", "+"),
         ("op", "*"),
         ("keyword", "and"),
         ("keyword", "or"),
     }:
-        result.append(_get_token(token_iter)[1])
-        result.append(_parse_expression_without_operators(token_iter))
+        magic_list.append(_get_token(token_iter)[1])
+        magic_list.extend(_get_unary_operators(token_iter))
+        magic_list.append(_parse_expression_without_operators(token_iter))
 
     # A common python beginner mistake is writing "a and b or c", thinking it
     # means "a and (b or c)"
-    assert not ("and" in result and "or" in result), "ambiguous order of operations"
+    assert not ("and" in magic_list and "or" in magic_list)
 
-    for op in ["*", "+", "and", "or"]:
-        while op in result:
-            where = result.index(op)
-            lhs, the_op, rhs = result[where - 1 : where + 2]
-            assert isinstance(lhs, uast.Expression) and isinstance(rhs, uast.Expression)
-            result[where - 1 : where + 2] = [uast.BinaryOperator(lhs, op, rhs)]
+    for op in ["*", "+", "not", "and", "or"]:
+        while op in magic_list:
+            where = magic_list.index(op)
+            if op == "not":
+                operand = magic_list[where + 1]
+                assert isinstance(operand, uast.Expression)
+                magic_list[where : where + 2] = [uast.UnaryOperator(op, operand)]
+            else:
+                lhs = magic_list[where - 1]
+                rhs = magic_list[where + 1]
+                assert isinstance(lhs, uast.Expression)
+                assert isinstance(rhs, uast.Expression)
+                magic_list[where - 1 : where + 2] = [uast.BinaryOperator(lhs, op, rhs)]
 
-    [expr] = result
+    [expr] = magic_list
     assert isinstance(expr, uast.Expression)
     return expr
 

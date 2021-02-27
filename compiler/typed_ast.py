@@ -42,7 +42,13 @@ class BoolConstant(Expression):
 
 
 @dataclass
-class BinaryOperation(Expression):
+class UnaryOperator(Expression):
+    op: str
+    obj: Expression
+
+
+@dataclass
+class BinaryOperator(Expression):
     lhs: Expression
     op: str
     rhs: Expression
