@@ -6,6 +6,7 @@ CFLAGS += -Werror=discarded-qualifiers
 CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-but-set-variable
 CFLAGS += -Wno-unused-label
 CFLAGS += -g
 LDFLAGS += -lm

@@ -163,6 +163,23 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     return expr
 
 
+def _parse_block(
+    token_iter: _TokenIter, callback: Callable[[_TokenIter], _T]
+) -> List[_T]:
+    _get_token(token_iter, "begin_block", ":")
+    result = []
+    while token_iter and token_iter.peek(None) != ("end_block", ""):
+        result.append(callback(token_iter))
+    _get_token(token_iter, "end_block", "")
+    return result
+
+
+def _parse_statement_block(token_iter: _TokenIter) -> List[uast.Statement]:
+    return [
+        item for item in _parse_block(token_iter, _parse_statement) if item is not None
+    ]
+
+
 def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
     result: uast.Statement
     if token_iter.peek() == ("keyword", "let"):
@@ -179,23 +196,17 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
     elif token_iter.peek() == ("keyword", "pass"):
         _get_token(token_iter, "keyword", "pass")
         result = uast.PassStatement()
+    elif token_iter.peek() == ("keyword", "if"):
+        _get_token(token_iter, "keyword", "if")
+        condition = _parse_expression(token_iter)
+        body = _parse_statement_block(token_iter)
+        return uast.If(condition, body)
     else:
         call = _parse_expression(token_iter)
         assert isinstance(call, uast.Call), call
         result = call
 
     _get_token(token_iter, "op", "\n")
-    return result
-
-
-def _parse_block(
-    token_iter: _TokenIter, callback: Callable[[_TokenIter], _T]
-) -> List[_T]:
-    _get_token(token_iter, "begin_block", ":")
-    result = []
-    while token_iter and token_iter.peek(None) != ("end_block", ""):
-        result.append(callback(token_iter))
-    _get_token(token_iter, "end_block", "")
     return result
 
 
@@ -220,16 +231,7 @@ def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
     else:
         returntype = _parse_type(token_iter)
 
-    return uast.FuncDef(
-        name,
-        args,
-        returntype,
-        [
-            item
-            for item in _parse_block(token_iter, _parse_statement)
-            if item is not None
-        ],
-    )
+    return uast.FuncDef(name, args, returntype, _parse_statement_block(token_iter))
 
 
 def _parse_method(token_iter: _TokenIter) -> uast.FuncDef:

@@ -8,7 +8,7 @@ from compiler.types import BOOL, FLOAT, INT, ClassType, FunctionType, Type
 _ref_names = (f"ref{n}" for n in itertools.count())
 
 
-class _BlockTyper:
+class _FunctionOrMethodTyper:
     def __init__(self, variables: Dict[str, Type], types: Dict[str, Type]):
         self.variables = variables
         self.types = types
@@ -58,12 +58,15 @@ class _BlockTyper:
                 return tast.NumberNegation(obj.type, obj)
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
+            # TODO: separate method
             if ast.op == "!=":
                 return tast.BoolNot(
                     self.do_expression(uast.BinaryOperator(ast.lhs, "==", ast.rhs))
                 )
+
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
+
             if lhs.type is INT and ast.op == "+" and rhs.type is INT:
                 return tast.NumberAdd(INT, lhs, rhs)
             if lhs.type is INT and ast.op == "-" and rhs.type is INT:
@@ -134,6 +137,11 @@ class _BlockTyper:
             return tast.ReturnStatement(
                 None if ast.value is None else self.do_expression(ast.value)
             )
+        if isinstance(ast, uast.If):
+            condition = self.do_expression(ast.condition)
+            assert condition.type is BOOL
+            body = self.do_block(ast.body)
+            return tast.If(condition, body)
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
@@ -164,7 +172,7 @@ def _do_funcdef(
         assert argname not in local_vars
         local_vars[argname] = the_type
 
-    typer = _BlockTyper(local_vars, types)
+    typer = _FunctionOrMethodTyper(local_vars, types)
     body = typer.do_block(funcdef.body)
     return tast.FuncDef(
         funcdef.name,

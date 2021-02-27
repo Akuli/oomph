@@ -88,6 +88,12 @@ class FuncDef(ToplevelStatement):
 
 
 @dataclass
+class If(Statement):
+    condition: Expression
+    body: List[Statement]
+
+
+@dataclass
 class ClassDef(ToplevelStatement):
     name: str
     members: List[Tuple[str, str]]

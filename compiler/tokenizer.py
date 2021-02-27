@@ -4,9 +4,9 @@ from typing import Iterator, Tuple
 import more_itertools
 
 _TOKEN_REGEX = (
-    r"(?P<keyword>\b(let|func|meth|void|class|new|return|pass|and|or|not)\b)|"
+    r"(?P<keyword>\b(let|func|meth|void|class|new|return|pass|and|or|not|if)\b)|"
     r"(?P<var>[A-Za-z_][A-Za-z0-9_]*)|"
-    r"(?P<float>(?:[1-9][0-9]*|0)\.[0-9]+)|"
+    r"(?P<float>([1-9][0-9]*|0)\.[0-9]+)|"
     r"(?P<int>[1-9][0-9]*|0)|"
     r"(?P<op>==|!=|->|[=+\-*/(),\n:\.])|"
     r"(?P<indent>(?<=\n) +(?=[^ #\n]))|"

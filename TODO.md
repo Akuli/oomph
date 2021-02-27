@@ -5,7 +5,8 @@ Bugs:
 Missing features:
 - implicit int to float conversion: `print_float(2)`
 - chained equalities `a == b == c`
-- if
+- elif
+- else
 - for
 - while
 - strings

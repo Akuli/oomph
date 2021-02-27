@@ -2,6 +2,7 @@ import os
 from typing import (
     IO,
     Callable,
+    Dict,
     Iterable,
     Iterator,
     List,
@@ -57,17 +58,18 @@ class _FunctionEmitter(_Emitter):
         self.c_name = c_name
         self.funcdef = funcdef
 
-        self.temp_vars: List[Tuple[Type, str]] = []
-        self.temp_var_iter: Optional[Iterator[Tuple[Type, str]]] = None
+        self.local_vars: List[Tuple[Type, str]] = []
+        self.local_var_iter: Optional[Iterator[Tuple[Type, str]]] = None
+        self.name_mapping: Dict[str, str] = {}  # values are names in c
 
-    def get_temp_var(self, the_type: Type) -> str:
-        if self.temp_var_iter is None:
+    def get_local_var(self, the_type: Type, name_hint: str) -> str:
+        if self.local_var_iter is None:
             # First pass: create temporary variables
-            name = f"temp{len(self.temp_vars)}"
-            self.temp_vars.append((the_type, name))
+            name = f"{name_hint}_{len(self.local_vars)}"
+            self.local_vars.append((the_type, name))
         else:
             # Second pass: use variables created in first pass
-            var_type, name = next(self.temp_var_iter)
+            var_type, name = next(self.local_var_iter)
             assert var_type == the_type
         return name
 
@@ -83,10 +85,10 @@ class _FunctionEmitter(_Emitter):
         # expressions is guaranteed. Comma-expression-evaluate all arguments
         # and put them to temporary variables, then do the call with the
         # temporary variables as arguments.
-        temp_var_names = []
+        local_var_names = []
         for arg in args:
-            temp = self.get_temp_var(arg.type)
-            temp_var_names.append(temp)
+            temp = self.get_local_var(arg.type, "arg")
+            local_var_names.append(temp)
             self.file.write(f"{temp} = (")
             self._emit_expression(arg)
             self.file.write("), ")
@@ -96,7 +98,7 @@ class _FunctionEmitter(_Emitter):
         else:
             self._emit_expression(ast.func)
 
-        self.file.write("(" + ",".join(temp_var_names) + "))")
+        self.file.write("(" + ",".join(local_var_names) + "))")
 
     def _emit_expression(self, ast: tast.Expression) -> None:
         if isinstance(ast, tast.IntConstant):
@@ -108,7 +110,7 @@ class _FunctionEmitter(_Emitter):
         elif isinstance(ast, tast.ReturningCall):
             self._emit_call(ast)
         elif isinstance(ast, tast.GetVar):
-            self.file.write("var_" + ast.varname)
+            self.file.write(self.name_mapping.get(ast.varname, f"var_{ast.varname}"))
         elif isinstance(ast, tast.Constructor):
             self.file.write("ctor_" + ast.class_to_construct.name)
         elif isinstance(ast, tast.SetRef):
@@ -174,8 +176,9 @@ class _FunctionEmitter(_Emitter):
 
     def _emit_statement(self, ast: tast.Statement) -> None:
         if isinstance(ast, tast.LetStatement):
-            self._emit_type(ast.value.type)
-            self.file.write(f"var_{ast.varname} = ")
+            var = self.get_local_var(ast.value.type, ast.varname)
+            self.name_mapping[ast.varname] = var
+            self.file.write(f"{var} = ")
             self._emit_expression(ast.value)
         elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             self._emit_call(ast)
@@ -183,6 +186,15 @@ class _FunctionEmitter(_Emitter):
             self.file.write("decref(")
             self._emit_expression(ast.value)
             self.file.write(")")
+        elif isinstance(ast, tast.If):
+            self.file.write("if (")
+            self._emit_expression(ast.condition)
+            self.file.write(") {\n\t")
+            # FIXME: make variables visible outside if block
+            for statement in ast.body:
+                self._emit_statement(statement)
+            self.file.write("}\n\t")
+            return  # no semicolon
         elif isinstance(ast, tast.ReturnStatement):
             if ast.value is not None:
                 self.file.write("retval = ")
@@ -229,19 +241,19 @@ class _FunctionEmitter(_Emitter):
         self.file.write("{\n\t")
 
         # First figure out what temp vars are needed
-        assert not self.temp_vars
+        assert not self.local_vars
         actual_file = self.file
         with open(os.devnull, "w") as self.file:
             self._emit_body(self.c_name)
         self.file = actual_file
 
         # Add temporary vars
-        for vartype, name in self.temp_vars:
+        for vartype, name in self.local_vars:
             self._emit_type(vartype)
             self.file.write(f"{name};\n\t")
 
         # Run for real
-        self.temp_var_iter = iter(self.temp_vars)
+        self.local_var_iter = iter(self.local_vars)
         self._emit_body(self.c_name)
         self.file.write("\n}\n")
 
