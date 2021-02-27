@@ -90,11 +90,20 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     result: List[Union[uast.Expression, str]] = [
         _parse_expression_without_operators(token_iter)
     ]
-    while token_iter.peek() in {("op", "+"), ("op", "*")}:
-        result.append(_get_token(token_iter, "op")[1])
+    while token_iter.peek() in {
+        ("op", "+"),
+        ("op", "*"),
+        ("keyword", "and"),
+        ("keyword", "or"),
+    }:
+        result.append(_get_token(token_iter)[1])
         result.append(_parse_expression_without_operators(token_iter))
 
-    for op in ["*", "+"]:
+    # A common python beginner mistake is writing "a and b or c", thinking it
+    # means "a and (b or c)"
+    assert not ("and" in result and "or" in result), "ambiguous order of operations"
+
+    for op in ["*", "+", "and", "or"]:
         while op in result:
             where = result.index(op)
             lhs, the_op, rhs = result[where - 1 : where + 2]

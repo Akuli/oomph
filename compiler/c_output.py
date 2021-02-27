@@ -116,10 +116,16 @@ class _FunctionEmitter(_Emitter):
             self.file.write("((")
             self._emit_expression(ast.obj)
             self.file.write(f")->memb_{ast.attribute})")
-        elif isinstance(ast, tast.IntBinaryOperation) and ast.op in {"+", "-", "*"}:
+        elif isinstance(ast, tast.BinaryOperation) and ast.op in {
+            "+",
+            "-",
+            "*",
+            "and",
+            "or",
+        }:
             self.file.write("(")
             self._emit_expression(ast.lhs)
-            self.file.write(ast.op)
+            self.file.write({"and": "&&", "or": "||"}.get(ast.op, ast.op))
             self._emit_expression(ast.rhs)
             self.file.write(")")
         elif isinstance(ast, tast.GetMethod):

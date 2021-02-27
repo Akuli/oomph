@@ -53,7 +53,9 @@ class _BlockTyper:
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
             if lhs.type is INT and ast.op in {"+", "-", "*"} and rhs.type is INT:
-                return tast.IntBinaryOperation(INT, lhs, ast.op, rhs)
+                return tast.BinaryOperation(INT, lhs, ast.op, rhs)
+            if lhs.type is BOOL and ast.op in {"and", "or"} and rhs.type is BOOL:
+                return tast.BinaryOperation(BOOL, lhs, ast.op, rhs)
             raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]

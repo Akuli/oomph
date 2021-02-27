@@ -11,7 +11,7 @@ class Type:
 class _NamedType(Type):
     name: str
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name.upper()
 
 
