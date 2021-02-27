@@ -1,296 +1,271 @@
-# TODO: rewrite into a class?
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import Callable, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import more_itertools
 
 from compiler import untyped_ast as uast
 
-if TYPE_CHECKING:
-    _TokenIter = more_itertools.peekable[Tuple[str, str]]
-else:
-    _TokenIter = Any
 _T = TypeVar("_T")
 
 
-def _get_token(
-    token_iter: _TokenIter,
-    required_type: Optional[str] = None,
-    required_value: Optional[str] = None,
-) -> Tuple[str, str]:
-    tokentype, value = next(token_iter)
-    if required_type is not None:
-        assert tokentype == required_type, (
-            required_type,
-            required_value,
-            tokentype,
-            value,
-        )
-    if required_value is not None:
-        assert value == required_value, (
-            required_type,
-            required_value,
-            tokentype,
-            value,
-        )
-    return (tokentype, value)
+class _Parser:
+    def __init__(self, token_iter: 'more_itertools.peekable[Tuple[str, str]]'):
+        self.token_iter = token_iter
 
-
-def _parse_commasep_in_parens(
-    token_iter: _TokenIter, content_callback: Callable[[_TokenIter], _T]
-) -> List[_T]:
-    _get_token(token_iter, "op", "(")
-    result = []
-    if token_iter.peek() != ("op", ")"):
-        result.append(content_callback(token_iter))
-        while token_iter.peek() == ("op", ","):
-            _get_token(token_iter, "op", ",")
-            result.append(content_callback(token_iter))
-    _get_token(token_iter, "op", ")")
-    return result
-
-
-def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expression:
-    result: uast.Expression
-    if token_iter.peek()[0] == "identifier":
-        result = uast.GetVar(_get_token(token_iter, "identifier")[1])
-    elif token_iter.peek()[0] == "int":
-        result = uast.IntConstant(int(_get_token(token_iter, "int")[1]))
-    elif token_iter.peek()[0] == "float":
-        result = uast.FloatConstant(_get_token(token_iter, "float")[1])
-    elif token_iter.peek() == ("keyword", "new"):
-        _get_token(token_iter, "keyword", "new")
-        result = uast.Constructor(_parse_type(token_iter))
-    elif token_iter.peek() == ("op", "("):
-        _get_token(token_iter, "op", "(")
-        result = _parse_expression(token_iter)
-        _get_token(token_iter, "op", ")")
-    else:
-        raise NotImplementedError(token_iter.peek())
-
-    while True:
-        if token_iter.peek() == ("op", "("):
-            result = uast.Call(
-                result, _parse_commasep_in_parens(token_iter, _parse_expression)
+    def get_token(
+        self,
+        required_type: Optional[str] = None,
+        required_value: Optional[str] = None,
+    ) -> Tuple[str, str]:
+        tokentype, value = next(self.token_iter)
+        if required_type is not None:
+            assert tokentype == required_type, (
+                required_type,
+                required_value,
+                tokentype,
+                value,
             )
-        elif token_iter.peek() == ("op", "."):
-            _get_token(token_iter, "op", ".")
-            result = uast.GetAttribute(result, _get_token(token_iter, "identifier")[1])
-        else:
-            return result
+        if required_value is not None:
+            assert value == required_value, (
+                required_type,
+                required_value,
+                tokentype,
+                value,
+            )
+        return (tokentype, value)
 
-
-def _get_unary_operators(token_iter: _TokenIter) -> Iterator[Tuple[int, str]]:
-    while token_iter.peek() in {("keyword", "not"), ("op", "-")}:
-        yield (1, _get_token(token_iter)[1])
-
-
-def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
-    magic_list: List[Union[Tuple[int, str], uast.Expression]] = []
-    magic_list.extend(_get_unary_operators(token_iter))
-    magic_list.append(_parse_expression_without_operators(token_iter))
-
-    while token_iter.peek() in {
-        ("op", "+"),
-        ("op", "-"),
-        ("op", "*"),
-        ("op", "/"),
-        ("op", "=="),
-        ("op", "!="),
-        ("keyword", "and"),
-        ("keyword", "or"),
-    }:
-        magic_list.append((2, _get_token(token_iter)[1]))
-        magic_list.extend(_get_unary_operators(token_iter))
-        magic_list.append(_parse_expression_without_operators(token_iter))
-
-    # A common python beginner mistake is writing "a and b or c", thinking it
-    # means "a and (b or c)"
-    assert not ("and" in magic_list and "or" in magic_list)
-
-    # a==b==c is not supported yet
-    assert not any(
-        first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
-        for first, second in zip(magic_list, magic_list[2:])
-    )
-
-    # Disallow a--b and --a, require a-(-b) or -(-a)
-    assert not any(
-        first in [(1, "-"), (2, "-")] and second == (1, "-")
-        for first, second in zip(magic_list, magic_list[1:])
-    )
-
-    # each operator of a group is considered to have same precedence
-    for op_group in [
-        [(2, "*"), (2, "/")],
-        [(2, "+"), (2, "-"), (1, "-")],
-        [(2, "=="), (2, "!=")],
-        [(1, "not")],
-        [(2, "and"), (2, "or")],
-    ]:
-        while any(op in magic_list for op in op_group):
-            where = min(magic_list.index(op) for op in op_group if op in magic_list)
-            op = magic_list[where]
-            assert isinstance(op, tuple)
-            op_kind, op_string = op
-
-            if op_kind == 1:  # Unary operator
-                operand = magic_list[where + 1]
-                assert isinstance(operand, uast.Expression)
-                magic_list[where : where + 2] = [uast.UnaryOperator(op_string, operand)]
-            elif op_kind == 2:  # Binary operator
-                lhs = magic_list[where - 1]
-                rhs = magic_list[where + 1]
-                assert isinstance(lhs, uast.Expression)
-                assert isinstance(rhs, uast.Expression)
-                magic_list[where - 1 : where + 2] = [
-                    uast.BinaryOperator(lhs, op_string, rhs)
-                ]
-            else:
-                raise NotImplementedError(op_kind)
-
-    [expr] = magic_list
-    assert isinstance(expr, uast.Expression)
-    return expr
-
-
-def _parse_block(
-    token_iter: _TokenIter, callback: Callable[[_TokenIter], _T]
-) -> List[_T]:
-    _get_token(token_iter, "begin_block", ":")
-    result = []
-    while token_iter and token_iter.peek(None) != ("end_block", ""):
-        result.append(callback(token_iter))
-    _get_token(token_iter, "end_block", "")
-    return result
-
-
-def _parse_oneline_ish_statement(token_iter: _TokenIter) -> uast.Statement:
-    if token_iter.peek() == ("keyword", "let"):
-        _get_token(token_iter, "keyword", "let")
-        varname = _get_token(token_iter, "identifier")[1]
-        _get_token(token_iter, "op", "=")
-        value = _parse_expression(token_iter)
-        return uast.Let(varname, value)
-
-    if token_iter.peek() == ("keyword", "return"):
-        _get_token(token_iter, "keyword", "return")
-        if token_iter.peek() == ("op", "\n"):
-            return uast.Return(None)
-        return uast.Return(_parse_expression(token_iter))
-
-    if token_iter.peek() == ("keyword", "pass"):
-        _get_token(token_iter, "keyword", "pass")
-        return uast.Pass()
-
-    raise ValueError(token_iter.peek())
-
-
-def _parse_statement(token_iter: _TokenIter) -> uast.Statement:
-    if token_iter.peek() == ("keyword", "if"):
-        _get_token(token_iter, "keyword", "if")
-        condition = _parse_expression(token_iter)
-        body = _parse_block(token_iter, _parse_statement)
-        ifs = [(condition, body)]
-
-        while token_iter.peek() == ("keyword", "elif"):
-            _get_token(token_iter, "keyword", "elif")
-            condition = _parse_expression(token_iter)
-            body = _parse_block(token_iter, _parse_statement)
-            ifs.append((condition, body))
-
-        if token_iter.peek() == ("keyword", "else"):
-            _get_token(token_iter, "keyword", "else")
-            else_body = _parse_block(token_iter, _parse_statement)
-        else:
-            else_body = []
-
-        return uast.If(ifs, else_body)
-
-    if token_iter.peek() in {
-        ("keyword", "let"),
-        ("keyword", "return"),
-        ("keyword", "pass"),
-    }:
-        result = _parse_oneline_ish_statement(token_iter)
-        _get_token(token_iter, "op", "\n")
+    def parse_commasep_in_parens(self, content_callback: Callable[[], _T]) -> List[_T]:
+        self.get_token("op", "(")
+        result = []
+        if self.token_iter.peek() != ("op", ")"):
+            result.append(content_callback())
+            while self.token_iter.peek() == ("op", ","):
+                self.get_token("op", ",")
+                result.append(content_callback())
+        self.get_token("op", ")")
         return result
 
-    expr = _parse_expression(token_iter)
-    if isinstance(expr, uast.GetVar) and token_iter.peek(None) == ("op", "="):
-        _get_token(token_iter, "op", "=")
-        value = _parse_expression(token_iter)
-        _get_token(token_iter, "op", "\n")
-        return uast.Assign(expr.varname, value)
-
-    assert isinstance(expr, uast.Call), expr
-    _get_token(token_iter, "op", "\n")
-    return expr
-
-
-def _parse_type(token_iter: _TokenIter) -> str:
-    return _get_token(token_iter, "identifier")[1]
-
-
-def _parse_funcdef_arg(token_iter: _TokenIter) -> Tuple[str, str]:
-    type_name = _parse_type(token_iter)
-    arg_name = _get_token(token_iter, "identifier")[1]
-    return (type_name, arg_name)
-
-
-def _parse_function_or_method(token_iter: _TokenIter) -> uast.FuncDef:
-    name = _get_token(token_iter, "identifier")[1]
-    args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
-
-    _get_token(token_iter, "op", "->")
-    if token_iter.peek() == ("keyword", "void"):
-        returntype = None
-        _get_token(token_iter, "keyword", "void")
-    else:
-        returntype = _parse_type(token_iter)
-
-    return uast.FuncDef(
-        name, args, returntype, _parse_block(token_iter, _parse_statement)
-    )
-
-
-def _parse_method(token_iter: _TokenIter) -> uast.FuncDef:
-    _get_token(token_iter, "keyword", "meth")
-    return _parse_function_or_method(token_iter)
-
-
-def _parse_toplevel(token_iter: _TokenIter) -> uast.ToplevelStatement:
-    if token_iter.peek() == ("keyword", "func"):
-        _get_token(token_iter, "keyword", "func")
-        return _parse_function_or_method(token_iter)
-
-    if token_iter.peek() == ("keyword", "class"):
-        _get_token(token_iter, "keyword", "class")
-        name = _get_token(token_iter, "identifier")[1]
-        args = _parse_commasep_in_parens(token_iter, _parse_funcdef_arg)
-        if token_iter.peek(None) == ("begin_block", ":"):
-            body = _parse_block(token_iter, _parse_method)
+    def parse_expression_without_operators(self) -> uast.Expression:
+        result: uast.Expression
+        if self.token_iter.peek()[0] == "identifier":
+            result = uast.GetVar(self.get_token("identifier")[1])
+        elif self.token_iter.peek()[0] == "int":
+            result = uast.IntConstant(int(self.get_token("int")[1]))
+        elif self.token_iter.peek()[0] == "float":
+            result = uast.FloatConstant(self.get_token("float")[1])
+        elif self.token_iter.peek() == ("keyword", "new"):
+            self.get_token("keyword", "new")
+            result = uast.Constructor(self.parse_type())
+        elif self.token_iter.peek() == ("op", "("):
+            self.get_token("op", "(")
+            result = self.parse_expression()
+            self.get_token("op", ")")
         else:
-            body = []
-            _get_token(token_iter, "op", "\n")
-        return uast.ClassDef(name, args, body)
+            raise NotImplementedError(self.token_iter.peek())
 
-    raise NotImplementedError(token_iter.peek())
+        while True:
+            if self.token_iter.peek() == ("op", "("):
+                result = uast.Call(
+                    result, self.parse_commasep_in_parens(self.parse_expression)
+                )
+            elif self.token_iter.peek() == ("op", "."):
+                self.get_token("op", ".")
+                result = uast.GetAttribute(result, self.get_token("identifier")[1])
+            else:
+                return result
+
+    def get_unary_operators(self) -> Iterator[Tuple[int, str]]:
+        while self.token_iter.peek() in {("keyword", "not"), ("op", "-")}:
+            yield (1, self.get_token()[1])
+
+    def parse_expression(self) -> uast.Expression:
+        magic_list: List[Union[Tuple[int, str], uast.Expression]] = []
+        magic_list.extend(self.get_unary_operators())
+        magic_list.append(self.parse_expression_without_operators())
+
+        while self.token_iter.peek() in {
+            ("op", "+"),
+            ("op", "-"),
+            ("op", "*"),
+            ("op", "/"),
+            ("op", "=="),
+            ("op", "!="),
+            ("keyword", "and"),
+            ("keyword", "or"),
+        }:
+            magic_list.append((2, self.get_token()[1]))
+            magic_list.extend(self.get_unary_operators())
+            magic_list.append(self.parse_expression_without_operators())
+
+        # A common python beginner mistake is writing "a and b or c", thinking it
+        # means "a and (b or c)"
+        assert not ("and" in magic_list and "or" in magic_list)
+
+        # a==b==c is not supported yet
+        assert not any(
+            first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
+            for first, second in zip(magic_list, magic_list[2:])
+        )
+
+        # Disallow a--b and --a, require a-(-b) or -(-a)
+        assert not any(
+            first in [(1, "-"), (2, "-")] and second == (1, "-")
+            for first, second in zip(magic_list, magic_list[1:])
+        )
+
+        # each operator of a group is considered to have same precedence
+        for op_group in [
+            [(2, "*"), (2, "/")],
+            [(2, "+"), (2, "-"), (1, "-")],
+            [(2, "=="), (2, "!=")],
+            [(1, "not")],
+            [(2, "and"), (2, "or")],
+        ]:
+            while any(op in magic_list for op in op_group):
+                where = min(magic_list.index(op) for op in op_group if op in magic_list)
+                op = magic_list[where]
+                assert isinstance(op, tuple)
+                op_kind, op_string = op
+
+                if op_kind == 1:  # Unary operator
+                    operand = magic_list[where + 1]
+                    assert isinstance(operand, uast.Expression)
+                    magic_list[where : where + 2] = [
+                        uast.UnaryOperator(op_string, operand)
+                    ]
+                elif op_kind == 2:  # Binary operator
+                    lhs = magic_list[where - 1]
+                    rhs = magic_list[where + 1]
+                    assert isinstance(lhs, uast.Expression)
+                    assert isinstance(rhs, uast.Expression)
+                    magic_list[where - 1 : where + 2] = [
+                        uast.BinaryOperator(lhs, op_string, rhs)
+                    ]
+                else:
+                    raise NotImplementedError(op_kind)
+
+        [expr] = magic_list
+        assert isinstance(expr, uast.Expression)
+        return expr
+
+    def parse_block(self, callback: Callable[[], _T]) -> List[_T]:
+        self.get_token("begin_block", ":")
+        result = []
+        while self.token_iter and self.token_iter.peek(None) != ("end_block", ""):
+            result.append(callback())
+        self.get_token("end_block", "")
+        return result
+
+    def parse_oneline_ish_statement(self) -> uast.Statement:
+        if self.token_iter.peek() == ("keyword", "let"):
+            self.get_token("keyword", "let")
+            varname = self.get_token("identifier")[1]
+            self.get_token("op", "=")
+            value = self.parse_expression()
+            return uast.Let(varname, value)
+
+        if self.token_iter.peek() == ("keyword", "return"):
+            self.get_token("keyword", "return")
+            if self.token_iter.peek() == ("op", "\n"):
+                return uast.Return(None)
+            return uast.Return(self.parse_expression())
+
+        if self.token_iter.peek() == ("keyword", "pass"):
+            self.get_token("keyword", "pass")
+            return uast.Pass()
+
+        raise ValueError(self.token_iter.peek())
+
+    def parse_statement(self) -> uast.Statement:
+        if self.token_iter.peek() == ("keyword", "if"):
+            self.get_token("keyword", "if")
+            condition = self.parse_expression()
+            body = self.parse_block(self.parse_statement)
+            ifs = [(condition, body)]
+
+            while self.token_iter.peek() == ("keyword", "elif"):
+                self.get_token("keyword", "elif")
+                condition = self.parse_expression()
+                body = self.parse_block(self.parse_statement)
+                ifs.append((condition, body))
+
+            if self.token_iter.peek() == ("keyword", "else"):
+                self.get_token("keyword", "else")
+                else_body = self.parse_block(self.parse_statement)
+            else:
+                else_body = []
+
+            return uast.If(ifs, else_body)
+
+        if self.token_iter.peek() in {
+            ("keyword", "let"),
+            ("keyword", "return"),
+            ("keyword", "pass"),
+        }:
+            result = self.parse_oneline_ish_statement()
+            self.get_token("op", "\n")
+            return result
+
+        expr = self.parse_expression()
+        if isinstance(expr, uast.GetVar) and self.token_iter.peek(None) == ("op", "="):
+            self.get_token("op", "=")
+            value = self.parse_expression()
+            self.get_token("op", "\n")
+            return uast.Assign(expr.varname, value)
+
+        assert isinstance(expr, uast.Call), expr
+        self.get_token("op", "\n")
+        return expr
+
+    def parse_type(self) -> str:
+        return self.get_token("identifier")[1]
+
+    def parse_funcdef_arg(self) -> Tuple[str, str]:
+        type_name = self.parse_type()
+        arg_name = self.get_token("identifier")[1]
+        return (type_name, arg_name)
+
+    def parse_function_or_method(self) -> uast.FuncDef:
+        name = self.get_token("identifier")[1]
+        args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
+
+        self.get_token("op", "->")
+        if self.token_iter.peek() == ("keyword", "void"):
+            returntype = None
+            self.get_token("keyword", "void")
+        else:
+            returntype = self.parse_type()
+
+        return uast.FuncDef(
+            name, args, returntype, self.parse_block(self.parse_statement)
+        )
+
+    def parse_method(self) -> uast.FuncDef:
+        self.get_token("keyword", "meth")
+        return self.parse_function_or_method()
+
+    def parse_toplevel(self) -> uast.ToplevelStatement:
+        if self.token_iter.peek() == ("keyword", "func"):
+            self.get_token("keyword", "func")
+            return self.parse_function_or_method()
+
+        if self.token_iter.peek() == ("keyword", "class"):
+            self.get_token("keyword", "class")
+            name = self.get_token("identifier")[1]
+            args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
+            if self.token_iter.peek(None) == ("begin_block", ":"):
+                body = self.parse_block(self.parse_method)
+            else:
+                body = []
+                self.get_token("op", "\n")
+            return uast.ClassDef(name, args, body)
+
+        raise NotImplementedError(self.token_iter.peek())
 
 
 def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[uast.ToplevelStatement]:
     token_iter = more_itertools.peekable(tokens)
+    parser = _Parser(token_iter)
     result = []
     while token_iter:
-        result.append(_parse_toplevel(token_iter))
+        result.append(parser.parse_toplevel())
     return result
