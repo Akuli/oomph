@@ -1,4 +1,3 @@
-import copy
 import itertools
 from typing import Dict, List, Optional, Tuple, Union
 
@@ -45,34 +44,31 @@ class _BlockTyper:
             return call
         if isinstance(ast, uast.GetVar):
             if ast.varname == "true":
-                return tast.BoolConstant(BOOL, True)
+                return tast.BoolConstant(True)
             if ast.varname == "false":
-                return tast.BoolConstant(BOOL, False)
+                return tast.BoolConstant(False)
             return tast.GetVar(self.variables[ast.varname], ast.varname)
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
-                return tast.BoolNot(BOOL, obj)
+                return tast.BoolNot(obj)
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
             if lhs.type is INT and ast.op == "+" and rhs.type is INT:
-                return tast.IntAdd(INT, lhs, rhs)
+                return tast.IntAdd(lhs, rhs)
             if lhs.type is INT and ast.op == "-" and rhs.type is INT:
-                return tast.IntSub(INT, lhs, rhs)
+                return tast.IntSub(lhs, rhs)
             if lhs.type is INT and ast.op == "*" and rhs.type is INT:
-                return tast.IntMul(INT, lhs, rhs)
+                return tast.IntMul(lhs, rhs)
             if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
-                return tast.BoolAnd(BOOL, lhs, rhs)
+                return tast.BoolAnd(lhs, rhs)
             if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
                 # a or b = not ((not a) and (not b))
                 # avoiding BoolOr class makes for less code
                 return tast.BoolNot(
-                    BOOL,
-                    tast.BoolAnd(
-                        BOOL, tast.BoolNot(BOOL, lhs), tast.BoolNot(BOOL, rhs)
-                    ),
+                    tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)),
                 )
             raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
@@ -86,16 +82,10 @@ class _BlockTyper:
             )
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
-            if isinstance(obj.type, ClassType):
-                for the_type, name in obj.type.members:
-                    if name == ast.attribute:
-                        return tast.GetAttribute(the_type, obj, name)
-                for name, the_type in obj.type.methods.items():
-                    if name == ast.attribute:
-                        the_type = copy.copy(the_type)
-                        the_type.argtypes = the_type.argtypes[1:]
-                        return tast.GetMethod(the_type, obj, name)
-            raise LookupError(ast.attribute)
+            try:
+                return tast.GetAttribute(obj, ast.attribute)
+            except KeyError:
+                return tast.GetMethod(obj, ast.attribute)
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> Optional[tast.Statement]:

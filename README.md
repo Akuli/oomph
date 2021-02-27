@@ -6,10 +6,7 @@ python3 -m venv env
 pip install more_itertools black isort mypy pyflakes
 make
 ./test
-black compiler
-isort compiler
-mypy --strict compiler
-pyflakes compiler
+./lint
 ```
 
 Test script passes its argument to compiler, try e.g. `./test --valgrind`

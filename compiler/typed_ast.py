@@ -1,7 +1,8 @@
+import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import ClassType, FunctionType, Type
+from compiler.types import BOOL, INT, ClassType, FunctionType, Type
 
 
 @dataclass
@@ -24,11 +25,29 @@ class GetAttribute(Expression):
     obj: Expression
     attribute: str
 
+    def __init__(self, obj: Expression, attribute: str):
+        assert isinstance(obj.type, ClassType)
+        the_type = {name: the_type for the_type, name in obj.type.members}[attribute]
+        super().__init__(the_type)
+        self.obj = obj
+        self.attribute = attribute
+
 
 @dataclass
 class GetMethod(Expression):
     obj: Expression
     name: str
+
+    def __init__(self, obj: Expression, name: str):
+        assert isinstance(obj.type, ClassType)
+        the_type = copy.copy(obj.type.methods[name])  # shallow copy
+        self_type = the_type.argtypes[0]
+        assert self_type is obj.type
+        the_type.argtypes = the_type.argtypes[1:]  # don't modify in-place
+
+        super().__init__(the_type)
+        self.obj = obj
+        self.name = name
 
 
 @dataclass
@@ -40,23 +59,35 @@ class IntConstant(Expression):
 class BoolConstant(Expression):
     value: bool
 
-
-@dataclass
-class IntAdd(Expression):
-    lhs: Expression
-    rhs: Expression
+    def __init__(self, value: bool):
+        super().__init__(BOOL)
+        self.value = value
 
 
 @dataclass
-class IntSub(Expression):
+class _IntBinOp(Expression):
     lhs: Expression
     rhs: Expression
 
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(INT)
+        self.lhs = lhs
+        self.rhs = rhs
 
-@dataclass
-class IntMul(Expression):
-    lhs: Expression
-    rhs: Expression
+
+@dataclass(init=False)
+class IntAdd(_IntBinOp):
+    pass
+
+
+@dataclass(init=False)
+class IntSub(_IntBinOp):
+    pass
+
+
+@dataclass(init=False)
+class IntMul(_IntBinOp):
+    pass
 
 
 @dataclass
@@ -64,10 +95,19 @@ class BoolAnd(Expression):
     lhs: Expression
     rhs: Expression
 
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(BOOL)
+        self.lhs = lhs
+        self.rhs = rhs
+
 
 @dataclass
 class BoolNot(Expression):
     obj: Expression
+
+    def __init__(self, obj: Expression):
+        super().__init__(BOOL)
+        self.obj = obj
 
 
 @dataclass
