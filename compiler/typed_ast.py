@@ -226,7 +226,7 @@ class SetRef(Expression):
 
 
 @dataclass
-class DecRefObject(Statement):
+class DecRef(Statement):
     value: Expression
 
 

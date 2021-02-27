@@ -191,7 +191,7 @@ class _FunctionEmitter(_Emitter):
         elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             self._emit_call(ast)
 
-        elif isinstance(ast, tast.DecRefObject):
+        elif isinstance(ast, tast.DecRef):
             var = self.get_local_var(ast.value.type, "decreffing_var")
             self.file.write(f"{var} = ")
             self._emit_expression(ast.value)

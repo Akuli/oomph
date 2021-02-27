@@ -126,7 +126,7 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.Call):
             result = self.do_call(ast)
             if isinstance(result, tast.SetRef):
-                return [tast.DecRefObject(result.value)]
+                return [tast.DecRef(result.value)]
             return [result]
         if isinstance(ast, uast.Let):
             assert ast.varname not in self.variables
