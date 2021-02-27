@@ -175,7 +175,7 @@ class _FunctionEmitter(_Emitter):
             raise NotImplementedError(ast)
 
     def _emit_statement(self, ast: tast.Statement) -> None:
-        if isinstance(ast, tast.LetStatement):
+        if isinstance(ast, tast.Let):
             var = self.get_local_var(ast.value.type, ast.varname)
             self.name_mapping[ast.varname] = var
             self.file.write(f"{var} = ")
@@ -195,7 +195,7 @@ class _FunctionEmitter(_Emitter):
                 self._emit_statement(statement)
             self.file.write("}\n\t")
             return  # no semicolon
-        elif isinstance(ast, tast.ReturnStatement):
+        elif isinstance(ast, tast.Return):
             if ast.value is not None:
                 self.file.write("retval = ")
                 self._emit_expression(ast.value)

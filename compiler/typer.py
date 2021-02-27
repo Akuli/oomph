@@ -34,6 +34,57 @@ class _FunctionOrMethodTyper:
             return tast.SetRef(result.type, refname, result)
         return result
 
+    def do_binary_op(self, ast: uast.BinaryOperator) -> tast.Expression:
+        if ast.op == "!=":
+            return tast.BoolNot(
+                self.do_binary_op(uast.BinaryOperator(ast.lhs, "==", ast.rhs))
+            )
+
+        lhs = self.do_expression(ast.lhs)
+        rhs = self.do_expression(ast.rhs)
+
+        if lhs.type is INT and ast.op == "+" and rhs.type is INT:
+            return tast.NumberAdd(INT, lhs, rhs)
+        if lhs.type is INT and ast.op == "-" and rhs.type is INT:
+            return tast.NumberSub(INT, lhs, rhs)
+        if lhs.type is INT and ast.op == "*" and rhs.type is INT:
+            return tast.NumberMul(INT, lhs, rhs)
+
+        if lhs.type is INT and ast.op == "/" and rhs.type is INT:
+            lhs = tast.IntToFloat(lhs)
+            rhs = tast.IntToFloat(rhs)
+        if lhs.type is INT and rhs.type is FLOAT:
+            lhs = tast.IntToFloat(lhs)
+        if lhs.type is FLOAT and rhs.type is INT:
+            rhs = tast.IntToFloat(rhs)
+
+        if lhs.type is FLOAT and ast.op == "+" and rhs.type is FLOAT:
+            return tast.NumberAdd(FLOAT, lhs, rhs)
+        if lhs.type is FLOAT and ast.op == "-" and rhs.type is FLOAT:
+            return tast.NumberSub(FLOAT, lhs, rhs)
+        if lhs.type is FLOAT and ast.op == "*" and rhs.type is FLOAT:
+            return tast.NumberMul(FLOAT, lhs, rhs)
+        if lhs.type is FLOAT and ast.op == "/" and rhs.type is FLOAT:
+            return tast.FloatDiv(lhs, rhs)
+
+        if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
+            return tast.BoolAnd(lhs, rhs)
+        if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
+            return tast.BoolOr(lhs, rhs)
+
+        if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
+            return tast.BoolOr(
+                tast.BoolAnd(lhs, rhs),
+                tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)),
+            )
+        if lhs.type is INT and ast.op == "==" and rhs.type is INT:
+            return tast.NumberEqual(lhs, rhs)
+        if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:
+            # Float equality sucks, but maybe it can be useful for something
+            return tast.NumberEqual(lhs, rhs)
+
+        raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
+
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
@@ -58,56 +109,7 @@ class _FunctionOrMethodTyper:
                 return tast.NumberNegation(obj.type, obj)
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
-            # TODO: separate method
-            if ast.op == "!=":
-                return tast.BoolNot(
-                    self.do_expression(uast.BinaryOperator(ast.lhs, "==", ast.rhs))
-                )
-
-            lhs = self.do_expression(ast.lhs)
-            rhs = self.do_expression(ast.rhs)
-
-            if lhs.type is INT and ast.op == "+" and rhs.type is INT:
-                return tast.NumberAdd(INT, lhs, rhs)
-            if lhs.type is INT and ast.op == "-" and rhs.type is INT:
-                return tast.NumberSub(INT, lhs, rhs)
-            if lhs.type is INT and ast.op == "*" and rhs.type is INT:
-                return tast.NumberMul(INT, lhs, rhs)
-
-            if lhs.type is INT and ast.op == "/" and rhs.type is INT:
-                lhs = tast.IntToFloat(lhs)
-                rhs = tast.IntToFloat(rhs)
-            if lhs.type is INT and rhs.type is FLOAT:
-                lhs = tast.IntToFloat(lhs)
-            if lhs.type is FLOAT and rhs.type is INT:
-                rhs = tast.IntToFloat(rhs)
-
-            if lhs.type is FLOAT and ast.op == "+" and rhs.type is FLOAT:
-                return tast.NumberAdd(FLOAT, lhs, rhs)
-            if lhs.type is FLOAT and ast.op == "-" and rhs.type is FLOAT:
-                return tast.NumberSub(FLOAT, lhs, rhs)
-            if lhs.type is FLOAT and ast.op == "*" and rhs.type is FLOAT:
-                return tast.NumberMul(FLOAT, lhs, rhs)
-            if lhs.type is FLOAT and ast.op == "/" and rhs.type is FLOAT:
-                return tast.FloatDiv(lhs, rhs)
-
-            if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
-                return tast.BoolAnd(lhs, rhs)
-            if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
-                return tast.BoolOr(lhs, rhs)
-
-            if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
-                return tast.BoolOr(
-                    tast.BoolAnd(lhs, rhs),
-                    tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)),
-                )
-            if lhs.type is INT and ast.op == "==" and rhs.type is INT:
-                return tast.NumberEqual(lhs, rhs)
-            if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:
-                # Float equality sucks, but maybe it can be useful for something
-                return tast.NumberEqual(lhs, rhs)
-
-            raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
+            return self.do_binary_op(ast)
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
             assert isinstance(klass, ClassType)
@@ -126,15 +128,15 @@ class _FunctionOrMethodTyper:
             if isinstance(result, tast.SetRef):
                 return tast.DecRefObject(result.value)
             return result
-        if isinstance(ast, uast.LetStatement):
+        if isinstance(ast, uast.Let):
             assert ast.varname not in self.variables
             value = self.do_expression(ast.value)
             self.variables[ast.varname] = value.type
-            return tast.LetStatement(ast.varname, value)
-        if isinstance(ast, uast.PassStatement):
+            return tast.Let(ast.varname, value)
+        if isinstance(ast, uast.Pass):
             return None
-        if isinstance(ast, uast.ReturnStatement):
-            return tast.ReturnStatement(
+        if isinstance(ast, uast.Return):
+            return tast.Return(
                 None if ast.value is None else self.do_expression(ast.value)
             )
         if isinstance(ast, uast.If):

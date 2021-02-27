@@ -59,18 +59,18 @@ class Call(Expression, Statement):
 
 
 @dataclass
-class LetStatement(Statement):
+class Let(Statement):
     varname: str
     value: Expression
 
 
 @dataclass
-class ReturnStatement(Statement):
+class Return(Statement):
     value: Optional[Expression]
 
 
 @dataclass
-class PassStatement(Statement):
+class Pass(Statement):
     pass
 
 

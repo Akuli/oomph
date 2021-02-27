@@ -186,16 +186,16 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
         _get_token(token_iter, "keyword", "let")
         varname = _get_token(token_iter, "var")[1]
         _get_token(token_iter, "op", "=")
-        result = uast.LetStatement(varname, _parse_expression(token_iter))
+        result = uast.Let(varname, _parse_expression(token_iter))
     elif token_iter.peek() == ("keyword", "return"):
         _get_token(token_iter, "keyword", "return")
         if token_iter.peek() == ("op", "\n"):
-            result = uast.ReturnStatement(None)
+            result = uast.Return(None)
         else:
-            result = uast.ReturnStatement(_parse_expression(token_iter))
+            result = uast.Return(_parse_expression(token_iter))
     elif token_iter.peek() == ("keyword", "pass"):
         _get_token(token_iter, "keyword", "pass")
-        result = uast.PassStatement()
+        result = uast.Pass()
     elif token_iter.peek() == ("keyword", "if"):
         _get_token(token_iter, "keyword", "if")
         condition = _parse_expression(token_iter)

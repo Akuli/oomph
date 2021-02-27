@@ -175,15 +175,14 @@ class ReturningCall(Expression, Statement):
     args: List[Expression]
 
 
-# TODO: rename things to not be FooStatement or FooExpression
 @dataclass
-class LetStatement(Statement):
+class Let(Statement):
     varname: str
     value: Expression
 
 
 @dataclass
-class ReturnStatement(Statement):
+class Return(Statement):
     value: Optional[Expression]
 
 
