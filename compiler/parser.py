@@ -101,6 +101,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
 
     while token_iter.peek() in {
         ("op", "+"),
+        ("op", "-"),
         ("op", "*"),
         ("op", "/"),
         ("keyword", "and"),
@@ -115,7 +116,7 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
     assert not ("and" in magic_list and "or" in magic_list)
 
     # each operator of a group is considered to have same precedence
-    for op_group in [["*", "/"], ["+"], ["not"], ["and", "or"]]:
+    for op_group in [["*", "/"], ["+", "-"], ["not"], ["and", "or"]]:
         while any(op in magic_list for op in op_group):
             where = min(magic_list.index(op) for op in op_group if op in magic_list)
             op = magic_list[where]
