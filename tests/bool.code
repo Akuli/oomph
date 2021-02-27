@@ -1,0 +1,3 @@
+func main() -> void:
+    print_bool(true)
+    print_bool(false)

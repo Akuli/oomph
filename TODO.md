@@ -5,7 +5,7 @@ Bugs:
 Missing features:
 - operators `+ - * /`
 - floats
-- booleans
+- boolean and, or, not
 - if, for, while
 - strings and other arrays
 - non-ref-counted pass-by-value classes

@@ -37,6 +37,11 @@ class IntConstant(Expression):
 
 
 @dataclass
+class BoolConstant(Expression):
+    value: bool
+
+
+@dataclass
 class VoidCall(Statement):
     func: Expression
     args: List[Expression]

@@ -13,6 +13,7 @@ class _NamedType(Type):
 
 
 INT = _NamedType(False, "int")
+BOOL = _NamedType(False, "bool")
 
 
 @dataclass

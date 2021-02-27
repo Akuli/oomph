@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
-from compiler.types import INT, ClassType, FunctionType, Type
+from compiler.types import BOOL, INT, ClassType, FunctionType, Type
 
 _ref_names = (f"ref{n}" for n in itertools.count())
 
@@ -23,7 +23,7 @@ class _BlockTyper:
         args = [self.do_expression(arg) for arg in ast.args]
         assert len(args) == len(func.type.argtypes)
         for arg, argtype in zip(args, func.type.argtypes):
-            assert arg.type == argtype
+            assert arg.type == argtype, (arg.type, argtype)
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
@@ -44,6 +44,10 @@ class _BlockTyper:
             assert not isinstance(call, tast.VoidCall)
             return call
         if isinstance(ast, uast.GetVar):
+            if ast.varname == "true":
+                return tast.BoolConstant(BOOL, True)
+            if ast.varname == "false":
+                return tast.BoolConstant(BOOL, False)
             return tast.GetVar(self.variables[ast.varname], ast.varname)
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
@@ -163,6 +167,7 @@ def convert_program(
     variables: Dict[str, Type] = {
         "add": FunctionType(False, [INT, INT], INT),
         "print_int": FunctionType(False, [INT], None),
+        "print_bool": FunctionType(False, [BOOL], None),
     }
     return [
         _do_toplevel_statement(variables, types, toplevel_statement)

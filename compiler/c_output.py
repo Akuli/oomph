@@ -12,7 +12,7 @@ from typing import (
 )
 
 import compiler.typed_ast as tast
-from compiler.types import INT, ClassType, Type
+from compiler.types import BOOL, INT, ClassType, Type
 
 _T = TypeVar("_T")
 
@@ -39,6 +39,8 @@ class _Emitter:
     def _emit_type(self, the_type: Optional[Type]) -> None:
         if the_type is INT:
             self.file.write("int64_t ")
+        elif the_type is BOOL:
+            self.file.write("bool ")
         elif isinstance(the_type, ClassType):
             self.file.write(f"struct class_{the_type.name} *")
         elif the_type is None:
@@ -98,6 +100,8 @@ class _FunctionEmitter(_Emitter):
     def _emit_expression(self, ast: tast.Expression) -> None:
         if isinstance(ast, tast.IntConstant):
             self.file.write(f"((int64_t){ast.value}LL)")
+        elif isinstance(ast, tast.BoolConstant):
+            self.file.write("true" if ast.value else "false")
         elif isinstance(ast, tast.ReturningCall):
             self._emit_call(ast)
         elif isinstance(ast, tast.GetVar):
