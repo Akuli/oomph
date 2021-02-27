@@ -89,8 +89,8 @@ class FuncDef(ToplevelStatement):
 
 @dataclass
 class If(Statement):
-    condition: Expression
-    body: List[Statement]
+    ifs_and_elifs: List[Tuple[Expression, List[Statement]]]  # never empty list
+    else_block: List[Statement]
 
 
 @dataclass

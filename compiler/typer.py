@@ -140,10 +140,16 @@ class _FunctionOrMethodTyper:
                 None if ast.value is None else self.do_expression(ast.value)
             )
         if isinstance(ast, uast.If):
-            condition = self.do_expression(ast.condition)
+            untyped_condition, untyped_body = ast.ifs_and_elifs[0]
+            condition = self.do_expression(untyped_condition)
             assert condition.type is BOOL
-            body = self.do_block(ast.body)
-            return tast.If(condition, body)
+            body = self.do_block(untyped_body)
+
+            if len(ast.ifs_and_elifs) >= 2:
+                otherwise = [uast.If(ast.ifs_and_elifs[1:], ast.else_block)]
+            else:
+                otherwise = ast.else_block
+            return tast.If(condition, body, self.do_block(otherwise))
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:

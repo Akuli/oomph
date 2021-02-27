@@ -187,27 +187,42 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
         varname = _get_token(token_iter, "var")[1]
         _get_token(token_iter, "op", "=")
         result = uast.Let(varname, _parse_expression(token_iter))
-    elif token_iter.peek() == ("keyword", "return"):
+        _get_token(token_iter, "op", "\n")
+        return result
+
+    if token_iter.peek() == ("keyword", "return"):
         _get_token(token_iter, "keyword", "return")
         if token_iter.peek() == ("op", "\n"):
             result = uast.Return(None)
         else:
             result = uast.Return(_parse_expression(token_iter))
-    elif token_iter.peek() == ("keyword", "pass"):
+        _get_token(token_iter, "op", "\n")
+        return result
+
+    if token_iter.peek() == ("keyword", "pass"):
         _get_token(token_iter, "keyword", "pass")
         result = uast.Pass()
-    elif token_iter.peek() == ("keyword", "if"):
+        _get_token(token_iter, "op", "\n")
+        return result
+
+    if token_iter.peek() == ("keyword", "if"):
         _get_token(token_iter, "keyword", "if")
         condition = _parse_expression(token_iter)
         body = _parse_statement_block(token_iter)
-        return uast.If(condition, body)
-    else:
-        call = _parse_expression(token_iter)
-        assert isinstance(call, uast.Call), call
-        result = call
+        ifs = [(condition, body)]
 
+        while token_iter.peek() == ("keyword", "elif"):
+            _get_token(token_iter, "keyword", "elif")
+            condition = _parse_expression(token_iter)
+            body = _parse_statement_block(token_iter)
+            ifs.append((condition, body))
+
+        return uast.If(ifs, [])
+
+    call = _parse_expression(token_iter)
+    assert isinstance(call, uast.Call), call
     _get_token(token_iter, "op", "\n")
-    return result
+    return call
 
 
 def _parse_type(token_iter: _TokenIter) -> str:

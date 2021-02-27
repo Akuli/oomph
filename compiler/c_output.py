@@ -190,8 +190,10 @@ class _FunctionEmitter(_Emitter):
             self.file.write("if (")
             self._emit_expression(ast.condition)
             self.file.write(") {\n\t")
-            # FIXME: make variables visible outside if block
-            for statement in ast.body:
+            for statement in ast.then:
+                self._emit_statement(statement)
+            self.file.write("} else {\n\t")
+            for statement in ast.otherwise:
                 self._emit_statement(statement)
             self.file.write("}\n\t")
             return  # no semicolon

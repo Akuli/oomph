@@ -189,7 +189,8 @@ class Return(Statement):
 @dataclass
 class If(Statement):
     condition: Expression
-    body: List[Statement]
+    then: List[Statement]
+    otherwise: List[Statement]
 
 
 @dataclass
