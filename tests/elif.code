@@ -5,6 +5,8 @@ func foo(int x) -> void:
         print_int(222)
     elif x == 1:  # never runs
         print_int(666)
+    else:
+        print_int(1234)
 
 func main() -> void:
     foo(1)

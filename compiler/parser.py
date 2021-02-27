@@ -217,7 +217,13 @@ def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
             body = _parse_statement_block(token_iter)
             ifs.append((condition, body))
 
-        return uast.If(ifs, [])
+        if token_iter.peek() == ("keyword", "else"):
+            _get_token(token_iter, "keyword", "else")
+            else_body = _parse_statement_block(token_iter)
+        else:
+            else_body = []
+
+        return uast.If(ifs, else_body)
 
     call = _parse_expression(token_iter)
     assert isinstance(call, uast.Call), call
