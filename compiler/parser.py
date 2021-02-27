@@ -67,6 +67,10 @@ def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expressi
     elif token_iter.peek() == ("keyword", "new"):
         _get_token(token_iter, "keyword", "new")
         result = uast.Constructor(_parse_type(token_iter))
+    elif token_iter.peek() == ("op", "("):
+        _get_token(token_iter, "op", "(")
+        result = _parse_expression(token_iter)
+        _get_token(token_iter, "op", ")")
     else:
         raise NotImplementedError(token_iter.peek())
 
