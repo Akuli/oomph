@@ -1,5 +1,5 @@
 import itertools
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
@@ -138,20 +138,13 @@ class _FunctionOrMethodTyper:
             vartype = self.variables[ast.varname]
             value = self.do_expression(ast.value)
             assert value.type is vartype
-
-            if vartype.refcounted:
-                return [
-                    tast.DecRefObject(tast.GetVar(vartype, ast.varname)),
-                    tast.SetLocalVar(ast.varname, value),
-                ]
-            return tast.SetLocalVar(ast.varname, value)
             return [tast.SetLocalVar(ast.varname, value)]
         if isinstance(ast, uast.Pass):
             return []
         if isinstance(ast, uast.Return):
-            return [tast.Return(
-                None if ast.value is None else self.do_expression(ast.value)
-            )]
+            if ast.value is None:
+                return [tast.Return(None)]
+            return [tast.Return(self.do_expression(ast.value))]
         if isinstance(ast, uast.If):
             untyped_condition, untyped_body = ast.ifs_and_elifs[0]
             condition = self.do_expression(untyped_condition)
@@ -159,10 +152,12 @@ class _FunctionOrMethodTyper:
             body = self.do_block(untyped_body)
 
             if len(ast.ifs_and_elifs) >= 2:
-                otherwise = [uast.If(ast.ifs_and_elifs[1:], ast.else_block)]
+                otherwise = self.do_statement(
+                    uast.If(ast.ifs_and_elifs[1:], ast.else_block)
+                )
             else:
-                otherwise = ast.else_block
-            return [tast.If(condition, body, self.do_block(otherwise))]
+                otherwise = self.do_block(ast.else_block)
+            return [tast.If(condition, body, otherwise)]
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:

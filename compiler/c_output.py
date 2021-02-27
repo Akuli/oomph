@@ -177,20 +177,26 @@ class _FunctionEmitter(_Emitter):
     def _emit_statement(self, ast: tast.Statement) -> None:
         if isinstance(ast, tast.CreateLocalVar):
             var = self.get_local_var(ast.value.type, ast.varname)
-            self.name_mapping[ast.varname] = var
+            if ast.varname in self.name_mapping:
+                assert self.name_mapping[ast.varname] == var
+            else:
+                self.name_mapping[ast.varname] = var
             self.file.write(f"{var} = ")
             self._emit_expression(ast.value)
+
         elif isinstance(ast, tast.SetLocalVar):
-            var = self.get_local_var(ast.value.type, ast.varname)
-            self.name_mapping[ast.varname] = var
-            self.file.write(f"{var} = ")
+            self.file.write(f"{self.name_mapping[ast.varname]} = ")
             self._emit_expression(ast.value)
+
         elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             self._emit_call(ast)
+
         elif isinstance(ast, tast.DecRefObject):
-            self.file.write("decref(")
+            var = self.get_local_var(ast.value.type, "decreffing_var")
+            self.file.write(f"{var} = ")
             self._emit_expression(ast.value)
-            self.file.write(")")
+            self.file.write(f"; if({var}) decref({var})")
+
         elif isinstance(ast, tast.If):
             self.file.write("if (")
             self._emit_expression(ast.condition)
@@ -202,6 +208,7 @@ class _FunctionEmitter(_Emitter):
                 self._emit_statement(statement)
             self.file.write("}\n\t")
             return  # no semicolon
+
         elif isinstance(ast, tast.Return):
             if ast.value is not None:
                 self.file.write("retval = ")
