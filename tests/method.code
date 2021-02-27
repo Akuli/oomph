@@ -5,7 +5,7 @@ class Point(int x, int y):
         print_int(self.y)
 
     meth add(Point other) -> Point:
-        return new Point(add(self.x, other.x), add(self.y, other.y))
+        return new Point(self.x + other.x, self.y + other.y)
 
 
 func main() -> void:

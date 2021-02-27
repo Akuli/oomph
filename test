@@ -34,7 +34,7 @@ for file in tests/*.code; do
                 fail=$((fail+1))
             fi
         else
-            echo "========== ERROR"
+            echo "========== ERROR in $file"
             fail=$((fail+1))
         fi
     fi

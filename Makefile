@@ -24,3 +24,4 @@ obj/compile_info.txt:
 clean:
 	rm -rvf obj test.out
 	find -name .compiler-cache -exec rm -rvf {} +
+	find -name __pycache__ -exec rm -rvf {} +

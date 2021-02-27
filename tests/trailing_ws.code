@@ -11,10 +11,10 @@
 func main() -> void:
     # The following line has trailing whitespace too:
       
-    add(1, 2)
+    print_int(1)
     # And the following line:
           
-    add(3, 4)
+    print_int(2)
 
     # And the following two lines:
         

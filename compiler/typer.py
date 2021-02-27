@@ -197,7 +197,6 @@ def convert_program(
 ) -> List[tast.ToplevelStatement]:
     types: Dict[str, Type] = {"int": INT}
     variables: Dict[str, Type] = {
-        "add": FunctionType([INT, INT], INT),  # TODO: delete
         "print_int": FunctionType([INT], None),
         "print_bool": FunctionType([BOOL], None),
         "print_float": FunctionType([FLOAT], None),
