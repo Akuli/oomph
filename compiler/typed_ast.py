@@ -42,16 +42,32 @@ class BoolConstant(Expression):
 
 
 @dataclass
-class UnaryOperator(Expression):
-    op: str
-    obj: Expression
+class IntAdd(Expression):
+    lhs: Expression
+    rhs: Expression
 
 
 @dataclass
-class BinaryOperator(Expression):
+class IntSub(Expression):
     lhs: Expression
-    op: str
     rhs: Expression
+
+
+@dataclass
+class IntMul(Expression):
+    lhs: Expression
+    rhs: Expression
+
+
+@dataclass
+class BoolAnd(Expression):
+    lhs: Expression
+    rhs: Expression
+
+
+@dataclass
+class BoolNot(Expression):
+    obj: Expression
 
 
 @dataclass

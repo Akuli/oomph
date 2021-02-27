@@ -52,15 +52,23 @@ class _BlockTyper:
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
-                return tast.UnaryOperator(BOOL, "not", obj)
+                return tast.BoolNot(BOOL, obj)
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
-            if lhs.type is INT and ast.op in {"+", "-", "*"} and rhs.type is INT:
-                return tast.BinaryOperator(INT, lhs, ast.op, rhs)
-            if lhs.type is BOOL and ast.op in {"and", "or"} and rhs.type is BOOL:
-                return tast.BinaryOperator(BOOL, lhs, ast.op, rhs)
+            if lhs.type is INT and ast.op == "+" and rhs.type is INT:
+                return tast.IntAdd(INT, lhs, rhs)
+            if lhs.type is INT and ast.op == "-" and rhs.type is INT:
+                return tast.IntSub(INT, lhs, rhs)
+            if lhs.type is INT and ast.op == "*" and rhs.type is INT:
+                return tast.IntMul(INT, lhs, rhs)
+            if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
+                return tast.BoolAnd(BOOL, lhs, rhs)
+            if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
+                # a or b = not ((not a) and (not b))
+                # avoiding BoolOr class makes for less code
+                return tast.BoolNot(BOOL, tast.BoolAnd(BOOL, tast.BoolNot(BOOL, lhs), tast.BoolNot(BOOL, rhs)))
             raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
