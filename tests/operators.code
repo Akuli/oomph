@@ -2,4 +2,5 @@ func main() -> void:
     print_int(1 + 2*3)
     print_int((1 + 2)*3)
     print_float((1 + 2.0)*3)
-    print_float(0.25)   # TODO: 1/4
+    print_float(1/4)
+    print_float(20*3/5*7)

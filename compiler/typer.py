@@ -65,6 +65,9 @@ class _BlockTyper:
             if lhs.type is INT and ast.op == "*" and rhs.type is INT:
                 return tast.NumberMul(INT, lhs, rhs)
 
+            if lhs.type is INT and ast.op == "/" and rhs.type is INT:
+                lhs = tast.IntToFloat(lhs)
+                rhs = tast.IntToFloat(rhs)
             if lhs.type is INT and rhs.type is FLOAT:
                 lhs = tast.IntToFloat(lhs)
             if lhs.type is FLOAT and rhs.type is INT:
@@ -76,6 +79,8 @@ class _BlockTyper:
                 return tast.NumberSub(FLOAT, lhs, rhs)
             if lhs.type is FLOAT and ast.op == "*" and rhs.type is FLOAT:
                 return tast.NumberMul(FLOAT, lhs, rhs)
+            if lhs.type is FLOAT and ast.op == "/" and rhs.type is FLOAT:
+                return tast.FloatDiv(lhs, rhs)
 
             if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
                 return tast.BoolAnd(lhs, rhs)

@@ -105,6 +105,19 @@ class NumberMul(Expression):
 
 
 @dataclass
+class FloatDiv(Expression):
+    lhs: Expression
+    rhs: Expression
+
+    def __init__(self, lhs: Expression, rhs: Expression):
+        assert lhs.type is FLOAT
+        assert rhs.type is FLOAT
+        super().__init__(FLOAT)
+        self.lhs = lhs
+        self.rhs = rhs
+
+
+@dataclass
 class BoolAnd(Expression):
     lhs: Expression
     rhs: Expression

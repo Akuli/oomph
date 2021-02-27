@@ -125,7 +125,14 @@ class _FunctionEmitter(_Emitter):
             self._emit_expression(ast.value)
             self.file.write(")")
         elif isinstance(
-            ast, (tast.NumberAdd, tast.NumberSub, tast.NumberMul, tast.BoolAnd)
+            ast,
+            (
+                tast.NumberAdd,
+                tast.NumberSub,
+                tast.NumberMul,
+                tast.FloatDiv,
+                tast.BoolAnd,
+            ),
         ):
             self.file.write("(")
             self._emit_expression(ast.lhs)
@@ -135,6 +142,8 @@ class _FunctionEmitter(_Emitter):
                 self.file.write("-")
             elif isinstance(ast, tast.NumberMul):
                 self.file.write("*")
+            elif isinstance(ast, tast.FloatDiv):
+                self.file.write("/")
             elif isinstance(ast, tast.BoolAnd):
                 self.file.write("&&")
             else:
