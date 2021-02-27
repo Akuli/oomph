@@ -96,8 +96,10 @@ class If(Statement):
     else_block: List[Statement]
 
 
+# for init; cond; incr:
+#    body
 @dataclass
-class For(Statement):
+class Loop(Statement):
     init: Optional[Statement]
     cond: Optional[Expression]
     incr: Optional[Statement]

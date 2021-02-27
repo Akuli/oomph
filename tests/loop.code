@@ -9,3 +9,8 @@ func main() -> void:
         if j == 8:
             break
         print_int(j)
+
+    let k = 0
+    while k != 5:
+        print_int(k)
+        k = k+1

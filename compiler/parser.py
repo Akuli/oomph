@@ -234,7 +234,13 @@ class _Parser:
                 else self.parse_oneline_ish_statement()
             )
             body = self.parse_block(self.parse_statement)
-            return uast.For(init, cond, incr, body)
+            return uast.Loop(init, cond, incr, body)
+
+        if self.token_iter.peek() == ("keyword", "while"):
+            self.get_token("keyword", "while")
+            cond = self.parse_expression()
+            body = self.parse_block(self.parse_statement)
+            return uast.Loop(None, cond, None, body)
 
         result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")

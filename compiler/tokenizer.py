@@ -21,6 +21,7 @@ _TOKEN_REGEX = r"""
         | elif
         | else
         | for
+        | while
         | continue
         | break
     ) \b
@@ -49,6 +50,7 @@ _TOKEN_REGEX = r"""
 )
 | (?P<error> . )
 """
+
 
 def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
     if not code.endswith("\n"):

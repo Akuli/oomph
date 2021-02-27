@@ -172,7 +172,7 @@ class _FunctionOrMethodTyper:
                 otherwise = self.do_block(ast.else_block)
             return [tast.If(condition, body, otherwise)]
 
-        if isinstance(ast, uast.For):
+        if isinstance(ast, uast.Loop):
             init = [] if ast.init is None else self.do_statement(ast.init)
             cond = (
                 tast.BoolConstant(True)
