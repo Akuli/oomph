@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
-from compiler.types import BOOL, INT, ClassType, FunctionType, Type
+from compiler.types import BOOL, FLOAT, INT, ClassType, FunctionType, Type
 
 _ref_names = (f"ref{n}" for n in itertools.count())
 
@@ -37,7 +37,9 @@ class _BlockTyper:
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
-            return tast.IntConstant(INT, ast.value)
+            return tast.IntConstant(ast.value)
+        if isinstance(ast, uast.FloatConstant):
+            return tast.FloatConstant(ast.value)
         if isinstance(ast, uast.Call):
             call = self.do_call(ast)
             assert not isinstance(call, tast.VoidCall)
@@ -57,11 +59,24 @@ class _BlockTyper:
             lhs = self.do_expression(ast.lhs)
             rhs = self.do_expression(ast.rhs)
             if lhs.type is INT and ast.op == "+" and rhs.type is INT:
-                return tast.IntAdd(lhs, rhs)
+                return tast.NumberAdd(INT, lhs, rhs)
             if lhs.type is INT and ast.op == "-" and rhs.type is INT:
-                return tast.IntSub(lhs, rhs)
+                return tast.NumberSub(INT, lhs, rhs)
             if lhs.type is INT and ast.op == "*" and rhs.type is INT:
-                return tast.IntMul(lhs, rhs)
+                return tast.NumberMul(INT, lhs, rhs)
+
+            if lhs.type is INT and rhs.type is FLOAT:
+                lhs = tast.IntToFloat(lhs)
+            if lhs.type is FLOAT and rhs.type is INT:
+                rhs = tast.IntToFloat(rhs)
+
+            if lhs.type is FLOAT and ast.op == "+" and rhs.type is FLOAT:
+                return tast.NumberAdd(FLOAT, lhs, rhs)
+            if lhs.type is FLOAT and ast.op == "-" and rhs.type is FLOAT:
+                return tast.NumberSub(FLOAT, lhs, rhs)
+            if lhs.type is FLOAT and ast.op == "*" and rhs.type is FLOAT:
+                return tast.NumberMul(FLOAT, lhs, rhs)
+
             if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
                 return tast.BoolAnd(lhs, rhs)
             if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
@@ -184,6 +199,7 @@ def convert_program(
         "add": FunctionType(False, [INT, INT], INT),
         "print_int": FunctionType(False, [INT], None),
         "print_bool": FunctionType(False, [BOOL], None),
+        "print_float": FunctionType(False, [FLOAT], None),
     }
     return [
         _do_toplevel_statement(variables, types, toplevel_statement)

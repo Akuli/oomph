@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import BOOL, INT, ClassType, FunctionType, Type
+from compiler.types import BOOL, FLOAT, INT, ClassType, FunctionType, Type
 
 
 @dataclass
@@ -54,6 +54,10 @@ class GetMethod(Expression):
 class IntConstant(Expression):
     value: int
 
+    def __init__(self, value: int):
+        super().__init__(INT)
+        self.value = value
+
 
 @dataclass
 class BoolConstant(Expression):
@@ -65,29 +69,39 @@ class BoolConstant(Expression):
 
 
 @dataclass
-class _IntBinOp(Expression):
+class FloatConstant(Expression):
+    value: str
+
+    def __init__(self, value: str):
+        super().__init__(FLOAT)
+        self.value = value
+
+
+@dataclass
+class IntToFloat(Expression):
+    value: Expression
+
+    def __init__(self, value: Expression):
+        super().__init__(FLOAT)
+        self.value = value
+
+
+@dataclass
+class NumberAdd(Expression):
     lhs: Expression
     rhs: Expression
 
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(INT)
-        self.lhs = lhs
-        self.rhs = rhs
+
+@dataclass
+class NumberSub(Expression):
+    lhs: Expression
+    rhs: Expression
 
 
-@dataclass(init=False)
-class IntAdd(_IntBinOp):
-    pass
-
-
-@dataclass(init=False)
-class IntSub(_IntBinOp):
-    pass
-
-
-@dataclass(init=False)
-class IntMul(_IntBinOp):
-    pass
+@dataclass
+class NumberMul(Expression):
+    lhs: Expression
+    rhs: Expression
 
 
 @dataclass

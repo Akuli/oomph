@@ -3,8 +3,7 @@ Bugs:
 - new refs are not created in every case where they should be
 
 Missing features:
-- operators `+ - * /`
-- floats
+- division
 - if, for, while
 - strings and other arrays
 - non-ref-counted pass-by-value classes

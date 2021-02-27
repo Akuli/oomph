@@ -10,6 +10,8 @@
 
 void var_print_int(int64_t x);
 void var_print_bool(bool b);
+void var_print_float(double d);
+
 int64_t var_add(int64_t x, int64_t y);
 void incref(void *ptr);
 void decref(void *ptr);

@@ -12,7 +12,7 @@ from typing import (
 )
 
 import compiler.typed_ast as tast
-from compiler.types import BOOL, INT, ClassType, Type
+from compiler.types import BOOL, FLOAT, INT, ClassType, Type
 
 _T = TypeVar("_T")
 
@@ -39,6 +39,8 @@ class _Emitter:
     def _emit_type(self, the_type: Optional[Type]) -> None:
         if the_type is INT:
             self.file.write("int64_t ")
+        elif the_type is FLOAT:
+            self.file.write("double ")
         elif the_type is BOOL:
             self.file.write("bool ")
         elif isinstance(the_type, ClassType):
@@ -100,6 +102,8 @@ class _FunctionEmitter(_Emitter):
     def _emit_expression(self, ast: tast.Expression) -> None:
         if isinstance(ast, tast.IntConstant):
             self.file.write(f"((int64_t){ast.value}LL)")
+        elif isinstance(ast, tast.FloatConstant):
+            self.file.write(f"({ast.value})")
         elif isinstance(ast, tast.BoolConstant):
             self.file.write("true" if ast.value else "false")
         elif isinstance(ast, tast.ReturningCall):
@@ -116,14 +120,20 @@ class _FunctionEmitter(_Emitter):
             self.file.write("((")
             self._emit_expression(ast.obj)
             self.file.write(f")->memb_{ast.attribute})")
-        elif isinstance(ast, (tast.IntAdd, tast.IntSub, tast.IntMul, tast.BoolAnd)):
+        elif isinstance(ast, tast.IntToFloat):
+            self.file.write("((float)")
+            self._emit_expression(ast.value)
+            self.file.write(")")
+        elif isinstance(
+            ast, (tast.NumberAdd, tast.NumberSub, tast.NumberMul, tast.BoolAnd)
+        ):
             self.file.write("(")
             self._emit_expression(ast.lhs)
-            if isinstance(ast, tast.IntAdd):
+            if isinstance(ast, tast.NumberAdd):
                 self.file.write("+")
-            elif isinstance(ast, tast.IntSub):
+            elif isinstance(ast, tast.NumberSub):
                 self.file.write("-")
-            elif isinstance(ast, tast.IntMul):
+            elif isinstance(ast, tast.NumberMul):
                 self.file.write("*")
             elif isinstance(ast, tast.BoolAnd):
                 self.file.write("&&")

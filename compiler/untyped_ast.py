@@ -30,6 +30,11 @@ class IntConstant(Expression):
 
 
 @dataclass
+class FloatConstant(Expression):
+    value: str  # not converted to float in case python's float does something weird
+
+
+@dataclass
 class UnaryOperator(Expression):
     op: str
     obj: Expression

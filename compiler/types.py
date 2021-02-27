@@ -17,6 +17,7 @@ class _NamedType(Type):
 
 INT = _NamedType(False, "int")
 BOOL = _NamedType(False, "bool")
+FLOAT = _NamedType(False, "float")
 
 
 @dataclass

@@ -65,6 +65,8 @@ def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expressi
         result = uast.GetVar(_get_token(token_iter, "var")[1])
     elif token_iter.peek()[0] == "int":
         result = uast.IntConstant(int(_get_token(token_iter, "int")[1]))
+    elif token_iter.peek()[0] == "float":
+        result = uast.FloatConstant(_get_token(token_iter, "float")[1])
     elif token_iter.peek() == ("keyword", "new"):
         _get_token(token_iter, "keyword", "new")
         result = uast.Constructor(_parse_type(token_iter))

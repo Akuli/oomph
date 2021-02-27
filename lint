@@ -1,3 +1,4 @@
+#!/bin/sh
 black compiler
 isort compiler
 mypy compiler
