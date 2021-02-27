@@ -9,6 +9,3 @@ Missing features:
 - if, for, while
 - strings and other arrays
 - non-ref-counted pass-by-value classes
-
-Messiness:
-- `int` should be called `Int` since it's a type

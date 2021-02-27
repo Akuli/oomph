@@ -1,4 +1,4 @@
-class Point(int x, int y):
+class Point(Int x, Int y):
 
     meth print() -> void:
         print_int(self.x)
