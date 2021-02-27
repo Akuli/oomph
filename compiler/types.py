@@ -11,6 +11,9 @@ class Type:
 class _NamedType(Type):
     name: str
 
+    def __repr__(self):
+        return self.name.upper()
+
 
 INT = _NamedType(False, "int")
 BOOL = _NamedType(False, "bool")

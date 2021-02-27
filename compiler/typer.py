@@ -49,6 +49,12 @@ class _BlockTyper:
             if ast.varname == "false":
                 return tast.BoolConstant(BOOL, False)
             return tast.GetVar(self.variables[ast.varname], ast.varname)
+        if isinstance(ast, uast.BinaryOperator):
+            lhs = self.do_expression(ast.lhs)
+            rhs = self.do_expression(ast.rhs)
+            if lhs.type is INT and ast.op in {"+", "-", "*"} and rhs.type is INT:
+                return tast.IntBinaryOperation(INT, lhs, ast.op, rhs)
+            raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
             assert isinstance(klass, ClassType)

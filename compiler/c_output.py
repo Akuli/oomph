@@ -116,9 +116,17 @@ class _FunctionEmitter(_Emitter):
             self.file.write("((")
             self._emit_expression(ast.obj)
             self.file.write(f")->memb_{ast.attribute})")
+        elif isinstance(ast, tast.IntBinaryOperation) and ast.op in {"+", "-", "*"}:
+            self.file.write("(")
+            self._emit_expression(ast.lhs)
+            self.file.write(ast.op)
+            self._emit_expression(ast.rhs)
+            self.file.write(")")
         elif isinstance(ast, tast.GetMethod):
             # This should return some kind of partial function, which isn't possible yet
-            raise NotImplementedError
+            raise NotImplementedError(
+                "method objects without immediately calling don't work yet"
+            )
         else:
             raise NotImplementedError(ast)
 

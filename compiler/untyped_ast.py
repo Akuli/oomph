@@ -30,6 +30,13 @@ class IntConstant(Expression):
 
 
 @dataclass
+class BinaryOperator(Expression):
+    lhs: Expression
+    op: str
+    rhs: Expression
+
+
+@dataclass
 class Constructor(Expression):
     type: str
 

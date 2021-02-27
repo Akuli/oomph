@@ -42,6 +42,13 @@ class BoolConstant(Expression):
 
 
 @dataclass
+class IntBinaryOperation(Expression):
+    lhs: Expression
+    op: str
+    rhs: Expression
+
+
+@dataclass
 class VoidCall(Statement):
     func: Expression
     args: List[Expression]

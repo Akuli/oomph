@@ -7,6 +7,7 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
+    Union,
 )
 
 import more_itertools
@@ -57,7 +58,7 @@ def _parse_commasep_in_parens(
     return result
 
 
-def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
+def _parse_expression_without_operators(token_iter: _TokenIter) -> uast.Expression:
     result: uast.Expression
     if token_iter.peek()[0] == "var":
         result = uast.GetVar(_get_token(token_iter, "var")[1])
@@ -79,6 +80,26 @@ def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
             result = uast.GetAttribute(result, _get_token(token_iter, "var")[1])
         else:
             return result
+
+
+def _parse_expression(token_iter: _TokenIter) -> uast.Expression:
+    result: List[Union[uast.Expression, str]] = [
+        _parse_expression_without_operators(token_iter)
+    ]
+    while token_iter.peek() in {("op", "+"), ("op", "*")}:
+        result.append(_get_token(token_iter, "op")[1])
+        result.append(_parse_expression_without_operators(token_iter))
+
+    for op in ["*", "+"]:
+        while op in result:
+            where = result.index(op)
+            lhs, the_op, rhs = result[where - 1 : where + 2]
+            assert isinstance(lhs, uast.Expression) and isinstance(rhs, uast.Expression)
+            result[where - 1 : where + 2] = [uast.BinaryOperator(lhs, op, rhs)]
+
+    [expr] = result
+    assert isinstance(expr, uast.Expression)
+    return expr
 
 
 def _parse_statement(token_iter: _TokenIter) -> Optional[uast.Statement]:
