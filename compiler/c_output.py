@@ -247,6 +247,9 @@ class _FunctionEmitter(_Emitter):
             # Can't use C's continue because continue must run condition
             self.file.write(f"goto {ast.loop_id};\n\t")
 
+        elif isinstance(ast, tast.Break):
+            self.file.write("break;\n\t")
+
         else:
             raise NotImplementedError(ast)
 

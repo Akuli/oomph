@@ -6,4 +6,6 @@ func main() -> void:
     for let j=0; j != 10; j=j+1:
         if j == 5 or j == 6:
             continue
+        if j == 8:
+            break
         print_int(j)

@@ -193,6 +193,11 @@ class Continue(Statement):
 
 
 @dataclass
+class Break(Statement):
+    loop_id: str
+
+
+@dataclass
 class Return(Statement):
     value: Optional[Expression]
 

@@ -180,6 +180,10 @@ class _Parser:
             self.get_token("keyword", "continue")
             return uast.Continue()
 
+        if self.token_iter.peek() == ("keyword", "break"):
+            self.get_token("keyword", "break")
+            return uast.Break()
+
         expr = self.parse_expression()
         if isinstance(expr, uast.GetVar) and self.token_iter.peek(None) == ("op", "="):
             self.get_token("op", "=")

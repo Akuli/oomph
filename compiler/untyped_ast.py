@@ -81,6 +81,11 @@ class Continue(Statement):
 
 
 @dataclass
+class Break(Statement):
+    pass
+
+
+@dataclass
 class Return(Statement):
     value: Optional[Expression]
 

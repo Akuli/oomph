@@ -150,6 +150,9 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.Continue):
             return [tast.Continue(self.loop_stack[-1])]
 
+        if isinstance(ast, uast.Break):
+            return [tast.Break(self.loop_stack[-1])]
+
         if isinstance(ast, uast.Return):
             if ast.value is None:
                 return [tast.Return(None)]
