@@ -53,6 +53,7 @@ class _Emitter:
 
 
 class _FunctionEmitter(_Emitter):
+    name_mapping: Dict[str, str]  # values are names in c
     loop_counter: int
 
     def __init__(self, file: IO[str], c_name: str, funcdef: tast.FuncDef):
@@ -62,7 +63,11 @@ class _FunctionEmitter(_Emitter):
 
         self.local_vars: List[Tuple[Type, str]] = []
         self.local_var_iter: Optional[Iterator[Tuple[Type, str]]] = None
-        self.name_mapping: Dict[str, str] = {}  # values are names in c
+
+    # This thing goes over function ast twice, resetting before each pass
+    def reset(self) -> None:
+        self.name_mapping = {}
+        self.loop_counter = 0
 
     def get_local_var(self, the_type: Type, name_hint: str) -> str:
         if self.local_var_iter is None:
@@ -179,10 +184,8 @@ class _FunctionEmitter(_Emitter):
     def _emit_statement(self, ast: tast.Statement) -> None:
         if isinstance(ast, tast.CreateLocalVar):
             var = self.get_local_var(ast.value.type, ast.varname)
-            if ast.varname in self.name_mapping:
-                assert self.name_mapping[ast.varname] == var
-            else:
-                self.name_mapping[ast.varname] = var
+            assert ast.varname not in self.name_mapping
+            self.name_mapping[ast.varname] = var
             self.file.write(f"{var} = ")
             self._emit_expression(ast.value)
             self.file.write(";\n\t")
@@ -273,7 +276,7 @@ class _FunctionEmitter(_Emitter):
         self.file.write("{\n\t")
 
         # First figure out what temp vars are needed
-        self.loop_counter = 0
+        self.reset()
         assert not self.local_vars
         actual_file = self.file
         with open(os.devnull, "w") as self.file:
@@ -286,7 +289,7 @@ class _FunctionEmitter(_Emitter):
             self.file.write(f"{name};\n\t")
 
         # Run for real
-        self.loop_counter = 0
+        self.reset()
         self.local_var_iter = iter(self.local_vars)
         self._emit_body(self.c_name)
         self.file.write("\n}\n")
