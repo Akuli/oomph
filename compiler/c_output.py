@@ -129,7 +129,8 @@ class _FunctionEmitter(_Emitter):
                 self.file.write("&&")
             else:
                 raise NotImplementedError
-            self._emit_expression(ast.rhs)
+            # https://github.com/python/mypy/issues/10146
+            self._emit_expression(ast.rhs)  # type: ignore
             self.file.write(")")
         elif isinstance(ast, tast.BoolNot):
             self.file.write("(!")

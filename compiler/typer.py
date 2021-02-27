@@ -68,7 +68,12 @@ class _BlockTyper:
             if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
                 # a or b = not ((not a) and (not b))
                 # avoiding BoolOr class makes for less code
-                return tast.BoolNot(BOOL, tast.BoolAnd(BOOL, tast.BoolNot(BOOL, lhs), tast.BoolNot(BOOL, rhs)))
+                return tast.BoolNot(
+                    BOOL,
+                    tast.BoolAnd(
+                        BOOL, tast.BoolNot(BOOL, lhs), tast.BoolNot(BOOL, rhs)
+                    ),
+                )
             raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
