@@ -5,12 +5,11 @@ Bugs:
 Missing features:
 - implicit int to float conversion: `print_float(2)`
 - chained equalities `a == b == c`
-- if, for, while
+- if
+- for
+- while
 - strings
 - generics
     - arrays
     - optionals
 - non-ref-counted pass-by-value classes
-
-Messiness:
-- `int` should be called `Int` since it's a type

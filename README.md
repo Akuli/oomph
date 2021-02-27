@@ -16,4 +16,6 @@ Type `python3 -m compiler foo.code` to compile and run `foo.code`.
 
 ## The language
 
+- Compiles to C, aims to be high-level but faster than Python
+- See example files in `tests` to get started
 - Refcounted types are named `LikeThis`, non-refcounted pass-by-value types `like_this`
