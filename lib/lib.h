@@ -12,6 +12,11 @@ void var_print_int(int64_t x);
 void var_print_bool(bool b);
 void var_print_float(double d);
 
+int64_t meth_float_floor(double d);
+int64_t meth_float_ceil(double d);
+int64_t meth_float_truncate(double d);
+int64_t meth_float_round(double d);
+
 void incref(void *ptr);
 void decref(void *ptr);
 

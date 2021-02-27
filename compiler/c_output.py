@@ -92,7 +92,6 @@ class _FunctionEmitter(_Emitter):
             self.file.write("), ")
 
         if isinstance(ast.func, tast.GetMethod):
-            assert isinstance(ast.func.obj.type, ClassType)
             self.file.write(f"meth_{ast.func.obj.type.name}_{ast.func.name}")
         else:
             self._emit_expression(ast.func)

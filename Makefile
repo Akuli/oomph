@@ -8,6 +8,7 @@ CFLAGS += -Wno-unused-parameter
 CFLAGS += -Wno-unused-variable
 CFLAGS += -Wno-unused-label
 CFLAGS += -g
+LDFLAGS += -lm
 
 SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)

@@ -39,11 +39,10 @@ class GetMethod(Expression):
     name: str
 
     def __init__(self, obj: Expression, name: str):
-        assert isinstance(obj.type, ClassType)
         the_type = copy.copy(obj.type.methods[name])  # shallow copy
         self_type = the_type.argtypes[0]
         assert self_type is obj.type
-        the_type.argtypes = the_type.argtypes[1:]  # don't modify in-place
+        the_type.argtypes = the_type.argtypes[1:]  # don't modify argtypes list in-place
 
         super().__init__(the_type)
         self.obj = obj

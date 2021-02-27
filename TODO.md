@@ -3,7 +3,6 @@ Bugs:
 - new refs are not created in every case where they should be
 
 Missing features:
-- float to int conversion
 - implicit int to float conversion: `print_float(2)`
 - if, for, while
 - strings and other arrays

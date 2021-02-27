@@ -100,9 +100,9 @@ class _BlockTyper:
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
             try:
-                return tast.GetAttribute(obj, ast.attribute)
-            except KeyError:
                 return tast.GetMethod(obj, ast.attribute)
+            except KeyError:
+                return tast.GetAttribute(obj, ast.attribute)
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> Optional[tast.Statement]:
@@ -172,7 +172,7 @@ def _do_toplevel_statement(
         return _do_funcdef(variables, types, top_statement, create_variable=True)
 
     if isinstance(top_statement, uast.ClassDef):
-        classtype = ClassType(True, {}, top_statement.name, [])
+        classtype = ClassType(top_statement.name, True, {}, [])
         assert top_statement.name not in types
         types[top_statement.name] = classtype
         classtype.members.extend(

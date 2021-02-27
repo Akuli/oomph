@@ -4,21 +4,12 @@ from typing import Dict, List, Optional, Tuple
 
 @dataclass
 class Type:
+    name: str
     refcounted: bool
     methods: Dict[str, "FunctionType"]
 
-
-@dataclass
-class _NamedType(Type):
-    name: str
-
     def __repr__(self) -> str:
-        return self.name.upper()
-
-
-INT = _NamedType(False, {}, "int")
-BOOL = _NamedType(False, {}, "bool")
-FLOAT = _NamedType(False, {}, "float")
+        return f"<{type(self).__name__}: {self.name}>"
 
 
 @dataclass
@@ -27,14 +18,23 @@ class FunctionType(Type):
     returntype: Optional[Type]
 
     def __init__(self, argtypes: List[Type], returntype: Optional[Type]):
-        super().__init__(False, {})
+        super().__init__("function", False, {})
         self.argtypes = argtypes
         self.returntype = returntype
 
 
+INT = Type("int", False, {})
+BOOL = Type("bool", False, {})
+FLOAT = Type("float", False, {})
+
+FLOAT.methods["floor"] = FunctionType([FLOAT], INT)
+FLOAT.methods["ceil"] = FunctionType([FLOAT], INT)
+FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
+FLOAT.methods["round"] = FunctionType([FLOAT], INT)
+
+
 @dataclass
 class ClassType(Type):
-    name: str
     members: List[Tuple[Type, str]]
 
     def get_constructor_type(self) -> FunctionType:

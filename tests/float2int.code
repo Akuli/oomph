@@ -1,0 +1,18 @@
+func main() -> void:
+    print_int(1.23.floor())
+    print_int((-1.23).floor())
+    print_int(1.23.ceil())
+    print_int((-1.23).ceil())
+    print_int(1.23.truncate())
+    print_int((-1.23).truncate())
+    print_int(1.23.round())
+    print_int((-1.23).round())
+
+    print_int(4.56.floor())
+    print_int((-4.56).floor())
+    print_int(4.56.ceil())
+    print_int((-4.56).ceil())
+    print_int(4.56.truncate())
+    print_int((-4.56).truncate())
+    print_int(4.56.round())
+    print_int((-4.56).round())
