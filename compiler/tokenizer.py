@@ -3,23 +3,58 @@ from typing import Iterator, Tuple
 
 import more_itertools
 
-_TOKEN_REGEX = (
-    r"(?P<keyword>\b(let|func|meth|void|class|new|return|pass|and|or|not|if|elif|else|for|continue|break)\b)|"
-    r"(?P<identifier>[A-Za-z_][A-Za-z0-9_]*)|"
-    r"(?P<float>([1-9][0-9]*|0)\.[0-9]+)|"
-    r"(?P<int>[1-9][0-9]*|0)|"
-    r"(?P<op>==|!=|->|[=+\-*/(),\n:\.;])|"
-    r"(?P<indent>(?<=\n) +(?=[^ #\n]))|"
-    r"(?P<ignore>(?<=[\S\s]) |#.*)|"
-    r"(?P<error>.)"
+_TOKEN_REGEX = r"""
+(?P<keyword>
+    \b (
+        let
+        | func
+        | meth
+        | void
+        | class
+        | new
+        | return
+        | pass
+        | and
+        | or
+        | not
+        | if
+        | elif
+        | else
+        | for
+        | continue
+        | break
+    ) \b
 )
-
+| (?P<identifier>
+    [A-Za-z_] [A-Za-z0-9_]*
+)
+| (?P<float>
+    ( [1-9][0-9]* | 0 ) \. [0-9]+
+)
+| (?P<int>
+    [1-9][0-9]* | 0
+)
+| (?P<op>
+    == | != | -> | = | \+ | - | \* | / | \( | \) | , | \n | : | \. | ;
+)
+| (?P<indent>
+    # Spaces in beginning of some line other than first line
+    # Must be followed by something else than comment or more space
+    (?<=\n) [ ]+ (?=[^ #\n])
+)
+| (?P<ignore>
+    # Ignore space not in start of file
+    # Ignore comments
+    (?<=[\S\s])[ ] | [#].*
+)
+| (?P<error> . )
+"""
 
 def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
     if not code.endswith("\n"):
         code += "\n"
 
-    for match in re.finditer(_TOKEN_REGEX, code):
+    for match in re.finditer(_TOKEN_REGEX, code, flags=re.VERBOSE):
         tokentype = match.lastgroup
         assert tokentype is not None
         value = match.group()
