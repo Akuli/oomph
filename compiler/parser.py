@@ -1,7 +1,8 @@
-from typing import Callable, Iterable, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import more_itertools
 
+from compiler import tokenizer
 from compiler import untyped_ast as uast
 
 _T = TypeVar("_T")
@@ -294,8 +295,8 @@ class _Parser:
         raise NotImplementedError(self.token_iter.peek())
 
 
-def parse_file(tokens: Iterable[Tuple[str, str]]) -> List[uast.ToplevelStatement]:
-    token_iter = more_itertools.peekable(tokens)
+def parse_file(code: str) -> List[uast.ToplevelStatement]:
+    token_iter = more_itertools.peekable(tokenizer.tokenize(code))
     parser = _Parser(token_iter)
     result = []
     while token_iter:

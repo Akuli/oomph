@@ -9,7 +9,7 @@ import subprocess
 import sys
 from typing import IO, Any
 
-from compiler import c_output, parser, tokenizer, typer
+from compiler import c_output, parser, typer
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 
@@ -43,8 +43,7 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
 def produce_c_code(args: Any, dest: IO[str]) -> None:
     with args.infile:
         code = args.infile.read()
-    tokens = tokenizer.tokenize(code)
-    untyped_ast = parser.parse_file(tokens)
+    untyped_ast = parser.parse_file(code)
     typed_ast = typer.convert_program(untyped_ast)
     c_code = c_output.run(typed_ast)
     dest.write(c_code)

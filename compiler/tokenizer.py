@@ -36,7 +36,10 @@ _TOKEN_REGEX = r"""
     [1-9][0-9]* | 0
 )
 | (?P<string>
-    " [^"\n\\]* "
+    " (
+        [^{}"\n\\]          # Non-special character
+        | { [^{}"\n\\]* }   # Code between braces
+    )* "
 )
 | (?P<op>
     == | != | -> | = | \+ | - | \* | / | \( | \) | , | \n | : | \. | ;
