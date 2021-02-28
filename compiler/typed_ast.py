@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import FLOAT, INT, STRING, ClassType, FunctionType, Type
+from compiler.types import FLOAT, INT, STRING, FunctionType, Type
 
 
 @dataclass
@@ -29,7 +29,6 @@ class GetAttribute(Expression):
     attribute: str
 
     def __init__(self, obj: Expression, attribute: str):
-        assert isinstance(obj.type, ClassType)
         the_type = {name: the_type for the_type, name in obj.type.members}[attribute]
         super().__init__(the_type)
         self.obj = obj
@@ -157,7 +156,7 @@ class FuncDef(ToplevelStatement):
 
 @dataclass
 class ClassDef(ToplevelStatement):
-    type: ClassType
+    type: Type
     body: List[FuncDef]
 
 
@@ -174,4 +173,4 @@ class DecRef(Statement):
 
 @dataclass
 class Constructor(Expression):
-    class_to_construct: ClassType
+    class_to_construct: Type

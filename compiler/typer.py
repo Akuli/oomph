@@ -8,7 +8,6 @@ from compiler.types import (
     FLOAT,
     INT,
     STRING,
-    ClassType,
     FunctionType,
     Type,
     builtin_types,
@@ -199,7 +198,6 @@ class _FunctionOrMethodTyper:
             return self.do_binary_op(ast)
         if isinstance(ast, uast.Constructor):
             klass = self.types[ast.type]
-            assert isinstance(klass, ClassType)
             return tast.Constructor(klass.get_constructor_type(), klass)
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
@@ -324,13 +322,14 @@ def _do_toplevel_statement(
         return _do_funcdef(variables, types, top_statement, create_variable=True)
 
     if isinstance(top_statement, uast.ClassDef):
-        classtype = ClassType(top_statement.name, True, {}, [])
+        classtype = Type(top_statement.name, True)
         assert top_statement.name not in types
         types[top_statement.name] = classtype
         classtype.members.extend(
             (types[typename], membername)
             for typename, membername in top_statement.members
         )
+        classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
 
         typed_method_defs = []
         for method_def in top_statement.body:

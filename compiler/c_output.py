@@ -5,7 +5,7 @@ import string
 from typing import Dict, List, Optional, TypeVar, Union
 
 import compiler.typed_ast as tast
-from compiler.types import BOOL, FLOAT, INT, STRING, ClassType, Type
+from compiler.types import BOOL, FLOAT, INT, STRING, Type
 
 _T = TypeVar("_T")
 
