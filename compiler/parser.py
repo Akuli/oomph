@@ -123,6 +123,7 @@ class _Parser:
             ("op", "!="),
             ("keyword", "and"),
             ("keyword", "or"),
+            ("keyword", "mod"),
         }:
             magic_list.append((2, self.get_token()[1]))
             magic_list.extend(self.get_unary_operators())
@@ -149,6 +150,7 @@ class _Parser:
             [(2, "*"), (2, "/")],
             [(2, "+"), (2, "-"), (1, "-")],
             [(2, "=="), (2, "!=")],
+            [(2, "mod")],
             [(1, "not")],
             [(2, "and"), (2, "or")],
         ]:

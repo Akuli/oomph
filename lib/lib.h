@@ -46,6 +46,7 @@ void decref(void *ptr);
 #define int2float(x) ((double)(x))
 #define int_add(a, b) ((a)+(b))
 #define int_eq(a, b) ((a)==(b))
+int64_t int_mod(int64_t a, int64_t b);
 #define int_mul(a, b) ((a)*(b))
 #define int_neg(a) (-(a))
 #define int_sub(a, b) ((a)-(b))

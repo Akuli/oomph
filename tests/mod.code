@@ -1,0 +1,13 @@
+func main() -> void:
+    print((7 mod 5).to_string())
+    print((2 mod 5).to_string())
+    print((-3 mod 5).to_string())
+    print((-8 mod 5).to_string())
+
+    print((7 mod -5).to_string())
+    print((2 mod -5).to_string())
+    print((-3 mod -5).to_string())
+    print((-8 mod -5).to_string())
+
+    print((0 mod 5).to_string())
+    print((0 mod -5).to_string())

@@ -8,6 +8,8 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - rethink how to name classes (`Str` and `int` feels weird)
+- print automatic to_string
+- float mod
 - generics
     - optionals
     - arrays

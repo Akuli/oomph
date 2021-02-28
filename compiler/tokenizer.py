@@ -14,6 +14,7 @@ _TOKEN_REGEX = r"""
         | new
         | return
         | pass
+        | mod
         | and
         | or
         | not

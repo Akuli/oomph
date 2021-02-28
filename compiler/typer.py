@@ -30,6 +30,7 @@ _special_funcs = {
     "int2float": FunctionType([INT], FLOAT),
     "int_add": FunctionType([INT, INT], INT),
     "int_eq": FunctionType([INT, INT], BOOL),
+    "int_mod": FunctionType([INT, INT], INT),
     "int_mul": FunctionType([INT, INT], INT),
     "int_neg": FunctionType([INT], INT),
     "int_sub": FunctionType([INT, INT], INT),
@@ -100,9 +101,15 @@ class _FunctionOrMethodTyper:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_returning_call("string_concat", [lhs, rhs])
 
-        if lhs.type is INT and ast.op in {"+", "-", "*"} and rhs.type is INT:
+        if lhs.type is INT and ast.op in {"+", "-", "*", "mod"} and rhs.type is INT:
             return self.create_special_returning_call(
-                {"+": "int_add", "-": "int_sub", "*": "int_mul"}[ast.op], [lhs, rhs]
+                {
+                    "+": "int_add",
+                    "-": "int_sub",
+                    "*": "int_mul",
+                    "mod": "int_mod",
+                }[ast.op],
+                [lhs, rhs],
             )
 
         if lhs.type is INT and ast.op == "/" and rhs.type is INT:
