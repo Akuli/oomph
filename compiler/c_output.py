@@ -6,22 +6,21 @@ from compiler.types import BOOL, FLOAT, INT, ClassType, Type
 _T = TypeVar("_T")
 
 
-class _Emitter:
-    def _emit_type(self, the_type: Optional[Type]) -> str:
-        if the_type is INT:
-            return "int64_t"
-        if the_type is FLOAT:
-            return "double"
-        if the_type is BOOL:
-            return "bool"
-        if isinstance(the_type, ClassType):
-            return f"struct class_{the_type.name} *"
-        if the_type is None:
-            return "void"
-        raise NotImplementedError(the_type)
+def _emit_type(the_type: Optional[Type]) -> str:
+    if the_type is INT:
+        return "int64_t"
+    if the_type is FLOAT:
+        return "double"
+    if the_type is BOOL:
+        return "bool"
+    if isinstance(the_type, ClassType):
+        return f"struct class_{the_type.name} *"
+    if the_type is None:
+        return "void"
+    raise NotImplementedError(the_type)
 
 
-class _FunctionEmitter(_Emitter):
+class _FunctionEmitter:
     name_mapping: Dict[str, str]  # values are names in c
     loop_counter: int
 
@@ -197,10 +196,10 @@ class _FunctionEmitter(_Emitter):
             (
                 ""
                 if self.funcdef.type.returntype is None
-                else f"{self._emit_type(self.funcdef.type.returntype)} retval;\n\t"
+                else f"{_emit_type(self.funcdef.type.returntype)} retval;\n\t"
             )
             + "".join(
-                f"{self._emit_type(reftype)} {refname} = NULL;\n\t"
+                f"{_emit_type(reftype)} {refname} = NULL;\n\t"
                 for refname, reftype in self.funcdef.refs
             )
             + "".join(
@@ -216,10 +215,10 @@ class _FunctionEmitter(_Emitter):
 
     def run(self) -> str:
         beginning = (
-            f"{self._emit_type(self.funcdef.type.returntype)} {self.c_name}("
+            f"{_emit_type(self.funcdef.type.returntype)} {self.c_name}("
             + (
                 ",".join(
-                    f"{self._emit_type(the_type)} var_{name}"
+                    f"{_emit_type(the_type)} var_{name}"
                     for the_type, name in zip(
                         self.funcdef.type.argtypes, self.funcdef.argnames
                     )
@@ -236,8 +235,7 @@ class _FunctionEmitter(_Emitter):
 
         # Add temporary vars
         var_decls = "".join(
-            f"{self._emit_type(vartype)} {name};\n\t"
-            for vartype, name in self.local_vars
+            f"{_emit_type(vartype)} {name};\n\t" for vartype, name in self.local_vars
         )
 
         # Run for real
@@ -246,48 +244,44 @@ class _FunctionEmitter(_Emitter):
         return beginning + var_decls + self._emit_body() + "\n}\n"
 
 
-class _TopLevelEmitter(_Emitter):
-    def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> str:
-        if isinstance(top_statement, tast.FuncDef):
-            return _FunctionEmitter("var_" + top_statement.name, top_statement).run()
-
-        if isinstance(top_statement, tast.ClassDef):
-            return (
-                # struct
-                ("struct class_%s {\n" % top_statement.type.name)
-                + "\tREFCOUNT_HEADER\n\t"
-                + "".join(
-                    f"{self._emit_type(the_type)} memb_{name};\n\t"
-                    for the_type, name in top_statement.type.members
-                )
-                + "\n};\n"
-                # constructor
-                + f"{self._emit_type(top_statement.type)} ctor_{top_statement.type.name}("
-                + ",".join(
-                    f"{self._emit_type(the_type)} var_{name}"
-                    for the_type, name in top_statement.type.members
-                )
-                + ") {\n\t"
-                + f"{self._emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
-                + "obj->refcount = 1;\n\t"
-                + "".join(
-                    f"obj->memb_{name} = var_{name};\n\t"
-                    for the_type, name in top_statement.type.members
-                )
-                + "return obj;\n}\n"
-                # methods
-                + "".join(
-                    _FunctionEmitter(
-                        f"meth_{top_statement.type.name}_{method.name}", method
-                    ).run()
-                    for method in top_statement.body
-                )
-            )
-
-        raise NotImplementedError(top_statement)
-
-
 def emit_toplevel_statement(
     file: IO[str], top_statement: tast.ToplevelStatement
 ) -> None:
-    file.write(_TopLevelEmitter().emit_toplevel_statement(top_statement))
+    if isinstance(top_statement, tast.FuncDef):
+        file.write(_FunctionEmitter("var_" + top_statement.name, top_statement).run())
+
+    elif isinstance(top_statement, tast.ClassDef):
+        file.write(
+            # struct
+            ("struct class_%s {\n" % top_statement.type.name)
+            + "\tREFCOUNT_HEADER\n\t"
+            + "".join(
+                f"{_emit_type(the_type)} memb_{name};\n\t"
+                for the_type, name in top_statement.type.members
+            )
+            + "\n};\n"
+            # constructor
+            + f"{_emit_type(top_statement.type)} ctor_{top_statement.type.name}("
+            + ",".join(
+                f"{_emit_type(the_type)} var_{name}"
+                for the_type, name in top_statement.type.members
+            )
+            + ") {\n\t"
+            + f"{_emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
+            + "obj->refcount = 1;\n\t"
+            + "".join(
+                f"obj->memb_{name} = var_{name};\n\t"
+                for the_type, name in top_statement.type.members
+            )
+            + "return obj;\n}\n"
+            # methods
+            + "".join(
+                _FunctionEmitter(
+                    f"meth_{top_statement.type.name}_{method.name}", method
+                ).run()
+                for method in top_statement.body
+            )
+        )
+
+    else:
+        raise NotImplementedError(top_statement)
