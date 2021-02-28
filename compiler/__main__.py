@@ -48,7 +48,7 @@ def produce_c_code(args: Any, dest: IO[str]) -> None:
     for toplevel_statement in typer.convert_program(
         parser.parse_file(tokenizer.tokenize(code))
     ):
-        c_output.emit_toplevel_statement(dest, toplevel_statement)
+        dest.write(c_output.emit_toplevel_statement(toplevel_statement))
 
 
 def main() -> None:
