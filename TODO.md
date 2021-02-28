@@ -11,6 +11,8 @@ Missing features:
 - string to float
 - rethink how to name classes (`Str` and `int` feels weird)
 - generics
-    - arrays
     - optionals
+    - arrays
+    - mappings
+- io
 - non-ref-counted pass-by-value classes

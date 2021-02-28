@@ -13,6 +13,7 @@ from compiler import typed_ast as tast
 from compiler import typer
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
+project_root = python_code_dir.parent
 
 
 def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
@@ -25,17 +26,13 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
     return subprocess.Popen(
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
-        + [
-            str(path)
-            for path in python_code_dir.parent.glob("obj/*")
-            if path.suffix != ".txt"
-        ]
+        + [str(path) for path in project_root.glob("obj/*.o")]
         + ["-x", "c", "-"]
         + ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"]),
         encoding="utf-8",
         stdin=subprocess.PIPE,
-        cwd=python_code_dir.parent,
+        cwd=project_root,
     )
 
 
@@ -46,7 +43,7 @@ def get_ast(file: IO[str]) -> List[tast.ToplevelStatement]:
 
 def produce_c_code(source: IO[str], dest: IO[str]) -> None:
     with source:
-        with (python_code_dir.parent / "stdlib.code").open() as stdlib:
+        with (project_root / "stdlib.code").open() as stdlib:
             code = stdlib.read() + source.read()
     dest.write(c_output.run(typer.convert_program(parser.parse_file(code))))
 
@@ -71,9 +68,9 @@ def main() -> None:
         exe_path.parent.mkdir(exist_ok=True)
 
     compile_deps = (
-        [input_path, python_code_dir.parent / "stdlib.code"]
+        [input_path, project_root / "stdlib.code"]
         + list(python_code_dir.rglob("*.py"))
-        + list(python_code_dir.parent.glob("obj/*"))
+        + list(project_root.glob("obj/*"))
     )
     try:
         exe_mtime = exe_path.stat().st_mtime
