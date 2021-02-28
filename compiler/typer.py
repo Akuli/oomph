@@ -5,7 +5,27 @@ from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
 from compiler.types import BOOL, FLOAT, INT, STRING, ClassType, FunctionType, Type
 
-_ref_names = (f"ref{n}" for n in itertools.count())
+_special_funcs = {
+    "bool_and": FunctionType([BOOL, BOOL], BOOL),
+    "bool_eq": FunctionType([BOOL, BOOL], BOOL),
+    "bool_false": FunctionType([], BOOL),
+    "bool_not": FunctionType([BOOL], BOOL),
+    "bool_or": FunctionType([BOOL, BOOL], BOOL),
+    "bool_true": FunctionType([], BOOL),
+    "float_add": FunctionType([FLOAT, FLOAT], FLOAT),
+    "float_div": FunctionType([FLOAT, FLOAT], FLOAT),
+    "float_eq": FunctionType([FLOAT, FLOAT], BOOL),
+    "float_mul": FunctionType([FLOAT, FLOAT], FLOAT),
+    "float_neg": FunctionType([FLOAT], FLOAT),
+    "float_sub": FunctionType([FLOAT, FLOAT], FLOAT),
+    "int2float": FunctionType([INT], FLOAT),
+    "int_add": FunctionType([INT, INT], INT),
+    "int_eq": FunctionType([INT, INT], BOOL),
+    "int_mul": FunctionType([INT, INT], INT),
+    "int_neg": FunctionType([INT], INT),
+    "int_sub": FunctionType([INT, INT], INT),
+    "string_concat": FunctionType([STRING, STRING], STRING),
+}
 
 
 class _FunctionOrMethodTyper:
@@ -15,6 +35,28 @@ class _FunctionOrMethodTyper:
         self.reflist: List[Tuple[str, Type]] = []
         self.loop_stack: List[str] = []
         self.loop_counter = 0
+        self.ref_names = (f"ref{n}" for n in itertools.count())
+
+    def create_returning_call(
+        self, func: tast.Expression, args: List[tast.Expression]
+    ) -> Union[tast.SetRef, tast.ReturningCall]:
+        result = tast.ReturningCall(func, args)
+        if result.type.refcounted:  # TODO: what else needs ref holding?
+            refname = next(self.ref_names)
+            self.reflist.append((refname, result.type))
+            return tast.SetRef(result.type, refname, result)
+        return result
+
+    def create_special_returning_call(
+        self,
+        name: str,
+        args: List[tast.Expression],
+    ) -> Union[tast.SetRef, tast.ReturningCall]:
+        functype = _special_funcs[name]
+        assert [arg.type for arg in args] == functype.argtypes
+        return self.create_returning_call(
+            tast.GetVar(_special_funcs[name], name, is_special=True), args
+        )
 
     def do_call(
         self, ast: uast.Call
@@ -28,61 +70,57 @@ class _FunctionOrMethodTyper:
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
-
-        result = tast.ReturningCall(func.type.returntype, func, args)
-        if result.type.refcounted:  # TODO: what else needs ref holding?
-            refname = next(_ref_names)
-            self.reflist.append((refname, result.type))
-            return tast.SetRef(result.type, refname, result)
-        return result
+        return self.create_returning_call(func, args)
 
     def do_binary_op(self, ast: uast.BinaryOperator) -> tast.Expression:
         if ast.op == "!=":
-            return tast.BoolNot(
-                self.do_binary_op(uast.BinaryOperator(ast.lhs, "==", ast.rhs))
+            return self.create_special_returning_call(
+                "bool_not",
+                [self.do_binary_op(uast.BinaryOperator(ast.lhs, "==", ast.rhs))],
             )
 
         lhs = self.do_expression(ast.lhs)
         rhs = self.do_expression(ast.rhs)
 
-        if lhs.type is INT and ast.op == "+" and rhs.type is INT:
-            return tast.NumberAdd(INT, lhs, rhs)
-        if lhs.type is INT and ast.op == "-" and rhs.type is INT:
-            return tast.NumberSub(INT, lhs, rhs)
-        if lhs.type is INT and ast.op == "*" and rhs.type is INT:
-            return tast.NumberMul(INT, lhs, rhs)
+        if lhs.type is STRING and ast.op == "+" and rhs.type is STRING:
+            # TODO: add something to make a+b+c more efficient than (a+b)+c
+            return self.create_special_returning_call("string_concat", [lhs, rhs])
+
+        if lhs.type is INT and ast.op in {"+", "-", "*"} and rhs.type is INT:
+            return self.create_special_returning_call(
+                {"+": "int_add", "-": "int_sub", "*": "int_mul"}[ast.op], [lhs, rhs]
+            )
 
         if lhs.type is INT and ast.op == "/" and rhs.type is INT:
-            lhs = tast.IntToFloat(lhs)
-            rhs = tast.IntToFloat(rhs)
+            lhs = self.create_special_returning_call("int2float", [lhs])
+            rhs = self.create_special_returning_call("int2float", [rhs])
         if lhs.type is INT and rhs.type is FLOAT:
-            lhs = tast.IntToFloat(lhs)
+            lhs = self.create_special_returning_call("int2float", [lhs])
         if lhs.type is FLOAT and rhs.type is INT:
-            rhs = tast.IntToFloat(rhs)
+            rhs = self.create_special_returning_call("int2float", [rhs])
 
-        if lhs.type is FLOAT and ast.op == "+" and rhs.type is FLOAT:
-            return tast.NumberAdd(FLOAT, lhs, rhs)
-        if lhs.type is FLOAT and ast.op == "-" and rhs.type is FLOAT:
-            return tast.NumberSub(FLOAT, lhs, rhs)
-        if lhs.type is FLOAT and ast.op == "*" and rhs.type is FLOAT:
-            return tast.NumberMul(FLOAT, lhs, rhs)
-        if lhs.type is FLOAT and ast.op == "/" and rhs.type is FLOAT:
-            return tast.FloatDiv(lhs, rhs)
+        if lhs.type is FLOAT and ast.op in {"+", "-", "*", "/"} and rhs.type is FLOAT:
+            return self.create_special_returning_call(
+                {
+                    "+": "float_add",
+                    "-": "float_sub",
+                    "*": "float_mul",
+                    "/": "float_div",
+                }[ast.op],
+                [lhs, rhs],
+            )
 
         if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
-            return tast.BoolAnd(lhs, rhs)
+            return self.create_special_returning_call("bool_and", [lhs, rhs])
         if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
-            return tast.BoolOr(lhs, rhs)
-
+            return self.create_special_returning_call("bool_or", [lhs, rhs])
         if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
-            return tast.BoolOr(
-                tast.BoolAnd(lhs, rhs),
-                tast.BoolAnd(tast.BoolNot(lhs), tast.BoolNot(rhs)),
-            )
+            return self.create_special_returning_call("bool_eq", [lhs, rhs])
         if lhs.type is INT and ast.op == "==" and rhs.type is INT:
-            return tast.NumberEqual(lhs, rhs)
+            return self.create_special_returning_call("int_eq", [lhs, rhs])
         if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:
             # Float equality sucks, but maybe it can be useful for something
+            return self.create_special_returning_call("float_eq", [lhs, rhs])
             return tast.NumberEqual(lhs, rhs)
 
         raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
@@ -101,16 +139,18 @@ class _FunctionOrMethodTyper:
             return call
         if isinstance(ast, uast.GetVar):
             if ast.varname == "true":
-                return tast.BoolConstant(True)
+                return self.create_special_returning_call("bool_true", [])
             if ast.varname == "false":
-                return tast.BoolConstant(False)
+                return self.create_special_returning_call("bool_false", [])
             return tast.GetVar(self.variables[ast.varname], ast.varname)
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
-                return tast.BoolNot(obj)
-            if obj.type in [INT, FLOAT] and ast.op == "-":
-                return tast.NumberNegation(obj.type, obj)
+                return self.create_special_returning_call("bool_not", [obj])
+            if obj.type is INT and ast.op == "-":
+                return self.create_special_returning_call("int_neg", [obj])
+            if obj.type is FLOAT and ast.op == "-":
+                return self.create_special_returning_call("float_neg", [obj])
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
             return self.do_binary_op(ast)
@@ -177,7 +217,7 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.Loop):
             init = [] if ast.init is None else self.do_statement(ast.init)
             cond = (
-                tast.BoolConstant(True)
+                self.create_special_returning_call("bool_true", [])
                 if ast.cond is None
                 else self.do_expression(ast.cond)
             )

@@ -72,11 +72,11 @@ class _FunctionEmitter:
             return f"((int64_t){ast.value}LL)"
         if isinstance(ast, tast.FloatConstant):
             return f"({ast.value})"
-        if isinstance(ast, tast.BoolConstant):
-            return "true" if ast.value else "false"
         if isinstance(ast, tast.ReturningCall):
             return self.emit_call(ast)
         if isinstance(ast, tast.GetVar):
+            if ast.is_special:
+                return ast.varname
             return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
         if isinstance(ast, tast.Constructor):
             return "ctor_" + ast.class_to_construct.name
@@ -84,41 +84,6 @@ class _FunctionEmitter:
             return f"({ast.refname} = {self.emit_expression(ast.value)})"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
-        if isinstance(ast, tast.IntToFloat):
-            return f"((float) {self.emit_expression(ast.value)} )"
-        if isinstance(
-            ast,
-            (
-                tast.NumberAdd,
-                tast.NumberSub,
-                tast.NumberMul,
-                tast.NumberEqual,
-                tast.FloatDiv,
-                tast.BoolAnd,
-                tast.BoolOr,
-            ),
-        ):
-            lhs = self.emit_expression(ast.lhs)
-            rhs = self.emit_expression(ast.rhs)
-            if isinstance(ast, tast.NumberAdd):
-                return f"({lhs} + {rhs})"
-            if isinstance(ast, tast.NumberSub):
-                return f"({lhs} - {rhs})"
-            if isinstance(ast, tast.NumberMul):
-                return f"({lhs} * {rhs})"
-            if isinstance(ast, tast.NumberEqual):
-                return f"({lhs} == {rhs})"
-            if isinstance(ast, tast.FloatDiv):
-                return f"({lhs} / {rhs})"
-            if isinstance(ast, tast.BoolAnd):
-                return f"({lhs} && {rhs})"
-            if isinstance(ast, tast.BoolOr):
-                return f"({lhs} || {rhs})"
-            raise NotImplementedError
-        if isinstance(ast, tast.BoolNot):
-            return f"(! {self.emit_expression(ast.obj)} )"
-        if isinstance(ast, tast.NumberNegation):
-            return f"(- {self.emit_expression(ast.obj)} )"
         if isinstance(ast, tast.GetMethod):
             # This should return some kind of partial function, which isn't possible yet
             raise NotImplementedError(

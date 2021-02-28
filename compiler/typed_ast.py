@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import BOOL, FLOAT, INT, ClassType, FunctionType, Type
+from compiler.types import FLOAT, INT, ClassType, FunctionType, Type
 
 
 @dataclass
@@ -18,6 +18,9 @@ class Statement:
 @dataclass
 class GetVar(Expression):
     varname: str
+    # Special variables can't be accessed by writing their name into a program.
+    # Only the compiler can generate code to access them.
+    is_special: bool = False
 
 
 @dataclass
@@ -64,108 +67,12 @@ class IntConstant(Expression):
 
 
 @dataclass
-class BoolConstant(Expression):
-    value: bool
-
-    def __init__(self, value: bool):
-        super().__init__(BOOL)
-        self.value = value
-
-
-@dataclass
 class FloatConstant(Expression):
     value: str
 
     def __init__(self, value: str):
         super().__init__(FLOAT)
         self.value = value
-
-
-@dataclass
-class IntToFloat(Expression):
-    value: Expression
-
-    def __init__(self, value: Expression):
-        super().__init__(FLOAT)
-        self.value = value
-
-
-@dataclass
-class NumberAdd(Expression):
-    lhs: Expression
-    rhs: Expression
-
-
-@dataclass
-class NumberNegation(Expression):
-    obj: Expression
-
-
-@dataclass
-class NumberSub(Expression):
-    lhs: Expression
-    rhs: Expression
-
-
-@dataclass
-class NumberMul(Expression):
-    lhs: Expression
-    rhs: Expression
-
-
-@dataclass
-class FloatDiv(Expression):
-    lhs: Expression
-    rhs: Expression
-
-    def __init__(self, lhs: Expression, rhs: Expression):
-        assert lhs.type is FLOAT
-        assert rhs.type is FLOAT
-        super().__init__(FLOAT)
-        self.lhs = lhs
-        self.rhs = rhs
-
-
-@dataclass
-class NumberEqual(Expression):
-    lhs: Expression
-    rhs: Expression
-
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(BOOL)
-        self.lhs = lhs
-        self.rhs = rhs
-
-
-@dataclass
-class BoolAnd(Expression):
-    lhs: Expression
-    rhs: Expression
-
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(BOOL)
-        self.lhs = lhs
-        self.rhs = rhs
-
-
-@dataclass
-class BoolOr(Expression):
-    lhs: Expression
-    rhs: Expression
-
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(BOOL)
-        self.lhs = lhs
-        self.rhs = rhs
-
-
-@dataclass
-class BoolNot(Expression):
-    obj: Expression
-
-    def __init__(self, obj: Expression):
-        super().__init__(BOOL)
-        self.obj = obj
 
 
 @dataclass
@@ -178,6 +85,13 @@ class VoidCall(Statement):
 class ReturningCall(Expression, Statement):
     func: Expression
     args: List[Expression]
+
+    def __init__(self, func: Expression, args: List[Expression]):
+        assert isinstance(func.type, FunctionType)
+        assert func.type.returntype is not None
+        super().__init__(func.type.returntype)
+        self.func = func
+        self.args = args
 
 
 @dataclass
