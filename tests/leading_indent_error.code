@@ -1,2 +1,2 @@
     func main() -> void:
-    print_int(1)
+    print(1)

@@ -1,12 +1,12 @@
 func foo(int x) -> void:
     if x == 1:
-        print_int(111)
+        print(111)
     elif x == 2:
-        print_int(222)
+        print(222)
     elif x == 1:  # never runs
-        print_int(666)
+        print(666)
     else:
-        print_int(1234)
+        print(1234)
 
 func main() -> void:
     foo(1)

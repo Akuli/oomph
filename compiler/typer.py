@@ -79,7 +79,13 @@ class _FunctionOrMethodTyper:
     ) -> Union[tast.VoidCall, tast.ReturningCall, tast.SetRef]:
         func = self.do_expression(ast.func)
         assert isinstance(func.type, FunctionType)
-        args = [self.do_expression(arg) for arg in ast.args]
+
+        # Stringify automagically when printing
+        if isinstance(func, tast.GetVar) and func.varname == 'print':
+            args = [self.do_expression_to_string(arg) for arg in ast.args]
+        else:
+            args = [self.do_expression(arg) for arg in ast.args]
+
         assert len(args) == len(func.type.argtypes)
         for arg, argtype in zip(args, func.type.argtypes):
             assert arg.type == argtype, (arg.type, argtype)

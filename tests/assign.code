@@ -1,6 +1,6 @@
 class Foo(int x):
     meth show() -> void:
-        print_int(self.x)
+        print(self.x)
 
 func main() -> void:
     let f = new Foo(1)

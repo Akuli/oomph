@@ -1,6 +1,6 @@
 func main() -> void:
     for let i=0; i != 10; i=i+1:
-        print_int(i)
+        print(i)
 
     # FIXME: loop variable leaks, must use different var name
     for let j=0; j != 10; j=j+1:
@@ -8,9 +8,9 @@ func main() -> void:
             continue
         if j == 8:
             break
-        print_int(j)
+        print(j)
 
     let k = 0
     while k != 5:
-        print_int(k)
+        print(k)
         k = k+1

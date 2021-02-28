@@ -1,11 +1,12 @@
 func main() -> void:
     print(true.to_string())
-    print(false.to_string())
+    print(true)  # same as print(true.to_string())
+    print(false)
 
     # TODO: shouldn't include 0.1+0.2 in output since that's platform specific
-    print(0.3.to_string())
-    print((0.1 + 0.2).to_string())
-    print(0.03.to_string())
-    print(12.345.to_string())
-    print(123.456.to_string())
-    print((-69.0).to_string())
+    print(0.3)
+    print(0.1 + 0.2)
+    print(0.03)
+    print(12.345)
+    print(123.456)
+    print(-69.0)

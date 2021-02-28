@@ -1,8 +1,8 @@
 class Point(int x, int y)
 
 func print_point(Point p) -> void:
-    print_int(p.x)
-    print_int(p.y)
+    print(p.x)
+    print(p.y)
 
 func main() -> void:
     new Point(1, 2)

@@ -1,5 +1,5 @@
 func do_thing(int x) -> int:
-    print_int(x)
+    print(x)
     return x
 
 func ignore_all_args(int x, int y, int z) -> void:
