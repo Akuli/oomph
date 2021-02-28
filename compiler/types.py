@@ -36,6 +36,11 @@ FLOAT.methods["round"] = FunctionType([FLOAT], INT)
 BOOL.methods["to_string"] = FunctionType([BOOL], STRING)
 INT.methods["to_string"] = FunctionType([INT], STRING)
 
+global_variables: Dict[str, Type] = {
+    "print": FunctionType([STRING], None),
+    "print_float": FunctionType([FLOAT], None),
+}
+
 
 @dataclass
 class ClassType(Type):

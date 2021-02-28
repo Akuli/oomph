@@ -3,7 +3,16 @@ from typing import Dict, List, Tuple, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
-from compiler.types import BOOL, FLOAT, INT, STRING, ClassType, FunctionType, Type
+from compiler.types import (
+    BOOL,
+    FLOAT,
+    INT,
+    STRING,
+    ClassType,
+    FunctionType,
+    Type,
+    global_variables,
+)
 
 _special_funcs = {
     "bool_and": FunctionType([BOOL, BOOL], BOOL),
@@ -318,10 +327,7 @@ def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
     types: Dict[str, Type] = {"int": INT, "float": FLOAT, "bool": BOOL, "Str": STRING}
-    variables: Dict[str, Type] = {
-        "print": FunctionType([STRING], None),
-        "print_float": FunctionType([FLOAT], None),
-    }
+    variables = global_variables.copy()
     return [
         _do_toplevel_statement(variables, types, toplevel_statement)
         for toplevel_statement in program
