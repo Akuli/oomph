@@ -4,10 +4,11 @@ Bugs:
 - loop variables leak
 
 Missing features:
-- implicit int to float conversion: `print_float(2)`
+- do we want more implicit int to float conversion? `print_float(2)`
 - chained equalities `a == b == c`
 - `x++`
-- string operations (concat, format, convert numbers to/from string)
+- `to_string()` methods to everything, use them in string formatting
+- convert numbers to/from string
 - rethink how to name classes (`Str` and `int` feels weird)
 - generics
     - arrays
