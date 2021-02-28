@@ -1,0 +1,5 @@
+func main() -> void:
+    let x = true
+    let y = true
+    let z = true
+    let lolwat = x and y or z

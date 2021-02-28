@@ -130,7 +130,7 @@ class _Parser:
 
         # A common python beginner mistake is writing "a and b or c", thinking it
         # means "a and (b or c)"
-        assert not ("and" in magic_list and "or" in magic_list)
+        assert not ((2, "and") in magic_list and (2, "or") in magic_list)
 
         # a==b==c is not supported yet
         assert not any(
