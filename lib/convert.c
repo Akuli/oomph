@@ -1,9 +1,12 @@
 #include "lib.h"
+#include <assert.h>
+#include <errno.h>
 #include <float.h>
+#include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
 int64_t meth_float_floor(double f) { return (int64_t)floor(f); }
 int64_t meth_float_ceil(double f) { return (int64_t)ceil(f); }
@@ -29,4 +32,16 @@ struct String *meth_float_to_string(double d)
 		res[--n] = '\0';
 
 	return cstr_to_string(res);
+}
+
+int64_t meth_string_to_int(const struct String *s)
+{
+	char *endptr;
+	errno = 0;
+	long long res = strtoll(s->str, &endptr, 10);
+
+	// TODO: exceptions or optionals
+	assert(!((res == LLONG_MIN || res == LLONG_MAX) && errno == ERANGE));
+	assert(endptr == s->str + strlen(s->str));
+	return res;
 }

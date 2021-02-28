@@ -1,0 +1,3 @@
+func main() -> void:
+    print("123".to_int().to_string())
+    print("-123".to_int().to_string())
