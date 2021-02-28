@@ -23,6 +23,7 @@ int64_t meth_float_floor(double d);
 int64_t meth_float_ceil(double d);
 int64_t meth_float_truncate(double d);
 int64_t meth_float_round(double d);
+struct String *meth_float_to_string(double d);
 struct String *meth_int_to_string(int64_t n);
 
 // Class implemented in C, method implemented in the language itself

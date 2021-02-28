@@ -8,3 +8,6 @@ func print_bool(bool b) -> void:
 
 func print_int(int n) -> void:
     print(n.to_string())
+
+func print_float(float f) -> void:
+    print(f.to_string())

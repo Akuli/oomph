@@ -26,7 +26,6 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
     return subprocess.Popen(
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
-        + shlex.split(os.environ.get("CFLAGS", ""))
         + [
             str(path)
             for path in python_code_dir.parent.glob("obj/*")
@@ -34,8 +33,7 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
         ]
         + ["-x", "c", "-"]
         + ["-o", str(exepath)]
-        + shlex.split(compile_info["ldflags"])
-        + shlex.split(os.environ.get("LDFLAGS", "")),
+        + shlex.split(compile_info["ldflags"]),
         encoding="utf-8",
         stdin=subprocess.PIPE,
         cwd=python_code_dir.parent,
