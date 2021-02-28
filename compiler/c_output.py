@@ -1,16 +1,4 @@
-import os
-from typing import (
-    IO,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import IO, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import compiler.typed_ast as tast
 from compiler.types import BOOL, FLOAT, INT, ClassType, Type
@@ -19,45 +7,26 @@ _T = TypeVar("_T")
 
 
 class _Emitter:
-    def __init__(self, file: IO[str]):
-        self.file = file
-
-    def _emit_commasep(
-        self, items: Iterable[_T], callback: Callable[[_T], object]
-    ) -> None:
-        first = True
-        for item in items:
-            if not first:
-                self.file.write(",")
-            first = False
-            callback(item)
-
-    def _emit_arg_def(self, pair: Tuple[Type, str]) -> None:
-        the_type, name = pair
-        self._emit_type(the_type)
-        self.file.write("var_" + name)
-
-    def _emit_type(self, the_type: Optional[Type]) -> None:
+    def _emit_type(self, the_type: Optional[Type]) -> str:
         if the_type is INT:
-            self.file.write("int64_t ")
-        elif the_type is FLOAT:
-            self.file.write("double ")
-        elif the_type is BOOL:
-            self.file.write("bool ")
-        elif isinstance(the_type, ClassType):
-            self.file.write(f"struct class_{the_type.name} *")
-        elif the_type is None:
-            self.file.write("void ")
-        else:
-            raise NotImplementedError(the_type)
+            return "int64_t"
+        if the_type is FLOAT:
+            return "double"
+        if the_type is BOOL:
+            return "bool"
+        if isinstance(the_type, ClassType):
+            return f"struct class_{the_type.name} *"
+        if the_type is None:
+            return "void"
+        raise NotImplementedError(the_type)
 
 
 class _FunctionEmitter(_Emitter):
     name_mapping: Dict[str, str]  # values are names in c
     loop_counter: int
 
-    def __init__(self, file: IO[str], c_name: str, funcdef: tast.FuncDef):
-        super().__init__(file)
+    def __init__(self, c_name: str, funcdef: tast.FuncDef):
+        super().__init__()
         self.c_name = c_name
         self.funcdef = funcdef
 
@@ -80,59 +49,52 @@ class _FunctionEmitter(_Emitter):
             assert var_type == the_type
         return name
 
-    def _emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> None:
-        self.file.write("(")
-
+    def _emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
         if isinstance(ast.func, tast.GetMethod):
             args = [ast.func.obj] + ast.args
         else:
             args = ast.args
 
+        if isinstance(ast.func, tast.GetMethod):
+            func = f"meth_{ast.func.obj.type.name}_{ast.func.name}"
+        else:
+            func = self._emit_expression(ast.func)
+
         # In C, argument order is not guaranteed, but evaluation of comma
         # expressions is guaranteed. Comma-expression-evaluate all arguments
         # and put them to temporary variables, then do the call with the
         # temporary variables as arguments.
-        local_var_names = []
-        for arg in args:
-            temp = self.get_local_var(arg.type, "arg")
-            local_var_names.append(temp)
-            self.file.write(f"{temp} = (")
-            self._emit_expression(arg)
-            self.file.write("), ")
+        varnames = [self.get_local_var(arg.type, "arg") for arg in args]
 
-        if isinstance(ast.func, tast.GetMethod):
-            self.file.write(f"meth_{ast.func.obj.type.name}_{ast.func.name}")
-        else:
-            self._emit_expression(ast.func)
+        return (
+            "("
+            + " ".join(
+                f"{var} = ({self._emit_expression(arg)}),"
+                for var, arg in zip(varnames, args)
+            )
+            + f"{func}({','.join(varnames)}))"
+        )
 
-        self.file.write("(" + ",".join(local_var_names) + "))")
-
-    def _emit_expression(self, ast: tast.Expression) -> None:
+    def _emit_expression(self, ast: tast.Expression) -> str:
         if isinstance(ast, tast.IntConstant):
-            self.file.write(f"((int64_t){ast.value}LL)")
-        elif isinstance(ast, tast.FloatConstant):
-            self.file.write(f"({ast.value})")
-        elif isinstance(ast, tast.BoolConstant):
-            self.file.write("true" if ast.value else "false")
-        elif isinstance(ast, tast.ReturningCall):
-            self._emit_call(ast)
-        elif isinstance(ast, tast.GetVar):
-            self.file.write(self.name_mapping.get(ast.varname, f"var_{ast.varname}"))
-        elif isinstance(ast, tast.Constructor):
-            self.file.write("ctor_" + ast.class_to_construct.name)
-        elif isinstance(ast, tast.SetRef):
-            self.file.write(f"({ast.refname} = ")
-            self._emit_expression(ast.value)
-            self.file.write(")")
-        elif isinstance(ast, tast.GetAttribute):
-            self.file.write("((")
-            self._emit_expression(ast.obj)
-            self.file.write(f")->memb_{ast.attribute})")
-        elif isinstance(ast, tast.IntToFloat):
-            self.file.write("((float)")
-            self._emit_expression(ast.value)
-            self.file.write(")")
-        elif isinstance(
+            return f"((int64_t){ast.value}LL)"
+        if isinstance(ast, tast.FloatConstant):
+            return f"({ast.value})"
+        if isinstance(ast, tast.BoolConstant):
+            return "true" if ast.value else "false"
+        if isinstance(ast, tast.ReturningCall):
+            return self._emit_call(ast)
+        if isinstance(ast, tast.GetVar):
+            return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
+        if isinstance(ast, tast.Constructor):
+            return "ctor_" + ast.class_to_construct.name
+        if isinstance(ast, tast.SetRef):
+            return f"({ast.refname} = {self._emit_expression(ast.value)})"
+        if isinstance(ast, tast.GetAttribute):
+            return f"(({self._emit_expression(ast.obj)})->memb_{ast.attribute})"
+        if isinstance(ast, tast.IntToFloat):
+            return f"((float) {self._emit_expression(ast.value)} )"
+        if isinstance(
             ast,
             (
                 tast.NumberAdd,
@@ -144,207 +106,188 @@ class _FunctionEmitter(_Emitter):
                 tast.BoolOr,
             ),
         ):
-            self.file.write("(")
-            self._emit_expression(ast.lhs)
+            lhs = self._emit_expression(ast.lhs)
+            rhs = self._emit_expression(ast.rhs)
             if isinstance(ast, tast.NumberAdd):
-                self.file.write("+")
-            elif isinstance(ast, tast.NumberSub):
-                self.file.write("-")
-            elif isinstance(ast, tast.NumberMul):
-                self.file.write("*")
-            elif isinstance(ast, tast.NumberEqual):
-                self.file.write("==")
-            elif isinstance(ast, tast.FloatDiv):
-                self.file.write("/")
-            elif isinstance(ast, tast.BoolAnd):
-                self.file.write("&&")
-            elif isinstance(ast, tast.BoolOr):
-                self.file.write("||")
-            else:
-                raise NotImplementedError
-            # https://github.com/python/mypy/issues/10146
-            self._emit_expression(ast.rhs)  # type: ignore
-            self.file.write(")")
-        elif isinstance(ast, tast.BoolNot):
-            self.file.write("(!")
-            self._emit_expression(ast.obj)
-            self.file.write(")")
-        elif isinstance(ast, tast.NumberNegation):
-            self.file.write("(-")
-            self._emit_expression(ast.obj)
-            self.file.write(")")
-        elif isinstance(ast, tast.GetMethod):
+                return f"({lhs} + {rhs})"
+            if isinstance(ast, tast.NumberSub):
+                return f"({lhs} - {rhs})"
+            if isinstance(ast, tast.NumberMul):
+                return f"({lhs} * {rhs})"
+            if isinstance(ast, tast.NumberEqual):
+                return f"({lhs} == {rhs})"
+            if isinstance(ast, tast.FloatDiv):
+                return f"({lhs} / {rhs})"
+            if isinstance(ast, tast.BoolAnd):
+                return f"({lhs} && {rhs})"
+            if isinstance(ast, tast.BoolOr):
+                return f"({lhs} || {rhs})"
+            raise NotImplementedError
+        if isinstance(ast, tast.BoolNot):
+            return f"(! {self._emit_expression(ast.obj)} )"
+        if isinstance(ast, tast.NumberNegation):
+            return f"(- {self._emit_expression(ast.obj)} )"
+        if isinstance(ast, tast.GetMethod):
             # This should return some kind of partial function, which isn't possible yet
             raise NotImplementedError(
                 "method objects without immediate calling don't work yet"
             )
-        else:
-            raise NotImplementedError(ast)
+        raise NotImplementedError(ast)
 
-    def _write_label(self, name: str) -> None:
+    def _emit_label(self, name: str) -> str:
         # It's invalid c syntax to end a block with a label, (void)0 fixes
-        self.file.write(f"{name}: (void)0;\n\t")
+        return f"{name}: (void)0;\n\t"
 
-    def _emit_statement(self, ast: tast.Statement) -> None:
+    def _emit_statement(self, ast: tast.Statement) -> str:
         if isinstance(ast, tast.CreateLocalVar):
             var = self.get_local_var(ast.value.type, ast.varname)
             assert ast.varname not in self.name_mapping
             self.name_mapping[ast.varname] = var
-            self.file.write(f"{var} = ")
-            self._emit_expression(ast.value)
-            self.file.write(";\n\t")
+            return f"{var} = {self._emit_expression(ast.value)};\n\t"
 
-        elif isinstance(ast, tast.SetLocalVar):
-            self.file.write(f"{self.name_mapping[ast.varname]} = ")
-            self._emit_expression(ast.value)
-            self.file.write(";\n\t")
+        if isinstance(ast, tast.SetLocalVar):
+            return f"{self.name_mapping[ast.varname]} = {self._emit_expression(ast.value)};\n\t"
 
-        elif isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
-            self._emit_call(ast)
-            self.file.write(";\n\t")
+        if isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
+            return self._emit_call(ast) + ";\n\t"
 
-        elif isinstance(ast, tast.DecRef):
+        if isinstance(ast, tast.DecRef):
+            # TODO: decref could be a macro
             var = self.get_local_var(ast.value.type, "decreffing_var")
-            self.file.write(f"{var} = ")
-            self._emit_expression(ast.value)
-            self.file.write(f"; if({var}) decref({var});\n\t")
+            return f"{var} = {self._emit_expression(ast.value)}; decref({var});\n\t"
 
-        elif isinstance(ast, tast.Return):
+        if isinstance(ast, tast.Return):
+            if ast.value is not None and ast.value.type.refcounted:
+                return f"retval = {self._emit_expression(ast.value)}; incref(retval); goto out;\n\t"
             if ast.value is not None:
-                self.file.write("retval = ")
-                self._emit_expression(ast.value)
-                self.file.write(";")
-                if ast.value.type.refcounted:
-                    self.file.write("incref(retval);")
-            self.file.write("goto out;\n\t")
+                return f"retval = {self._emit_expression(ast.value)}; goto out;\n\t"
+            return "goto out;\n\t"
 
-        elif isinstance(ast, tast.If):
-            self.file.write("if (")
-            self._emit_expression(ast.condition)
-            self.file.write(") {\n\t")
-            for statement in ast.then:
-                self._emit_statement(statement)
-            self.file.write("} else {\n\t")
-            for statement in ast.otherwise:
-                self._emit_statement(statement)
-            self.file.write("}\n\t")
-
-        elif isinstance(ast, tast.Loop):
-            # Can't use C's for loop because it's limited to one statement
-            for statement in ast.init:
-                self._emit_statement(statement)
-            self.file.write("while(")
-            self._emit_expression(ast.cond)
-            self.file.write("){\n\t")
-            for statement in ast.body:
-                self._emit_statement(statement)
-            self._write_label(ast.loop_id)
-            for statement in ast.incr:
-                self._emit_statement(statement)
-            self.file.write("}\n\t")
-
-        elif isinstance(ast, tast.Continue):
-            # Can't use C's continue because continue must run condition
-            self.file.write(f"goto {ast.loop_id};\n\t")
-
-        elif isinstance(ast, tast.Break):
-            self.file.write("break;\n\t")
-
-        else:
-            raise NotImplementedError(ast)
-
-    def _emit_body(self, c_name: str) -> None:
-        if self.funcdef.type.returntype is not None:
-            self._emit_type(self.funcdef.type.returntype)
-            self.file.write("retval;\n\t")
-        for refname, reftype in self.funcdef.refs:
-            self._emit_type(reftype)
-            self.file.write(f"{refname} = NULL;\n\t")
-
-        for statement in self.funcdef.body:
-            self._emit_statement(statement)
-
-        # avoid problem with 'out:' being last thing in function
-        self.file.write("out: (void)0;\n\t")
-        for refname, reftype in reversed(self.funcdef.refs):
-            self.file.write(f"if ({refname}) decref({refname});\n\t")
-        if self.funcdef.type.returntype is not None:
-            self.file.write("return retval;\n\t")
-
-    def run(self) -> None:
-        self._emit_type(self.funcdef.type.returntype)
-        if self.funcdef.argnames:
-            self.file.write(self.c_name)
-            self.file.write("(")
-            self._emit_commasep(
-                zip(self.funcdef.type.argtypes, self.funcdef.argnames),
-                self._emit_arg_def,
+        if isinstance(ast, tast.If):
+            return (
+                ("if (%s) {\n\t" % self._emit_expression(ast.condition))
+                + "".join(self._emit_statement(s) for s in ast.then)
+                + "} else {\n\t"
+                + "".join(self._emit_statement(s) for s in ast.otherwise)
+                + "}\n\t"
             )
-            self.file.write(")")
-        else:
-            self.file.write(self.c_name)
-            self.file.write("(void)")
-        self.file.write("{\n\t")
+
+        if isinstance(ast, tast.Loop):
+            # Can't use C's for loop because it's limited to one statement
+            return (
+                "".join(self._emit_statement(s) for s in ast.init)
+                + ("while (%s) {\n\t" % self._emit_expression(ast.cond))
+                + "".join(self._emit_statement(s) for s in ast.body)
+                + self._emit_label(ast.loop_id)
+                + "".join(self._emit_statement(s) for s in ast.incr)
+                + "}\n\t"
+            )
+
+        if isinstance(ast, tast.Continue):
+            # Can't use C's continue because continue must run condition
+            return f"goto {ast.loop_id};\n\t"
+
+        if isinstance(ast, tast.Break):
+            return "break;\n\t"
+
+        raise NotImplementedError(ast)
+
+    def _emit_body(self) -> str:
+        return (
+            (
+                ""
+                if self.funcdef.type.returntype is None
+                else f"{self._emit_type(self.funcdef.type.returntype)} retval;\n\t"
+            )
+            + "".join(
+                f"{self._emit_type(reftype)} {refname} = NULL;\n\t"
+                for refname, reftype in self.funcdef.refs
+            )
+            + "".join(
+                self._emit_statement(statement) for statement in self.funcdef.body
+            )
+            + self._emit_label("out")
+            + "".join(
+                f"if ({refname}) decref({refname});\n\t"
+                for refname, reftype in reversed(self.funcdef.refs)
+            )
+            + ("" if self.funcdef.type.returntype is None else "return retval;\n\t")
+        )
+
+    def run(self) -> str:
+        beginning = (
+            f"{self._emit_type(self.funcdef.type.returntype)} {self.c_name}("
+            + (
+                ",".join(
+                    f"{self._emit_type(the_type)} var_{name}"
+                    for the_type, name in zip(
+                        self.funcdef.type.argtypes, self.funcdef.argnames
+                    )
+                )
+                or "void"
+            )
+            + ") {\n\t"
+        )
 
         # First figure out what temp vars are needed
         self.reset()
         assert not self.local_vars
-        actual_file = self.file
-        with open(os.devnull, "w") as self.file:
-            self._emit_body(self.c_name)
-        self.file = actual_file
+        self._emit_body()
 
         # Add temporary vars
-        for vartype, name in self.local_vars:
-            self._emit_type(vartype)
-            self.file.write(f"{name};\n\t")
+        var_decls = "".join(
+            f"{self._emit_type(vartype)} {name};\n\t"
+            for vartype, name in self.local_vars
+        )
 
         # Run for real
         self.reset()
         self.local_var_iter = iter(self.local_vars)
-        self._emit_body(self.c_name)
-        self.file.write("\n}\n")
+        return beginning + var_decls + self._emit_body() + "\n}\n"
 
 
 class _TopLevelEmitter(_Emitter):
-    def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> None:
+    def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> str:
         if isinstance(top_statement, tast.FuncDef):
-            _FunctionEmitter(
-                self.file, "var_" + top_statement.name, top_statement
-            ).run()
+            return _FunctionEmitter("var_" + top_statement.name, top_statement).run()
 
-        elif isinstance(top_statement, tast.ClassDef):
-            # struct
-            self.file.write("struct class_%s {\n" % top_statement.type.name)
-            self.file.write("\tREFCOUNT_HEADER\n\t")
-            for the_type, name in top_statement.type.members:
-                self._emit_type(the_type)
-                self.file.write("memb_" + name + ";\n\t")
-            self.file.write("\n};\n")
+        if isinstance(top_statement, tast.ClassDef):
+            return (
+                # struct
+                ("struct class_%s {\n" % top_statement.type.name)
+                + "\tREFCOUNT_HEADER\n\t"
+                + "".join(
+                    f"{self._emit_type(the_type)} memb_{name};\n\t"
+                    for the_type, name in top_statement.type.members
+                )
+                + "\n};\n"
+                # constructor
+                + f"{self._emit_type(top_statement.type)} ctor_{top_statement.type.name}("
+                + ",".join(
+                    f"{self._emit_type(the_type)} var_{name}"
+                    for the_type, name in top_statement.type.members
+                )
+                + ") {\n\t"
+                + f"{self._emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
+                + "obj->refcount = 1;\n\t"
+                + "".join(
+                    f"obj->memb_{name} = var_{name};\n\t"
+                    for the_type, name in top_statement.type.members
+                )
+                + "return obj;\n}\n"
+                # methods
+                + "".join(
+                    _FunctionEmitter(
+                        f"meth_{top_statement.type.name}_{method.name}", method
+                    ).run()
+                    for method in top_statement.body
+                )
+            )
 
-            # constructor
-            self._emit_type(top_statement.type)
-            self.file.write(f"ctor_{top_statement.type.name}(")
-            self._emit_commasep(top_statement.type.members, self._emit_arg_def)
-            self.file.write(") {\n\t")
-            self._emit_type(top_statement.type)
-            self.file.write("obj = malloc(sizeof(*obj));\n")
-            self.file.write("\tobj->refcount = 1;\n")
-            for the_type, name in top_statement.type.members:
-                self.file.write(f"\tobj->memb_{name} = var_{name};\n")
-            self.file.write("\treturn obj;\n}\n")
-
-            # methods
-            for method in top_statement.body:
-                _FunctionEmitter(
-                    self.file, f"meth_{top_statement.type.name}_{method.name}", method
-                ).run()
-
-        else:
-            raise NotImplementedError(top_statement)
+        raise NotImplementedError(top_statement)
 
 
 def emit_toplevel_statement(
     file: IO[str], top_statement: tast.ToplevelStatement
 ) -> None:
-    _TopLevelEmitter(file).emit_toplevel_statement(top_statement)
+    file.write(_TopLevelEmitter().emit_toplevel_statement(top_statement))
