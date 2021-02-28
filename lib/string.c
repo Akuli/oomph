@@ -1,7 +1,8 @@
 #include "lib.h"
 #include <assert.h>
-#include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 
 static struct class_Str *alloc_string(size_t len)
 {

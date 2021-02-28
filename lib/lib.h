@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define REFCOUNT_HEADER int64_t refcount;
 
@@ -52,5 +53,6 @@ int64_t int_mod(int64_t a, int64_t b);
 #define int_neg(a) (-(a))
 #define int_sub(a, b) ((a)-(b))
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
+#define string_eq(a, b) (strcmp((a)->str, (b)->str) == 0)
 
 #endif

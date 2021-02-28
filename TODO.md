@@ -7,7 +7,6 @@ Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - chained equalities `a == b == c`
 - `x++`
-- string equality
 - `x > y`
 - generics
     - optionals

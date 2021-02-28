@@ -36,6 +36,7 @@ _special_funcs = {
     "int_neg": FunctionType([INT], INT),
     "int_sub": FunctionType([INT, INT], INT),
     "string_concat": FunctionType([STRING, STRING], STRING),
+    "string_eq": FunctionType([STRING, STRING], BOOL),
 }
 
 
@@ -107,6 +108,8 @@ class _FunctionOrMethodTyper:
         if lhs.type is STRING and ast.op == "+" and rhs.type is STRING:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_returning_call("string_concat", [lhs, rhs])
+        if lhs.type is STRING and ast.op == "==" and rhs.type is STRING:
+            return self.create_special_returning_call("string_eq", [lhs, rhs])
 
         if lhs.type is INT and ast.op in {"+", "-", "*", "mod"} and rhs.type is INT:
             return self.create_special_returning_call(

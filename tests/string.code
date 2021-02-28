@@ -1,0 +1,5 @@
+func main() -> void:
+    print("hello" + " " + "world")
+    print("hello" == "hello")
+    print("hello" == "hell")
+    print("hello" == "hallo")
