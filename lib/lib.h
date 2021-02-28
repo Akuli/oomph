@@ -23,6 +23,8 @@ int64_t meth_float_ceil(double d);
 int64_t meth_float_truncate(double d);
 int64_t meth_float_round(double d);
 
+struct String *string_concat(const struct String *str1, const struct String *str2);
+
 void incref(void *ptr);
 void decref(void *ptr);
 

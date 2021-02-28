@@ -18,6 +18,9 @@ class Statement:
 @dataclass
 class GetVar(Expression):
     varname: str
+    # Special variables can't be accessed by writing their name into a program.
+    # Only the compiler can generate code to access them.
+    is_special: bool = False
 
 
 @dataclass
@@ -178,6 +181,13 @@ class VoidCall(Statement):
 class ReturningCall(Expression, Statement):
     func: Expression
     args: List[Expression]
+
+    def __init__(self, func: Expression, args: List[Expression]):
+        assert isinstance(func.type, FunctionType)
+        assert func.type.returntype is not None
+        super().__init__(func.type.returntype)
+        self.func = func
+        self.args = args
 
 
 @dataclass

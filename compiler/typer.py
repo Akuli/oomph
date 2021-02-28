@@ -16,6 +16,16 @@ class _FunctionOrMethodTyper:
         self.loop_stack: List[str] = []
         self.loop_counter = 0
 
+    def create_returning_call(
+        self, func: tast.Expression, args: List[tast.Expression]
+    ) -> Union[tast.SetRef, tast.ReturningCall]:
+        result = tast.ReturningCall(func, args)
+        if result.type.refcounted:  # TODO: what else needs ref holding?
+            refname = next(_ref_names)
+            self.reflist.append((refname, result.type))
+            return tast.SetRef(result.type, refname, result)
+        return result
+
     def do_call(
         self, ast: uast.Call
     ) -> Union[tast.VoidCall, tast.ReturningCall, tast.SetRef]:
@@ -28,13 +38,7 @@ class _FunctionOrMethodTyper:
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
-
-        result = tast.ReturningCall(func.type.returntype, func, args)
-        if result.type.refcounted:  # TODO: what else needs ref holding?
-            refname = next(_ref_names)
-            self.reflist.append((refname, result.type))
-            return tast.SetRef(result.type, refname, result)
-        return result
+        return self.create_returning_call(func, args)
 
     def do_binary_op(self, ast: uast.BinaryOperator) -> tast.Expression:
         if ast.op == "!=":
@@ -44,6 +48,17 @@ class _FunctionOrMethodTyper:
 
         lhs = self.do_expression(ast.lhs)
         rhs = self.do_expression(ast.rhs)
+
+        if lhs.type is STRING and ast.op == "+" and rhs.type is STRING:
+            # TODO: add something to make a+b+c more efficient than (a+b)+c
+            return self.create_returning_call(
+                tast.GetVar(
+                    FunctionType([STRING, STRING], STRING),
+                    "string_concat",
+                    is_special=True,
+                ),
+                [lhs, rhs],
+            )
 
         if lhs.type is INT and ast.op == "+" and rhs.type is INT:
             return tast.NumberAdd(INT, lhs, rhs)

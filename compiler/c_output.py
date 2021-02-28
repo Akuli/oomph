@@ -77,6 +77,8 @@ class _FunctionEmitter:
         if isinstance(ast, tast.ReturningCall):
             return self.emit_call(ast)
         if isinstance(ast, tast.GetVar):
+            if ast.is_special:
+                return ast.varname
             return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
         if isinstance(ast, tast.Constructor):
             return "ctor_" + ast.class_to_construct.name
