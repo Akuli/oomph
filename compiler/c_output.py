@@ -11,19 +11,15 @@ _T = TypeVar("_T")
 
 
 def _emit_type(the_type: Optional[Type]) -> str:
-    if the_type is STRING:
-        return "struct String *"
     if the_type is INT:
         return "int64_t"
     if the_type is FLOAT:
         return "double"
     if the_type is BOOL:
         return "bool"
-    if isinstance(the_type, ClassType):
-        return f"struct class_{the_type.name} *"
     if the_type is None:
         return "void"
-    raise NotImplementedError(the_type)
+    return f"struct class_{the_type.name} *"
 
 
 class _FunctionEmitter:

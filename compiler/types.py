@@ -26,7 +26,7 @@ class FunctionType(Type):
 INT = Type("int", False, {})
 BOOL = Type("bool", False, {})
 FLOAT = Type("float", False, {})
-STRING = Type("string", True, {})
+STRING = Type("Str", True, {})
 
 FLOAT.methods["floor"] = FunctionType([FLOAT], INT)
 FLOAT.methods["ceil"] = FunctionType([FLOAT], INT)
@@ -40,6 +40,7 @@ FLOAT.methods["to_string"] = FunctionType([FLOAT], STRING)
 STRING.methods["to_int"] = FunctionType([STRING], INT)
 STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 
+builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 global_variables: Dict[str, Type] = {
     "print": FunctionType([STRING], None),
 }

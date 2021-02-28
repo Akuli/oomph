@@ -3,30 +3,30 @@
 #include <string.h>
 #include <stdarg.h>
 
-static struct String *alloc_string(size_t len)
+static struct class_Str *alloc_string(size_t len)
 {
-	struct String *res = malloc(sizeof(struct String) + len + 1);
+	struct class_Str *res = malloc(sizeof(struct class_Str) + len + 1);
 	assert(res);
 	res->refcount = 1;
 	return res;
 }
 
-struct String *cstr_to_string(const char *s)
+struct class_Str *cstr_to_string(const char *s)
 {
-	struct String *res = alloc_string(strlen(s));
+	struct class_Str *res = alloc_string(strlen(s));
 	strcpy(res->str, s);
 	return res;
 }
 
 /*
-struct String *string_concat(const struct String *strs[])
+struct class_Str *string_concat(const struct class_Str *strs[])
 {
 	size_t len=0;
 	size_t n;
 	for (n=0; strs[n]; n++)
 		len += strlen(strs[n]->str);
 
-	struct String *res = malloc(sizeof(struct String) + len + 1);
+	struct class_Str *res = malloc(sizeof(struct class_Str) + len + 1);
 	assert(res);
 
 	char *ptr = res->str;
@@ -38,9 +38,9 @@ struct String *string_concat(const struct String *strs[])
 }
 */
 
-struct String *string_concat(const struct String *str1, const struct String *str2)
+struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
 {
-	struct String *res = alloc_string(strlen(str1->str) + strlen(str2->str));
+	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
 	strcpy(res->str, str1->str);
 	strcat(res->str, str2->str);
 	return res;

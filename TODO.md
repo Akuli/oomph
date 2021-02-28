@@ -7,7 +7,6 @@ Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - chained equalities `a == b == c`
 - `x++`
-- rethink how to name classes (`Str` and `int` feels weird)
 - print automatic to_string
 - float mod
 - generics

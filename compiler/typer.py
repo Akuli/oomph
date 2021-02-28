@@ -11,6 +11,7 @@ from compiler.types import (
     ClassType,
     FunctionType,
     Type,
+    builtin_types,
     global_variables,
 )
 
@@ -346,8 +347,7 @@ def _do_toplevel_statement(
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
-    # FIXME: names are wrong
-    types: Dict[str, Type] = {"int": INT, "float": FLOAT, "bool": BOOL, "Str": STRING}
+    types = builtin_types.copy()
     variables = global_variables.copy()
     return [
         _do_toplevel_statement(variables, types, toplevel_statement)

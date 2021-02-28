@@ -13,14 +13,14 @@ int64_t meth_float_ceil(double f) { return (int64_t)ceil(f); }
 int64_t meth_float_truncate(double f) { return (int64_t)f; }
 int64_t meth_float_round(double f) { return (int64_t)round(f); }
 
-struct String *meth_int_to_string(int64_t n)
+struct class_Str *meth_int_to_string(int64_t n)
 {
 	char s[100];
 	snprintf(s, sizeof s, "%lld", (long long)n);
 	return cstr_to_string(s);
 }
 
-struct String *meth_float_to_string(double d)
+struct class_Str *meth_float_to_string(double d)
 {
 	char res[100];
 	snprintf(res, sizeof res, "%g", d);
@@ -34,7 +34,7 @@ struct String *meth_float_to_string(double d)
 	return cstr_to_string(res);
 }
 
-int64_t meth_string_to_int(const struct String *s)
+int64_t meth_Str_to_int(const struct class_Str *s)
 {
 	char *endptr;
 	errno = 0;
@@ -43,7 +43,7 @@ int64_t meth_string_to_int(const struct String *s)
 	return res;
 }
 
-double meth_string_to_float(const struct String *s)
+double meth_Str_to_float(const struct class_Str *s)
 {
 	char *endptr;
 	errno = 0;

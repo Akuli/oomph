@@ -8,21 +8,21 @@
 
 #define REFCOUNT_HEADER int64_t refcount;
 
-struct String {
+struct class_Str {
 	REFCOUNT_HEADER
 	char str[];   // flexible array member, ends with \0, valid utf-8
 };
-struct String *cstr_to_string(const char *s);
+struct class_Str *cstr_to_string(const char *s);
 
-void var_print(const struct String *s);
+void var_print(const struct class_Str *s);
 int64_t meth_float_floor(double d);
 int64_t meth_float_ceil(double d);
 int64_t meth_float_truncate(double d);
 int64_t meth_float_round(double d);
-struct String *meth_float_to_string(double d);
-struct String *meth_int_to_string(int64_t n);
-int64_t meth_string_to_int(const struct String *s);
-double meth_string_to_float(const struct String *s);
+struct class_Str *meth_float_to_string(double d);
+struct class_Str *meth_int_to_string(int64_t n);
+int64_t meth_Str_to_int(const struct class_Str *s);
+double meth_Str_to_float(const struct class_Str *s);
 
 // Class implemented in C, method implemented in the language itself
 #define meth_bool_to_string var___bool_to_string
@@ -51,6 +51,6 @@ int64_t int_mod(int64_t a, int64_t b);
 #define int_mul(a, b) ((a)*(b))
 #define int_neg(a) (-(a))
 #define int_sub(a, b) ((a)-(b))
-struct String *string_concat(const struct String *str1, const struct String *str2);
+struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
 
 #endif
