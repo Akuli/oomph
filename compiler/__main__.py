@@ -48,11 +48,10 @@ def get_ast(file: IO[str]) -> List[tast.ToplevelStatement]:
 
 
 def produce_c_code(source: IO[str], dest: IO[str]) -> None:
-    dest.write(
-        c_output.run(
-            get_ast((python_code_dir.parent / "stdlib.code").open()) + get_ast(source)
-        )
-    )
+    with source:
+        with (python_code_dir.parent / "stdlib.code").open() as stdlib:
+            code = stdlib.read() + source.read()
+    dest.write(c_output.run(typer.convert_program(parser.parse_file(code))))
 
 
 def main() -> None:
@@ -75,7 +74,7 @@ def main() -> None:
         exe_path.parent.mkdir(exist_ok=True)
 
     compile_deps = (
-        [input_path]
+        [input_path, python_code_dir.parent / "stdlib.code"]
         + list(python_code_dir.rglob("*.py"))
         + list(python_code_dir.parent.glob("obj/*"))
     )

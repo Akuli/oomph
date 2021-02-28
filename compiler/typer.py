@@ -266,7 +266,7 @@ def _do_funcdef(
         None if funcdef.returntype is None else types[funcdef.returntype],
     )
     if create_variable:
-        assert funcdef.name not in variables
+        assert funcdef.name not in variables, (funcdef.name, variables.keys())
         variables[funcdef.name] = functype
 
     local_vars = variables.copy()
@@ -321,7 +321,6 @@ def convert_program(
     variables: Dict[str, Type] = {
         "print": FunctionType([STRING], None),
         "print_int": FunctionType([INT], None),
-        "print_bool": FunctionType([BOOL], None),
         "print_float": FunctionType([FLOAT], None),
     }
     return [

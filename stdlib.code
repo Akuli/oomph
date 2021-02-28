@@ -2,3 +2,6 @@ func __bool_to_string(bool b) -> Str:
     if b:
         return "true"
     return "false"
+
+func print_bool(bool b) -> void:
+    print(b.to_string())
