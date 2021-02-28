@@ -43,12 +43,11 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
 def produce_c_code(args: Any, dest: IO[str]) -> None:
     with args.infile:
         code = args.infile.read()
-
-    dest.write('#include "lib/lib.h"\n')
-    for toplevel_statement in typer.convert_program(
-        parser.parse_file(tokenizer.tokenize(code))
-    ):
-        dest.write(c_output.emit_toplevel_statement(toplevel_statement))
+    tokens = tokenizer.tokenize(code)
+    untyped_ast = parser.parse_file(tokens)
+    typed_ast = typer.convert_program(untyped_ast)
+    c_code = c_output.run(typed_ast)
+    dest.write(c_code)
 
 
 def main() -> None:

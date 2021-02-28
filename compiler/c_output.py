@@ -1,12 +1,18 @@
-from typing import Dict, Optional, TypeVar, Union
+from __future__ import annotations
+
+import re
+import string
+from typing import Dict, List, Optional, TypeVar, Union
 
 import compiler.typed_ast as tast
-from compiler.types import BOOL, FLOAT, INT, ClassType, Type
+from compiler.types import BOOL, FLOAT, INT, STRING, ClassType, Type
 
 _T = TypeVar("_T")
 
 
 def _emit_type(the_type: Optional[Type]) -> str:
+    if the_type is STRING:
+        return "struct String *"
     if the_type is INT:
         return "int64_t"
     if the_type is FLOAT:
@@ -21,7 +27,8 @@ def _emit_type(the_type: Optional[Type]) -> str:
 
 
 class _FunctionEmitter:
-    def __init__(self) -> None:
+    def __init__(self, file_emitter: _FileEmitter) -> None:
+        self.file_emitter = file_emitter
         self.before_body = ""
         self.name_mapping: Dict[str, str] = {}  # values are names in c
         self.varname_counter = 0
@@ -59,6 +66,8 @@ class _FunctionEmitter:
         )
 
     def emit_expression(self, ast: tast.Expression) -> str:
+        if isinstance(ast, tast.StringConstant):
+            return self.file_emitter.emit_string(ast.value)
         if isinstance(ast, tast.IntConstant):
             return f"((int64_t){ast.value}LL)"
         if isinstance(ast, tast.FloatConstant):
@@ -176,18 +185,6 @@ class _FunctionEmitter:
         raise NotImplementedError(ast)
 
     def emit_funcdef(self, funcdef: tast.FuncDef, c_name: str) -> str:
-        beginning = (
-            f"{_emit_type(funcdef.type.returntype)} {c_name}("
-            + (
-                ",".join(
-                    f"{_emit_type(the_type)} var_{name}"
-                    for the_type, name in zip(funcdef.type.argtypes, funcdef.argnames)
-                )
-                or "void"
-            )
-            + ") {\n\t"
-        )
-
         body = (
             (
                 ""
@@ -206,46 +203,101 @@ class _FunctionEmitter:
             )
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
         )
-        return beginning + self.before_body + body + "\n}\n"
-
-
-def emit_toplevel_statement(top_statement: tast.ToplevelStatement) -> str:
-    if isinstance(top_statement, tast.FuncDef):
-        return _FunctionEmitter().emit_funcdef(
-            top_statement, "var_" + top_statement.name
-        )
-
-    if isinstance(top_statement, tast.ClassDef):
         return (
-            # struct
-            ("struct class_%s {\n" % top_statement.type.name)
-            + "\tREFCOUNT_HEADER\n\t"
-            + "".join(
-                f"{_emit_type(the_type)} memb_{name};\n\t"
-                for the_type, name in top_statement.type.members
-            )
-            + "\n};\n"
-            # constructor
-            + f"{_emit_type(top_statement.type)} ctor_{top_statement.type.name}("
-            + ",".join(
-                f"{_emit_type(the_type)} var_{name}"
-                for the_type, name in top_statement.type.members
+            f"\n{_emit_type(funcdef.type.returntype)} {c_name}("
+            + (
+                ",".join(
+                    f"{_emit_type(the_type)} var_{name}"
+                    for the_type, name in zip(funcdef.type.argtypes, funcdef.argnames)
+                )
+                or "void"
             )
             + ") {\n\t"
-            + f"{_emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
-            + "obj->refcount = 1;\n\t"
-            + "".join(
-                f"obj->memb_{name} = var_{name};\n\t"
-                for the_type, name in top_statement.type.members
-            )
-            + "return obj;\n}\n"
-            # methods
-            + "".join(
-                _FunctionEmitter().emit_funcdef(
-                    method, f"meth_{top_statement.type.name}_{method.name}"
-                )
-                for method in top_statement.body
-            )
+            + self.before_body
+            + body
+            + "\n}\n"
         )
 
-    raise NotImplementedError(top_statement)
+
+def _format_byte(byte: int) -> str:
+    if (
+        byte != b"'"
+        and byte != b"\\"
+        and byte
+        in (string.ascii_letters + string.digits + string.punctuation).encode("ascii")
+    ):
+        return "'" + bytes([byte]).decode("ascii") + "'"
+    return r"'\x%02x'" % byte
+
+
+class _FileEmitter:
+    def __init__(self) -> None:
+        self.strings: Dict[str, str] = {}
+        self.beginning = '#include "lib/lib.h"\n\n'
+
+    def emit_string(self, value: str) -> str:
+        if value not in self.strings:
+            self.strings[value] = (
+                f"string{len(self.strings)}_" + re.sub(r"[^A-Za-z0-9]", "", value)[:10]
+            )
+
+            # String constants consist of int64_t refcount set to -1,
+            # followed by utf8, followed by zero byte
+            # TODO: is this cross-platform enough?
+            struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
+            self.beginning += (
+                f"{_emit_type(STRING)} {self.strings[value]} = (void*)(unsigned char[])"
+                + "{"
+                + ", ".join(map(_format_byte, struct_bytes))
+                + "};\n"
+            )
+        return self.strings[value]
+
+    def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> str:
+        if isinstance(top_statement, tast.FuncDef):
+            return _FunctionEmitter(self).emit_funcdef(
+                top_statement, "var_" + top_statement.name
+            )
+
+        if isinstance(top_statement, tast.ClassDef):
+            return (
+                # struct
+                ("struct class_%s {\n" % top_statement.type.name)
+                + "\tREFCOUNT_HEADER\n\t"
+                + "".join(
+                    f"{_emit_type(the_type)} memb_{name};\n\t"
+                    for the_type, name in top_statement.type.members
+                )
+                + "\n};\n"
+                # constructor
+                + f"{_emit_type(top_statement.type)} ctor_{top_statement.type.name}("
+                + ",".join(
+                    f"{_emit_type(the_type)} var_{name}"
+                    for the_type, name in top_statement.type.members
+                )
+                + ") {\n\t"
+                + f"{_emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
+                + "obj->refcount = 1;\n\t"
+                + "".join(
+                    f"obj->memb_{name} = var_{name};\n\t"
+                    for the_type, name in top_statement.type.members
+                )
+                + "return obj;\n}\n"
+                # methods
+                + "".join(
+                    _FunctionEmitter(self).emit_funcdef(
+                        method, f"meth_{top_statement.type.name}_{method.name}"
+                    )
+                    for method in top_statement.body
+                )
+            )
+
+        raise NotImplementedError(top_statement)
+
+
+def run(ast: List[tast.ToplevelStatement]) -> str:
+    emitter = _FileEmitter()
+    code = "".join(
+        emitter.emit_toplevel_statement(top_statement) for top_statement in ast
+    )
+    return emitter.beginning + code

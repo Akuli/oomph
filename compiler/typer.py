@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple, Union
 
 from compiler import typed_ast as tast
 from compiler import untyped_ast as uast
-from compiler.types import BOOL, FLOAT, INT, ClassType, FunctionType, Type
+from compiler.types import BOOL, FLOAT, INT, STRING, ClassType, FunctionType, Type
 
 _ref_names = (f"ref{n}" for n in itertools.count())
 
@@ -88,6 +88,8 @@ class _FunctionOrMethodTyper:
         raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
 
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
+        if isinstance(ast, uast.StringConstant):
+            return tast.StringConstant(STRING, ast.value)
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
             return tast.IntConstant(ast.value)
@@ -264,6 +266,7 @@ def convert_program(
 ) -> List[tast.ToplevelStatement]:
     types: Dict[str, Type] = {"int": INT}
     variables: Dict[str, Type] = {
+        "print": FunctionType([STRING], None),
         "print_int": FunctionType([INT], None),
         "print_bool": FunctionType([BOOL], None),
         "print_float": FunctionType([FLOAT], None),

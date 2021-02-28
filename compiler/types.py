@@ -26,6 +26,7 @@ class FunctionType(Type):
 INT = Type("int", False, {})
 BOOL = Type("bool", False, {})
 FLOAT = Type("float", False, {})
+STRING = Type("String", True, {})
 
 FLOAT.methods["floor"] = FunctionType([FLOAT], INT)
 FLOAT.methods["ceil"] = FunctionType([FLOAT], INT)

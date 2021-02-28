@@ -50,6 +50,11 @@ class GetMethod(Expression):
 
 
 @dataclass
+class StringConstant(Expression):
+    value: str
+
+
+@dataclass
 class IntConstant(Expression):
     value: int
 

@@ -6,8 +6,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#define REFCOUNT_HEADER size_t refcount;
+#define REFCOUNT_HEADER int64_t refcount;
 
+struct String {
+	REFCOUNT_HEADER
+	char str[];   // flexible array member, ends with \0, valid utf-8
+};
+
+void var_print(const struct String *s);
 void var_print_int(int64_t x);
 void var_print_bool(bool b);
 void var_print_float(double d);

@@ -46,7 +46,9 @@ class _Parser:
 
     def parse_expression_without_operators(self) -> uast.Expression:
         result: uast.Expression
-        if self.token_iter.peek()[0] == "identifier":
+        if self.token_iter.peek()[0] == "string":
+            result = uast.StringConstant(self.get_token("string")[1].strip('"'))
+        elif self.token_iter.peek()[0] == "identifier":
             result = uast.GetVar(self.get_token("identifier")[1])
         elif self.token_iter.peek()[0] == "int":
             result = uast.IntConstant(int(self.get_token("int")[1]))
