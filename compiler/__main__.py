@@ -7,9 +7,11 @@ import shlex
 import signal
 import subprocess
 import sys
-from typing import IO, Any
+from typing import IO, List
 
-from compiler import c_output, parser, typer
+from compiler import c_output, parser
+from compiler import typed_ast as tast
+from compiler import typer
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 
@@ -40,13 +42,17 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
     )
 
 
-def produce_c_code(args: Any, dest: IO[str]) -> None:
-    with args.infile:
-        code = args.infile.read()
-    untyped_ast = parser.parse_file(code)
-    typed_ast = typer.convert_program(untyped_ast)
-    c_code = c_output.run(typed_ast)
-    dest.write(c_code)
+def get_ast(file: IO[str]) -> List[tast.ToplevelStatement]:
+    with file:
+        return typer.convert_program(parser.parse_file(file.read()))
+
+
+def produce_c_code(source: IO[str], dest: IO[str]) -> None:
+    dest.write(
+        c_output.run(
+            get_ast((python_code_dir.parent / "stdlib.code").open()) + get_ast(source)
+        )
+    )
 
 
 def main() -> None:
@@ -58,11 +64,15 @@ def main() -> None:
 
     input_path = pathlib.Path(args.infile.name).absolute()
     if args.c_code:
-        produce_c_code(args, sys.stdout)
+        produce_c_code(args.infile, sys.stdout)
         return
 
-    exe_path = input_path.parent / ".compiler-cache" / input_path.stem
-    exe_path.parent.mkdir(exist_ok=True)
+    try:
+        exe_path = input_path.parent / ".compiler-cache" / input_path.stem
+        exe_path.parent.mkdir(exist_ok=True)
+    except OSError:
+        exe_path = pathlib.Path.cwd() / ".compiler-cache" / input_path.stem
+        exe_path.parent.mkdir(exist_ok=True)
 
     compile_deps = (
         [input_path]
@@ -79,7 +89,7 @@ def main() -> None:
         print("Compiling...", file=sys.stderr)
         with invoke_c_compiler(exe_path) as compiler_process:
             assert compiler_process.stdin is not None
-            produce_c_code(args, compiler_process.stdin)
+            produce_c_code(args.infile, compiler_process.stdin)
             compiler_process.stdin.close()
 
             status = compiler_process.wait()

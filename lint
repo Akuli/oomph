@@ -1,4 +1,8 @@
 #!/bin/sh
+if ! which black isort mypy pyflakes >/dev/null; then
+    echo "can't find stuff, is venv active?"
+    exit 1
+fi
 black compiler
 isort compiler
 mypy compiler

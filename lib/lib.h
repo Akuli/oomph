@@ -23,6 +23,9 @@ int64_t meth_float_ceil(double d);
 int64_t meth_float_truncate(double d);
 int64_t meth_float_round(double d);
 
+// Class implemented in C, method implemented in the language itself
+#define meth_bool_to_string var___bool_to_string
+
 void incref(void *ptr);
 void decref(void *ptr);
 

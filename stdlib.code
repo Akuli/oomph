@@ -1,0 +1,4 @@
+func __bool_to_string(bool b) -> Str:
+    if b:
+        return "true"
+    return "false"

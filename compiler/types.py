@@ -33,6 +33,8 @@ FLOAT.methods["ceil"] = FunctionType([FLOAT], INT)
 FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 FLOAT.methods["round"] = FunctionType([FLOAT], INT)
 
+BOOL.methods["to_string"] = FunctionType([BOOL], STRING)
+
 
 @dataclass
 class ClassType(Type):

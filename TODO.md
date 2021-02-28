@@ -7,8 +7,12 @@ Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - chained equalities `a == b == c`
 - `x++`
-- `to_string()` methods to everything, use them in string formatting
-- convert numbers to/from string
+- `to_string()` methods
+    - `int`
+    - `float`
+    - automatically call `to_string()` in string formatting
+- string to int
+- string to float
 - rethink how to name classes (`Str` and `int` feels weird)
 - generics
     - arrays

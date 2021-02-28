@@ -1,0 +1,3 @@
+func main() -> void:
+    print(true.to_string())
+    print(false.to_string())
