@@ -40,6 +40,7 @@ void decref(void *ptr);
 #define float_add(a, b) ((a)+(b))
 #define float_div(a, b) ((a)/(b))
 #define float_eq(a, b) ((a)==(b))
+double float_mod(double a, double b);
 #define float_mul(a, b) ((a)*(b))
 #define float_neg(a) (-(a))
 #define float_sub(a, b) ((a)-(b))

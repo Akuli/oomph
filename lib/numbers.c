@@ -60,3 +60,11 @@ int64_t int_mod(int64_t a, int64_t b)
 		res += b;
 	return res;
 }
+
+double float_mod(double a, double b)
+{
+	double res = fmod(a, b);
+	if ((b > 0 && res < 0) || (b < 0 && res > 0))
+		res += b;
+	return res;
+}

@@ -24,6 +24,7 @@ _special_funcs = {
     "float_add": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_div": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_eq": FunctionType([FLOAT, FLOAT], BOOL),
+    "float_mod": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_mul": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_neg": FunctionType([FLOAT], FLOAT),
     "float_sub": FunctionType([FLOAT, FLOAT], FLOAT),
@@ -120,13 +121,18 @@ class _FunctionOrMethodTyper:
         if lhs.type is FLOAT and rhs.type is INT:
             rhs = self.create_special_returning_call("int2float", [rhs])
 
-        if lhs.type is FLOAT and ast.op in {"+", "-", "*", "/"} and rhs.type is FLOAT:
+        if (
+            lhs.type is FLOAT
+            and ast.op in {"+", "-", "*", "/", "mod"}
+            and rhs.type is FLOAT
+        ):
             return self.create_special_returning_call(
                 {
                     "+": "float_add",
                     "-": "float_sub",
                     "*": "float_mul",
                     "/": "float_div",
+                    "mod": "float_mod",
                 }[ast.op],
                 [lhs, rhs],
             )
@@ -340,6 +346,7 @@ def _do_toplevel_statement(
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
+    # FIXME: names are wrong
     types: Dict[str, Type] = {"int": INT, "float": FLOAT, "bool": BOOL, "Str": STRING}
     variables = global_variables.copy()
     return [

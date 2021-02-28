@@ -11,3 +11,8 @@ func main() -> void:
 
     print((0 mod 5).to_string())
     print((0 mod -5).to_string())
+
+    print((1 mod 2.5).to_string())
+    print((-1.5 mod 2.5).to_string())
+    print((1 mod -2.5).to_string())
+    print((-1.5 mod -2.5).to_string())
