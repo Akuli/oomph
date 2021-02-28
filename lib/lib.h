@@ -22,6 +22,7 @@ int64_t meth_float_round(double d);
 struct String *meth_float_to_string(double d);
 struct String *meth_int_to_string(int64_t n);
 int64_t meth_string_to_int(const struct String *s);
+double meth_string_to_float(const struct String *s);
 
 // Class implemented in C, method implemented in the language itself
 #define meth_bool_to_string var___bool_to_string

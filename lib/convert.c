@@ -22,15 +22,15 @@ struct String *meth_int_to_string(int64_t n)
 
 struct String *meth_float_to_string(double d)
 {
-	// 0.1+0.2 --> "0.30000000000000004"
 	char res[100];
-	snprintf(res, sizeof res, "%.*f", DBL_DIG + 2, d);
-
-	// 0.25 --> "0.25"
-	size_t n = strlen(res);
-	while (n > 3 && res[n-1] == '0' && res[n-2] != '.')
-		res[--n] = '\0';
-
+	snprintf(res, sizeof res, "%g", d);
+	if (!strchr(res, '.')) {
+		// e.g. 69.0 instead of 69
+		snprintf(res, sizeof res, "%.1f", d);
+	} else if (atof(res) != d) {
+		// Tricky float, e.g. 0.1 + 0.2, display the truth to user
+		snprintf(res, sizeof res, "%.*f", DBL_DECIMAL_DIG, d);
+	}
 	return cstr_to_string(res);
 }
 
@@ -39,9 +39,15 @@ int64_t meth_string_to_int(const struct String *s)
 	char *endptr;
 	errno = 0;
 	long long res = strtoll(s->str, &endptr, 10);
+	assert(errno == 0 && endptr == s->str + strlen(s->str));  // TODO: exceptions or optionals
+	return res;
+}
 
-	// TODO: exceptions or optionals
-	assert(!((res == LLONG_MIN || res == LLONG_MAX) && errno == ERANGE));
-	assert(endptr == s->str + strlen(s->str));
+double meth_string_to_float(const struct String *s)
+{
+	char *endptr;
+	errno = 0;
+	double res = strtod(s->str, &endptr);
+	assert(errno == 0 && endptr == s->str + strlen(s->str));  // TODO: exceptions or optionals
 	return res;
 }

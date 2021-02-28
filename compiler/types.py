@@ -38,6 +38,7 @@ INT.methods["to_string"] = FunctionType([INT], STRING)
 FLOAT.methods["to_string"] = FunctionType([FLOAT], STRING)
 
 STRING.methods["to_int"] = FunctionType([STRING], INT)
+STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 
 global_variables: Dict[str, Type] = {
     "print": FunctionType([STRING], None),
