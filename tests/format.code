@@ -1,5 +1,6 @@
-func greet(Str name) -> void:
-    print("Hello {name}!")
-
 func main() -> void:
-    greet("World")
+    let s = "World"
+    print("Hello {s}!")
+    print("1 + 2 = {1+2}")
+    print("1/4 = {1/4}")
+    print("Is 0.1+0.2 == 0.3? {0.1+0.2 == 0.3}")

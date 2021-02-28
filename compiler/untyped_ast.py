@@ -31,7 +31,7 @@ class StringConstant(Expression):
 
 # result of string formatting
 @dataclass
-class StringJoin(Expression):
+class StringFormatJoin(Expression):
     parts: List[Expression]
 
     def __init__(self, parts: List[Expression]):

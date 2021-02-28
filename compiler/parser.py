@@ -72,7 +72,7 @@ class _Parser:
             return uast.StringConstant("")
         if len(parts) == 1:
             return parts[0]
-        return uast.StringJoin(parts)
+        return uast.StringFormatJoin(parts)
 
     def parse_expression_without_operators(self) -> uast.Expression:
         result: uast.Expression

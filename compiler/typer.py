@@ -64,6 +64,7 @@ class _FunctionOrMethodTyper:
         functype = _special_funcs[name]
         actual_argtypes = [arg.type for arg in args]
         assert actual_argtypes == functype.argtypes, (
+            name,
             actual_argtypes,
             functype.argtypes,
         )
@@ -138,6 +139,12 @@ class _FunctionOrMethodTyper:
 
         raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
 
+    def do_expression_to_string(self, ast: uast.Expression) -> tast.Expression:
+        result = self.do_expression(ast)
+        if result.type != STRING:
+            result = self.create_returning_call(tast.GetMethod(result, "to_string"), [])
+        return result
+
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
@@ -146,13 +153,13 @@ class _FunctionOrMethodTyper:
             return tast.FloatConstant(ast.value)
         if isinstance(ast, uast.StringConstant):
             return tast.StringConstant(ast.value)
-        if isinstance(ast, uast.StringJoin):
+        if isinstance(ast, uast.StringFormatJoin):
             assert len(ast.parts) >= 2
-            result = self.do_expression(ast.parts[0])
+            result = self.do_expression_to_string(ast.parts[0])
             for part in ast.parts[1:]:
                 # TODO: this results in slow nested code
                 result = self.create_special_returning_call(
-                    "string_concat", [result, self.do_expression(part)]
+                    "string_concat", [result, self.do_expression_to_string(part)]
                 )
             return result
         if isinstance(ast, uast.Call):
