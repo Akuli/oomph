@@ -53,7 +53,11 @@ class _FunctionOrMethodTyper:
         args: List[tast.Expression],
     ) -> Union[tast.SetRef, tast.ReturningCall]:
         functype = _special_funcs[name]
-        assert [arg.type for arg in args] == functype.argtypes
+        actual_argtypes = [arg.type for arg in args]
+        assert actual_argtypes == functype.argtypes, (
+            actual_argtypes,
+            functype.argtypes,
+        )
         return self.create_returning_call(
             tast.GetVar(_special_funcs[name], name, is_special=True), args
         )
@@ -126,13 +130,22 @@ class _FunctionOrMethodTyper:
         raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
 
     def do_expression(self, ast: uast.Expression) -> tast.Expression:
-        if isinstance(ast, uast.StringConstant):
-            return tast.StringConstant(STRING, ast.value)
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
             return tast.IntConstant(ast.value)
         if isinstance(ast, uast.FloatConstant):
             return tast.FloatConstant(ast.value)
+        if isinstance(ast, uast.StringConstant):
+            return tast.StringConstant(ast.value)
+        if isinstance(ast, uast.StringJoin):
+            assert len(ast.parts) >= 2
+            result = self.do_expression(ast.parts[0])
+            for part in ast.parts[1:]:
+                # TODO: this results in slow nested code
+                result = self.create_special_returning_call(
+                    "string_concat", [result, self.do_expression(part)]
+                )
+            return result
         if isinstance(ast, uast.Call):
             call = self.do_call(ast)
             assert not isinstance(call, tast.VoidCall)
@@ -304,7 +317,7 @@ def _do_toplevel_statement(
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
-    types: Dict[str, Type] = {"int": INT}
+    types: Dict[str, Type] = {"int": INT, "float": FLOAT, "bool": BOOL, "Str": STRING}
     variables: Dict[str, Type] = {
         "print": FunctionType([STRING], None),
         "print_int": FunctionType([INT], None),

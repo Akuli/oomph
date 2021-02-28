@@ -29,6 +29,16 @@ class StringConstant(Expression):
     value: str
 
 
+# result of string formatting
+@dataclass
+class StringJoin(Expression):
+    parts: List[Expression]
+
+    def __init__(self, parts: List[Expression]):
+        assert len(parts) >= 2
+        self.parts = parts
+
+
 @dataclass
 class IntConstant(Expression):
     value: int

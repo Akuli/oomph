@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import FLOAT, INT, ClassType, FunctionType, Type
+from compiler.types import FLOAT, INT, STRING, ClassType, FunctionType, Type
 
 
 @dataclass
@@ -55,6 +55,10 @@ class GetMethod(Expression):
 @dataclass
 class StringConstant(Expression):
     value: str
+
+    def __init__(self, value: str):
+        super().__init__(STRING)
+        self.value = value
 
 
 @dataclass

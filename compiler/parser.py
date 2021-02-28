@@ -9,8 +9,8 @@ _T = TypeVar("_T")
 
 
 class _Parser:
-    def __init__(self, token_iter: "more_itertools.peekable[Tuple[str, str]]"):
-        self.token_iter = token_iter
+    def __init__(self, token_iter: Iterator[Tuple[str, str]]):
+        self.token_iter = more_itertools.peekable(token_iter)
 
     def get_token(
         self,
@@ -45,10 +45,39 @@ class _Parser:
         self.get_token("op", ")")
         return result
 
+    def tokenize_and_parse_expression(self, code: str) -> uast.Expression:
+        parser = _Parser(tokenizer.tokenize(code))
+        result = parser.parse_expression()
+        parser.get_token("op", "\n")
+        assert not parser.token_iter, parser.token_iter.peek()
+        return result
+
+    def do_string_formatting(self, string: str) -> uast.Expression:
+        string = string.strip('"')
+        parts = []
+        while string:
+            if string[0] == "{":
+                end = string.index("}")
+                parts.append(self.tokenize_and_parse_expression(string[1:end]))
+                string = string[end + 1 :]
+            else:
+                try:
+                    end = string.index("{")
+                except ValueError:
+                    end = len(string)
+                parts.append(uast.StringConstant(string[:end]))
+                string = string[end:]
+
+        if len(parts) == 0:
+            return uast.StringConstant("")
+        if len(parts) == 1:
+            return parts[0]
+        return uast.StringJoin(parts)
+
     def parse_expression_without_operators(self) -> uast.Expression:
         result: uast.Expression
         if self.token_iter.peek()[0] == "string":
-            result = uast.StringConstant(self.get_token("string")[1].strip('"'))
+            result = self.do_string_formatting(self.get_token("string")[1])
         elif self.token_iter.peek()[0] == "identifier":
             result = uast.GetVar(self.get_token("identifier")[1])
         elif self.token_iter.peek()[0] == "int":
@@ -296,9 +325,8 @@ class _Parser:
 
 
 def parse_file(code: str) -> List[uast.ToplevelStatement]:
-    token_iter = more_itertools.peekable(tokenizer.tokenize(code))
-    parser = _Parser(token_iter)
+    parser = _Parser(tokenizer.tokenize(code))
     result = []
-    while token_iter:
+    while parser.token_iter:
         result.append(parser.parse_toplevel())
     return result

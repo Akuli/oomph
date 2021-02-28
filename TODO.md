@@ -8,6 +8,7 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - string operations (concat, format, convert numbers to/from string)
+- rethink how to name classes (`Str` and `int` feels weird)
 - generics
     - arrays
     - optionals

@@ -1,2 +1,5 @@
+func greet(Str name) -> void:
+    print("Hello {name}!")
+
 func main() -> void:
-    print("1 + 2 = {1+2}")
+    greet("World")
