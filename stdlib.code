@@ -5,3 +5,6 @@ func __bool_to_string(bool b) -> Str:
 
 func print_bool(bool b) -> void:
     print(b.to_string())
+
+func print_int(int n) -> void:
+    print(n.to_string())

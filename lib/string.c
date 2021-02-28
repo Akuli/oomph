@@ -1,6 +1,22 @@
 #include "lib.h"
 #include <assert.h>
 #include <string.h>
+#include <stdarg.h>
+
+static struct String *alloc_string(size_t len)
+{
+	struct String *res = malloc(sizeof(struct String) + len + 1);
+	assert(res);
+	res->refcount = 1;
+	return res;
+}
+
+struct String *cstr_to_string(const char *s)
+{
+	struct String *res = alloc_string(strlen(s));
+	strcpy(res->str, s);
+	return res;
+}
 
 /*
 struct String *string_concat(const struct String *strs[])
@@ -24,10 +40,7 @@ struct String *string_concat(const struct String *strs[])
 
 struct String *string_concat(const struct String *str1, const struct String *str2)
 {
-	size_t len = strlen(str1->str) + strlen(str2->str);
-	struct String *res = malloc(sizeof(struct String) + len + 1);
-	assert(res);
-	res->refcount = 1;
+	struct String *res = alloc_string(strlen(str1->str) + strlen(str2->str));
 	strcpy(res->str, str1->str);
 	strcat(res->str, str2->str);
 	return res;

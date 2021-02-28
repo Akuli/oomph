@@ -34,6 +34,7 @@ FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 FLOAT.methods["round"] = FunctionType([FLOAT], INT)
 
 BOOL.methods["to_string"] = FunctionType([BOOL], STRING)
+INT.methods["to_string"] = FunctionType([INT], STRING)
 
 
 @dataclass

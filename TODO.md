@@ -8,7 +8,6 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - `to_string()` methods
-    - `int`
     - `float`
     - automatically call `to_string()` in string formatting
 - string to int

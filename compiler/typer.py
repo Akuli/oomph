@@ -320,7 +320,6 @@ def convert_program(
     types: Dict[str, Type] = {"int": INT, "float": FLOAT, "bool": BOOL, "Str": STRING}
     variables: Dict[str, Type] = {
         "print": FunctionType([STRING], None),
-        "print_int": FunctionType([INT], None),
         "print_float": FunctionType([FLOAT], None),
     }
     return [
