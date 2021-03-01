@@ -13,7 +13,6 @@ Missing features:
         - all occurrences
         - only occurrence, failing if multiple are found
     - split and join
-    - strip, left strip, right strip (ascii whitespace only)
     - upper and lower (need unicode lib?)
     - replace (borrow logic from asda)
 - should `self` be keyword?

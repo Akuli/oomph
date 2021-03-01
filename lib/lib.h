@@ -38,6 +38,9 @@ int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *s
 #define meth_Str_right_pad var___string_right_pad
 #define meth_Str_center_pad var___string_center_pad
 #define meth_Str_count var___string_count
+#define meth_Str_trim var___string_trim
+#define meth_Str_left_trim var___string_left_trim
+#define meth_Str_right_trim var___string_right_trim
 
 /*
 Can't be macros because of assumptions that compiler makes:

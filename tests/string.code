@@ -57,3 +57,7 @@ func main() -> void:
     print("aaaa".count("aa"))
     print("aaaa".count("b"))
     print("aaaa".count(""))
+
+    print(" a ".left_trim())
+    print(" a ".right_trim())
+    print(" a ".trim())

@@ -41,3 +41,23 @@ func __string_count(Str self, Str substring) -> int:
             return count
         s = s.slice(i + substring.length(), s.length())
         count = count + 1
+
+func __starts_with_space(Str s) -> bool:
+    # TODO: all ascii whitespace
+    return s.starts_with(" ")
+
+func __string_left_trim(Str self) -> Str:
+    let s = self  # TODO: is this necessary?
+    # TODO: all ascii whitespace
+    while s.starts_with(" "):
+        s = s.slice(1, s.length())
+    return s
+
+func __string_right_trim(Str self) -> Str:
+    let s = self
+    while s.ends_with(" "):
+        s = s.slice(0, s.length() - 1)
+    return s
+
+func __string_trim(Str self) -> Str:
+    return self.left_trim().right_trim()
