@@ -25,3 +25,19 @@ func __string_right_pad(Str self, int len, Str pad_char) -> Str:
 func __string_center_pad(Str self, int len, Str pad_char) -> Str:
     let average = ((self.length() + len)/2).floor()
     return self.left_pad(average, pad_char).right_pad(len, pad_char)
+
+func __string_count(Str self, Str substring) -> int:
+    let s = self
+    let count = 0
+
+    if substring == "":
+        # TODO: error
+        return -1
+
+    # TODO: this loop isn't elegant, ideally would be 'while i := s.find_first(...)'
+    while true:
+        let i = s.find_first(substring)
+        if i == -1:
+            return count
+        s = s.slice(i + substring.length(), s.length())
+        count = count + 1

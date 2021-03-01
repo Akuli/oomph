@@ -65,6 +65,7 @@ STRING.methods["left_pad"] = FunctionType([STRING, INT, STRING], STRING)
 STRING.methods["right_pad"] = FunctionType([STRING, INT, STRING], STRING)
 STRING.methods["center_pad"] = FunctionType([STRING, INT, STRING], STRING)
 STRING.methods["find_first"] = FunctionType([STRING, STRING], INT)
+STRING.methods["count"] = FunctionType([STRING, STRING], INT)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 global_variables: Dict[str, Type] = {

@@ -52,3 +52,8 @@ func main() -> void:
     print("abclolwatlolabc".find_first("lol"))
     print("abclolwatlolabc".find_first("x"))
     print("abclolwatlolabc".find_first(""))
+
+    print("abclolwatlolabc".count("lol"))
+    print("aaaa".count("aa"))
+    print("aaaa".count("b"))
+    print("aaaa".count(""))

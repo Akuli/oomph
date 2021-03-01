@@ -11,8 +11,7 @@ Missing features:
     - find occurrence of substring
         - last occurrence
         - all occurrences
-        - only occurrence
-    - count occurrences of substring
+        - only occurrence, failing if multiple are found
     - split and join
     - strip, left strip, right strip (ascii whitespace only)
     - upper and lower (need unicode lib?)
