@@ -31,6 +31,8 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 // Class implemented in C, method implemented in the language itself
 #define meth_bool_to_string var___bool_to_string
 #define meth_Str_repeat var___string_repeat
+#define meth_Str_starts_with var___string_starts_with
+#define meth_Str_ends_with var___string_ends_with
 
 /*
 Can't be macros because of assumptions that compiler makes:

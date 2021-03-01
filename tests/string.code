@@ -29,3 +29,17 @@ func main() -> void:
     print("abc".repeat(3))
     print("abc".repeat(4))
     print("abc".repeat(5))
+
+    print("abc".starts_with("ab"))
+    print("abc".starts_with("bc"))
+    print("abc".starts_with("abc"))
+    print("abc".starts_with(""))
+    print("abc".starts_with("abcx"))
+    print("abc".starts_with("xabc"))
+
+    print("abc".ends_with("ab"))
+    print("abc".ends_with("bc"))
+    print("abc".ends_with("abc"))
+    print("abc".ends_with(""))
+    print("abc".ends_with("abcx"))
+    print("abc".ends_with("xabc"))

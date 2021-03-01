@@ -7,8 +7,6 @@ Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - string methods
     - reverse
-    - starts with
-    - ends with
     - find first/last/only/all occurence of substring
     - count occurrences of substring
     - split and join
@@ -16,6 +14,7 @@ Missing features:
     - upper and lower (need unicode lib?)
     - replace (borrow logic from asda)
     - `left_pad` lol
+- should `self` be keyword?
 - chained equalities `a == b == c`
 - `x++`
 - `+=`

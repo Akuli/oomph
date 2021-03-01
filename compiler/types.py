@@ -59,6 +59,8 @@ STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 STRING.methods["to_int"] = FunctionType([STRING], INT)
 STRING.methods["repeat"] = FunctionType([STRING, INT], STRING)
 STRING.methods["slice"] = FunctionType([STRING, INT, INT], STRING)
+STRING.methods["starts_with"] = FunctionType([STRING, STRING], BOOL)
+STRING.methods["ends_with"] = FunctionType([STRING, STRING], BOOL)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 global_variables: Dict[str, Type] = {

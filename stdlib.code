@@ -1,10 +1,16 @@
-func __bool_to_string(bool b) -> Str:
-    if b:
+func __bool_to_string(bool self) -> Str:
+    if self:
         return "true"
     return "false"
 
-func __string_repeat(Str s, int n) -> Str:
-    let result = s
-    while result.length() < n*s.length():
+func __string_repeat(Str self, int n) -> Str:
+    let result = self
+    while result.length() < n*self.length():
         result = result + result
-    return result.slice(0, n*s.length())
+    return result.slice(0, n*self.length())
+
+func __string_starts_with(Str self, Str prefix) -> bool:
+    return self.slice(0, prefix.length()) == prefix
+
+func __string_ends_with(Str self, Str suffix) -> bool:
+    return self.slice(self.length() - suffix.length(), self.length()) == suffix
