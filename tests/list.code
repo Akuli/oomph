@@ -1,0 +1,12 @@
+func main() -> void:
+    let a = new List[int]()
+    print(a.length())
+
+    for let i = 0; i < 10; i = i+1:
+        a.push(100 + i)
+    print(a.length())
+
+    # TODO: variables leak
+    for let j = 0; j < a.length(); j = j+1:
+        print(a.get(j))
+    print(a.length())

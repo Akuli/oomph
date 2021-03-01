@@ -49,14 +49,29 @@ class Type:
 # does NOT inherit from type, optional isn't a type even though optional[str] is
 @dataclass(eq=False)
 class Generic:
-    # TODO: make other generics than just optional work too
+    name: str
+
     def get_type(self, generic_arg: Type) -> Type:
-        result = Type(f"optional[{generic_arg.name}]", False)
-        result.constructor_argtypes = [generic_arg]
-        result.methods["get"] = FunctionType([result], generic_arg)
-        result.methods["is_null"] = FunctionType([result], BOOL)
-        result.generic_origin = GenericSource(self, generic_arg)
+        if self is OPTIONAL:
+            result = Type(f"{self.name}[{generic_arg.name}]", False)
+            result.generic_origin = GenericSource(self, generic_arg)
+            result.constructor_argtypes = [generic_arg]
+            result.methods["get"] = FunctionType([result], generic_arg)
+            result.methods["is_null"] = FunctionType([result], BOOL)
+        elif self is LIST:
+            result = Type(f"{self.name}[{generic_arg.name}]", True)
+            result.generic_origin = GenericSource(self, generic_arg)
+            result.constructor_argtypes = []
+            result.methods["get"] = FunctionType([result, INT], generic_arg)
+            result.methods["length"] = FunctionType([result], INT)
+            result.methods["push"] = FunctionType([result, generic_arg], None)
+        else:
+            raise NotImplementedError
         return result
+
+
+LIST = Generic("List")
+OPTIONAL = Generic("optional")
 
 
 @dataclass(eq=False)
@@ -83,7 +98,6 @@ class FunctionType(Type):
 BOOL = Type("bool", False)
 FLOAT = Type("float", False)
 INT = Type("int", False)
-OPTIONAL = Generic()
 STRING = Type("Str", True)
 
 BOOL.methods["to_string"] = FunctionType([BOOL], STRING)
@@ -115,7 +129,7 @@ STRING.methods["trim"] = FunctionType([STRING], STRING)
 STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
-builtin_generic_types = {"optional": OPTIONAL}
+builtin_generic_types = {gen.name: gen for gen in [OPTIONAL, LIST]}
 builtin_variables: Dict[str, Type] = {
     "print": FunctionType([STRING], None),
 }

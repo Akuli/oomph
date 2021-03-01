@@ -4,7 +4,7 @@ import re
 from typing import Dict, List, Optional, TypeVar, Union
 
 import compiler.typed_ast as tast
-from compiler.types import BOOL, FLOAT, INT, OPTIONAL, STRING, Type
+from compiler.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type
 
 _T = TypeVar("_T")
 
@@ -172,6 +172,95 @@ def _format_byte(byte: int) -> str:
     return r"'\x%02x'" % byte
 
 
+_generic_c_codes = {
+    OPTIONAL: """
+struct %(struct_name)s {
+    bool isnull;
+    %(c_type)s value;
+};
+
+struct %(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
+{
+    return (struct %(struct_name)s) { false, val };
+}
+
+%(c_type)s meth_%(struct_name)s_get(struct %(struct_name)s opt)
+{
+    assert(!opt.isnull);
+    %(c_type)s val = opt.value;
+    %(incref_val)s
+    return val;
+}
+
+bool meth_%(struct_name)s_is_null(struct %(struct_name)s opt)
+{
+    return opt.isnull;
+}
+""",
+    LIST: """
+// TODO: have this struct on stack when possible, same with strings
+struct %(struct_name)s {
+    REFCOUNT_HEADER
+    int64_t len;
+    int64_t alloc;
+    %(c_type)s smalldata[8];
+    %(c_type)s *data;
+};
+
+struct %(struct_name)s *ctor_%(struct_name)s(void)
+{
+    // FIXME: how to free this?
+    struct %(struct_name)s *res = malloc(sizeof(*res));
+    assert(res);
+    res->refcount = 1;
+    res->len = 0;
+    res->data = res->smalldata;
+    res->alloc = sizeof(res->smalldata)/sizeof(res->smalldata[0]);
+    return res;
+}
+
+void %(struct_name)s_ensure_alloc(struct %(struct_name)s *self, int64_t n)
+{
+    assert(n >= 0);
+    if (self->alloc >= n)
+        return;
+
+    while (self->alloc < n)
+        self->alloc *= 2;
+
+    if (self->data == self->smalldata) {
+        self->data = malloc(self->alloc * sizeof(self->data[0]));
+        assert(self->data);
+        memcpy(self->data, self->smalldata, sizeof self->smalldata);
+    } else {
+        self->data = realloc(self->data, self->alloc * sizeof(self->data[0]));
+        assert(self->data);
+    }
+}
+
+void meth_%(struct_name)s_push(struct %(struct_name)s *self, %(c_type)s val)
+{
+    %(struct_name)s_ensure_alloc(self, self->len + 1);
+    self->data[self->len++] = val;
+    %(incref_val)s   // FIXME: how to decref this?
+}
+
+%(c_type)s meth_%(struct_name)s_get(struct %(struct_name)s *self, int64_t i)
+{
+    assert(0 <= i && i < self->len);
+    %(c_type)s val = self->data[i];
+    %(incref_val)s
+    return val;
+}
+
+int64_t meth_%(struct_name)s_length(struct %(struct_name)s *self)
+{
+    return self->len;
+}
+""",
+}
+
+
 class _FileEmitter:
     def __init__(self) -> None:
         self.strings: Dict[str, str] = {}
@@ -182,57 +271,32 @@ class _FileEmitter:
         if the_type.generic_origin is None:
             return the_type.name
 
-        assert the_type.generic_origin.generic is OPTIONAL
         try:
             return self._optional_structs[the_type.generic_origin.arg]
         except KeyError:
-            struct_name = (
-                f"optional_{self.get_type_c_name(the_type.generic_origin.arg)}"
-            )
+            struct_name = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
             self._optional_structs[the_type.generic_origin.arg] = struct_name
-            c_type = self.emit_type(the_type.generic_origin.arg)
-            incref_if_needed = (
-                "incref(opt.value);" if the_type.generic_origin.arg.refcounted else ""
-            )
-            self.beginning += f"""\
-struct {struct_name} {{
-    bool isnull;
-    {c_type} value;
-}};
-
-struct {struct_name} ctor_{struct_name}({c_type} val)
-{{
-    return (struct {struct_name}) {{ false, val }};
-}}
-
-{c_type} meth_{struct_name}_get(struct {struct_name} opt)
-{{
-    assert(!opt.isnull);
-    {incref_if_needed}
-    return opt.value;
-}}
-
-bool meth_{struct_name}_is_null(struct {struct_name} opt)
-{{
-    return opt.isnull;
-}}
-"""
+            self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
+                "struct_name": struct_name,
+                "c_type": self.emit_type(the_type.generic_origin.arg),
+                "incref_val": "incref(val);"
+                if the_type.generic_origin.arg.refcounted
+                else "",
+            }
             return struct_name
 
     def emit_type(self, the_type: Optional[Type]) -> str:
         if the_type is None:
             return "void"
-        if the_type.generic_origin is not None:
-            assert not the_type.refcounted
-            return f"struct {self.get_type_c_name(the_type)}"
         if the_type is INT:
             return "int64_t"
         if the_type is FLOAT:
             return "double"
         if the_type is BOOL:
             return "bool"
-        assert the_type.refcounted
-        return f"struct {self.get_type_c_name(the_type)} *"
+        if the_type.refcounted:
+            return f"struct {self.get_type_c_name(the_type)} *"
+        return f"struct {self.get_type_c_name(the_type)}"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:

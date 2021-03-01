@@ -23,5 +23,7 @@ Missing features:
     - tuples
     - arrays
     - mappings
+- foreach
+- null
 - io
 - non-ref-counted pass-by-value classes
