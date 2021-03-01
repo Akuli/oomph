@@ -6,7 +6,6 @@ Bugs:
 Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - string methods
-    - utf8 length
     - unicode length
     - repeat
     - starts with

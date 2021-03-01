@@ -3,3 +3,6 @@ func main() -> void:
     print("hello" == "hello")
     print("hello" == "hell")
     print("hello" == "hallo")
+
+    print("hello".length())
+    print("".length())

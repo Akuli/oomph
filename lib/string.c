@@ -46,3 +46,9 @@ struct class_Str *string_concat(const struct class_Str *str1, const struct class
 	strcat(res->str, str2->str);
 	return res;
 }
+
+int64_t meth_Str_length(const struct class_Str *s)
+{
+	// TODO: optimize
+	return strlen(s->str);
+}

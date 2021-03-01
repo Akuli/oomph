@@ -23,6 +23,9 @@ for file in tests/*.code; do
     else
         if python3 -m compiler "$@" $file > test.out; then
             outfile=tests/output/$(basename $file | cut -d. -f1).txt
+            if [ -f $outfile ] && [ $outfile -ot $file ]; then
+                rm -vf $outfile
+            fi
             if [ ! -f $outfile ]; then
                 echo "Creating $outfile automatically"
                 cp test.out $outfile
