@@ -1,6 +1,13 @@
-# This ast has strings representing types
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
+
+
+@dataclass
+class Type:
+    name: str
+    generic: Optional[Type]
 
 
 @dataclass
@@ -64,7 +71,7 @@ class BinaryOperator(Expression):
 
 @dataclass
 class Constructor(Expression):
-    type: str
+    type: Type
 
 
 @dataclass
@@ -129,13 +136,13 @@ class ToplevelStatement:
 @dataclass
 class FuncDef(ToplevelStatement):
     name: str
-    args: List[Tuple[str, str]]  # first type, then name
-    returntype: Optional[str]
+    args: List[Tuple[Type, str]]
+    returntype: Optional[Type]
     body: List[Statement]
 
 
 @dataclass
 class ClassDef(ToplevelStatement):
-    name: str
-    members: List[Tuple[str, str]]
+    type: Type
+    members: List[Tuple[Type, str]]
     body: List[FuncDef]

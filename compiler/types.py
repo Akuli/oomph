@@ -72,6 +72,6 @@ STRING.methods["trim"] = FunctionType([STRING], STRING)
 STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
-global_variables: Dict[str, Type] = {
+builtin_variables: Dict[str, Type] = {
     "print": FunctionType([STRING], None),
 }

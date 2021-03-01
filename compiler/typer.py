@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import itertools
 from typing import Dict, List, Tuple, Union
 
@@ -11,7 +13,7 @@ from compiler.types import (
     FunctionType,
     Type,
     builtin_types,
-    global_variables,
+    builtin_variables,
 )
 
 _special_funcs = {
@@ -43,9 +45,9 @@ _special_funcs = {
 
 
 class _FunctionOrMethodTyper:
-    def __init__(self, variables: Dict[str, Type], types: Dict[str, Type]):
+    def __init__(self, file_typer: _FileTyper, variables: Dict[str, Type]):
+        self.file_typer = file_typer
         self.variables = variables
-        self.types = types
         self.reflist: List[Tuple[str, Type]] = []
         self.loop_stack: List[str] = []
         self.loop_counter = 0
@@ -105,11 +107,11 @@ class _FunctionOrMethodTyper:
             )
 
         # Reduce >=, <=, and < to use >
-        if ast.op == '<':
-            ast = uast.BinaryOperator(ast.rhs, '>', ast.lhs)
-        if ast.op == '<=':
-            ast = uast.BinaryOperator(ast.rhs, '>=', ast.lhs)
-        if ast.op == '>=':
+        if ast.op == "<":
+            ast = uast.BinaryOperator(ast.rhs, ">", ast.lhs)
+        if ast.op == "<=":
+            ast = uast.BinaryOperator(ast.rhs, ">=", ast.lhs)
+        if ast.op == ">=":
             return self.create_special_call(
                 "bool_not",
                 [self.do_binary_op(uast.BinaryOperator(ast.lhs, "<", ast.rhs))],
@@ -224,7 +226,7 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.BinaryOperator):
             return self.do_binary_op(ast)
         if isinstance(ast, uast.Constructor):
-            klass = self.types[ast.type]
+            klass = self.file_typer.get_type(ast.type)
             return tast.Constructor(klass.get_constructor_type(), klass)
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
@@ -310,72 +312,73 @@ class _FunctionOrMethodTyper:
         return result
 
 
-def _do_funcdef(
-    variables: Dict[str, Type],
-    types: Dict[str, Type],
-    funcdef: uast.FuncDef,
-    create_variable: bool,
-) -> tast.FuncDef:
-    functype = FunctionType(
-        [types[typename] for typename, argname in funcdef.args],
-        None if funcdef.returntype is None else types[funcdef.returntype],
-    )
-    if create_variable:
-        assert funcdef.name not in variables, (funcdef.name, variables.keys())
-        variables[funcdef.name] = functype
+class _FileTyper:
+    def __init__(self) -> None:
+        self._types = builtin_types.copy()
+        self.variables = builtin_variables.copy()
 
-    local_vars = variables.copy()
-    for (typename, argname), the_type in zip(funcdef.args, functype.argtypes):
-        assert argname not in local_vars
-        local_vars[argname] = the_type
+    def get_type(self, raw_type: uast.Type) -> tast.Type:
+        assert not raw_type.generic
+        return self._types[raw_type.name]
 
-    typer = _FunctionOrMethodTyper(local_vars, types)
-    body = typer.do_block(funcdef.body)
-    return tast.FuncDef(
-        funcdef.name,
-        functype,
-        [argname for typename, argname in funcdef.args],
-        body,
-        typer.reflist,
-    )
-
-
-def _do_toplevel_statement(
-    variables: Dict[str, Type],
-    types: Dict[str, Type],
-    top_statement: uast.ToplevelStatement,
-) -> tast.ToplevelStatement:
-    if isinstance(top_statement, uast.FuncDef):
-        return _do_funcdef(variables, types, top_statement, create_variable=True)
-
-    if isinstance(top_statement, uast.ClassDef):
-        classtype = Type(top_statement.name, True)
-        assert top_statement.name not in types
-        types[top_statement.name] = classtype
-        classtype.members.extend(
-            (types[typename], membername)
-            for typename, membername in top_statement.members
+    def _do_funcdef(self, funcdef: uast.FuncDef, create_variable: bool) -> tast.FuncDef:
+        functype = FunctionType(
+            [self.get_type(typ) for typ, nam in funcdef.args],
+            None if funcdef.returntype is None else self.get_type(funcdef.returntype),
         )
-        classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+        if create_variable:
+            assert funcdef.name not in self.variables, (
+                funcdef.name,
+                self.variables.keys(),
+            )
+            self.variables[funcdef.name] = functype
 
-        typed_method_defs = []
-        for method_def in top_statement.body:
-            method_def.args.insert(0, (top_statement.name, "self"))
-            typed_def = _do_funcdef(variables, types, method_def, create_variable=False)
-            classtype.methods[method_def.name] = typed_def.type
-            typed_method_defs.append(typed_def)
+        local_vars = self.variables.copy()
+        for (typename, argname), the_type in zip(funcdef.args, functype.argtypes):
+            assert argname not in local_vars
+            local_vars[argname] = the_type
 
-        return tast.ClassDef(classtype, typed_method_defs)
+        typer = _FunctionOrMethodTyper(self, local_vars)
+        body = typer.do_block(funcdef.body)
+        return tast.FuncDef(
+            funcdef.name,
+            functype,
+            [argname for typename, argname in funcdef.args],
+            body,
+            typer.reflist,
+        )
 
-    raise NotImplementedError(top_statement)
+    def do_toplevel_statement(
+        self,
+        top_statement: uast.ToplevelStatement,
+    ) -> tast.ToplevelStatement:
+        if isinstance(top_statement, uast.FuncDef):
+            return self._do_funcdef(top_statement, create_variable=True)
+
+        if isinstance(top_statement, uast.ClassDef):
+            assert top_statement.type.generic is None
+            classtype = Type(top_statement.type.name, True)
+            assert top_statement.type.name not in self._types
+            self._types[top_statement.type.name] = classtype
+            classtype.members.extend(
+                (self.get_type(typ), nam) for typ, nam in top_statement.members
+            )
+            classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+
+            typed_method_defs = []
+            for method_def in top_statement.body:
+                method_def.args.insert(0, (top_statement.type, "self"))
+                typed_def = self._do_funcdef(method_def, create_variable=False)
+                classtype.methods[method_def.name] = typed_def.type
+                typed_method_defs.append(typed_def)
+
+            return tast.ClassDef(classtype, typed_method_defs)
+
+        raise NotImplementedError(top_statement)
 
 
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
-    types = builtin_types.copy()
-    variables = global_variables.copy()
-    return [
-        _do_toplevel_statement(variables, types, toplevel_statement)
-        for toplevel_statement in program
-    ]
+    typer = _FileTyper()
+    return [typer.do_toplevel_statement(top) for top in program]

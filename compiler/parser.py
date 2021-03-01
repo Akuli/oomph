@@ -288,10 +288,16 @@ class _Parser:
         self.get_token("op", "\n")
         return result
 
-    def parse_type(self) -> str:
-        return self.get_token("identifier")[1]
+    def parse_type(self) -> uast.Type:
+        name = self.get_token("identifier")[1]
+        generic = None
+        if self.token_iter.peek() == ("op", "["):
+            self.get_token("op", "[")
+            generic = self.parse_type()
+            self.get_token("op", "]")
+        return uast.Type(name, generic)
 
-    def parse_funcdef_arg(self) -> Tuple[str, str]:
+    def parse_funcdef_arg(self) -> Tuple[uast.Type, str]:
         type_name = self.parse_type()
         arg_name = self.get_token("identifier")[1]
         return (type_name, arg_name)
@@ -316,20 +322,27 @@ class _Parser:
         return self.parse_function_or_method()
 
     def parse_toplevel(self) -> uast.ToplevelStatement:
+        if self.token_iter.peek() == ("keyword", "generic"):
+            self.get_token("keyword", "generic")
+            generic = True
+        else:
+            generic = False
+
         if self.token_iter.peek() == ("keyword", "func"):
+            assert not generic  # TODO
             self.get_token("keyword", "func")
             return self.parse_function_or_method()
 
         if self.token_iter.peek() == ("keyword", "class"):
             self.get_token("keyword", "class")
-            name = self.get_token("identifier")[1]
+            the_type = self.parse_type()
             args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
             if self.token_iter.peek(None) == ("begin_block", ":"):
                 body = self.parse_block(self.parse_method)
             else:
                 body = []
                 self.get_token("op", "\n")
-            return uast.ClassDef(name, args, body)
+            return uast.ClassDef(the_type, args, body)
 
         raise NotImplementedError(self.token_iter.peek())
 

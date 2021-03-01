@@ -9,9 +9,10 @@ _TOKEN_REGEX = r"""
         let
         | func
         | meth
-        | void
         | class
+        | generic
         | new
+        | void
         | return
         | pass
         | mod
@@ -50,6 +51,7 @@ _TOKEN_REGEX = r"""
     | =
     | \+ | - | \* | /
     | \( | \)
+    | \[ | \]
     | \n
     | \. | , | : | ;
 )

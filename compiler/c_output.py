@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-import string
 from typing import Dict, List, Optional, TypeVar, Union
 
 import compiler.typed_ast as tast
@@ -79,7 +78,7 @@ class _FunctionEmitter:
         if isinstance(ast, tast.SetRef):
             # Must evaluate expression before decref because expression might
             # depend on the old value
-            var = self.create_local_var(ast.value.type, f'{ast.refname}_new')
+            var = self.create_local_var(ast.value.type, f"{ast.refname}_new")
             return f"({var} = {self.emit_expression(ast.value)}, decref({ast.refname}), {ast.refname} = {var})"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
