@@ -77,7 +77,7 @@ class _FunctionEmitter:
         if isinstance(ast, tast.Constructor):
             return "ctor_" + ast.class_to_construct.name
         if isinstance(ast, tast.SetRef):
-            return f"({ast.refname} = {self.emit_expression(ast.value)})"
+            return f"(decref({ast.refname}), ({ast.refname} = {self.emit_expression(ast.value)}))"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
@@ -105,9 +105,8 @@ class _FunctionEmitter:
             return self.emit_call(ast) + ";\n\t"
 
         if isinstance(ast, tast.DecRef):
-            # TODO: decref could be a macro
             var = self.create_local_var(ast.value.type, "decreffing_var")
-            return f"{var} = {self.emit_expression(ast.value)}; decref({var});\n\t"
+            return f"decref({self.emit_expression(ast.value)});\n\t"
 
         if isinstance(ast, tast.Return):
             if ast.value is not None and ast.value.type.refcounted:
@@ -159,7 +158,7 @@ class _FunctionEmitter:
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
             + self.emit_label("out")
             + "".join(
-                f"if ({refname}) decref({refname});\n\t"
+                f"decref({refname});\n\t"
                 for refname, reftype in reversed(funcdef.refs)
             )
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")

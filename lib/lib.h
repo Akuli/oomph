@@ -30,6 +30,11 @@ int64_t meth_Str_unicode_length(const struct class_Str *s);
 // Class implemented in C, method implemented in the language itself
 #define meth_bool_to_string var___bool_to_string
 
+/*
+Can't be macros because of assumptions that compiler makes:
+- Can be used in comma expressions, as in (decref(ptr), (ptr = new_value))
+- Only evaluates argument once
+*/
 void incref(void *ptr);
 void decref(void *ptr);
 

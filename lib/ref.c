@@ -5,14 +5,18 @@ struct RefHeader { REFCOUNT_HEADER };
 
 void incref(void *ptr)
 {
-	struct RefHeader *hdr = ptr;
-	if (hdr->refcount >= 0)
-		hdr->refcount++;
+	if (ptr) {
+		struct RefHeader *hdr = ptr;
+		if (hdr->refcount >= 0)
+			hdr->refcount++;
+	}
 }
 
 void decref(void *ptr)
 {
-	struct RefHeader *hdr = ptr;
-	if (hdr->refcount > 0 && --hdr->refcount == 0)
-		free(ptr);
+	if (ptr) {
+		struct RefHeader *hdr = ptr;
+		if (hdr->refcount > 0 && --hdr->refcount == 0)
+			free(ptr);
+	}
 }
