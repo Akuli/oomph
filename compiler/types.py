@@ -57,6 +57,7 @@ STRING.methods["length"] = FunctionType([STRING], INT)
 STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 STRING.methods["to_int"] = FunctionType([STRING], INT)
+STRING.methods["slice"] = FunctionType([STRING, INT, INT], STRING)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 global_variables: Dict[str, Type] = {

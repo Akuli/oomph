@@ -6,13 +6,11 @@ Bugs:
 Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - string methods
-    - unicode length
     - repeat
     - starts with
     - ends with
     - find first/last/only/all occurence of substring
     - count occurrences of substring
-    - slice
     - split and join
     - strip, left strip, right strip (ascii whitespace only)
     - upper and lower (need unicode lib?)

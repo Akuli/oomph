@@ -10,3 +10,11 @@ func main() -> void:
     print("hellö".unicode_length())
     print("".length())
     print("".unicode_length())
+
+    print("hello".slice(9, -6))
+    print("hello".slice(2, 2))
+
+    print("hello".slice(0, 5))
+    print("hello".slice(0, 2))
+    print("hello".slice(2, 5))
+    print("hello".slice(-6, 9))

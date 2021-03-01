@@ -56,27 +56,56 @@ int64_t meth_Str_length(const struct class_Str *s)
 // example: ONES(6) is 111111 in binary
 #define ONES(n) ((1<<(n))-1)
 
-static int utf8_chars_in_beginning(unsigned char c)
+// https://en.wikipedia.org/wiki/UTF-8#Encoding
+static bool is_utf8_continuation_byte(unsigned char c)
 {
-	// https://en.wikipedia.org/wiki/UTF-8
-	if (c >> 7 == 0)
+	return (c >> 6 == 1 << 1);  // 10xxxxxx
+}
+static int parse_utf8_start_byte(unsigned char c)
+{
+	if (c >> 7 == 0)  // 0xxxxxxx
 		return 1;
-	if (c >> 5 == ONES(2) << 1)
+	if (c >> 5 == ONES(2) << 1)  // 110xxxxx
 		return 2;
-	if (c >> 4 == ONES(3) << 1)
+	if (c >> 4 == ONES(3) << 1)  // 1110xxxx
 		return 3;
-	if (c >> 3 == ONES(4) << 1)
+	if (c >> 3 == ONES(4) << 1)  // 11110xxx
 		return 4;
-	assert(0);  // invalid utf8
+	assert(0);
 }
 
 int64_t meth_Str_unicode_length(const struct class_Str *s)
 {
 	const char *str = s->str;
 	int64_t res = 0;
-	while (*str) {
-		str += utf8_chars_in_beginning(str[0]);
+	while (str[0]) {
+		str += parse_utf8_start_byte(str[0]);
 		res++;
 	}
+	return res;
+}
+
+struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end)
+{
+	int64_t len = strlen(s->str);
+	if (start < 0)
+		start = 0;
+	if (start > len)
+		start = len;
+	if (end < 0)
+		end = 0;
+	if (end > len)
+		end = len;
+	if (start >= end)
+		return cstr_to_string("");
+
+	assert(!is_utf8_continuation_byte(s->str[start]));  // TODO: would unicode strings be better?
+	if (end == len)
+		return cstr_to_string(&s->str[start]);
+
+	assert(!is_utf8_continuation_byte(s->str[end]));
+	struct class_Str *res = alloc_string(end - start);
+	memcpy(res->str, &s->str[start], end - start);
+	res->str[end - start] = '\0';
 	return res;
 }
