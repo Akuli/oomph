@@ -179,13 +179,6 @@ class _FunctionEmitter:
 
 
 def _format_byte(byte: int) -> str:
-    if (
-        byte != b"'"
-        and byte != b"\\"
-        and byte
-        in (string.ascii_letters + string.digits + string.punctuation).encode("ascii")
-    ):
-        return "'" + bytes([byte]).decode("ascii") + "'"
     return r"'\x%02x'" % byte
 
 

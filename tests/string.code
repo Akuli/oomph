@@ -4,6 +4,8 @@ func main() -> void:
     print("hello" == "hell")
     print("hello" == "hallo")
 
+    print("'")
+
     print("hello".length())
     print("hello".unicode_length())
     print("hellö".length())
