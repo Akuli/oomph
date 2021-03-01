@@ -12,6 +12,7 @@ from compiler.types import (
     STRING,
     FunctionType,
     Type,
+    builtin_generic_types,
     builtin_types,
     builtin_variables,
 )
@@ -315,11 +316,15 @@ class _FunctionOrMethodTyper:
 class _FileTyper:
     def __init__(self) -> None:
         self._types = builtin_types.copy()
+        self._generic_types = builtin_generic_types.copy()
         self.variables = builtin_variables.copy()
 
     def get_type(self, raw_type: uast.Type) -> tast.Type:
-        assert not raw_type.generic
-        return self._types[raw_type.name]
+        if raw_type.generic is None:
+            return self._types[raw_type.name]
+        return self._generic_types[raw_type.name].get_type(
+            self.get_type(raw_type.generic)
+        )
 
     def _do_funcdef(self, funcdef: uast.FuncDef, create_variable: bool) -> tast.FuncDef:
         functype = FunctionType(
