@@ -29,7 +29,7 @@ class _FunctionEmitter:
             args = ast.args
 
         if isinstance(ast.func, tast.GetMethod):
-            func = f"meth_{self.file_emitter.get_struct_name(ast.func.obj.type)}_{ast.func.name}"
+            func = f"meth_{self.file_emitter.get_type_c_name(ast.func.obj.type)}_{ast.func.name}"
         else:
             func = self.emit_expression(ast.func)
 
@@ -62,7 +62,7 @@ class _FunctionEmitter:
                 return ast.varname
             return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
         if isinstance(ast, tast.Constructor):
-            return "ctor_" + self.file_emitter.get_struct_name(ast.class_to_construct)
+            return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
         if isinstance(ast, tast.SetRef):
             # Must evaluate expression before decref because expression might
             # depend on the old value
@@ -178,19 +178,21 @@ class _FileEmitter:
         self.beginning = '#include "lib/lib.h"\n\n'
         self._optional_structs: Dict[Type, str] = {}
 
-    def get_struct_name(self, the_type: Type) -> str:
-        if the_type.generic_arg is None:
+    def get_type_c_name(self, the_type: Type) -> str:
+        if the_type.generic_origin is None:
             return the_type.name
 
-        assert the_type.generic_source is OPTIONAL
+        assert the_type.generic_origin.generic is OPTIONAL
         try:
-            return self._optional_structs[the_type.generic_arg]
+            return self._optional_structs[the_type.generic_origin.arg]
         except KeyError:
-            struct_name = f"optional_{the_type.generic_arg.name}"
-            self._optional_structs[the_type.generic_arg] = struct_name
-            c_type = self.emit_type(the_type.generic_arg)
+            struct_name = (
+                f"optional_{self.get_type_c_name(the_type.generic_origin.arg)}"
+            )
+            self._optional_structs[the_type.generic_origin.arg] = struct_name
+            c_type = self.emit_type(the_type.generic_origin.arg)
             incref_if_needed = (
-                "incref(opt.value);" if the_type.generic_arg.refcounted else ""
+                "incref(opt.value);" if the_type.generic_origin.arg.refcounted else ""
             )
             self.beginning += f"""\
 struct {struct_name} {{
@@ -220,9 +222,9 @@ bool meth_{struct_name}_is_null(struct {struct_name} opt)
     def emit_type(self, the_type: Optional[Type]) -> str:
         if the_type is None:
             return "void"
-        if the_type.generic_source is not None:
+        if the_type.generic_origin is not None:
             assert not the_type.refcounted
-            return f"struct {self.get_struct_name(the_type)}"
+            return f"struct {self.get_type_c_name(the_type)}"
         if the_type is INT:
             return "int64_t"
         if the_type is FLOAT:
@@ -230,7 +232,7 @@ bool meth_{struct_name}_is_null(struct {struct_name} opt)
         if the_type is BOOL:
             return "bool"
         assert the_type.refcounted
-        return f"struct {self.get_struct_name(the_type)} *"
+        return f"struct {self.get_type_c_name(the_type)} *"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
@@ -284,7 +286,7 @@ bool meth_{struct_name}_is_null(struct {struct_name} opt)
                 + "".join(
                     _FunctionEmitter(self).emit_funcdef(
                         method,
-                        f"meth_{self.get_struct_name(top_statement.type)}_{method.name}",
+                        f"meth_{self.get_type_c_name(top_statement.type)}_{method.name}",
                     )
                     for method in top_statement.body
                 )

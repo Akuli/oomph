@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 
+# Describes how exactly a type was created from a generic
+@dataclass(eq=True)
+class GenericSource:
+    generic: Generic
+    arg: Type
+
+
 @dataclass(eq=False)
 class Type:
     name: str
@@ -11,8 +18,7 @@ class Type:
     methods: Dict[str, FunctionType]
     members: List[Tuple[Type, str]]
     constructor_argtypes: Optional[List[Type]]
-    generic_source: Optional["Generic"]
-    generic_arg: Optional["Type"]
+    generic_origin: Optional[GenericSource]
 
     def __init__(self, name: str, refcounted: bool):
         self.name = name
@@ -20,8 +26,7 @@ class Type:
         self.methods = {}
         self.members = []
         self.constructor_argtypes = None
-        self.generic_source = None
-        self.generic_arg = None
+        self.generic_origin = None
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
@@ -29,9 +34,8 @@ class Type:
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Type)
-            and self.name == other.name
-            and self.generic_arg == other.generic_arg
-            and self.generic_source == other.generic_source
+            and self.name == other.name  # enough for non-generics
+            and self.generic_origin == other.generic_origin
         )
 
     def __hash__(self) -> int:
@@ -51,8 +55,7 @@ class Generic:
         result.constructor_argtypes = [generic_arg]
         result.methods["get"] = FunctionType([result], generic_arg)
         result.methods["is_null"] = FunctionType([result], BOOL)
-        result.generic_source = self
-        result.generic_arg = generic_arg
+        result.generic_origin = GenericSource(self, generic_arg)
         return result
 
 
