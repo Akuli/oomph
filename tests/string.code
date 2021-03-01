@@ -20,3 +20,12 @@ func main() -> void:
     print("hello".slice(0, 2))
     print("hello".slice(2, 5))
     print("hello".slice(-6, 9))
+
+    # TODO: should negative repeats be disallowed?
+    print("abc".repeat(-5))
+    print("abc".repeat(0))
+    print("abc".repeat(1))
+    print("abc".repeat(2))
+    print("abc".repeat(3))
+    print("abc".repeat(4))
+    print("abc".repeat(5))

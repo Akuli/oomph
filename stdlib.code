@@ -2,3 +2,9 @@ func __bool_to_string(bool b) -> Str:
     if b:
         return "true"
     return "false"
+
+func __string_repeat(Str s, int n) -> Str:
+    let result = s
+    while result.length() < n*s.length():
+        result = result + result
+    return result.slice(0, n*s.length())

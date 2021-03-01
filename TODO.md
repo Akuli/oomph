@@ -6,7 +6,6 @@ Bugs:
 Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - string methods
-    - repeat
     - reverse
     - starts with
     - ends with
@@ -19,6 +18,7 @@ Missing features:
     - `left_pad` lol
 - chained equalities `a == b == c`
 - `x++`
+- `+=`
 - `>`, `<=`, `>=` (but there is already `<`)
 - generics
     - optionals

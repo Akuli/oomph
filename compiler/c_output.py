@@ -77,7 +77,10 @@ class _FunctionEmitter:
         if isinstance(ast, tast.Constructor):
             return "ctor_" + ast.class_to_construct.name
         if isinstance(ast, tast.SetRef):
-            return f"(decref({ast.refname}), ({ast.refname} = {self.emit_expression(ast.value)}))"
+            # Must evaluate expression before decref because expression might
+            # depend on the old value
+            var = self.create_local_var(ast.value.type, f'{ast.refname}_new')
+            return f"({var} = {self.emit_expression(ast.value)}, decref({ast.refname}), {ast.refname} = {var})"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
