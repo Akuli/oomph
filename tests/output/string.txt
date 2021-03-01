@@ -48,3 +48,8 @@ abc**
 a 
  a
 a
+xcx
+xxa
+xx
+xxxxxxxx
+asdf

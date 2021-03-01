@@ -14,7 +14,6 @@ Missing features:
         - only occurrence, failing if multiple are found
     - split and join
     - upper and lower (need unicode lib?)
-    - replace (borrow logic from asda)
 - should `self` be keyword?
 - chained equalities `a == b == c`
 - `x++`

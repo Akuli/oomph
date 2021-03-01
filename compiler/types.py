@@ -69,6 +69,7 @@ STRING.methods["count"] = FunctionType([STRING, STRING], INT)
 STRING.methods["left_trim"] = FunctionType([STRING], STRING)
 STRING.methods["right_trim"] = FunctionType([STRING], STRING)
 STRING.methods["trim"] = FunctionType([STRING], STRING)
+STRING.methods["replace"] = FunctionType([STRING, STRING, STRING], STRING)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 global_variables: Dict[str, Type] = {

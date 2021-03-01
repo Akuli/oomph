@@ -61,3 +61,18 @@ func __string_right_trim(Str self) -> Str:
 
 func __string_trim(Str self) -> Str:
     return self.left_trim().right_trim()
+
+func __string_replace(Str self, Str old, Str neuw) -> Str:
+    if old == "":
+        # TODO: error
+        return self
+
+    let result = ""
+    let remaining = self
+
+    while true:
+        let index = remaining.find_first(old)
+        if index == -1:
+            return result + remaining
+        result = result + remaining.slice(0, index) + neuw
+        remaining = remaining.slice(index + old.length(), remaining.length())
