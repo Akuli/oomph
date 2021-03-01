@@ -158,8 +158,7 @@ class _FunctionEmitter:
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
             + self.emit_label("out")
             + "".join(
-                f"decref({refname});\n\t"
-                for refname, reftype in reversed(funcdef.refs)
+                f"decref({refname});\n\t" for refname, reftype in reversed(funcdef.refs)
             )
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
         )

@@ -7,6 +7,7 @@ Missing features:
 - do we want more implicit int to float conversion? `print_float(2)`
 - string methods
     - repeat
+    - reverse
     - starts with
     - ends with
     - find first/last/only/all occurence of substring
@@ -18,7 +19,7 @@ Missing features:
     - `left_pad` lol
 - chained equalities `a == b == c`
 - `x++`
-- `x > y`
+- `>`, `<=`, `>=` (but there is already `<`)
 - generics
     - optionals
     - arrays

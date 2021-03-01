@@ -43,7 +43,7 @@ _TOKEN_REGEX = r"""
     )* "
 )
 | (?P<op>
-    == | != | -> | = | \+ | - | \* | / | \( | \) | , | \n | : | \. | ;
+    == | != | < | -> | = | \+ | - | \* | / | \( | \) | , | \n | : | \. | ;
 )
 | (?P<indent>
     # Spaces in beginning of some line other than first line

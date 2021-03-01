@@ -24,6 +24,7 @@ _special_funcs = {
     "float_add": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_div": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_eq": FunctionType([FLOAT, FLOAT], BOOL),
+    "float_lt": FunctionType([FLOAT, FLOAT], BOOL),
     "float_mod": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_mul": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_neg": FunctionType([FLOAT], FLOAT),
@@ -31,6 +32,7 @@ _special_funcs = {
     "int2float": FunctionType([INT], FLOAT),
     "int_add": FunctionType([INT, INT], INT),
     "int_eq": FunctionType([INT, INT], BOOL),
+    "int_lt": FunctionType([INT, INT], BOOL),
     "int_mod": FunctionType([INT, INT], INT),
     "int_mul": FunctionType([INT, INT], INT),
     "int_neg": FunctionType([INT], INT),
@@ -82,7 +84,7 @@ class _FunctionOrMethodTyper:
         assert isinstance(func.type, FunctionType)
 
         # Stringify automagically when printing
-        if isinstance(func, tast.GetVar) and func.varname == 'print':
+        if isinstance(func, tast.GetVar) and func.varname == "print":
             args = [self.do_expression_to_string(arg) for arg in ast.args]
         else:
             args = [self.do_expression(arg) for arg in ast.args]
@@ -111,13 +113,18 @@ class _FunctionOrMethodTyper:
         if lhs.type is STRING and ast.op == "==" and rhs.type is STRING:
             return self.create_special_returning_call("string_eq", [lhs, rhs])
 
-        if lhs.type is INT and ast.op in {"+", "-", "*", "mod"} and rhs.type is INT:
+        if (
+            lhs.type is INT
+            and ast.op in {"+", "-", "*", "mod", "<"}
+            and rhs.type is INT
+        ):
             return self.create_special_returning_call(
                 {
                     "+": "int_add",
                     "-": "int_sub",
                     "*": "int_mul",
                     "mod": "int_mod",
+                    "<": "int_lt",
                 }[ast.op],
                 [lhs, rhs],
             )
@@ -132,7 +139,7 @@ class _FunctionOrMethodTyper:
 
         if (
             lhs.type is FLOAT
-            and ast.op in {"+", "-", "*", "/", "mod"}
+            and ast.op in {"+", "-", "*", "/", "mod", "<"}
             and rhs.type is FLOAT
         ):
             return self.create_special_returning_call(
@@ -142,6 +149,7 @@ class _FunctionOrMethodTyper:
                     "*": "float_mul",
                     "/": "float_div",
                     "mod": "float_mod",
+                    "<": "float_lt",
                 }[ast.op],
                 [lhs, rhs],
             )
