@@ -61,6 +61,9 @@ STRING.methods["repeat"] = FunctionType([STRING, INT], STRING)
 STRING.methods["slice"] = FunctionType([STRING, INT, INT], STRING)
 STRING.methods["starts_with"] = FunctionType([STRING, STRING], BOOL)
 STRING.methods["ends_with"] = FunctionType([STRING, STRING], BOOL)
+STRING.methods["left_pad"] = FunctionType([STRING, INT, STRING], STRING)
+STRING.methods["right_pad"] = FunctionType([STRING, INT, STRING], STRING)
+STRING.methods["center_pad"] = FunctionType([STRING, INT, STRING], STRING)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 global_variables: Dict[str, Type] = {

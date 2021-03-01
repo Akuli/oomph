@@ -34,3 +34,7 @@ true
 true
 false
 false
+**abc
+abc**
+*abc*
+*abc**

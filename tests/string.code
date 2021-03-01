@@ -43,3 +43,8 @@ func main() -> void:
     print("abc".ends_with(""))
     print("abc".ends_with("abcx"))
     print("abc".ends_with("xabc"))
+
+    print("abc".left_pad(5, "*"))
+    print("abc".right_pad(5, "*"))
+    print("abc".center_pad(5, "*"))
+    print("abc".center_pad(6, "*"))

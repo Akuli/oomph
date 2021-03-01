@@ -14,3 +14,14 @@ func __string_starts_with(Str self, Str prefix) -> bool:
 
 func __string_ends_with(Str self, Str suffix) -> bool:
     return self.slice(self.length() - suffix.length(), self.length()) == suffix
+
+# No need to use a third party library for this, lol
+func __string_left_pad(Str self, int len, Str pad_char) -> Str:
+    return pad_char.repeat(len - self.length()) + self
+
+func __string_right_pad(Str self, int len, Str pad_char) -> Str:
+    return self + pad_char.repeat(len - self.length())
+
+func __string_center_pad(Str self, int len, Str pad_char) -> Str:
+    let average = ((self.length() + len)/2).floor()
+    return self.left_pad(average, pad_char).right_pad(len, pad_char)

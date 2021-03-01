@@ -33,6 +33,9 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 #define meth_Str_repeat var___string_repeat
 #define meth_Str_starts_with var___string_starts_with
 #define meth_Str_ends_with var___string_ends_with
+#define meth_Str_left_pad var___string_left_pad
+#define meth_Str_right_pad var___string_right_pad
+#define meth_Str_center_pad var___string_center_pad
 
 /*
 Can't be macros because of assumptions that compiler makes:
@@ -68,4 +71,4 @@ int64_t int_mod(int64_t a, int64_t b);
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
 #define string_eq(a, b) (strcmp((a)->str, (b)->str) == 0)
 
-#endif
+#endif   // LIB_H
