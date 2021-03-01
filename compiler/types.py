@@ -54,6 +54,7 @@ FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 INT.methods["to_string"] = FunctionType([INT], STRING)
 
 STRING.methods["length"] = FunctionType([STRING], INT)
+STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 STRING.methods["to_int"] = FunctionType([STRING], INT)
 

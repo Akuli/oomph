@@ -23,18 +23,22 @@ for file in tests/*.code; do
     else
         if python3 -m compiler "$@" $file > test.out; then
             outfile=tests/output/$(basename $file | cut -d. -f1).txt
-            if [ -f $outfile ] && [ $outfile -ot $file ]; then
-                rm -vf $outfile
-            fi
-            if [ ! -f $outfile ]; then
+            if ! [ -f $outfile ]; then
                 echo "Creating $outfile automatically"
                 cp test.out $outfile
                 cat -n $outfile
             fi
+
             if diff --color -u $outfile test.out; then
                 success=$((success+1))
             else
-                fail=$((fail+1))
+                if [ $outfile -ot $file ]; then
+                    echo "Updating $outfile with this diff"
+                    cp test.out $outfile
+                    success=$((success+1))
+                else
+                    fail=$((fail+1))
+                fi
             fi
         else
             echo "========== ERROR in $file"
