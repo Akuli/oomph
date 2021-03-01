@@ -4,14 +4,15 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 
-@dataclass
+@dataclass(eq=False)
 class Type:
     name: str
     refcounted: bool
     methods: Dict[str, FunctionType]
     members: List[Tuple[Type, str]]
     constructor_argtypes: Optional[List[Type]]
-    source_generic: Optional["Generic"]
+    generic_source: Optional["Generic"]
+    generic_arg: Optional["Type"]
 
     def __init__(self, name: str, refcounted: bool):
         self.name = name
@@ -19,7 +20,8 @@ class Type:
         self.methods = {}
         self.members = []
         self.constructor_argtypes = None
-        self.source_generic = None
+        self.generic_source = None
+        self.generic_arg = None
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
@@ -29,19 +31,21 @@ class Type:
         return FunctionType(self.constructor_argtypes, self)
 
 
-# does NOT inherit from type, Optional isn't a type even though Optional[str] is
-@dataclass
+# does NOT inherit from type, optional isn't a type even though optional[str] is
+@dataclass(eq=False)
 class Generic:
-    # TODO: make other generics than just Optional work too
+    # TODO: make other generics than just optional work too
     def get_type(self, generic_arg: Type) -> Type:
-        result = Type(f"Optional[{generic_arg.name}]", False)
+        result = Type(f"optional[{generic_arg.name}]", False)
         result.constructor_argtypes = [generic_arg]
         result.methods["get"] = FunctionType([result], generic_arg)
-        result.source_generic = self
+        result.methods["is_null"] = FunctionType([result], BOOL)
+        result.generic_source = self
+        result.generic_arg = generic_arg
         return result
 
 
-@dataclass
+@dataclass(eq=False)
 class FunctionType(Type):
     argtypes: List[Type]
     returntype: Optional[Type]
@@ -52,9 +56,10 @@ class FunctionType(Type):
         self.returntype = returntype
 
 
-INT = Type("int", False)
 BOOL = Type("bool", False)
 FLOAT = Type("float", False)
+INT = Type("int", False)
+OPTIONAL = Generic()
 STRING = Type("Str", True)
 
 BOOL.methods["to_string"] = FunctionType([BOOL], STRING)
@@ -86,7 +91,7 @@ STRING.methods["trim"] = FunctionType([STRING], STRING)
 STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
-builtin_generic_types = {"Optional": Generic()}
+builtin_generic_types = {"optional": OPTIONAL}
 builtin_variables: Dict[str, Type] = {
     "print": FunctionType([STRING], None),
 }

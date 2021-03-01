@@ -4,21 +4,9 @@ import re
 from typing import Dict, List, Optional, TypeVar, Union
 
 import compiler.typed_ast as tast
-from compiler.types import BOOL, FLOAT, INT, STRING, Type
+from compiler.types import BOOL, FLOAT, INT, OPTIONAL, STRING, Type
 
 _T = TypeVar("_T")
-
-
-def _emit_type(the_type: Optional[Type]) -> str:
-    if the_type is INT:
-        return "int64_t"
-    if the_type is FLOAT:
-        return "double"
-    if the_type is BOOL:
-        return "bool"
-    if the_type is None:
-        return "void"
-    return f"struct class_{the_type.name} *"
 
 
 class _FunctionEmitter:
@@ -31,7 +19,7 @@ class _FunctionEmitter:
     def create_local_var(self, the_type: Type, name_hint: str) -> str:
         name = f"{name_hint}_{self.varname_counter}"
         self.varname_counter += 1
-        self.before_body += f"{_emit_type(the_type)} {name};\n\t"
+        self.before_body += f"{self.file_emitter.emit_type(the_type)} {name};\n\t"
         return name
 
     def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
@@ -41,7 +29,7 @@ class _FunctionEmitter:
             args = ast.args
 
         if isinstance(ast.func, tast.GetMethod):
-            func = f"meth_{ast.func.obj.type.name}_{ast.func.name}"
+            func = f"meth_{self.file_emitter.get_struct_name(ast.func.obj.type)}_{ast.func.name}"
         else:
             func = self.emit_expression(ast.func)
 
@@ -74,7 +62,7 @@ class _FunctionEmitter:
                 return ast.varname
             return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
         if isinstance(ast, tast.Constructor):
-            return "ctor_" + ast.class_to_construct.name
+            return "ctor_" + self.file_emitter.get_struct_name(ast.class_to_construct)
         if isinstance(ast, tast.SetRef):
             # Must evaluate expression before decref because expression might
             # depend on the old value
@@ -151,10 +139,10 @@ class _FunctionEmitter:
             (
                 ""
                 if funcdef.type.returntype is None
-                else f"{_emit_type(funcdef.type.returntype)} retval;\n\t"
+                else f"{self.file_emitter.emit_type(funcdef.type.returntype)} retval;\n\t"
             )
             + "".join(
-                f"{_emit_type(reftype)} {refname} = NULL;\n\t"
+                f"{self.file_emitter.emit_type(reftype)} {refname} = NULL;\n\t"
                 for refname, reftype in funcdef.refs
             )
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
@@ -165,10 +153,10 @@ class _FunctionEmitter:
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
         )
         return (
-            f"\n{_emit_type(funcdef.type.returntype)} {c_name}("
+            f"\n{self.file_emitter.emit_type(funcdef.type.returntype)} {c_name}("
             + (
                 ",".join(
-                    f"{_emit_type(the_type)} var_{name}"
+                    f"{self.file_emitter.emit_type(the_type)} var_{name}"
                     for the_type, name in zip(funcdef.type.argtypes, funcdef.argnames)
                 )
                 or "void"
@@ -188,11 +176,66 @@ class _FileEmitter:
     def __init__(self) -> None:
         self.strings: Dict[str, str] = {}
         self.beginning = '#include "lib/lib.h"\n\n'
+        self._optional_structs: Dict[Type, str] = {}
+
+    def get_struct_name(self, the_type: Type) -> str:
+        if the_type.generic_arg is None:
+            return the_type.name
+
+        assert the_type.generic_source is OPTIONAL
+        try:
+            return self._optional_structs[the_type.generic_arg]
+        except KeyError:
+            struct_name = f"optional_{the_type.generic_arg.name}"
+            self._optional_structs[the_type.generic_arg] = struct_name
+            c_type = self.emit_type(the_type.generic_arg)
+            incref_if_needed = (
+                "incref(opt.value);" if the_type.generic_arg.refcounted else ""
+            )
+            self.beginning += f"""\
+struct {struct_name} {{
+    bool isnull;
+    {c_type} value;
+}};
+
+struct {struct_name} ctor_{struct_name}({c_type} val)
+{{
+    return (struct {struct_name}) {{ false, val }};
+}}
+
+{c_type} meth_{struct_name}_get(struct {struct_name} opt)
+{{
+    assert(!opt.isnull);
+    {incref_if_needed}
+    return opt.value;
+}}
+
+bool meth_{struct_name}_is_null(struct {struct_name} opt)
+{{
+    return opt.isnull;
+}}
+"""
+            return struct_name
+
+    def emit_type(self, the_type: Optional[Type]) -> str:
+        if the_type is None:
+            return "void"
+        if the_type.generic_source is not None:
+            assert not the_type.refcounted
+            return f"struct {self.get_struct_name(the_type)}"
+        if the_type is INT:
+            return "int64_t"
+        if the_type is FLOAT:
+            return "double"
+        if the_type is BOOL:
+            return "bool"
+        assert the_type.refcounted
+        return f"struct {self.get_struct_name(the_type)} *"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
             self.strings[value] = (
-                f"string{len(self.strings)}_" + re.sub(r"[^A-Za-z0-9]", "", value)[:10]
+                f"string{len(self.strings)}_" + re.sub(r"[^A-Za-z0-9]", "", value)[:30]
             )
 
             # String constants consist of int64_t refcount set to -1,
@@ -200,7 +243,7 @@ class _FileEmitter:
             # TODO: is this cross-platform enough?
             struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
             self.beginning += (
-                f"{_emit_type(STRING)} {self.strings[value]} = (void*)(unsigned char[])"
+                f"{self.emit_type(STRING)} {self.strings[value]} = (void*)(unsigned char[])"
                 + "{"
                 + ", ".join(map(_format_byte, struct_bytes))
                 + "};\n"
@@ -216,21 +259,21 @@ class _FileEmitter:
         if isinstance(top_statement, tast.ClassDef):
             return (
                 # struct
-                ("struct class_%s {\n" % top_statement.type.name)
+                ("struct %s {\n" % top_statement.type.name)
                 + "\tREFCOUNT_HEADER\n\t"
                 + "".join(
-                    f"{_emit_type(the_type)} memb_{name};\n\t"
+                    f"{self.emit_type(the_type)} memb_{name};\n\t"
                     for the_type, name in top_statement.type.members
                 )
                 + "\n};\n"
                 # constructor
-                + f"{_emit_type(top_statement.type)} ctor_{top_statement.type.name}("
+                + f"{self.emit_type(top_statement.type)} ctor_{top_statement.type.name}("
                 + ",".join(
-                    f"{_emit_type(the_type)} var_{name}"
+                    f"{self.emit_type(the_type)} var_{name}"
                     for the_type, name in top_statement.type.members
                 )
                 + ") {\n\t"
-                + f"{_emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
+                + f"{self.emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
                 + "obj->refcount = 1;\n\t"
                 + "".join(
                     f"obj->memb_{name} = var_{name};\n\t"
@@ -240,7 +283,8 @@ class _FileEmitter:
                 # methods
                 + "".join(
                     _FunctionEmitter(self).emit_funcdef(
-                        method, f"meth_{top_statement.type.name}_{method.name}"
+                        method,
+                        f"meth_{self.get_struct_name(top_statement.type)}_{method.name}",
                     )
                     for method in top_statement.body
                 )

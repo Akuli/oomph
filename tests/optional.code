@@ -1,0 +1,6 @@
+func main() -> void:
+    let x = new optional[Str]("lol" + "wat")
+    if x.is_null():
+        print("This should not happen")
+    else:
+        print(x.get())

@@ -4,30 +4,30 @@
 #include <stdlib.h>
 #include <string.h>
 
-static struct class_Str *alloc_string(size_t len)
+static struct Str *alloc_string(size_t len)
 {
-	struct class_Str *res = malloc(sizeof(struct class_Str) + len + 1);
+	struct Str *res = malloc(sizeof(struct Str) + len + 1);
 	assert(res);
 	res->refcount = 1;
 	return res;
 }
 
-struct class_Str *cstr_to_string(const char *s)
+struct Str *cstr_to_string(const char *s)
 {
-	struct class_Str *res = alloc_string(strlen(s));
+	struct Str *res = alloc_string(strlen(s));
 	strcpy(res->str, s);
 	return res;
 }
 
 /*
-struct class_Str *string_concat(const struct class_Str *strs[])
+struct Str *string_concat(const struct Str *strs[])
 {
 	size_t len=0;
 	size_t n;
 	for (n=0; strs[n]; n++)
 		len += strlen(strs[n]->str);
 
-	struct class_Str *res = malloc(sizeof(struct class_Str) + len + 1);
+	struct Str *res = malloc(sizeof(struct Str) + len + 1);
 	assert(res);
 
 	char *ptr = res->str;
@@ -39,15 +39,15 @@ struct class_Str *string_concat(const struct class_Str *strs[])
 }
 */
 
-struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
+struct Str *string_concat(const struct Str *str1, const struct Str *str2)
 {
-	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
+	struct Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
 	strcpy(res->str, str1->str);
 	strcat(res->str, str2->str);
 	return res;
 }
 
-int64_t meth_Str_length(const struct class_Str *s)
+int64_t meth_Str_length(const struct Str *s)
 {
 	// TODO: optimize
 	return strlen(s->str);
@@ -74,7 +74,7 @@ static int parse_utf8_start_byte(unsigned char c)
 	assert(0);
 }
 
-int64_t meth_Str_unicode_length(const struct class_Str *s)
+int64_t meth_Str_unicode_length(const struct Str *s)
 {
 	const char *str = s->str;
 	int64_t res = 0;
@@ -86,7 +86,7 @@ int64_t meth_Str_unicode_length(const struct class_Str *s)
 }
 
 // TODO: for most uses, it is inefficient to allocate a new object
-struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end)
+struct Str *meth_Str_slice(const struct Str *s, int64_t start, int64_t end)
 {
 	int64_t len = strlen(s->str);
 	if (start < 0)
@@ -105,13 +105,13 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 		return cstr_to_string(&s->str[start]);
 
 	assert(!is_utf8_continuation_byte(s->str[end]));
-	struct class_Str *res = alloc_string(end - start);
+	struct Str *res = alloc_string(end - start);
 	memcpy(res->str, &s->str[start], end - start);
 	res->str[end - start] = '\0';
 	return res;
 }
 
-int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub)
+int64_t meth_Str_find_first(const struct Str *s, const struct Str *sub)
 {
 	const char *ptr = strstr(s->str, sub->str);
 	if (!ptr)

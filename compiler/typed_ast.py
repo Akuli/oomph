@@ -5,17 +5,17 @@ from typing import List, Optional, Tuple
 from compiler.types import FLOAT, INT, STRING, FunctionType, Type
 
 
-@dataclass
+@dataclass(eq=False)
 class Expression:
     type: Type
 
 
-@dataclass
+@dataclass(eq=False)
 class Statement:
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class GetVar(Expression):
     varname: str
     # Special variables can't be accessed by writing their name into a program.
@@ -23,7 +23,7 @@ class GetVar(Expression):
     is_special: bool = False
 
 
-@dataclass
+@dataclass(eq=False)
 class GetAttribute(Expression):
     obj: Expression
     attribute: str
@@ -35,7 +35,7 @@ class GetAttribute(Expression):
         self.attribute = attribute
 
 
-@dataclass
+@dataclass(eq=False)
 class GetMethod(Expression):
     obj: Expression
     name: str
@@ -51,7 +51,7 @@ class GetMethod(Expression):
         self.name = name
 
 
-@dataclass
+@dataclass(eq=False)
 class StringConstant(Expression):
     value: str
 
@@ -60,7 +60,7 @@ class StringConstant(Expression):
         self.value = value
 
 
-@dataclass
+@dataclass(eq=False)
 class IntConstant(Expression):
     value: int
 
@@ -69,7 +69,7 @@ class IntConstant(Expression):
         self.value = value
 
 
-@dataclass
+@dataclass(eq=False)
 class FloatConstant(Expression):
     value: str
 
@@ -78,13 +78,13 @@ class FloatConstant(Expression):
         self.value = value
 
 
-@dataclass
+@dataclass(eq=False)
 class VoidCall(Statement):
     func: Expression
     args: List[Expression]
 
 
-@dataclass
+@dataclass(eq=False)
 class ReturningCall(Expression, Statement):
     func: Expression
     args: List[Expression]
@@ -97,41 +97,41 @@ class ReturningCall(Expression, Statement):
         self.args = args
 
 
-@dataclass
+@dataclass(eq=False)
 class CreateLocalVar(Statement):
     varname: str
     value: Expression
 
 
-@dataclass
+@dataclass(eq=False)
 class SetLocalVar(Statement):
     varname: str
     value: Expression
 
 
-@dataclass
+@dataclass(eq=False)
 class Continue(Statement):
     loop_id: str
 
 
-@dataclass
+@dataclass(eq=False)
 class Break(Statement):
     loop_id: str
 
 
-@dataclass
+@dataclass(eq=False)
 class Return(Statement):
     value: Optional[Expression]
 
 
-@dataclass
+@dataclass(eq=False)
 class If(Statement):
     condition: Expression
     then: List[Statement]
     otherwise: List[Statement]
 
 
-@dataclass
+@dataclass(eq=False)
 class Loop(Statement):
     loop_id: str
     init: List[Statement]
@@ -140,12 +140,12 @@ class Loop(Statement):
     body: List[Statement]
 
 
-@dataclass
+@dataclass(eq=False)
 class ToplevelStatement:
     pass
 
 
-@dataclass
+@dataclass(eq=False)
 class FuncDef(ToplevelStatement):
     name: str
     type: FunctionType
@@ -154,23 +154,23 @@ class FuncDef(ToplevelStatement):
     refs: List[Tuple[str, Type]]
 
 
-@dataclass
+@dataclass(eq=False)
 class ClassDef(ToplevelStatement):
     type: Type
     body: List[FuncDef]
 
 
-@dataclass
+@dataclass(eq=False)
 class SetRef(Expression):
     refname: str
     value: Expression
 
 
-@dataclass
+@dataclass(eq=False)
 class DecRef(Statement):
     value: Expression
 
 
-@dataclass
+@dataclass(eq=False)
 class Constructor(Expression):
     class_to_construct: Type
