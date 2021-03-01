@@ -1,1 +1,2 @@
-lolwat
+main: lolwat
+show: lolwat

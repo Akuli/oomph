@@ -19,7 +19,8 @@ Missing features:
 - `x++`
 - `+=`
 - generics
-    - optionals
+    - defining generic classes or functions
+    - tuples
     - arrays
     - mappings
 - io

@@ -26,6 +26,17 @@ class Type:
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
 
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, Type)
+            and self.name == other.name
+            and self.generic_arg == other.generic_arg
+            and self.generic_source == other.generic_source
+        )
+
+    def __hash__(self) -> int:
+        return hash(self.name)
+
     def get_constructor_type(self) -> FunctionType:
         assert self.constructor_argtypes is not None
         return FunctionType(self.constructor_argtypes, self)
@@ -54,6 +65,16 @@ class FunctionType(Type):
         super().__init__("<function>", False)
         self.argtypes = argtypes
         self.returntype = returntype
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, FunctionType)
+            and self.argtypes == other.argtypes
+            and self.returntype == other.returntype
+        )
+
+    def __hash__(self) -> int:
+        return hash(tuple(self.argtypes)) ^ hash(self.returntype)
 
 
 BOOL = Type("bool", False)
