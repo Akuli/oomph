@@ -48,3 +48,7 @@ func main() -> void:
     print("abc".right_pad(5, "*"))
     print("abc".center_pad(5, "*"))
     print("abc".center_pad(6, "*"))
+
+    print("abclolwatlolabc".find_first("lol"))
+    print("abclolwatlolabc".find_first("x"))
+    print("abclolwatlolabc".find_first(""))

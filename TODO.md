@@ -8,7 +8,10 @@ Missing features:
 - default values of arguments
 - string methods
     - reverse
-    - find first/last/only/all occurence of substring
+    - find occurrence of substring
+        - last occurrence
+        - all occurrences
+        - only occurrence
     - count occurrences of substring
     - split and join
     - strip, left strip, right strip (ascii whitespace only)

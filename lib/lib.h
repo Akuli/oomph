@@ -27,6 +27,7 @@ double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Str_length(const struct class_Str *s);
 int64_t meth_Str_unicode_length(const struct class_Str *s);
 struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end);
+int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub);
 
 // Class implemented in C, method implemented in the language itself
 #define meth_bool_to_string var___bool_to_string

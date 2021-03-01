@@ -85,6 +85,7 @@ int64_t meth_Str_unicode_length(const struct class_Str *s)
 	return res;
 }
 
+// TODO: for most uses, it is inefficient to allocate a new object
 struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end)
 {
 	int64_t len = strlen(s->str);
@@ -108,4 +109,12 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 	memcpy(res->str, &s->str[start], end - start);
 	res->str[end - start] = '\0';
 	return res;
+}
+
+int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub)
+{
+	const char *ptr = strstr(s->str, sub->str);
+	if (!ptr)
+		return -1;   // TODO: optional type instead
+	return ptr - s->str;
 }
