@@ -24,7 +24,7 @@ _special_funcs = {
     "float_add": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_div": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_eq": FunctionType([FLOAT, FLOAT], BOOL),
-    "float_lt": FunctionType([FLOAT, FLOAT], BOOL),
+    "float_gt": FunctionType([FLOAT, FLOAT], BOOL),
     "float_mod": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_mul": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_neg": FunctionType([FLOAT], FLOAT),
@@ -32,7 +32,7 @@ _special_funcs = {
     "int2float": FunctionType([INT], FLOAT),
     "int_add": FunctionType([INT, INT], INT),
     "int_eq": FunctionType([INT, INT], BOOL),
-    "int_lt": FunctionType([INT, INT], BOOL),
+    "int_gt": FunctionType([INT, INT], BOOL),
     "int_mod": FunctionType([INT, INT], INT),
     "int_mul": FunctionType([INT, INT], INT),
     "int_neg": FunctionType([INT], INT),
@@ -61,7 +61,7 @@ class _FunctionOrMethodTyper:
             return tast.SetRef(result.type, refname, result)
         return result
 
-    def create_special_returning_call(
+    def create_special_call(
         self,
         name: str,
         args: List[tast.Expression],
@@ -99,72 +99,82 @@ class _FunctionOrMethodTyper:
 
     def do_binary_op(self, ast: uast.BinaryOperator) -> tast.Expression:
         if ast.op == "!=":
-            return self.create_special_returning_call(
+            return self.create_special_call(
                 "bool_not",
                 [self.do_binary_op(uast.BinaryOperator(ast.lhs, "==", ast.rhs))],
             )
 
+        # Reduce >=, <=, and < to use >
+        if ast.op == '<':
+            ast = uast.BinaryOperator(ast.rhs, '>', ast.lhs)
+        if ast.op == '<=':
+            ast = uast.BinaryOperator(ast.rhs, '>=', ast.lhs)
+        if ast.op == '>=':
+            return self.create_special_call(
+                "bool_not",
+                [self.do_binary_op(uast.BinaryOperator(ast.lhs, "<", ast.rhs))],
+            )
+
         lhs = self.do_expression(ast.lhs)
         rhs = self.do_expression(ast.rhs)
-
         if lhs.type is STRING and ast.op == "+" and rhs.type is STRING:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
-            return self.create_special_returning_call("string_concat", [lhs, rhs])
+            return self.create_special_call("string_concat", [lhs, rhs])
         if lhs.type is STRING and ast.op == "==" and rhs.type is STRING:
-            return self.create_special_returning_call("string_eq", [lhs, rhs])
+            return self.create_special_call("string_eq", [lhs, rhs])
 
         if (
             lhs.type is INT
-            and ast.op in {"+", "-", "*", "mod", "<"}
+            and ast.op in {"+", "-", "*", "mod", ">"}
             and rhs.type is INT
         ):
-            return self.create_special_returning_call(
+            return self.create_special_call(
                 {
                     "+": "int_add",
                     "-": "int_sub",
                     "*": "int_mul",
                     "mod": "int_mod",
-                    "<": "int_lt",
+                    ">": "int_gt",
                 }[ast.op],
                 [lhs, rhs],
             )
 
         if lhs.type is INT and ast.op == "/" and rhs.type is INT:
-            lhs = self.create_special_returning_call("int2float", [lhs])
-            rhs = self.create_special_returning_call("int2float", [rhs])
+            lhs = self.create_special_call("int2float", [lhs])
+            rhs = self.create_special_call("int2float", [rhs])
         if lhs.type is INT and rhs.type is FLOAT:
-            lhs = self.create_special_returning_call("int2float", [lhs])
+            lhs = self.create_special_call("int2float", [lhs])
         if lhs.type is FLOAT and rhs.type is INT:
-            rhs = self.create_special_returning_call("int2float", [rhs])
+            rhs = self.create_special_call("int2float", [rhs])
 
         if (
             lhs.type is FLOAT
-            and ast.op in {"+", "-", "*", "/", "mod", "<"}
+            and ast.op in {"+", "-", "*", "/", "mod", ">"}
             and rhs.type is FLOAT
         ):
-            return self.create_special_returning_call(
+            return self.create_special_call(
                 {
                     "+": "float_add",
                     "-": "float_sub",
                     "*": "float_mul",
                     "/": "float_div",
                     "mod": "float_mod",
-                    "<": "float_lt",
+                    ">": "float_gt",
                 }[ast.op],
                 [lhs, rhs],
             )
 
         if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
-            return self.create_special_returning_call("bool_and", [lhs, rhs])
+            return self.create_special_call("bool_and", [lhs, rhs])
         if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
-            return self.create_special_returning_call("bool_or", [lhs, rhs])
+            return self.create_special_call("bool_or", [lhs, rhs])
         if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
-            return self.create_special_returning_call("bool_eq", [lhs, rhs])
+            return self.create_special_call("bool_eq", [lhs, rhs])
         if lhs.type is INT and ast.op == "==" and rhs.type is INT:
-            return self.create_special_returning_call("int_eq", [lhs, rhs])
+            return self.create_special_call("int_eq", [lhs, rhs])
         if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:
             # Float equality sucks, but maybe it can be useful for something
-            return self.create_special_returning_call("float_eq", [lhs, rhs])
+            return self.create_special_call("float_eq", [lhs, rhs])
             return tast.NumberEqual(lhs, rhs)
 
         raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
@@ -188,7 +198,7 @@ class _FunctionOrMethodTyper:
             result = self.do_expression_to_string(ast.parts[0])
             for part in ast.parts[1:]:
                 # TODO: this results in slow nested code
-                result = self.create_special_returning_call(
+                result = self.create_special_call(
                     "string_concat", [result, self.do_expression_to_string(part)]
                 )
             return result
@@ -198,18 +208,18 @@ class _FunctionOrMethodTyper:
             return call
         if isinstance(ast, uast.GetVar):
             if ast.varname == "true":
-                return self.create_special_returning_call("bool_true", [])
+                return self.create_special_call("bool_true", [])
             if ast.varname == "false":
-                return self.create_special_returning_call("bool_false", [])
+                return self.create_special_call("bool_false", [])
             return tast.GetVar(self.variables[ast.varname], ast.varname)
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
-                return self.create_special_returning_call("bool_not", [obj])
+                return self.create_special_call("bool_not", [obj])
             if obj.type is INT and ast.op == "-":
-                return self.create_special_returning_call("int_neg", [obj])
+                return self.create_special_call("int_neg", [obj])
             if obj.type is FLOAT and ast.op == "-":
-                return self.create_special_returning_call("float_neg", [obj])
+                return self.create_special_call("float_neg", [obj])
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
             return self.do_binary_op(ast)
@@ -275,7 +285,7 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.Loop):
             init = [] if ast.init is None else self.do_statement(ast.init)
             cond = (
-                self.create_special_returning_call("bool_true", [])
+                self.create_special_call("bool_true", [])
                 if ast.cond is None
                 else self.do_expression(ast.cond)
             )

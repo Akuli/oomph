@@ -122,6 +122,9 @@ class _Parser:
             ("op", "=="),
             ("op", "!="),
             ("op", "<"),
+            ("op", ">"),
+            ("op", "<="),
+            ("op", ">="),
             ("keyword", "and"),
             ("keyword", "or"),
             ("keyword", "mod"),
@@ -135,6 +138,7 @@ class _Parser:
         assert not ((2, "and") in magic_list and (2, "or") in magic_list)
 
         # a==b==c is not supported yet
+        # FIXME: this test is broken for a == -b == c
         assert not any(
             first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
             for first, second in zip(magic_list, magic_list[2:])
@@ -146,13 +150,15 @@ class _Parser:
             for first, second in zip(magic_list, magic_list[1:])
         )
 
+        # TODO: warning about 'x == y mod 3' which is likely intended to be 'x mod 3 == y mod 3'
+
         # each operator of a group is considered to have same precedence
         for op_group in [
             [(2, "*"), (2, "/")],
             [(2, "+"), (2, "-"), (1, "-")],
-            [(2, "=="), (2, "!=")],
             [(2, "mod")],
-            [(2, "<")],
+            [(2, "=="), (2, "!=")],
+            [(2, "<"), (2, ">"), (2, "<="), (2, ">=")],
             [(1, "not")],
             [(2, "and"), (2, "or")],
         ]:

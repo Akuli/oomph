@@ -18,7 +18,6 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - `+=`
-- `>`, `<=`, `>=` (but there is already `<`)
 - generics
     - optionals
     - arrays
