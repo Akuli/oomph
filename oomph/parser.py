@@ -53,7 +53,6 @@ class _Parser:
         return result
 
     def do_string_formatting(self, string: str) -> uast.Expression:
-        string = string.strip('"')
         parts = []
         while string:
             if string[0] == "{":
@@ -76,8 +75,10 @@ class _Parser:
 
     def parse_expression_without_operators(self) -> uast.Expression:
         result: uast.Expression
-        if self.token_iter.peek()[0] == "string":
-            result = self.do_string_formatting(self.get_token("string")[1])
+        if self.token_iter.peek()[0] == "oneline_string":
+            result = self.do_string_formatting(self.get_token("oneline_string")[1][1:-1])
+        elif self.token_iter.peek()[0] == "multiline_string":
+            result = self.do_string_formatting(self.get_token("multiline_string")[1][3:-3])
         elif self.token_iter.peek()[0] == "identifier":
             result = uast.GetVar(self.get_token("identifier")[1])
         elif self.token_iter.peek()[0] == "int":

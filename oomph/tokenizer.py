@@ -3,7 +3,7 @@ from typing import Iterator, Tuple
 
 import more_itertools
 
-_TOKEN_REGEX = r"""
+_TOKEN_REGEX = r'''
 (?P<keyword>
     \b (
         let
@@ -38,7 +38,10 @@ _TOKEN_REGEX = r"""
 | (?P<int>
     [1-9][0-9]* | 0
 )
-| (?P<string>
+| (?P<multiline_string>
+    """ ( [^{}\\] )*? """
+)
+| (?P<oneline_string>
     " (
         [^{}"\n\\]          # Non-special character
         | { [^{}"\n\\]* }   # Code between braces
@@ -67,7 +70,7 @@ _TOKEN_REGEX = r"""
     (?<=[\S\s])[ ] | [#].*
 )
 | (?P<error> . )
-"""
+'''
 
 
 def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:

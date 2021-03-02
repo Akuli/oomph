@@ -1,0 +1,6 @@
+func main() -> void:
+    print("""Hello world!
+This is a multiline string.
+Blah blah blah. Yadda yadda yadda.
+Lol""")
+    print("""This is another multiline string""")

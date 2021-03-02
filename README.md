@@ -28,7 +28,6 @@ Bugs:
 - maybe still a few reference counting bugs left, not sure
 
 Missing features needed to write the oomph compiler in oomph:
-- multiline strings
 - `\n`, `\t` etc inside strings
 - foreach
 - io
@@ -36,6 +35,8 @@ Missing features needed to write the oomph compiler in oomph:
 - forward-declaring a class
 
 Other missing features:
+- negative slices?
+- `Str.replace(mapping)` (I wish python had this)
 - `if cond then a else b`
 - named arguments
 - default values of arguments
