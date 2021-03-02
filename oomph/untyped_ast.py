@@ -152,3 +152,9 @@ class ClassDef(ToplevelStatement):
     type: Type
     members: List[Tuple[Type, str]]
     body: List[FuncDef]
+
+
+@dataclass(eq=False)
+class UnionDef(ToplevelStatement):
+    name: str
+    types: List[Type]

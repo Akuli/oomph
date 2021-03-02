@@ -13,6 +13,7 @@ from oomph.types import (
     STRING,
     FunctionType,
     Type,
+    UnionType,
     builtin_generic_types,
     builtin_types,
     builtin_variables,
@@ -353,6 +354,9 @@ class _FileTyper:
         self._generic_types = builtin_generic_types.copy()
         self.variables = builtin_variables.copy()
 
+        # Union members don't need to exist when union is defined (allows nestedness)
+        self._union_laziness: List[Tuple[UnionType, List[uast.Type]]] = []
+
     def get_type(self, raw_type: uast.Type) -> tast.Type:
         if raw_type.generic is None:
             return self._types[raw_type.name]
@@ -419,11 +423,23 @@ class _FileTyper:
 
             return tast.ClassDef(classtype, typed_method_defs)
 
+        if isinstance(top_statement, uast.UnionDef):
+            union_type = UnionType(top_statement.name)
+            self._types[top_statement.name] = union_type
+            self._union_laziness.append((union_type, top_statement.types))
+            return tast.UnionDef(union_type)
+
         raise NotImplementedError(top_statement)
+
+    def post_process_unions(self) -> None:
+        for union, types in self._union_laziness:
+            union.set_types([self.get_type(t) for t in types])
 
 
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
     typer = _FileTyper()
-    return [typer.do_toplevel_statement(top) for top in program]
+    result = [typer.do_toplevel_statement(top) for top in program]
+    typer.post_process_unions()
+    return result

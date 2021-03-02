@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type
+from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type, UnionType
 
 
 @dataclass(eq=False)
@@ -191,6 +191,11 @@ class FuncDef(ToplevelStatement):
 class ClassDef(ToplevelStatement):
     type: Type
     body: List[FuncDef]
+
+
+@dataclass(eq=False)
+class UnionDef(ToplevelStatement):
+    type: UnionType
 
 
 @dataclass(eq=False)

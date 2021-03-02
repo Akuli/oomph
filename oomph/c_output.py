@@ -359,7 +359,9 @@ class _FileEmitter:
                 "itemtype": self.emit_type(the_type.generic_origin.arg),
                 "itemtype_cname": self.get_type_c_name(the_type.generic_origin.arg),
                 "itemtype_string": the_type.name,
-                "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
+                "is_refcounted": (
+                    "1" if the_type.generic_origin.arg.refcounted else "0"
+                ),
             }
             self.beginning += "\n"
             return type_cname
@@ -444,6 +446,17 @@ class _FileEmitter:
                     )
                     for method in top_statement.body
                 )
+            )
+
+        if isinstance(top_statement, tast.UnionDef):
+            assert top_statement.type.types is not None
+            return (
+                ("union union_%s {\n" % self.get_type_c_name(top_statement.type))
+                + "".join(
+                    f"\t{self.emit_type(the_type)} item{index};\n"
+                    for index, the_type in enumerate(top_statement.type.types)
+                )
+                + "};\n\n"
             )
 
         raise NotImplementedError(top_statement)

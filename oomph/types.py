@@ -11,22 +11,14 @@ class GenericSource:
     arg: Type
 
 
-@dataclass(eq=False)
 class Type:
-    name: str
-    refcounted: bool
-    methods: Dict[str, FunctionType]
-    members: List[Tuple[Type, str]]
-    constructor_argtypes: Optional[List[Type]]
-    generic_origin: Optional[GenericSource]
-
     def __init__(self, name: str, refcounted: bool):
         self.name = name
         self.refcounted = refcounted
-        self.methods = {}
-        self.members = []
-        self.constructor_argtypes = None
-        self.generic_origin = None
+        self.methods: Dict[str, FunctionType] = {}
+        self.members: List[Tuple[Type, str]] = []
+        self.constructor_argtypes: Optional[List[Type]] = None
+        self.generic_origin: Optional[GenericSource] = None
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
@@ -44,6 +36,24 @@ class Type:
     def get_constructor_type(self) -> FunctionType:
         assert self.constructor_argtypes is not None
         return FunctionType(self.constructor_argtypes, self)
+
+
+class UnionType(Type):
+    types: Optional[List[Type]]
+
+    def __init__(self, name: str):
+        # refcounted-ness is not used
+        super().__init__(name, False)
+        self.types = None  # to be set later
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} {repr(self.name)}, types={self.types}>"
+
+    def set_types(self, types: List[Type]) -> None:
+        assert len(types) >= 2
+        assert all(t.refcounted for t in types)
+        assert self.types is None
+        self.types = types
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is

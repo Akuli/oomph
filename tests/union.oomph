@@ -1,0 +1,20 @@
+union FooBarBaz:
+    Foo
+    Bar
+    Baz
+
+class Foo(int foo_thing)
+class Bar()
+class Baz()
+
+func main() -> void:
+    pass
+#    let u = new FooBarBaz(new Foo())
+#    switch new FooBarBaz(new Foo()) as foobarbaz:
+#        case Foo:
+#            print("Foo")
+#            print(foobarbaz.foo_thing)
+#        case Bar:
+#            print("Bar")
+#        case Baz:
+#            print("Baz")
