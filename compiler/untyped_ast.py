@@ -21,6 +21,11 @@ class Statement:
 
 
 @dataclass(eq=False)
+class Null(Expression):
+    type: Type
+
+
+@dataclass(eq=False)
 class GetVar(Expression):
     varname: str
 

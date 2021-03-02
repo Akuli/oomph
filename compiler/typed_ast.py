@@ -16,6 +16,11 @@ class Statement:
 
 
 @dataclass(eq=False)
+class Null(Expression):
+    pass
+
+
+@dataclass(eq=False)
 class GetVar(Expression):
     varname: str
     # Special variables can't be accessed by writing their name into a program.

@@ -87,6 +87,11 @@ class _Parser:
         elif self.token_iter.peek() == ("keyword", "new"):
             self.get_token("keyword", "new")
             result = uast.Constructor(self.parse_type())
+        elif self.token_iter.peek() == ("keyword", "null"):
+            self.get_token("keyword", "null")
+            self.get_token('op','[')
+            result = uast.Null(self.parse_type())
+            self.get_token('op',']')
         elif self.token_iter.peek() == ("op", "("):
             self.get_token("op", "(")
             result = self.parse_expression()

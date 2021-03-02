@@ -13,6 +13,7 @@ _TOKEN_REGEX = r"""
         | generic
         | new
         | void
+        | null
         | return
         | pass
         | mod

@@ -1,7 +1,6 @@
 Bugs:
 - ref cycles are not prevented or garbage collected
-- new refs are not created in every case where they should be
-- loop variables leak
+- maybe still a few reference counting bugs left, not sure
 
 Missing features:
 - `if cond then a else b`
@@ -20,6 +19,7 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - `+=`
+- null `to_string()`
 - arrays:
     - `[a, b, c]` syntax
     - to_string()
@@ -28,6 +28,9 @@ Missing features:
     - defining generic classes or functions
     - tuples
     - mappings
-- null
+- automatic types
+    - `null[Str]` --> `null[auto]`
+    - `null[auto]` --> `null`
+- some nice way to check if an object is null
 - io
 - non-ref-counted pass-by-value classes

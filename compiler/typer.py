@@ -9,7 +9,7 @@ from compiler.types import (
     BOOL,
     FLOAT,
     INT,
-    STRING,
+    STRING,OPTIONAL,
     FunctionType,
     Type,
     builtin_generic_types,
@@ -235,6 +235,8 @@ class _FunctionOrMethodTyper:
                 return tast.GetMethod(obj, ast.attribute)
             except KeyError:
                 return tast.GetAttribute(obj, ast.attribute)
+        elif isinstance(ast, uast.Null):
+            return tast.Null(OPTIONAL.get_type(self.file_typer.get_type(ast.type)))
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> List[tast.Statement]:

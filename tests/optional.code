@@ -10,4 +10,6 @@ func main() -> void:
         print("main: null")
     else:
         print("main: {x.get()}")
+
     show(x)
+    show(null[Str])

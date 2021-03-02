@@ -58,6 +58,8 @@ class _FunctionEmitter:
             return f"({ast.value})"
         if isinstance(ast, tast.ReturningCall):
             return self.emit_call(ast)
+        if isinstance(ast, tast.Null):
+            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
         if isinstance(ast, tast.GetVar):
             if ast.is_special:
                 return ast.varname
