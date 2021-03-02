@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import itertools
 import re
 from typing import Dict, List, Optional, TypeVar, Union
+
+import more_itertools
 
 import compiler.typed_ast as tast
 from compiler.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type
 
 _T = TypeVar("_T")
+_varnames = (f"var{i}" for i in itertools.count())
 
 
 class _FunctionEmitter:
@@ -14,11 +18,9 @@ class _FunctionEmitter:
         self.file_emitter = file_emitter
         self.before_body = ""
         self.name_mapping: Dict[str, str] = {}  # values are names in c
-        self.varname_counter = 0
 
-    def create_local_var(self, the_type: Type, name_hint: str) -> str:
-        name = f"{name_hint}_{self.varname_counter}"
-        self.varname_counter += 1
+    def declare_local_var(self, the_type: Type) -> str:
+        name = next(_varnames)
         self.before_body += f"{self.file_emitter.emit_type(the_type)} {name};\n\t"
         return name
 
@@ -37,8 +39,7 @@ class _FunctionEmitter:
         # expressions is guaranteed. Comma-expression-evaluate all arguments
         # and put them to temporary variables, then do the call with the
         # temporary variables as arguments.
-        varnames = [self.create_local_var(arg.type, "arg") for arg in args]
-
+        varnames = [self.declare_local_var(arg.type) for arg in args]
         return (
             "("
             + " ".join(
@@ -66,7 +67,7 @@ class _FunctionEmitter:
         if isinstance(ast, tast.SetRef):
             # Must evaluate expression before decref because expression might
             # depend on the old value
-            var = self.create_local_var(ast.value.type, f"{ast.refname}_new")
+            var = self.declare_local_var(ast.value.type)
             value = self.emit_expression(ast.value)
             decref = self.file_emitter.emit_decref(ast.refname, ast.value.type)
             return f"({var} = {value}, {decref}, {ast.refname} = {var})"
@@ -85,7 +86,7 @@ class _FunctionEmitter:
 
     def emit_statement(self, ast: tast.Statement) -> str:
         if isinstance(ast, tast.CreateLocalVar):
-            var = self.create_local_var(ast.value.type, ast.varname)
+            var = self.declare_local_var(ast.value.type)
             assert ast.varname not in self.name_mapping
             self.name_mapping[ast.varname] = var
             return f"{var} = {self.emit_expression(ast.value)};\n\t"
@@ -97,7 +98,7 @@ class _FunctionEmitter:
             return self.emit_call(ast) + ";\n\t"
 
         if isinstance(ast, tast.DecRef):
-            var = self.create_local_var(ast.value.type, "decreffing_var")
+            var = self.declare_local_var(ast.value.type)
             return (
                 self.file_emitter.emit_decref(
                     self.emit_expression(ast.value), ast.value.type
@@ -142,6 +143,9 @@ class _FunctionEmitter:
         raise NotImplementedError(ast)
 
     def emit_funcdef(self, funcdef: tast.FuncDef, c_name: str) -> str:
+        c_argnames = more_itertools.take(len(funcdef.argnames), _varnames)
+        self.name_mapping.update(zip(funcdef.argnames, c_argnames))
+
         body = (
             (
                 ""
@@ -161,11 +165,11 @@ class _FunctionEmitter:
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
         )
         return (
-            f"\n{self.file_emitter.emit_type(funcdef.type.returntype)} {c_name}("
+            f"{self.file_emitter.emit_type(funcdef.type.returntype)} {c_name}("
             + (
                 ",".join(
-                    f"{self.file_emitter.emit_type(the_type)} var_{name}"
-                    for the_type, name in zip(funcdef.type.argtypes, funcdef.argnames)
+                    self.file_emitter.emit_type(the_type) + " " + name
+                    for the_type, name in zip(funcdef.type.argtypes, c_argnames)
                 )
                 or "void"
             )
