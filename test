@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -o pipefail
 
 if [ "$1" == --keep-going ]; then
     stop_on_fail=no
@@ -14,35 +15,39 @@ success=0
 fail=0
 
 for file in tests/*.code; do
-    echo "python3 -m compiler $@ $file"
     if [[ $file == tests/*_error.code ]]; then
-        if python3 -m compiler "$@" $file 2>test.out; then
-            echo "========== SHOULD HAVE ERRORED but it didn't"
-            fail=$((fail+1))
-        fi
+        expect_fail=yes
+        command="python3 -m compiler --quiet $file"
     else
-        if python3 -m compiler "$@" $file > test.out; then
-            outfile=tests/output/$(basename $file | cut -d. -f1).txt
-            if ! [ -f $outfile ]; then
-                echo "Creating $outfile automatically"
-                cp test.out $outfile
-                cat -n $outfile
-            fi
+        expect_fail=no
+        command="python3 -m compiler $@ $file"
+    fi
 
-            if diff --color -u $outfile test.out; then
+    echo "$command"
+    if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > test.out; then
+        echo "========== SHOULD HAVE ERRORED but it didn't"
+        fail=$((fail+1))
+    elif [ $expect_fail == no ] && ! $command > test.out; then
+        echo "========== ERROR in $file"
+        fail=$((fail+1))
+    else
+        outfile=tests/output/$(basename $file | cut -d. -f1).txt
+        if ! [ -f $outfile ]; then
+            echo "Creating $outfile automatically"
+            cp test.out $outfile
+            cat -n $outfile
+        fi
+
+        if diff --color -u $outfile test.out; then
+            success=$((success+1))
+        else
+            if [ $outfile -ot $file ]; then
+                echo "Updating $outfile with this diff"
+                cp test.out $outfile
                 success=$((success+1))
             else
-                if [ $outfile -ot $file ]; then
-                    echo "Updating $outfile with this diff"
-                    cp test.out $outfile
-                    success=$((success+1))
-                else
-                    fail=$((fail+1))
-                fi
+                fail=$((fail+1))
             fi
-        else
-            echo "========== ERROR in $file"
-            fail=$((fail+1))
         fi
     fi
 

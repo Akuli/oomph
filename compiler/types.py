@@ -138,4 +138,5 @@ builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 builtin_generic_types = {gen.name: gen for gen in [OPTIONAL, LIST]}
 builtin_variables: Dict[str, Type] = {
     "print": FunctionType([STRING], None),
+    "assert": FunctionType([BOOL], None),
 }

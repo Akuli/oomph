@@ -23,6 +23,7 @@ class Null(Expression):
 @dataclass(eq=False)
 class GetVar(Expression):
     varname: str
+    lineno: Optional[int] = None
     # Special variables can't be accessed by writing their name into a program.
     # Only the compiler can generate code to access them.
     is_special: bool = False

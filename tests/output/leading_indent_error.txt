@@ -1,0 +1,2 @@
+    assert tokentype != "error", repr(value)
+AssertionError: ' '

@@ -84,6 +84,9 @@ class _Parser:
             result = uast.IntConstant(int(self.get_token("int")[1]))
         elif self.token_iter.peek()[0] == "float":
             result = uast.FloatConstant(self.get_token("float")[1])
+        elif self.token_iter.peek()[0].startswith("assert_"):  # TODO: is haxor
+            lineno = int(self.token_iter.peek()[0].split("_")[1])
+            result = uast.GetVar(self.get_token()[1], lineno)
         elif self.token_iter.peek() == ("keyword", "new"):
             self.get_token("keyword", "new")
             result = uast.Constructor(self.parse_type())
@@ -140,7 +143,10 @@ class _Parser:
 
         # A common python beginner mistake is writing "a and b or c", thinking it
         # means "a and (b or c)"
-        assert not ((2, "and") in magic_list and (2, "or") in magic_list)
+        assert not ((2, "and") in magic_list and (2, "or") in magic_list), (
+            "instead of 'a and b or c', write '(a and b) or c', "
+            "or write 'a and (b or c)'"
+        )
 
         # a==b==c is not supported yet
         # FIXME: this test is broken for a == -b == c

@@ -3,7 +3,6 @@ Bugs:
 - maybe still a few reference counting bugs left, not sure
 
 Missing features needed to write compiler in the language itself:
-- assert
 - multiline strings
 - `\n`, `\t` etc inside strings
 - foreach
@@ -42,3 +41,6 @@ Other missing features:
 - non-ref-counted pass-by-value classes
 - for pointer types, use C `NULL` to represent `null`?
 - avoid using lots of `strlen`
+- `starts_with` + `slice` string method
+- `list + list`
+- `list.starts_with` and `ends_with`

@@ -27,12 +27,13 @@ class _FunctionEmitter:
     def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
         if isinstance(ast.func, tast.GetMethod):
             args = [ast.func.obj] + ast.args
+            func = f"meth_{self.file_emitter.get_type_c_name(ast.func.obj.type)}_{ast.func.name}"
+        elif isinstance(ast.func, tast.GetVar) and ast.func.varname == "assert":
+            assert ast.func.lineno is not None
+            args = ast.args + [tast.IntConstant(ast.func.lineno)]
+            func = self.emit_expression(ast.func)
         else:
             args = ast.args
-
-        if isinstance(ast.func, tast.GetMethod):
-            func = f"meth_{self.file_emitter.get_type_c_name(ast.func.obj.type)}_{ast.func.name}"
-        else:
             func = self.emit_expression(ast.func)
 
         # In C, argument order is not guaranteed, but evaluation of comma

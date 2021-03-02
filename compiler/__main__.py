@@ -42,10 +42,11 @@ def get_ast(file: IO[str]) -> List[tast.ToplevelStatement]:
 
 
 def produce_c_code(source: IO[str], dest: IO[str]) -> None:
+    with (project_root / "stdlib.code").open() as stdlib:
+        code1 = stdlib.read()
     with source:
-        with (project_root / "stdlib.code").open() as stdlib:
-            code = stdlib.read() + source.read()
-    dest.write(c_output.run(typer.convert_program(parser.parse_file(code))))
+        code2 = source.read()
+    dest.write(c_output.run(typer.convert_program(parser.parse_file(code1) + parser.parse_file(code2))))
 
 
 def main() -> None:
@@ -53,6 +54,7 @@ def main() -> None:
     arg_parser.add_argument("infile", type=argparse.FileType("r", encoding="utf-8"))
     arg_parser.add_argument("--valgrind", action="store_true")
     arg_parser.add_argument("--c-code", action="store_true")
+    arg_parser.add_argument("--quiet", action="store_true")
     args = arg_parser.parse_args()
 
     input_path = pathlib.Path(args.infile.name).absolute()
@@ -79,7 +81,9 @@ def main() -> None:
         skip_recompiling = False
 
     if not skip_recompiling:
-        print("Compiling...", file=sys.stderr)
+        if not args.quiet:
+            print("Must compile before running...", file=sys.stderr)
+
         with invoke_c_compiler(exe_path) as compiler_process:
             assert compiler_process.stdin is not None
             produce_c_code(args.infile, compiler_process.stdin)
