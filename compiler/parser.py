@@ -84,6 +84,9 @@ class _Parser:
             result = uast.IntConstant(int(self.get_token("int")[1]))
         elif self.token_iter.peek()[0] == "float":
             result = uast.FloatConstant(self.get_token("float")[1])
+        elif self.token_iter.peek()[0].startswith("assert_"):  # TODO: is haxor
+            lineno = int(self.token_iter.peek()[0].split("_")[1])
+            result = uast.GetVar(self.get_token()[1], lineno)
         elif self.token_iter.peek() == ("keyword", "new"):
             self.get_token("keyword", "new")
             result = uast.Constructor(self.parse_type())

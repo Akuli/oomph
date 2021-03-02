@@ -15,11 +15,19 @@ success=0
 fail=0
 
 for file in tests/*.code; do
-    echo "python3 -m compiler $@ $file"
-    if [[ $file == tests/*_error.code ]] && python3 -m compiler "$@" $file 2>&1 | tail -2 > test.out; then
+    if [[ $file == tests/*_error.code ]]; then
+        expect_fail=yes
+        command="python3 -m compiler --quiet $file"
+    else
+        expect_fail=no
+        command="python3 -m compiler $@ $file"
+    fi
+
+    echo "$command"
+    if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > test.out; then
         echo "========== SHOULD HAVE ERRORED but it didn't"
         fail=$((fail+1))
-    elif [[ $file != tests/*_error.code ]] && ! python3 -m compiler "$@" $file > test.out; then
+    elif [ $expect_fail == no ] && ! $command > test.out; then
         echo "========== ERROR in $file"
         fail=$((fail+1))
     else

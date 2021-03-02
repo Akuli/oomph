@@ -1,2 +1,2 @@
-    raise NotImplementedError(self.token_iter.peek())
-NotImplementedError: ('keyword', 'func')
+    assert tokentype != "error", repr(value)
+AssertionError: ' '

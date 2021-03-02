@@ -80,6 +80,10 @@ def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
         value = match.group()
         assert tokentype != "error", repr(value)
         if tokentype != "ignore":
+            # TODO: this is a "temporary" hack to track line numbers in asserts
+            if tokentype == "identifier" and value == "assert":
+                lineno = code[: match.start()].count("\n") + 1
+                tokentype = f"assert_{lineno}"
             yield (tokentype, match.group())
 
 

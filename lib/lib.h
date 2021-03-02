@@ -18,6 +18,7 @@ struct class_Str *cstr_to_string(const char *s);
 void string_concat_inplace(struct class_Str **res, const char *suf);
 #define dtor_Str free
 
+void var_assert(bool cond, int64_t lineno);
 void var_print(const struct class_Str *s);
 
 double meth_Str_to_float(const struct class_Str *s);

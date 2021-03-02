@@ -215,7 +215,7 @@ class _FunctionOrMethodTyper:
                 return self.create_special_call("bool_true", [])
             if ast.varname == "false":
                 return self.create_special_call("bool_false", [])
-            return tast.GetVar(self.variables[ast.varname], ast.varname)
+            return tast.GetVar(self.variables[ast.varname], ast.varname, ast.lineno)
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":

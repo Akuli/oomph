@@ -28,6 +28,7 @@ class Null(Expression):
 @dataclass(eq=False)
 class GetVar(Expression):
     varname: str
+    lineno: Optional[int] = None
 
 
 @dataclass(eq=False)

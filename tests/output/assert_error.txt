@@ -1,0 +1,2 @@
+assert() failed on line 3
+Program killed by signal 6 (SIGABRT)
