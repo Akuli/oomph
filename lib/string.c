@@ -39,6 +39,16 @@ struct class_Str *string_concat(const struct class_Str *strs[])
 }
 */
 
+void string_concat_inplace(struct class_Str **res, const char *suf)
+{
+	// TODO: do we always need to make a new string?
+	struct class_Str *old = *res;
+	*res = alloc_string(strlen(old->str) + strlen(suf));
+	strcpy((*res)->str, old->str);
+	strcat((*res)->str, suf);
+	decref(old, dtor_Str);
+}
+
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
 {
 	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));

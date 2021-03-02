@@ -22,8 +22,8 @@ Missing features:
 - null `to_string()`
 - arrays:
     - `[a, b, c]` syntax
-    - to_string()
     - foreach
+    - js-style methods (needs lambdas) or list comprehensions
 - generics
     - defining generic classes or functions
     - tuples

@@ -15,6 +15,7 @@ struct class_Str {
 	char str[];   // flexible array member, ends with \0, valid utf-8
 };
 struct class_Str *cstr_to_string(const char *s);
+void string_concat_inplace(struct class_Str **res, const char *suf);
 #define dtor_Str free
 
 void var_print(const struct class_Str *s);

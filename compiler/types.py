@@ -65,6 +65,7 @@ class Generic:
             result.methods["get"] = FunctionType([result, INT], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["push"] = FunctionType([result, generic_arg], None)
+            result.methods["to_string"] = FunctionType([result], STRING)
         else:
             raise NotImplementedError
         return result

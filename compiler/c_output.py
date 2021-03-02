@@ -194,15 +194,15 @@ _generic_c_codes = {
     OPTIONAL: """
 struct class_%(c_name)s {
     bool isnull;
-    %(c_type)s value;
+    %(c_type_expr)s value;
 };
 
-struct class_%(c_name)s ctor_%(c_name)s(%(c_type)s val)
+struct class_%(c_name)s ctor_%(c_name)s(%(c_type_expr)s val)
 {
     return (struct class_%(c_name)s) { false, val };
 }
 
-%(c_type)s meth_%(c_name)s_get(struct class_%(c_name)s opt)
+%(c_type_expr)s meth_%(c_name)s_get(struct class_%(c_name)s opt)
 {
     assert(!opt.isnull);
 #if %(is_refcounted)s
@@ -222,8 +222,8 @@ struct class_%(c_name)s {
     REFCOUNT_HEADER
     int64_t len;
     int64_t alloc;
-    %(c_type)s smalldata[8];
-    %(c_type)s *data;
+    %(c_type_expr)s smalldata[8];
+    %(c_type_expr)s *data;
 };
 
 struct class_%(c_name)s *ctor_%(c_name)s(void)
@@ -268,7 +268,7 @@ void class_%(c_name)s_ensure_alloc(struct class_%(c_name)s *self, int64_t n)
     }
 }
 
-void meth_%(c_name)s_push(struct class_%(c_name)s *self, %(c_type)s val)
+void meth_%(c_name)s_push(struct class_%(c_name)s *self, %(c_type_expr)s val)
 {
     class_%(c_name)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
@@ -277,7 +277,7 @@ void meth_%(c_name)s_push(struct class_%(c_name)s *self, %(c_type)s val)
 #endif
 }
 
-%(c_type)s meth_%(c_name)s_get(struct class_%(c_name)s *self, int64_t i)
+%(c_type_expr)s meth_%(c_name)s_get(struct class_%(c_name)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
 #if %(is_refcounted)s
@@ -289,6 +289,25 @@ void meth_%(c_name)s_push(struct class_%(c_name)s *self, %(c_type)s val)
 int64_t meth_%(c_name)s_length(struct class_%(c_name)s *self)
 {
     return self->len;
+}
+
+// FIXME: not all types have to_string method
+// TODO: rewrite better in the language itself
+struct class_Str *meth_%(c_name)s_to_string(struct class_%(c_name)s *self)
+{
+    struct class_Str *res = cstr_to_string("[");
+
+    for (int64_t i = 0; i < self->len; i++) {
+        if (i != 0) {
+            string_concat_inplace(&res, ", ");
+        }
+        struct class_Str *s = meth_%(c_type)s_to_string(self->data[i]);
+        string_concat_inplace(&res, s->str);
+        decref(s, dtor_Str);
+    }
+
+    string_concat_inplace(&res, "]");
+    return res;
 }
 """,
 }
@@ -316,7 +335,8 @@ class _FileEmitter:
             self.generic_type_names[the_type] = c_name
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
                 "c_name": c_name,
-                "c_type": self.emit_type(the_type.generic_origin.arg),
+                "c_type_expr": self.emit_type(the_type.generic_origin.arg),
+                "c_type": self.get_type_c_name(the_type.generic_origin.arg),
                 "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
             }
             self.beginning += "\n"
