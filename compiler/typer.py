@@ -9,7 +9,8 @@ from compiler.types import (
     BOOL,
     FLOAT,
     INT,
-    STRING,OPTIONAL,
+    OPTIONAL,
+    STRING,
     FunctionType,
     Type,
     builtin_generic_types,
@@ -319,6 +320,35 @@ class _FunctionOrMethodTyper:
         return result
 
 
+def _create_to_string_method(class_type: tast.Type) -> uast.FuncDef:
+    strings: List[uast.Expression] = []
+    for typ, nam in class_type.members:
+        if strings:
+            strings.append(uast.StringConstant(", "))
+        # FIXME: properly support reference cycling types
+        if typ is class_type:
+            strings.append(uast.StringConstant(f"<{class_type.name}>"))
+        else:
+            strings.append(
+                uast.Call(
+                    uast.GetAttribute(
+                        uast.GetAttribute(uast.GetVar("self"), nam), "to_string"
+                    ),
+                    [],
+                )
+            )
+
+    strings.insert(0, uast.StringConstant(class_type.name + "("))
+    strings.append(uast.StringConstant(")"))
+
+    return uast.FuncDef(
+        "to_string",
+        [],
+        uast.Type("Str", None),
+        [uast.Return(uast.StringFormatJoin(strings))],
+    )
+
+
 class _FileTyper:
     def __init__(self) -> None:
         self._types = builtin_types.copy()
@@ -375,6 +405,12 @@ class _FileTyper:
                 (self.get_type(typ), nam) for typ, nam in top_statement.members
             )
             classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+
+            if "to_string" not in (method.name for method in top_statement.body):
+                top_statement.body.insert(
+                    0,
+                    _create_to_string_method(classtype),
+                )
 
             typed_method_defs = []
             for method_def in top_statement.body:

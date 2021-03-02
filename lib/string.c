@@ -19,12 +19,6 @@ struct class_Str *cstr_to_string(const char *s)
 	return res;
 }
 
-struct class_Str *meth_Str_to_string(struct class_Str *s)
-{
-	incref(s);
-	return s;
-}
-
 /*
 struct class_Str *string_concat(const struct class_Str *strs[])
 {
@@ -45,6 +39,14 @@ struct class_Str *string_concat(const struct class_Str *strs[])
 }
 */
 
+struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
+{
+	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
+	strcpy(res->str, str1->str);
+	strcat(res->str, str2->str);
+	return res;
+}
+
 void string_concat_inplace(struct class_Str **res, const char *suf)
 {
 	// TODO: do we always need to make a new string?
@@ -55,11 +57,15 @@ void string_concat_inplace(struct class_Str **res, const char *suf)
 	decref(old, dtor_Str);
 }
 
-struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
+struct class_Str *meth_Str_to_string(struct class_Str *s)
 {
-	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
-	strcpy(res->str, str1->str);
-	strcat(res->str, str2->str);
+	// Returns a programmer-readable string. Print does not use this automatically.
+	// TODO: escape quotes?
+	int64_t len = strlen(s->str);
+	struct class_Str *res = alloc_string(len+2);
+	strcpy(res->str, "\"");
+	strcat(res->str, s->str);
+	strcat(res->str, "\"");
 	return res;
 }
 

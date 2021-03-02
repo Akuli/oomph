@@ -1,0 +1,4 @@
+Foo0()
+Foo1(1)
+Foo2(2, "lol")
+Foo3(3, "wat", true)

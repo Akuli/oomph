@@ -3,6 +3,10 @@ Bugs:
 - maybe still a few reference counting bugs left, not sure
 
 Missing features:
+- `print(optional[Str]("lol"))` prints `"lol"` with quotes
+    - Perhaps should print `optional[Str]("lol")`
+    - Or maybe just `"lol"`, but then your program might print `null` randomly and become a meme
+- `\n`, `\t` etc inside strings
 - `if cond then a else b`
 - named arguments
 - do we want more implicit int to float conversion? `print_float(2)`
@@ -19,7 +23,6 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - `+=`
-- null `to_string()`
 - arrays:
     - `[a, b, c]` syntax
     - foreach
