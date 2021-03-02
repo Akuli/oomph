@@ -19,11 +19,9 @@ from compiler.types import (
 )
 
 _special_funcs = {
-    "bool_and": FunctionType([BOOL, BOOL], BOOL),
     "bool_eq": FunctionType([BOOL, BOOL], BOOL),
     "bool_false": FunctionType([], BOOL),
     "bool_not": FunctionType([BOOL], BOOL),
-    "bool_or": FunctionType([BOOL, BOOL], BOOL),
     "bool_true": FunctionType([], BOOL),
     "float_add": FunctionType([FLOAT, FLOAT], FLOAT),
     "float_div": FunctionType([FLOAT, FLOAT], FLOAT),
@@ -169,9 +167,9 @@ class _FunctionOrMethodTyper:
             )
 
         if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
-            return self.create_special_call("bool_and", [lhs, rhs])
+            return tast.BoolAnd(lhs, rhs)
         if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
-            return self.create_special_call("bool_or", [lhs, rhs])
+            return tast.BoolOr(lhs, rhs)
         if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
             return self.create_special_call("bool_eq", [lhs, rhs])
         if lhs.type is INT and ast.op == "==" and rhs.type is INT:

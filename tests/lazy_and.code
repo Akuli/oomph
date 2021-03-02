@@ -1,0 +1,9 @@
+func foo(int message) -> bool:
+    print(message)
+    return true
+
+func main() -> void:
+    let a = true and foo(1)
+    let b = false and foo(2)
+    let c = true or foo(3)
+    let d = false or foo(4)

@@ -58,6 +58,10 @@ class _FunctionEmitter:
             return f"({ast.value})"
         if isinstance(ast, tast.ReturningCall):
             return self.emit_call(ast)
+        if isinstance(ast, tast.BoolAnd):
+            return f"({self.emit_expression(ast.lhs)} && {self.emit_expression(ast.rhs)})"
+        if isinstance(ast, tast.BoolOr):
+            return f"({self.emit_expression(ast.lhs)} || {self.emit_expression(ast.rhs)})"
         if isinstance(ast, tast.Null):
             return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
         if isinstance(ast, tast.GetVar):

@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import FLOAT, INT, STRING, FunctionType, Type
+from compiler.types import BOOL, FLOAT, INT, STRING, FunctionType, Type
 
 
 @dataclass(eq=False)
@@ -81,6 +81,28 @@ class FloatConstant(Expression):
     def __init__(self, value: str):
         super().__init__(FLOAT)
         self.value = value
+
+
+# And,Or are not function calls with is_special=True because evaluation order
+# is different than for function calls.
+class BoolAnd(Expression):
+    lhs: Expression
+    rhs: Expression
+
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(BOOL)
+        self.lhs = lhs
+        self.rhs = rhs
+
+
+class BoolOr(Expression):
+    lhs: Expression
+    rhs: Expression
+
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(BOOL)
+        self.lhs = lhs
+        self.rhs = rhs
 
 
 @dataclass(eq=False)
