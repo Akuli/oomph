@@ -46,7 +46,11 @@ def produce_c_code(source: IO[str], dest: IO[str]) -> None:
         code1 = stdlib.read()
     with source:
         code2 = source.read()
-    dest.write(c_output.run(typer.convert_program(parser.parse_file(code1) + parser.parse_file(code2))))
+    dest.write(
+        c_output.run(
+            typer.convert_program(parser.parse_file(code1) + parser.parse_file(code2))
+        )
+    )
 
 
 def main() -> None:
