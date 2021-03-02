@@ -11,9 +11,9 @@ pip install more_itertools black isort mypy pyflakes
 python3 -m oomph tests/hello.oomph   # compile and run hello world file
 ```
 
-If you delete or rename files in `lib/`, you may need to run `make clean`
-
-Test script passes its argument to oomph, try e.g. `./test --valgrind`
+- If you delete or rename files in `lib/`, you may need to run `make clean`.
+- Run `./lint` before commit.
+- Test script passes its argument to oomph. Try e.g. `./test --valgrind`.
 
 
 ## The language
