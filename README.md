@@ -1,3 +1,6 @@
+# oomph
+This is yet another attempt at making a usable programming language.
+
 Commands:
 
 ```
