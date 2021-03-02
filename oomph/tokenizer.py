@@ -39,11 +39,16 @@ _TOKEN_REGEX = r'''
     [1-9][0-9]* | 0
 )
 | (?P<multiline_string>
-    """ ( [^{}\\] )*? """
+    """ (
+        [^{}"\\]            # Non-special character (newline allowed)
+        | \\[{}t\\]         # \{ and friends, but no \n since that's confusing
+        | { [^{}"\n\\]* }   # Code between braces
+    )*? """
 )
 | (?P<oneline_string>
     " (
         [^{}"\n\\]          # Non-special character
+        | \\[{}nt\\]        # \{ and friends
         | { [^{}"\n\\]* }   # Code between braces
     )* "
 )
@@ -69,7 +74,7 @@ _TOKEN_REGEX = r'''
     # Ignore comments
     (?<=[\S\s])[ ] | [#].*
 )
-| (?P<error> . )
+| (?P<error> .{1,10} )
 '''
 
 

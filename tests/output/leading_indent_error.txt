@@ -1,2 +1,2 @@
     assert tokentype != "error", repr(value)
-AssertionError: ' '
+AssertionError: '    func m'

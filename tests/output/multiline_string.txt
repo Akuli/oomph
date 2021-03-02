@@ -2,4 +2,5 @@ Hello world!
 This is a multiline string.
 Blah blah blah. Yadda yadda yadda.
 Lol
-This is another multiline string
+This is another multiline string.
+Value of x is 1.

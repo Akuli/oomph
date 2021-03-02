@@ -3,4 +3,6 @@ func main() -> void:
 This is a multiline string.
 Blah blah blah. Yadda yadda yadda.
 Lol""")
-    print("""This is another multiline string""")
+    let x = 1
+    print("""This is another multiline string.
+Value of x is {x}.""")

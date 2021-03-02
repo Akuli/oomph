@@ -1,3 +1,4 @@
+import re
 from typing import Callable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import more_itertools
@@ -60,12 +61,19 @@ class _Parser:
                 parts.append(self.tokenize_and_parse_expression(string[1:end]))
                 string = string[end + 1 :]
             else:
-                try:
-                    end = string.index("{")
-                except ValueError:
-                    end = len(string)
-                parts.append(uast.StringConstant(string[:end]))
-                string = string[end:]
+                match = re.search(r"(?<!\\)\{", string)
+                text_end = len(string) if match is None else match.start()
+                parts.append(
+                    uast.StringConstant(
+                        string[:text_end]
+                        .replace("\\n", "\n")
+                        .replace("\\t", "\t")
+                        .replace("\\{", "{")
+                        .replace("\\}", "}")
+                        .replace("\\\\", "\\")
+                    )
+                )
+                string = string[text_end:]
 
         if len(parts) == 0:
             return uast.StringConstant("")
@@ -76,9 +84,13 @@ class _Parser:
     def parse_expression_without_operators(self) -> uast.Expression:
         result: uast.Expression
         if self.token_iter.peek()[0] == "oneline_string":
-            result = self.do_string_formatting(self.get_token("oneline_string")[1][1:-1])
+            result = self.do_string_formatting(
+                self.get_token("oneline_string")[1][1:-1]
+            )
         elif self.token_iter.peek()[0] == "multiline_string":
-            result = self.do_string_formatting(self.get_token("multiline_string")[1][3:-3])
+            result = self.do_string_formatting(
+                self.get_token("multiline_string")[1][3:-3]
+            )
         elif self.token_iter.peek()[0] == "identifier":
             result = uast.GetVar(self.get_token("identifier")[1])
         elif self.token_iter.peek()[0] == "int":
