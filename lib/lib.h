@@ -34,7 +34,11 @@ struct class_Str *meth_Str_to_string(struct class_Str *s);
 struct class_Str *meth_float_to_string(double d);
 struct class_Str *meth_int_to_string(int64_t n);
 
+struct class_List_Str;
+struct class_Str *meth_List_Str_join(struct class_List_Str *self, const struct class_Str *sep);
+
 // Class implemented in C, method implemented in the language itself
+#define meth_List_Str_join var___string_join
 #define meth_Str_center_pad var___string_center_pad
 #define meth_Str_count var___string_count
 #define meth_Str_ends_with var___string_ends_with
@@ -44,6 +48,7 @@ struct class_Str *meth_int_to_string(int64_t n);
 #define meth_Str_replace var___string_replace
 #define meth_Str_right_pad var___string_right_pad
 #define meth_Str_right_trim var___string_right_trim
+#define meth_Str_split var___string_split
 #define meth_Str_starts_with var___string_starts_with
 #define meth_Str_trim var___string_trim
 #define meth_bool_to_string var___bool_to_string

@@ -65,6 +65,8 @@ class Generic:
             result.methods["get"] = FunctionType([result, INT], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["push"] = FunctionType([result, generic_arg], None)
+            if generic_arg is STRING:
+                result.methods["join"] = FunctionType([result, STRING], STRING)
         else:
             raise NotImplementedError
 
@@ -113,6 +115,7 @@ FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 INT.methods["to_string"] = FunctionType([INT], STRING)
 
 STRING.methods["center_pad"] = FunctionType([STRING, INT, STRING], STRING)
+STRING.methods["split"] = FunctionType([STRING, STRING], LIST.get_type(STRING))
 STRING.methods["count"] = FunctionType([STRING, STRING], INT)
 STRING.methods["ends_with"] = FunctionType([STRING, STRING], BOOL)
 STRING.methods["find_first"] = FunctionType([STRING, STRING], INT)

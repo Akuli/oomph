@@ -3,17 +3,19 @@ Bugs:
 - maybe still a few reference counting bugs left, not sure
 
 Missing features needed to write compiler in the language itself:
+- assert
 - multiline strings
 - `\n`, `\t` etc inside strings
-- string split and join
 - foreach
 - io
+- union types
+- forward-declaring a class
 
 Other missing features:
 - `if cond then a else b`
 - named arguments
-- do we want more implicit int to float conversion? `print_float(2)`
 - default values of arguments
+- do we want more implicit int to float conversion? `print_float(2)`
 - string methods
     - reverse
     - find occurrence of substring
@@ -36,5 +38,7 @@ Other missing features:
     - `null[Str]` --> `null[auto]`
     - `null[auto]` --> `null`
     - `new List[Str]()` --> `[]`
-- some nice way to check if an object is null
+- some nice way to check if an object is null (for at least `if` and `while`)
 - non-ref-counted pass-by-value classes
+- for pointer types, use C `NULL` to represent `null`?
+- avoid using lots of `strlen`

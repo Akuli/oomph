@@ -76,3 +76,28 @@ func __string_replace(Str self, Str old, Str neuw) -> Str:
             return result + remaining
         result = result + remaining.slice(0, index) + neuw
         remaining = remaining.slice(index + old.length(), remaining.length())
+
+func __string_split(Str self, Str sep) -> List[Str]:
+    let result = new List[Str]()
+    if sep == "":
+        result.push(self)
+        return result
+
+    let s = self  # TODO: is this necessary?
+    while true:
+        let i = s.find_first(sep)
+        if i == -1:
+            result.push(s)
+            return result
+
+        result.push(s.slice(0, i))
+        s = s.slice(i + sep.length(), s.length())
+
+func __string_join(List[Str] self, Str sep) -> Str:
+    if self.length() == 0:
+        return self.get(0)
+
+    let result = self.get(0)
+    for let i = 1; i < self.length(); i = i+1:
+        result = result + sep + self.get(i)
+    return result

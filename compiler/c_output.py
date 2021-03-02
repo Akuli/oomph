@@ -255,7 +255,7 @@ void dtor_%(type_cname)s (void *ptr)
     struct class_%(type_cname)s *self = ptr;
 #if %(is_refcounted)s
     for (int64_t i = 0; i < self->len; i++)
-        decref(self->data[i]);
+        decref(self->data[i], dtor_%(itemtype_cname)s);
 #endif
     if (self->data != self->smalldata)
         free(self->data);
