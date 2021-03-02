@@ -98,9 +98,12 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.DecRef):
             var = self.create_local_var(ast.value.type, "decreffing_var")
-            return self.file_emitter.emit_decref(
-                self.emit_expression(ast.value), ast.value.type
-            ) + ";\n\t"
+            return (
+                self.file_emitter.emit_decref(
+                    self.emit_expression(ast.value), ast.value.type
+                )
+                + ";\n\t"
+            )
 
         if isinstance(ast, tast.Return):
             if ast.value is not None and ast.value.type.refcounted:
@@ -179,17 +182,17 @@ def _format_byte(byte: int) -> str:
 
 _generic_c_codes = {
     OPTIONAL: """
-struct %(struct_name)s {
+struct class_%(struct_name)s {
     bool isnull;
     %(c_type)s value;
 };
 
-struct %(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
+struct class_%(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
 {
-    return (struct %(struct_name)s) { false, val };
+    return (struct class_%(struct_name)s) { false, val };
 }
 
-%(c_type)s meth_%(struct_name)s_get(struct %(struct_name)s opt)
+%(c_type)s meth_%(struct_name)s_get(struct class_%(struct_name)s opt)
 {
     assert(!opt.isnull);
 #if %(is_refcounted)s
@@ -198,14 +201,14 @@ struct %(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
     return opt.value;
 }
 
-bool meth_%(struct_name)s_is_null(struct %(struct_name)s opt)
+bool meth_%(struct_name)s_is_null(struct class_%(struct_name)s opt)
 {
     return opt.isnull;
 }
 """,
     LIST: """
 // TODO: have this struct on stack when possible, same with strings
-struct %(struct_name)s {
+struct class_%(struct_name)s {
     REFCOUNT_HEADER
     int64_t len;
     int64_t alloc;
@@ -213,9 +216,9 @@ struct %(struct_name)s {
     %(c_type)s *data;
 };
 
-struct %(struct_name)s *ctor_%(struct_name)s(void)
+struct class_%(struct_name)s *ctor_%(struct_name)s(void)
 {
-    struct %(struct_name)s *res = malloc(sizeof(*res));
+    struct class_%(struct_name)s *res = malloc(sizeof(*res));
     assert(res);
     res->refcount = 1;
     res->len = 0;
@@ -226,7 +229,7 @@ struct %(struct_name)s *ctor_%(struct_name)s(void)
 
 void dtor_%(struct_name)s (void *ptr)
 {
-    struct %(struct_name)s *self = ptr;
+    struct class_%(struct_name)s *self = ptr;
 #if %(is_refcounted)s
     for (int64_t i = 0; i < self->len; i++)
         decref(self->data[i]);
@@ -236,7 +239,7 @@ void dtor_%(struct_name)s (void *ptr)
     free(self);
 }
 
-void %(struct_name)s_ensure_alloc(struct %(struct_name)s *self, int64_t n)
+void class_%(struct_name)s_ensure_alloc(struct class_%(struct_name)s *self, int64_t n)
 {
     assert(n >= 0);
     if (self->alloc >= n)
@@ -255,16 +258,16 @@ void %(struct_name)s_ensure_alloc(struct %(struct_name)s *self, int64_t n)
     }
 }
 
-void meth_%(struct_name)s_push(struct %(struct_name)s *self, %(c_type)s val)
+void meth_%(struct_name)s_push(struct class_%(struct_name)s *self, %(c_type)s val)
 {
-    %(struct_name)s_ensure_alloc(self, self->len + 1);
+    class_%(struct_name)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
 #if %(is_refcounted)s
     incref(val);
 #endif
 }
 
-%(c_type)s meth_%(struct_name)s_get(struct %(struct_name)s *self, int64_t i)
+%(c_type)s meth_%(struct_name)s_get(struct class_%(struct_name)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
 #if %(is_refcounted)s
@@ -273,7 +276,7 @@ void meth_%(struct_name)s_push(struct %(struct_name)s *self, %(c_type)s val)
     return self->data[i];
 }
 
-int64_t meth_%(struct_name)s_length(struct %(struct_name)s *self)
+int64_t meth_%(struct_name)s_length(struct class_%(struct_name)s *self)
 {
     return self->len;
 }
@@ -300,13 +303,14 @@ class _FileEmitter:
             return self._optional_structs[the_type.generic_origin.arg]
         except KeyError:
             struct_name = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
+            # FIXME
             self._optional_structs[the_type.generic_origin.arg] = struct_name
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
                 "struct_name": struct_name,
                 "c_type": self.emit_type(the_type.generic_origin.arg),
                 "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
             }
-            self.beginning += '\n'
+            self.beginning += "\n"
             return struct_name
 
     def emit_type(self, the_type: Optional[Type]) -> str:
@@ -319,8 +323,8 @@ class _FileEmitter:
         if the_type is BOOL:
             return "bool"
         if the_type.refcounted:
-            return f"struct {self.get_type_c_name(the_type)} *"
-        return f"struct {self.get_type_c_name(the_type)}"
+            return f"struct class_{self.get_type_c_name(the_type)} *"
+        return f"struct class_{self.get_type_c_name(the_type)}"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
@@ -349,7 +353,7 @@ class _FileEmitter:
         if isinstance(top_statement, tast.ClassDef):
             return (
                 # struct
-                ("struct %s {\n" % top_statement.type.name)
+                ("struct class_%s {\n" % self.get_type_c_name(top_statement.type))
                 + "\tREFCOUNT_HEADER\n\t"
                 + "".join(
                     f"{self.emit_type(the_type)} memb_{name};\n\t"
@@ -357,7 +361,7 @@ class _FileEmitter:
                 )
                 + "\n};\n\n"
                 # constructor
-                + f"{self.emit_type(top_statement.type)} ctor_{top_statement.type.name}("
+                + f"{self.emit_type(top_statement.type)} ctor_{self.get_type_c_name(top_statement.type)}("
                 + ",".join(
                     f"{self.emit_type(the_type)} var_{name}"
                     for the_type, name in top_statement.type.members
@@ -366,18 +370,18 @@ class _FileEmitter:
                 + f"{self.emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
                 + "obj->refcount = 1;\n\t"
                 + "".join(
-                    f"obj->memb_{name} = var_{name};" + (
-                        f"incref(var_{name});" if the_type.refcounted else ""
-                    ) + "\n\t"
+                    f"obj->memb_{name} = var_{name};"
+                    + (f"incref(var_{name});" if the_type.refcounted else "")
+                    + "\n\t"
                     for the_type, name in top_statement.type.members
                 )
                 + "return obj;\n}\n\n"
                 # destructor
-                + f"void dtor_{top_statement.type.name}(void *ptr)"
+                + f"void dtor_{self.get_type_c_name(top_statement.type)}(void *ptr)"
                 + "{"
-                + f"\n\tstruct {top_statement.type.name} *obj = ptr;\n\t"
+                + f"\n\tstruct class_{self.get_type_c_name(top_statement.type)} *obj = ptr;\n\t"
                 + "".join(
-                    self.emit_decref(f'obj->memb_{nam}', typ) + ";\n\t"
+                    self.emit_decref(f"obj->memb_{nam}", typ) + ";\n\t"
                     for typ, nam in top_statement.type.members
                 )
                 + "free(obj);\n}\n\n"

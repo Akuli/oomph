@@ -10,27 +10,27 @@
 
 #define REFCOUNT_HEADER int64_t refcount;
 
-struct Str {
+struct class_Str {
 	REFCOUNT_HEADER
 	char str[];   // flexible array member, ends with \0, valid utf-8
 };
-struct Str *cstr_to_string(const char *s);
+struct class_Str *cstr_to_string(const char *s);
 #define dtor_Str free
 
-void var_print(const struct Str *s);
+void var_print(const struct class_Str *s);
 
-double meth_Str_to_float(const struct Str *s);
-int64_t meth_Str_find_first(const struct Str *s, const struct Str *sub);
-int64_t meth_Str_length(const struct Str *s);
-int64_t meth_Str_to_int(const struct Str *s);
-int64_t meth_Str_unicode_length(const struct Str *s);
+double meth_Str_to_float(const struct class_Str *s);
+int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub);
+int64_t meth_Str_length(const struct class_Str *s);
+int64_t meth_Str_to_int(const struct class_Str *s);
+int64_t meth_Str_unicode_length(const struct class_Str *s);
 int64_t meth_float_ceil(double d);
 int64_t meth_float_floor(double d);
 int64_t meth_float_round(double d);
 int64_t meth_float_truncate(double d);
-struct Str *meth_Str_slice(const struct Str *s, int64_t start, int64_t end);
-struct Str *meth_float_to_string(double d);
-struct Str *meth_int_to_string(int64_t n);
+struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end);
+struct class_Str *meth_float_to_string(double d);
+struct class_Str *meth_int_to_string(int64_t n);
 
 // Class implemented in C, method implemented in the language itself
 #define meth_Str_center_pad var___string_center_pad
@@ -78,6 +78,6 @@ void decref(void *ptr, void (*destructor)(void *ptr));
 #define string_eq(a, b) (strcmp((a)->str, (b)->str) == 0)
 double float_mod(double a, double b);
 int64_t int_mod(int64_t a, int64_t b);
-struct Str *string_concat(const struct Str *str1, const struct Str *str2);
+struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
 
 #endif   // LIB_H
