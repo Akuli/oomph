@@ -182,17 +182,17 @@ def _format_byte(byte: int) -> str:
 
 _generic_c_codes = {
     OPTIONAL: """
-struct class_%(struct_name)s {
+struct class_%(c_name)s {
     bool isnull;
     %(c_type)s value;
 };
 
-struct class_%(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
+struct class_%(c_name)s ctor_%(c_name)s(%(c_type)s val)
 {
-    return (struct class_%(struct_name)s) { false, val };
+    return (struct class_%(c_name)s) { false, val };
 }
 
-%(c_type)s meth_%(struct_name)s_get(struct class_%(struct_name)s opt)
+%(c_type)s meth_%(c_name)s_get(struct class_%(c_name)s opt)
 {
     assert(!opt.isnull);
 #if %(is_refcounted)s
@@ -201,14 +201,14 @@ struct class_%(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
     return opt.value;
 }
 
-bool meth_%(struct_name)s_is_null(struct class_%(struct_name)s opt)
+bool meth_%(c_name)s_is_null(struct class_%(c_name)s opt)
 {
     return opt.isnull;
 }
 """,
     LIST: """
 // TODO: have this struct on stack when possible, same with strings
-struct class_%(struct_name)s {
+struct class_%(c_name)s {
     REFCOUNT_HEADER
     int64_t len;
     int64_t alloc;
@@ -216,9 +216,9 @@ struct class_%(struct_name)s {
     %(c_type)s *data;
 };
 
-struct class_%(struct_name)s *ctor_%(struct_name)s(void)
+struct class_%(c_name)s *ctor_%(c_name)s(void)
 {
-    struct class_%(struct_name)s *res = malloc(sizeof(*res));
+    struct class_%(c_name)s *res = malloc(sizeof(*res));
     assert(res);
     res->refcount = 1;
     res->len = 0;
@@ -227,9 +227,9 @@ struct class_%(struct_name)s *ctor_%(struct_name)s(void)
     return res;
 }
 
-void dtor_%(struct_name)s (void *ptr)
+void dtor_%(c_name)s (void *ptr)
 {
-    struct class_%(struct_name)s *self = ptr;
+    struct class_%(c_name)s *self = ptr;
 #if %(is_refcounted)s
     for (int64_t i = 0; i < self->len; i++)
         decref(self->data[i]);
@@ -239,7 +239,7 @@ void dtor_%(struct_name)s (void *ptr)
     free(self);
 }
 
-void class_%(struct_name)s_ensure_alloc(struct class_%(struct_name)s *self, int64_t n)
+void class_%(c_name)s_ensure_alloc(struct class_%(c_name)s *self, int64_t n)
 {
     assert(n >= 0);
     if (self->alloc >= n)
@@ -258,16 +258,16 @@ void class_%(struct_name)s_ensure_alloc(struct class_%(struct_name)s *self, int6
     }
 }
 
-void meth_%(struct_name)s_push(struct class_%(struct_name)s *self, %(c_type)s val)
+void meth_%(c_name)s_push(struct class_%(c_name)s *self, %(c_type)s val)
 {
-    class_%(struct_name)s_ensure_alloc(self, self->len + 1);
+    class_%(c_name)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
 #if %(is_refcounted)s
     incref(val);
 #endif
 }
 
-%(c_type)s meth_%(struct_name)s_get(struct class_%(struct_name)s *self, int64_t i)
+%(c_type)s meth_%(c_name)s_get(struct class_%(c_name)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
 #if %(is_refcounted)s
@@ -276,7 +276,7 @@ void meth_%(struct_name)s_push(struct class_%(struct_name)s *self, %(c_type)s va
     return self->data[i];
 }
 
-int64_t meth_%(struct_name)s_length(struct class_%(struct_name)s *self)
+int64_t meth_%(c_name)s_length(struct class_%(c_name)s *self)
 {
     return self->len;
 }
@@ -288,7 +288,7 @@ class _FileEmitter:
     def __init__(self) -> None:
         self.strings: Dict[str, str] = {}
         self.beginning = '#include "lib/lib.h"\n\n'
-        self._optional_structs: Dict[Type, str] = {}
+        self.generic_type_names: Dict[Type, str] = {}
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
         if the_type.refcounted:
@@ -300,18 +300,17 @@ class _FileEmitter:
             return the_type.name
 
         try:
-            return self._optional_structs[the_type.generic_origin.arg]
+            return self.generic_type_names[the_type]
         except KeyError:
-            struct_name = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
-            # FIXME
-            self._optional_structs[the_type.generic_origin.arg] = struct_name
+            c_name = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
+            self.generic_type_names[the_type] = c_name
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
-                "struct_name": struct_name,
+                "c_name": c_name,
                 "c_type": self.emit_type(the_type.generic_origin.arg),
                 "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
             }
             self.beginning += "\n"
-            return struct_name
+            return c_name
 
     def emit_type(self, the_type: Optional[Type]) -> str:
         if the_type is None:
