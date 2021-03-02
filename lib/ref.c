@@ -12,11 +12,11 @@ void incref(void *ptr)
 	}
 }
 
-void decref(void *ptr)
+void decref(void *ptr, void (*destructor)(void *ptr))
 {
 	if (ptr) {
 		struct RefHeader *hdr = ptr;
 		if (hdr->refcount > 0 && --hdr->refcount == 0)
-			free(ptr);
+			destructor(ptr);
 	}
 }

@@ -4,6 +4,7 @@ Bugs:
 - loop variables leak
 
 Missing features:
+- `if cond then a else b`
 - do we want more implicit int to float conversion? `print_float(2)`
 - default values of arguments
 - string methods

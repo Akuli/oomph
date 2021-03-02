@@ -15,6 +15,7 @@ struct Str {
 	char str[];   // flexible array member, ends with \0, valid utf-8
 };
 struct Str *cstr_to_string(const char *s);
+#define dtor_Str free
 
 void var_print(const struct Str *s);
 
@@ -51,7 +52,7 @@ Can't be macros because of assumptions that compiler makes:
 - Only evaluates argument once
 */
 void incref(void *ptr);
-void decref(void *ptr);
+void decref(void *ptr, void (*destructor)(void *ptr));
 
 // Special functions. Keep up to date with typer.py.
 #define bool_and(a, b) ((a) && (b))

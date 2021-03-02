@@ -67,7 +67,9 @@ class _FunctionEmitter:
             # Must evaluate expression before decref because expression might
             # depend on the old value
             var = self.create_local_var(ast.value.type, f"{ast.refname}_new")
-            return f"({var} = {self.emit_expression(ast.value)}, decref({ast.refname}), {ast.refname} = {var})"
+            value = self.emit_expression(ast.value)
+            decref = self.file_emitter.emit_decref(ast.refname, ast.value.type)
+            return f"({var} = {value}, {decref}, {ast.refname} = {var})"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
@@ -96,7 +98,9 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.DecRef):
             var = self.create_local_var(ast.value.type, "decreffing_var")
-            return f"decref({self.emit_expression(ast.value)});\n\t"
+            return self.file_emitter.emit_decref(
+                self.emit_expression(ast.value), ast.value.type
+            ) + ";\n\t"
 
         if isinstance(ast, tast.Return):
             if ast.value is not None and ast.value.type.refcounted:
@@ -148,7 +152,8 @@ class _FunctionEmitter:
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
             + self.emit_label("out")
             + "".join(
-                f"decref({refname});\n\t" for refname, reftype in reversed(funcdef.refs)
+                self.file_emitter.emit_decref(refname, reftype) + ";\n\t"
+                for refname, reftype in reversed(funcdef.refs)
             )
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
         )
@@ -164,7 +169,7 @@ class _FunctionEmitter:
             + ") {\n\t"
             + self.before_body
             + body
-            + "\n}\n"
+            + "\n}\n\n"
         )
 
 
@@ -187,9 +192,10 @@ struct %(struct_name)s ctor_%(struct_name)s(%(c_type)s val)
 %(c_type)s meth_%(struct_name)s_get(struct %(struct_name)s opt)
 {
     assert(!opt.isnull);
-    %(c_type)s val = opt.value;
-    %(incref_val)s
-    return val;
+#if %(is_refcounted)s
+    incref(opt.value);
+#endif
+    return opt.value;
 }
 
 bool meth_%(struct_name)s_is_null(struct %(struct_name)s opt)
@@ -209,7 +215,6 @@ struct %(struct_name)s {
 
 struct %(struct_name)s *ctor_%(struct_name)s(void)
 {
-    // FIXME: how to free this?
     struct %(struct_name)s *res = malloc(sizeof(*res));
     assert(res);
     res->refcount = 1;
@@ -217,6 +222,18 @@ struct %(struct_name)s *ctor_%(struct_name)s(void)
     res->data = res->smalldata;
     res->alloc = sizeof(res->smalldata)/sizeof(res->smalldata[0]);
     return res;
+}
+
+void dtor_%(struct_name)s (void *ptr)
+{
+    struct %(struct_name)s *self = ptr;
+#if %(is_refcounted)s
+    for (int64_t i = 0; i < self->len; i++)
+        decref(self->data[i]);
+#endif
+    if (self->data != self->smalldata)
+        free(self->data);
+    free(self);
 }
 
 void %(struct_name)s_ensure_alloc(struct %(struct_name)s *self, int64_t n)
@@ -242,15 +259,18 @@ void meth_%(struct_name)s_push(struct %(struct_name)s *self, %(c_type)s val)
 {
     %(struct_name)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
-    %(incref_val)s   // FIXME: how to decref this?
+#if %(is_refcounted)s
+    incref(val);
+#endif
 }
 
 %(c_type)s meth_%(struct_name)s_get(struct %(struct_name)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
-    %(c_type)s val = self->data[i];
-    %(incref_val)s
-    return val;
+#if %(is_refcounted)s
+    incref(self->data[i]);
+#endif
+    return self->data[i];
 }
 
 int64_t meth_%(struct_name)s_length(struct %(struct_name)s *self)
@@ -267,6 +287,11 @@ class _FileEmitter:
         self.beginning = '#include "lib/lib.h"\n\n'
         self._optional_structs: Dict[Type, str] = {}
 
+    def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        if the_type.refcounted:
+            return f"decref({c_expression}, dtor_{self.get_type_c_name(the_type)})"
+        return "(void)0"
+
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type.generic_origin is None:
             return the_type.name
@@ -279,10 +304,9 @@ class _FileEmitter:
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
                 "struct_name": struct_name,
                 "c_type": self.emit_type(the_type.generic_origin.arg),
-                "incref_val": "incref(val);"
-                if the_type.generic_origin.arg.refcounted
-                else "",
+                "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
             }
+            self.beginning += '\n'
             return struct_name
 
     def emit_type(self, the_type: Optional[Type]) -> str:
@@ -331,7 +355,7 @@ class _FileEmitter:
                     f"{self.emit_type(the_type)} memb_{name};\n\t"
                     for the_type, name in top_statement.type.members
                 )
-                + "\n};\n"
+                + "\n};\n\n"
                 # constructor
                 + f"{self.emit_type(top_statement.type)} ctor_{top_statement.type.name}("
                 + ",".join(
@@ -342,10 +366,21 @@ class _FileEmitter:
                 + f"{self.emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
                 + "obj->refcount = 1;\n\t"
                 + "".join(
-                    f"obj->memb_{name} = var_{name};\n\t"
+                    f"obj->memb_{name} = var_{name};" + (
+                        f"incref(var_{name});" if the_type.refcounted else ""
+                    ) + "\n\t"
                     for the_type, name in top_statement.type.members
                 )
-                + "return obj;\n}\n"
+                + "return obj;\n}\n\n"
+                # destructor
+                + f"void dtor_{top_statement.type.name}(void *ptr)"
+                + "{"
+                + f"\n\tstruct {top_statement.type.name} *obj = ptr;\n\t"
+                + "".join(
+                    self.emit_decref(f'obj->memb_{nam}', typ) + ";\n\t"
+                    for typ, nam in top_statement.type.members
+                )
+                + "free(obj);\n}\n\n"
                 # methods
                 + "".join(
                     _FunctionEmitter(self).emit_funcdef(
