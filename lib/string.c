@@ -59,7 +59,7 @@ void string_concat_inplace(struct class_Str **res, const char *suf)
 
 struct class_Str *meth_Str_to_string(struct class_Str *s)
 {
-	// Returns a programmer-readable string. Print does not use this automatically.
+	// Returns a programmer-readable string, print does not use this
 	// TODO: escape quotes?
 	int64_t len = strlen(s->str);
 	struct class_Str *res = alloc_string(len+2);

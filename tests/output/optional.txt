@@ -1,3 +1,3 @@
-main: "lolwat" false
-show: "lolwat" false
+main: optional[Str]("lolwat") false
+show: optional[Str]("lolwat") false
 show: null true

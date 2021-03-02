@@ -192,17 +192,17 @@ def _format_byte(byte: int) -> str:
 
 _generic_c_codes = {
     OPTIONAL: """
-struct class_%(type_name)s {
+struct class_%(type_cname)s {
     bool isnull;
     %(itemtype)s value;
 };
 
-struct class_%(type_name)s ctor_%(type_name)s(%(itemtype)s val)
+struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
 {
-    return (struct class_%(type_name)s) { false, val };
+    return (struct class_%(type_cname)s) { false, val };
 }
 
-%(itemtype)s meth_%(type_name)s_get(struct class_%(type_name)s opt)
+%(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
 {
     assert(!opt.isnull);
 #if %(is_refcounted)s
@@ -211,21 +211,27 @@ struct class_%(type_name)s ctor_%(type_name)s(%(itemtype)s val)
     return opt.value;
 }
 
-bool meth_%(type_name)s_is_null(struct class_%(type_name)s opt)
+bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
 {
     return opt.isnull;
 }
 
-struct class_Str *meth_%(type_name)s_to_string(struct class_%(type_name)s opt)
+struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
 {
     if (opt.isnull)
         return cstr_to_string("null");
-    return meth_%(itemtype_name)s_to_string(opt.value);
+
+    struct class_Str *res = cstr_to_string("%(itemtype_string)s(");  // TODO: escaping?
+    struct class_Str *s = meth_%(itemtype_cname)s_to_string(opt.value);
+    string_concat_inplace(&res, s->str);
+    decref(s, dtor_Str);
+    string_concat_inplace(&res, ")");
+    return res;
 }
 """,
     LIST: """
 // TODO: have this struct on stack when possible, same with strings
-struct class_%(type_name)s {
+struct class_%(type_cname)s {
     REFCOUNT_HEADER
     int64_t len;
     int64_t alloc;
@@ -233,9 +239,9 @@ struct class_%(type_name)s {
     %(itemtype)s *data;
 };
 
-struct class_%(type_name)s *ctor_%(type_name)s(void)
+struct class_%(type_cname)s *ctor_%(type_cname)s(void)
 {
-    struct class_%(type_name)s *res = malloc(sizeof(*res));
+    struct class_%(type_cname)s *res = malloc(sizeof(*res));
     assert(res);
     res->refcount = 1;
     res->len = 0;
@@ -244,9 +250,9 @@ struct class_%(type_name)s *ctor_%(type_name)s(void)
     return res;
 }
 
-void dtor_%(type_name)s (void *ptr)
+void dtor_%(type_cname)s (void *ptr)
 {
-    struct class_%(type_name)s *self = ptr;
+    struct class_%(type_cname)s *self = ptr;
 #if %(is_refcounted)s
     for (int64_t i = 0; i < self->len; i++)
         decref(self->data[i]);
@@ -256,7 +262,7 @@ void dtor_%(type_name)s (void *ptr)
     free(self);
 }
 
-void class_%(type_name)s_ensure_alloc(struct class_%(type_name)s *self, int64_t n)
+void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
 {
     assert(n >= 0);
     if (self->alloc >= n)
@@ -275,16 +281,16 @@ void class_%(type_name)s_ensure_alloc(struct class_%(type_name)s *self, int64_t 
     }
 }
 
-void meth_%(type_name)s_push(struct class_%(type_name)s *self, %(itemtype)s val)
+void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
 {
-    class_%(type_name)s_ensure_alloc(self, self->len + 1);
+    class_%(type_cname)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
 #if %(is_refcounted)s
     incref(val);
 #endif
 }
 
-%(itemtype)s meth_%(type_name)s_get(struct class_%(type_name)s *self, int64_t i)
+%(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
 #if %(is_refcounted)s
@@ -293,13 +299,13 @@ void meth_%(type_name)s_push(struct class_%(type_name)s *self, %(itemtype)s val)
     return self->data[i];
 }
 
-int64_t meth_%(type_name)s_length(struct class_%(type_name)s *self)
+int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
 {
     return self->len;
 }
 
 // TODO: rewrite better in the language itself
-struct class_Str *meth_%(type_name)s_to_string(struct class_%(type_name)s *self)
+struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
 {
     struct class_Str *res = cstr_to_string("[");
 
@@ -307,7 +313,7 @@ struct class_Str *meth_%(type_name)s_to_string(struct class_%(type_name)s *self)
         if (i != 0) {
             string_concat_inplace(&res, ", ");
         }
-        struct class_Str *s = meth_%(itemtype_name)s_to_string(self->data[i]);
+        struct class_Str *s = meth_%(itemtype_cname)s_to_string(self->data[i]);
         string_concat_inplace(&res, s->str);
         decref(s, dtor_Str);
     }
@@ -337,16 +343,17 @@ class _FileEmitter:
         try:
             return self.generic_type_names[the_type]
         except KeyError:
-            type_name = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
-            self.generic_type_names[the_type] = type_name
+            type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
+            self.generic_type_names[the_type] = type_cname
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
-                "type_name": type_name,
+                "type_cname": type_cname,
                 "itemtype": self.emit_type(the_type.generic_origin.arg),
-                "itemtype_name": self.get_type_c_name(the_type.generic_origin.arg),
+                "itemtype_cname": self.get_type_c_name(the_type.generic_origin.arg),
+                "itemtype_string": the_type.name,
                 "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
             }
             self.beginning += "\n"
-            return type_name
+            return type_cname
 
     def emit_type(self, the_type: Optional[Type]) -> str:
         if the_type is None:
