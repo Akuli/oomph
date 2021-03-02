@@ -12,9 +12,9 @@ make
 ./lint
 ```
 
-Test script passes its argument to compiler, try e.g. `./test --valgrind`
+Test script passes its argument to oomph, try e.g. `./test --valgrind`
 
-Type `python3 -m compiler foo.code` to compile and run `foo.code`.
+Type `python3 -m oomph foo.oomph` to compile and run `foo.oomph`.
 
 
 ## The language

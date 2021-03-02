@@ -13,7 +13,7 @@ LDFLAGS += -lm
 
 SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)
-HEADERS := lib/lib.h
+HEADERS := lib/oomph.h
 
 all: $(OBJ) obj/compile_info.txt
 
@@ -25,4 +25,4 @@ obj/compile_info.txt:
 
 clean:
 	rm -rvf obj test.out
-	find -name .compiler-cache -exec rm -rvf {} +
+	find -name .oomph-cache -exec rm -rvf {} +

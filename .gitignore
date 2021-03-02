@@ -1,4 +1,4 @@
-.compiler-cache
+.oomph-cache
 obj/
 __pycache__/
 env/

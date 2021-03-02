@@ -2,7 +2,7 @@ import copy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from compiler.types import BOOL, FLOAT, INT, STRING, FunctionType, Type
+from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type
 
 
 @dataclass(eq=False)

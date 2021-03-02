@@ -2,7 +2,7 @@ Bugs:
 - ref cycles are not prevented or garbage collected
 - maybe still a few reference counting bugs left, not sure
 
-Missing features needed to write compiler in the language itself:
+Missing features needed to write the oomph compiler in oomph:
 - multiline strings
 - `\n`, `\t` etc inside strings
 - foreach

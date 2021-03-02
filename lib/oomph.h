@@ -38,7 +38,7 @@ struct class_Str *meth_int_to_string(int64_t n);
 struct class_List_Str;
 struct class_Str *meth_List_Str_join(struct class_List_Str *self, const struct class_Str *sep);
 
-// Class implemented in C, method implemented in the language itself
+// Class implemented in C, method implemented in oomph
 #define meth_List_Str_join var___string_join
 #define meth_Str_center_pad var___string_center_pad
 #define meth_Str_count var___string_count

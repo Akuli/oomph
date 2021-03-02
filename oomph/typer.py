@@ -3,9 +3,9 @@ from __future__ import annotations
 import itertools
 from typing import Dict, List, Tuple, Union
 
-from compiler import typed_ast as tast
-from compiler import untyped_ast as uast
-from compiler.types import (
+from oomph import typed_ast as tast
+from oomph import untyped_ast as uast
+from oomph.types import (
     BOOL,
     FLOAT,
     INT,

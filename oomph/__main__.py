@@ -8,9 +8,9 @@ import subprocess
 import sys
 from typing import IO, List
 
-from compiler import c_output, parser
-from compiler import typed_ast as tast
-from compiler import typer
+from oomph import c_output, parser
+from oomph import typed_ast as tast
+from oomph import typer
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
@@ -42,7 +42,7 @@ def get_ast(file: IO[str]) -> List[tast.ToplevelStatement]:
 
 
 def produce_c_code(source: IO[str], dest: IO[str]) -> None:
-    with (project_root / "stdlib.code").open() as stdlib:
+    with (project_root / "stdlib.oomph").open() as stdlib:
         code1 = stdlib.read()
     with source:
         code2 = source.read()
@@ -63,14 +63,14 @@ def main() -> None:
         return
 
     try:
-        exe_path = input_path.parent / ".compiler-cache" / input_path.stem
+        exe_path = input_path.parent / ".oomph-cache" / input_path.stem
         exe_path.parent.mkdir(exist_ok=True)
     except OSError:
-        exe_path = pathlib.Path.cwd() / ".compiler-cache" / input_path.stem
+        exe_path = pathlib.Path.cwd() / ".oomph-cache" / input_path.stem
         exe_path.parent.mkdir(exist_ok=True)
 
     compile_deps = (
-        [input_path, project_root / "stdlib.code"]
+        [input_path, project_root / "stdlib.oomph"]
         + list(python_code_dir.rglob("*.py"))
         + list(project_root.glob("obj/*"))
     )

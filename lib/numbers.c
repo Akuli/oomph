@@ -1,4 +1,4 @@
-#include "lib.h"
+#include "oomph.h"
 #include <assert.h>
 #include <errno.h>
 #include <float.h>

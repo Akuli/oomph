@@ -6,8 +6,8 @@ from typing import Dict, List, Optional, TypeVar, Union
 
 import more_itertools
 
-import compiler.typed_ast as tast
-from compiler.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type
+import oomph.typed_ast as tast
+from oomph.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type
 
 _T = TypeVar("_T")
 _varnames = (f"var{i}" for i in itertools.count())

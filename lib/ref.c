@@ -1,4 +1,4 @@
-#include "lib.h"
+#include "oomph.h"
 #include <stdlib.h>
 
 struct RefHeader { REFCOUNT_HEADER };

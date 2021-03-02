@@ -14,13 +14,13 @@ make
 success=0
 fail=0
 
-for file in tests/*.code; do
-    if [[ $file == tests/*_error.code ]]; then
+for file in tests/*.oomph; do
+    if [[ $file == tests/*_error.oomph ]]; then
         expect_fail=yes
-        command="python3 -m compiler --quiet $file"
+        command="python3 -m oomph --quiet $file"
     else
         expect_fail=no
-        command="python3 -m compiler $@ $file"
+        command="python3 -m oomph $@ $file"
     fi
 
     echo "$command"
