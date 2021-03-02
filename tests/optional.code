@@ -1,15 +1,8 @@
 func show(optional[Str] x) -> void:
-    if x.is_null():
-        print("show: null")
-    else:
-        print("show: {x.get()}")
+    print("show: {x} {x.is_null()}")
 
 func main() -> void:
     let x = new optional[Str]("lol" + "wat")
-    if x.is_null():
-        print("main: null")
-    else:
-        print("main: {x.get()}")
-
+    print("main: {x} {x.is_null()}")
     show(x)
     show(null[Str])

@@ -19,6 +19,12 @@ struct class_Str *cstr_to_string(const char *s)
 	return res;
 }
 
+struct class_Str *meth_Str_to_string(struct class_Str *s)
+{
+	incref(s);
+	return s;
+}
+
 /*
 struct class_Str *string_concat(const struct class_Str *strs[])
 {

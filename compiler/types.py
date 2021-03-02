@@ -65,9 +65,10 @@ class Generic:
             result.methods["get"] = FunctionType([result, INT], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["push"] = FunctionType([result, generic_arg], None)
-            result.methods["to_string"] = FunctionType([result], STRING)
         else:
             raise NotImplementedError
+
+        result.methods["to_string"] = FunctionType([result], STRING)
         return result
 
 
@@ -126,6 +127,7 @@ STRING.methods["slice"] = FunctionType([STRING, INT, INT], STRING)
 STRING.methods["starts_with"] = FunctionType([STRING, STRING], BOOL)
 STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 STRING.methods["to_int"] = FunctionType([STRING], INT)
+STRING.methods["to_string"] = FunctionType([STRING], STRING)  # does nothing
 STRING.methods["trim"] = FunctionType([STRING], STRING)
 STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 
