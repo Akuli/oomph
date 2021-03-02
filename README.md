@@ -1,20 +1,19 @@
 # oomph
 This is yet another attempt at making a usable programming language.
 
-Commands:
-
-```
+```shell
+git clone https://github.com/Akuli/oomph
+cd oomph
 python3 -m venv env
 . env/bin/activate
 pip install more_itertools black isort mypy pyflakes
-make
 ./test
-./lint
+python3 -m oomph tests/hello.oomph   # compile and run hello world file
 ```
 
-Test script passes its argument to oomph, try e.g. `./test --valgrind`
+If you delete or rename files in `lib/`, you may need to run `make clean`
 
-Type `python3 -m oomph foo.oomph` to compile and run `foo.oomph`.
+Test script passes its argument to oomph, try e.g. `./test --valgrind`
 
 
 ## The language
