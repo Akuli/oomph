@@ -337,7 +337,7 @@ struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *sel
 class _FileEmitter:
     def __init__(self) -> None:
         self.strings: Dict[str, str] = {}
-        self.beginning = '#include "lib/lib.h"\n\n'
+        self.beginning = '#include "lib/oomph.h"\n\n'
         self.generic_type_names: Dict[Type, str] = {}
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
