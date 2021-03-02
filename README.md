@@ -64,6 +64,11 @@ Other missing features:
     - `null[auto]` --> `null`
     - `new List[Str]()` --> `[]`
 - some nice way to check if an object is null (for at least `if` and `while`)
+    - Idea: `x := y` returns false if `x` is null, and when isn't, sets `y` to true
+        - Leads to `while x := y`, `if x := y` and `assert x := y`
+    - Idea 2: optional interpreted as boolean tells whether it's null, and 
+      when it isn't, variables magically change type to get rid of `optional`
+        - Leads to `while x`, `if x` and `assert x` (or `assert(x)`)
 - non-ref-counted pass-by-value classes
 - for pointer types, use C `NULL` to represent `null`?
 - avoid using lots of `strlen`
