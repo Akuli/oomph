@@ -20,6 +20,7 @@ python3 -m oomph tests/hello.oomph   # compile and run hello world file
 
 - Compiles to C, aims to be high-level but faster than Python
 - See example files in `tests` to get started
+- Some things are implemented in the language itself (see `stdlib.oomph`)
 - Refcounted types are named `LikeThis`, non-refcounted pass-by-value types `like_this`
 
 Bugs:
