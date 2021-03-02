@@ -94,6 +94,10 @@ class _FunctionEmitter:
         if isinstance(ast, tast.SetLocalVar):
             return f"{self.name_mapping[ast.varname]} = {self.emit_expression(ast.value)};\n\t"
 
+        if isinstance(ast, tast.DeleteLocalVar):
+            del self.name_mapping[ast.varname]
+            return ""
+
         if isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             return self.emit_call(ast) + ";\n\t"
 

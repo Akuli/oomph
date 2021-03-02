@@ -20,12 +20,14 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - `+=`
+- arrays:
+    - `[a, b, c]` syntax
+    - to_string()
+    - foreach
 - generics
     - defining generic classes or functions
     - tuples
-    - arrays
     - mappings
-- foreach
 - null
 - io
 - non-ref-counted pass-by-value classes

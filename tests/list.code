@@ -6,7 +6,6 @@ func main() -> void:
         a.push(100 + i)
     print(a.length())
 
-    # TODO: variables leak
-    for let j = 0; j < a.length(); j = j+1:
-        print(a.get(j))
+    for let i = 0; i < a.length(); i = i+1:
+        print(a.get(i))
     print(a.length())

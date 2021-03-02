@@ -104,6 +104,11 @@ class CreateLocalVar(Statement):
 
 
 @dataclass(eq=False)
+class DeleteLocalVar(Statement):
+    varname: str
+
+
+@dataclass(eq=False)
 class SetLocalVar(Statement):
     varname: str
     value: Expression

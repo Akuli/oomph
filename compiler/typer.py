@@ -302,7 +302,11 @@ class _FunctionOrMethodTyper:
             popped = self.loop_stack.pop()
             assert popped == loop_id
 
-            return [tast.Loop(loop_id, init, cond, incr, body)]
+            loop = tast.Loop(loop_id, init, cond, incr, body)
+            if isinstance(ast.init, uast.Let):
+                del self.variables[ast.init.varname]
+                return [loop, tast.DeleteLocalVar(ast.init.varname)]
+            return [loop]
 
         raise NotImplementedError(ast)
 
