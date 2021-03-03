@@ -384,9 +384,14 @@ class _FileEmitter:
         return "(void)0"
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        if isinstance(the_type, UnionType):
+            # Unions can't be decreffed, because they aren't pointers.
+            # Currently they always contain a pointer, but if we pass that to
+            # decref, then the destructor doesn't know what which member of the
+            # union was passed in.
+            return f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
         if the_type.refcounted:
-            access = ".val.item0" if isinstance(the_type, UnionType) else ""
-            return f"decref(({c_expression}) {access}, dtor_{self.get_type_c_name(the_type)})"
+            return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         return "(void)0"
 
     def get_type_c_name(self, the_type: Type) -> str:
@@ -506,9 +511,13 @@ class _FileEmitter:
                 + "};\n\n"
                 # Struct to also remember which member is active
                 + f"struct class_{name} {{ union union_{name} val; short membernum; }};\n\n"
-                # to_string method forward decls
+                # forward decls
+                # TODO: avoid these by doing stuff later?
                 + "".join(
-                    f"struct class_Str *meth_{self.get_type_c_name(typ)}_to_string({self.emit_type(typ)});\n"
+                    (
+                        f"struct class_Str *meth_{self.get_type_c_name(typ)}_to_string({self.emit_type(typ)});\n"
+                        + f"void dtor_{self.get_type_c_name(typ)}(void*);\n"
+                    )
                     for typ in top_statement.type.type_members
                 )
                 # to_string method
@@ -532,11 +541,18 @@ class _FileEmitter:
                 + "\tdecref(valstr, dtor_Str);\n"
                 + "\treturn res;\n"
                 + "}\n\n"
-                # destructor method
-                + "#include <stdio.h>\n"
-                + f"void dtor_{name}(void *arg) {{\n"
-                + '\tprintf("FIXME: no way to access union member here\\n");\n'
-                + "}\n\n"
+                # decreffing method
+                + f"void decref_{name}(struct class_{name} obj) {{\n"
+                + "\tswitch(obj.membernum) {\n"
+                + "".join(
+                    f"\t\tcase {num}:\n"
+                    + "\t\t\t"
+                    + self.emit_decref(f"obj.val.item{num}", typ)
+                    + ";\n\t\t\tbreak;\n"
+                    for num, typ in enumerate(top_statement.type.type_members)
+                )
+                + "\t\tdefault: assert(0);\n"
+                + "\t}\n}\n\n"
             )
 
         raise NotImplementedError(top_statement)
