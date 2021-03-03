@@ -31,9 +31,9 @@ Missing features needed to write the oomph compiler in oomph:
 - multiple files
 - foreach
 - io
-- forward-declaring a class
 
 Other missing features:
+- forward-declaring a class
 - automatic dedenting in multiline strings
 - `case Foo, Bar:`
 - get rid of `-> void`?
