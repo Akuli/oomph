@@ -1,8 +1,8 @@
 class Foo(int x):
-    meth show() -> void:
+    meth show():
         print(self.x)
 
-func main() -> void:
+func main():
     let f = new Foo(1)
     f.show()
     f = new Foo(2)

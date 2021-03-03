@@ -15,7 +15,6 @@ _TOKEN_REGEX = r'''
         | case
         | generic
         | new
-        | void
         | null
         | return
         | pass

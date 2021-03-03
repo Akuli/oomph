@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     print(true.to_string())
     print(true)  # same as print(true.to_string())
     print(false)

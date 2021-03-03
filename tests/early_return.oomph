@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     print(123)
     return
     print(456)

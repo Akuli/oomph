@@ -8,7 +8,7 @@ class Foo(int foo_thing)
 class Bar()
 class Baz()
 
-func print_thing(Thing thing) -> void:
+func print_thing(Thing thing):
     switch thing:
         case Foo:
             print("Foo {thing.foo_thing}")
@@ -18,7 +18,7 @@ func print_thing(Thing thing) -> void:
             print("Baz")
     print("Without switch: {thing}")
 
-func main() -> void:
+func main():
     print_thing(new Thing(new Foo(69)))
     print_thing(new Thing(new Bar()))
     print_thing(new Thing(new Baz()))

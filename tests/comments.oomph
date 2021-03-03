@@ -1,5 +1,5 @@
 # comment
-func main() -> void:  # comment
+func main():  # comment
     # comment
     print(1)  # comment
     # comment

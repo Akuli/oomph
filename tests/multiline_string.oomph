@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     print("""Hello world!
 This is a multiline string.
 Blah blah blah. Yadda yadda yadda.

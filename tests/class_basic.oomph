@@ -1,10 +1,10 @@
 class Point(int x, int y)
 
-func print_point(Point p) -> void:
+func print_point(Point p):
     print(p.x)
     print(p.y)
 
-func main() -> void:
+func main():
     new Point(1, 2)
     let p = new Point(123, 456)
     print_point(p)

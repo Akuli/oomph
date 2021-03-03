@@ -391,12 +391,11 @@ class _Parser:
         name = self.get_token("identifier")[1]
         args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
 
-        self.get_token("op", "->")
-        if self.token_iter.peek() == ("keyword", "void"):
-            returntype = None
-            self.get_token("keyword", "void")
-        else:
+        if self.token_iter.peek() == ('op','->'):
+            self.get_token("op", "->")
             returntype = self.parse_type()
+        else:
+            returntype = None
 
         return uast.FuncDef(name, args, returntype, self.parse_block_of_statements())
 

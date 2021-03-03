@@ -1,4 +1,4 @@
-func foo(int x) -> void:
+func foo(int x):
     if x == 1:
         print(111)
     elif x == 2:
@@ -8,7 +8,7 @@ func foo(int x) -> void:
     else:
         print(1234)
 
-func main() -> void:
+func main():
     foo(1)
     foo(2)
     foo(3)

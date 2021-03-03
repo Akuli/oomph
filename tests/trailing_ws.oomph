@@ -8,7 +8,7 @@
   
 # That should not cause a problem.
 
-func main() -> void:
+func main():
     # The following line has trailing whitespace too:
       
     print(1)

@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     print((7 mod 5))
     print((2 mod 5))
     print((-3 mod 5))

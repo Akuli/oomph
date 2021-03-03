@@ -2,5 +2,5 @@ class Foo():
     meth to_string() -> Str:
         return "lol"
 
-func main() -> void:
+func main():
     print(new Foo())

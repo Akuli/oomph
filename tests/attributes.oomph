@@ -5,5 +5,5 @@ func blah() -> Bar:
     let x = new Bar(new Foo())
     return x
 
-func main() -> void:
+func main():
     let y = blah().foo

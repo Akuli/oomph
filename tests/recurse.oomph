@@ -1,7 +1,7 @@
-func countdown(int n) -> void:
+func countdown(int n):
     if n != 0:
         print(n)
         countdown(n-1)
 
-func main() -> void:
+func main():
     countdown(10)

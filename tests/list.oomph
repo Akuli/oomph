@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     let a = new List[int]()
     print(a)
     print(a.length())

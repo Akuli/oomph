@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     let s = "World"
     print("Hello {s}!")
     print("1 + 2 = {1+2}")

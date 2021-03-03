@@ -1,4 +1,4 @@
-func main() -> void:
+func main():
     print("hello" + " " + "world")
     print("hello" == "hello")
     print("hello" == "hell")
