@@ -388,10 +388,6 @@ class _FileEmitter:
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
-            # Unions can't be decreffed, because they aren't pointers.
-            # Currently they always contain a pointer, but if we pass that to
-            # decref, then the destructor doesn't know what which member of the
-            # union was passed in.
             return f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
         if the_type.refcounted:
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
