@@ -375,6 +375,7 @@ class _FileEmitter:
     def __init__(self) -> None:
         self.strings: Dict[str, str] = {}
         self.beginning = '#include "lib/oomph.h"\n\n'
+        self.ending = ""
         self.generic_type_names: Dict[Type, str] = {}
 
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
@@ -501,27 +502,10 @@ class _FileEmitter:
         if isinstance(top_statement, tast.UnionDef):
             assert top_statement.type.type_members is not None
             name = self.get_type_c_name(top_statement.type)
-            return (
-                # Underlying C union
-                f"union union_{name} {{\n"
-                + "".join(
-                    f"\t{self.emit_type(the_type)} item{index};\n"
-                    for index, the_type in enumerate(top_statement.type.type_members)
-                )
-                + "};\n\n"
-                # Struct to also remember which member is active
-                + f"struct class_{name} {{ union union_{name} val; short membernum; }};\n\n"
-                # forward decls
-                # TODO: avoid these by doing stuff later?
-                + "".join(
-                    (
-                        f"struct class_Str *meth_{self.get_type_c_name(typ)}_to_string({self.emit_type(typ)});\n"
-                        + f"void dtor_{self.get_type_c_name(typ)}(void*);\n"
-                    )
-                    for typ in top_statement.type.type_members
-                )
-                # to_string method
-                + f"struct class_Str *meth_{name}_to_string(struct class_{name} obj) {{\n"
+
+            # to_string method
+            self.ending += (
+                f"struct class_Str *meth_{name}_to_string(struct class_{name} obj) {{\n"
                 + "\tstruct class_Str *valstr;\n"
                 + f'\tconst char *typstr = "union {top_statement.type.name}";\n'  # TODO: escaping?
                 + "\tswitch(obj.membernum) {\n"
@@ -541,8 +525,11 @@ class _FileEmitter:
                 + "\tdecref(valstr, dtor_Str);\n"
                 + "\treturn res;\n"
                 + "}\n\n"
-                # decreffing method
-                + f"void decref_{name}(struct class_{name} obj) {{\n"
+            )
+
+            # decreffer
+            self.ending += (
+                f"void decref_{name}(struct class_{name} obj) {{\n"
                 + "\tswitch(obj.membernum) {\n"
                 + "".join(
                     f"\t\tcase {num}:\n"
@@ -555,6 +542,21 @@ class _FileEmitter:
                 + "\t}\n}\n\n"
             )
 
+            return (
+                # Underlying C union
+                f"union union_{name} {{\n"
+                + "".join(
+                    f"\t{self.emit_type(the_type)} item{index};\n"
+                    for index, the_type in enumerate(top_statement.type.type_members)
+                )
+                + "};\n\n"
+                # Struct to also remember which member is active
+                + f"struct class_{name} {{ union union_{name} val; short membernum; }};\n\n"
+                # forward decls of self.ending stuff
+                + f"struct class_Str *meth_{name}_to_string(struct class_{name} obj);\n"
+                + f"void decref_{name}(struct class_{name} obj);\n"
+            )
+
         raise NotImplementedError(top_statement)
 
 
@@ -563,4 +565,4 @@ def run(ast: List[tast.ToplevelStatement]) -> str:
     code = "".join(
         emitter.emit_toplevel_statement(top_statement) for top_statement in ast
     )
-    return emitter.beginning + code
+    return emitter.beginning + code + emitter.ending
