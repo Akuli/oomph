@@ -316,11 +316,9 @@ class _Parser:
 
         if self.token_iter.peek() == ("keyword", "switch"):
             self.get_token("keyword", "switch")
-            obj = self.parse_expression()
-            self.get_token("keyword", "as")
-            name = self.get_token("identifier")[1]
+            varname = self.get_token("identifier")[1]
             cases = self.parse_block(self.parse_case)
-            return uast.Switch(obj, name, dict(cases))
+            return uast.Switch(varname, dict(cases))
 
         result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")

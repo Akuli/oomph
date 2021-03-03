@@ -321,11 +321,11 @@ class _FunctionOrMethodTyper:
             return [loop]
 
         if isinstance(ast, uast.Switch):
-            obj = self.do_expression(ast.obj)
-            assert isinstance(obj.type, UnionType)
-            self.file_typer.post_process_union(obj.type)
-            assert obj.type.types is not None
-            types_to_do = obj.type.types.copy()
+            utype = self.variables[ast.varname]
+            assert isinstance(utype, UnionType)
+            self.file_typer.post_process_union(utype)
+            assert utype.types is not None
+            types_to_do = utype.types.copy()
             self.loop_stack.append(None)
 
             cases: Dict[Type, List[tast.Statement]] = {}
@@ -333,15 +333,15 @@ class _FunctionOrMethodTyper:
                 nice_type = self.file_typer.get_type(raw_type)
                 types_to_do.remove(nice_type)
 
-                assert ast.as_what not in self.variables
-                self.variables[ast.as_what] = nice_type
+                self.variables[ast.varname] = nice_type
                 cases[nice_type] = self.do_block(raw_body)
-                del self.variables[ast.as_what]
+
+            self.variables[ast.varname] = utype
 
             assert not types_to_do, types_to_do
             popped = self.loop_stack.pop()
             assert popped is None
-            return [tast.Switch(obj, ast.as_what, cases)]
+            return [tast.Switch(ast.varname, utype, cases)]
 
         raise NotImplementedError(ast)
 

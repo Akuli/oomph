@@ -136,8 +136,7 @@ class Loop(Statement):
 
 @dataclass(eq=False)
 class Switch(Statement):
-    obj: Expression
-    as_what: str
+    varname: str
     cases: Dict[Type, List[Statement]]
 
 
@@ -164,4 +163,4 @@ class ClassDef(ToplevelStatement):
 @dataclass(eq=False)
 class UnionDef(ToplevelStatement):
     name: str
-    types: List[Type]
+    types: List[Type]  # TODO: rename to members

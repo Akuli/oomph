@@ -181,8 +181,8 @@ class Loop(Statement):
 
 @dataclass(eq=False)
 class Switch(Statement):
-    obj: Expression
-    as_what: str
+    varname: str
+    vartype: UnionType
     cases: Dict[Type, List[Statement]]
 
 

@@ -165,24 +165,24 @@ class _FunctionEmitter:
             return "break;\n\t"
 
         if isinstance(ast, tast.Switch):
-            assert isinstance(ast.obj.type, UnionType)
-            assert ast.obj.type.types is not None
-            var = self.declare_local_var(ast.obj.type)
-            value_expr = self.emit_expression(ast.obj)
+            assert isinstance(ast.vartype, UnionType)
+            assert ast.vartype.types is not None
 
+            union_var = self.name_mapping[ast.varname]
             body_codes = []
-            for membernum, the_type in enumerate(ast.obj.type.types):
-                self.name_mapping[ast.as_what] = f"({var}.val.item{membernum})"
+            for membernum, the_type in enumerate(ast.vartype.types):
+                specific_var = self.declare_local_var(the_type)
+                self.name_mapping[ast.varname] = specific_var
                 body_codes.append(
                     f"case {membernum}:\n\t"
+                    + f"{specific_var} = {union_var}.val.item{membernum};\n\t"
                     + "".join(self.emit_statement(s) for s in ast.cases[the_type])
                     + "break;\n\t"
                 )
-            del self.name_mapping[ast.as_what]
+            self.name_mapping[ast.varname] = union_var
 
             return (
-                f"{var} = {value_expr};\n"
-                + f"\tswitch({var}.membernum)"
+                f"\tswitch({union_var}.membernum)"
                 + "{\n\t"
                 + "".join(body_codes)
                 + "default: assert(0);\n\t}\n\t"

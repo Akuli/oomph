@@ -8,14 +8,14 @@ class Bar()
 class Baz()
 
 func print_thing(Thing thing) -> void:
-    print(thing)
-    switch thing as t:   # TODO: plain 'switch thing'
+    switch thing:
         case Foo:
-            print("Foo {t.foo_thing}")
+            print("Foo {thing.foo_thing}")
         case Bar:
-            print("Bar")
+            print("Bar {thing}")
         case Baz:
             print("Baz")
+    print("Without switch: {thing}")
 
 func main() -> void:
     print_thing(new Thing(new Foo(69)))
