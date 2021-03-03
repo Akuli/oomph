@@ -3,67 +3,85 @@ set -e
 set -o pipefail
 
 if [ "$1" == --keep-going ]; then
-    stop_on_fail=no
+    keep_going=yes
     shift
 else
-    stop_on_fail=yes
+    keep_going=no
 fi
+opts="$@"
 
 make
 
-success=0
-fail=0
-
-for file in tests/*.oomph; do
+function check()
+{
+    local file=$1
+    local out=test_out/$(basename $file | cut -d. -f1).txt
     if [[ $file == tests/*_error.oomph ]]; then
-        expect_fail=yes
-        command="python3 -m oomph --quiet $file"
+        local expect_fail=yes
+        local command="python3 -m oomph --quiet $file"
     else
-        expect_fail=no
-        command="python3 -m oomph $@ $file"
+        local expect_fail=no
+        local command="python3 -m oomph $opts $file"
     fi
 
+    local success
+
     echo "$command"
-    if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > test.out; then
+    if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't"
-        fail=$((fail+1))
-    elif [ $expect_fail == no ] && ! $command > test.out; then
+        success=no
+    elif [ $expect_fail == no ] && ! $command > $out; then
         echo "========== ERROR in $file"
-        fail=$((fail+1))
+        success=no
     else
-        outfile=tests/output/$(basename $file | cut -d. -f1).txt
+        local outfile=tests/output/$(basename $file | cut -d. -f1).txt
         if ! [ -f $outfile ]; then
             echo "Creating $outfile automatically"
-            cp test.out $outfile
+            cp $out $outfile
             cat -n $outfile
         fi
 
-        if diff --color -u $outfile test.out; then
-            success=$((success+1))
+        if diff --color -u $outfile $out; then
+            success=yes
+        elif [ $outfile -ot $file ]; then
+            echo "Updating $outfile with this diff"
+            cp $out $outfile
+            success=yes
         else
-            if [ $outfile -ot $file ]; then
-                echo "Updating $outfile with this diff"
-                cp test.out $outfile
-                success=$((success+1))
-            else
-                fail=$((fail+1))
-            fi
+            success=no
         fi
     fi
 
-    if [ $stop_on_fail = yes ] && [ $fail != 0 ]; then
+    if [ $success == yes ]; then
+        echo "success" >> test_out/status
+    else
+        echo "fail" >> test_out/status
+    fi
+}
+
+mkdir -vp test_out
+rm -vf test_out/status
+touch test_out/status
+
+for file in tests/*.oomph; do
+    if grep -q fail test_out/status && [ $keep_going == no ]; then
         break
     fi
-done
 
-if [ $fail == 0 ]; then
+    if [ $(jobs | wc -l) -ge $(nproc) ]; then
+        wait -n
+    fi
+    check $file &
+done
+wait
+
+successes=$(grep -c success test_out/status || true)
+fails=$(grep -c fail test_out/status || true)
+
+if [ $fails == 0 ]; then
     failmsg="0 failed"
 else
-    failmsg="\u001b[31m$fail failed\u001b[0m"
+    failmsg="\u001b[31m$fails failed\u001b[0m"
 fi
 echo -e "
-======================== $success succeeded, $failmsg ========================"
-
-if [ $fail != 0 ]; then
-    exit 1
-fi
+======================== $successes succeeded, $failmsg ========================"
