@@ -207,11 +207,10 @@ class _FunctionOrMethodTyper:
             if isinstance(ast.func, uast.Constructor):
                 union_type = self.file_typer.get_type(ast.func.type)
                 if isinstance(union_type, UnionType):
-                    self.file_typer.post_process_union(union_type)
-                    assert union_type.types is not None
+                    type_members = self.file_typer.post_process_union(union_type)
                     args = [self.do_expression(arg) for arg in ast.args]
                     assert len(args) == 1
-                    assert args[0].type in union_type.types
+                    assert args[0].type in type_members
                     return tast.InstantiateUnion(union_type, args[0])
 
             call = self.do_call(ast)
@@ -323,9 +322,7 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.Switch):
             utype = self.variables[ast.varname]
             assert isinstance(utype, UnionType)
-            self.file_typer.post_process_union(utype)
-            assert utype.types is not None
-            types_to_do = utype.types.copy()
+            types_to_do = self.file_typer.post_process_union(utype).copy()
             self.loop_stack.append(None)
 
             cases: Dict[Type, List[tast.Statement]] = {}
@@ -459,15 +456,18 @@ class _FileTyper:
         if isinstance(top_statement, uast.UnionDef):
             union_type = UnionType(top_statement.name)
             self._types[top_statement.name] = union_type
-            self.union_laziness[union_type] = top_statement.types
+            self.union_laziness[union_type] = top_statement.type_members
             return tast.UnionDef(union_type)
 
         raise NotImplementedError(top_statement)
 
-    def post_process_union(self, union: UnionType) -> None:
-        if union.types is None:
+    def post_process_union(self, union: UnionType) -> List[Type]:
+        if union.type_members is None:
             types = self.union_laziness.pop(union)
-            union.set_types([self.get_type(t) for t in types])
+            union.set_type_members([self.get_type(t) for t in types])
+
+        assert union.type_members is not None
+        return union.type_members
 
 
 def convert_program(

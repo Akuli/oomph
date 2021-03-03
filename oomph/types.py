@@ -39,23 +39,23 @@ class Type:
 
 
 class UnionType(Type):
-    types: Optional[List[Type]]
+    type_members: Optional[List[Type]]
 
     def __init__(self, name: str):
         # refcounted-ness is not used
         super().__init__(name, False)
-        self.types = None  # to be set later
+        self.type_members = None  # to be set later
         self.methods["to_string"] = FunctionType([self], STRING)
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__} {repr(self.name)}, types={self.types}>"
+        return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
-    def set_types(self, types: List[Type]) -> None:
-        assert len(types) >= 2
-        assert len(types) == len(set(types))  # no duplicates
-        assert all(t.refcounted for t in types)  # TODO
-        assert self.types is None
-        self.types = types
+    def set_type_members(self, type_members: List[Type]) -> None:
+        assert len(type_members) >= 2
+        assert len(type_members) == len(set(type_members))  # no duplicates
+        assert all(t.refcounted for t in type_members)  # TODO
+        assert self.type_members is None
+        self.type_members = type_members
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is

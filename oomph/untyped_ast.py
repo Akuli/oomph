@@ -163,4 +163,4 @@ class ClassDef(ToplevelStatement):
 @dataclass(eq=False)
 class UnionDef(ToplevelStatement):
     name: str
-    types: List[Type]  # TODO: rename to members
+    type_members: List[Type]
