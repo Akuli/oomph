@@ -1,4 +1,4 @@
-union FooBarBaz:
+union Thing:
     Foo
     Bar
     Baz
@@ -7,13 +7,16 @@ class Foo(int foo_thing)
 class Bar()
 class Baz()
 
+func print_thing(Thing thing) -> void:
+    switch thing as t:   # TODO: switch to plain 'switch thing'
+        case Foo:
+            print("Foo {t.foo_thing}")
+        case Bar:
+            print("Bar")
+        case Baz:
+            print("Baz")
+
 func main() -> void:
-    let u = new FooBarBaz(new Foo(69))
-#    switch new FooBarBaz(new Foo()) as foobarbaz:
-#        case Foo:
-#            print("Foo")
-#            print(foobarbaz.foo_thing)
-#        case Bar:
-#            print("Bar")
-#        case Baz:
-#            print("Baz")
+    print_thing(new Thing(new Foo(69)))
+    print_thing(new Thing(new Bar()))
+    print_thing(new Thing(new Baz()))

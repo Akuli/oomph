@@ -1,6 +1,6 @@
 import copy
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type, UnionType
 
@@ -12,11 +12,6 @@ class Expression:
 
 @dataclass(eq=False)
 class Statement:
-    pass
-
-
-@dataclass(eq=False)
-class Null(Expression):
     pass
 
 
@@ -82,6 +77,11 @@ class FloatConstant(Expression):
     def __init__(self, value: str):
         super().__init__(FLOAT)
         self.value = value
+
+
+@dataclass(eq=False)
+class Null(Expression):
+    pass
 
 
 # And,Or are not function calls with is_special=True because evaluation order
@@ -177,6 +177,13 @@ class Loop(Statement):
     cond: Expression
     incr: List[Statement]
     body: List[Statement]
+
+
+@dataclass(eq=False)
+class Switch(Statement):
+    obj: Expression
+    as_what: str
+    cases: Dict[Type, List[Statement]]
 
 
 @dataclass(eq=False)

@@ -11,6 +11,9 @@ _TOKEN_REGEX = r'''
         | meth
         | class
         | union
+        | switch
+        | as
+        | case
         | generic
         | new
         | void

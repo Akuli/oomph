@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, TypeVar, Union
 import more_itertools
 
 import oomph.typed_ast as tast
-from oomph.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type
+from oomph.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type, UnionType
 
 _T = TypeVar("_T")
 _varnames = (f"var{i}" for i in itertools.count())
@@ -17,7 +17,7 @@ class _FunctionEmitter:
     def __init__(self, file_emitter: _FileEmitter) -> None:
         self.file_emitter = file_emitter
         self.before_body = ""
-        self.name_mapping: Dict[str, str] = {}  # values are names in c
+        self.name_mapping: Dict[str, str] = {}  # values are expressions in c
 
     def declare_local_var(self, the_type: Type) -> str:
         name = next(_varnames)
@@ -85,14 +85,14 @@ class _FunctionEmitter:
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
-            # This should return some kind of partial function, which isn't possible yet
+            # This should return some kind of partial function
             raise NotImplementedError(
                 "method objects without immediate calling don't work yet"
             )
         if isinstance(ast, tast.InstantiateUnion):
             assert ast.type.types is not None
             i = ast.type.types.index(ast.value.type)
-            return "((%s){ { .item%d = %s }, %d })" % (
+            return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
                 self.file_emitter.emit_type(ast.type),
                 i,
                 self.emit_expression(ast.value),
@@ -163,6 +163,30 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.Break):
             return "break;\n\t"
+
+        if isinstance(ast, tast.Switch):
+            assert isinstance(ast.obj.type, UnionType)
+            assert ast.obj.type.types is not None
+            var = self.declare_local_var(ast.obj.type)
+            value_expr = self.emit_expression(ast.obj)
+
+            body_codes = []
+            for membernum, the_type in enumerate(ast.obj.type.types):
+                self.name_mapping[ast.as_what] = f"({var}.val.item{membernum})"
+                body_codes.append(
+                    f"case {membernum}:\n\t"
+                    + "".join(self.emit_statement(s) for s in ast.cases[the_type])
+                    + "break;\n\t"
+                )
+            del self.name_mapping[ast.as_what]
+
+            return (
+                f"{var} = {value_expr};\n"
+                + f"\tswitch({var}.membernum)"
+                + "{\n\t"
+                + "".join(body_codes)
+                + "}\n\t"
+            )
 
         raise NotImplementedError(ast)
 
@@ -467,7 +491,7 @@ class _FileEmitter:
                 )
                 + "};\n\n"
                 + (
-                    "struct class_%s { union union_%s val; int which; };\n\n"
+                    "struct class_%s { union union_%s val; int membernum; };\n\n"
                     % (
                         self.get_type_c_name(top_statement.type),
                         self.get_type_c_name(top_statement.type),

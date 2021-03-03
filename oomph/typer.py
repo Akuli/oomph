@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from oomph import typed_ast as tast
 from oomph import untyped_ast as uast
@@ -50,7 +50,7 @@ class _FunctionOrMethodTyper:
         self.file_typer = file_typer
         self.variables = variables
         self.reflist: List[Tuple[str, Type]] = []
-        self.loop_stack: List[str] = []
+        self.loop_stack: List[Optional[str]] = []  # None means a switch
         self.loop_counter = 0
         self.ref_names = (f"ref{n}" for n in itertools.count())
 
@@ -58,7 +58,7 @@ class _FunctionOrMethodTyper:
         self, func: tast.Expression, args: List[tast.Expression]
     ) -> Union[tast.SetRef, tast.ReturningCall]:
         result = tast.ReturningCall(func, args)
-        if result.type.refcounted:  # TODO: what else needs ref holding?
+        if result.type.refcounted:
             refname = next(self.ref_names)
             self.reflist.append((refname, result.type))
             return tast.SetRef(result.type, refname, result)
@@ -271,9 +271,11 @@ class _FunctionOrMethodTyper:
             return []
 
         if isinstance(ast, uast.Continue):
+            assert self.loop_stack[-1] is not None
             return [tast.Continue(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Break):
+            assert self.loop_stack[-1] is not None
             return [tast.Break(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Return):
@@ -317,6 +319,29 @@ class _FunctionOrMethodTyper:
                 del self.variables[ast.init.varname]
                 return [loop, tast.DeleteLocalVar(ast.init.varname)]
             return [loop]
+
+        if isinstance(ast, uast.Switch):
+            obj = self.do_expression(ast.obj)
+            assert isinstance(obj.type, UnionType)
+            self.file_typer.post_process_union(obj.type)
+            assert obj.type.types is not None
+            types_to_do = obj.type.types.copy()
+            self.loop_stack.append(None)
+
+            cases: Dict[Type, List[tast.Statement]] = {}
+            for raw_type, raw_body in ast.cases.items():
+                nice_type = self.file_typer.get_type(raw_type)
+                types_to_do.remove(nice_type)
+
+                assert ast.as_what not in self.variables
+                self.variables[ast.as_what] = nice_type
+                cases[nice_type] = self.do_block(raw_body)
+                del self.variables[ast.as_what]
+
+            assert not types_to_do, types_to_do
+            popped = self.loop_stack.pop()
+            assert popped is None
+            return [tast.Switch(obj, ast.as_what, cases)]
 
         raise NotImplementedError(ast)
 

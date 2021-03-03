@@ -259,6 +259,12 @@ class _Parser:
         assert isinstance(expr, uast.Call), expr
         return expr
 
+    def parse_case(self) -> Tuple[uast.Type, List[uast.Statement]]:
+        self.get_token("keyword", "case")
+        the_type = self.parse_type()
+        body = self.parse_block(self.parse_statement)
+        return (the_type, body)
+
     def parse_statement(self) -> uast.Statement:
         if self.token_iter.peek() == ("keyword", "if"):
             self.get_token("keyword", "if")
@@ -307,6 +313,14 @@ class _Parser:
             cond = self.parse_expression()
             body = self.parse_block(self.parse_statement)
             return uast.Loop(None, cond, None, body)
+
+        if self.token_iter.peek() == ("keyword", "switch"):
+            self.get_token("keyword", "switch")
+            obj = self.parse_expression()
+            self.get_token("keyword", "as")
+            name = self.get_token("identifier")[1]
+            cases = self.parse_block(self.parse_case)
+            return uast.Switch(obj, name, dict(cases))
 
         result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")

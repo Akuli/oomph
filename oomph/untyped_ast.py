@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass(eq=False)
@@ -132,6 +132,13 @@ class Loop(Statement):
     cond: Optional[Expression]
     incr: Optional[Statement]
     body: List[Statement]
+
+
+@dataclass(eq=False)
+class Switch(Statement):
+    obj: Expression
+    as_what: str
+    cases: Dict[Type, List[Statement]]
 
 
 @dataclass(eq=False)
