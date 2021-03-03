@@ -274,7 +274,7 @@ class _FunctionOrMethodTyper:
             return [tast.Continue(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Break):
-            assert self.loop_stack[-1] is not None
+            assert self.loop_stack[-1] is not None, "can't break in switch"
             return [tast.Break(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Return):
