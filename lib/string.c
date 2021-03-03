@@ -140,12 +140,3 @@ int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *s
 		return -1;   // TODO: optional type instead
 	return ptr - s->str;
 }
-
-// TODO: this is copy/pasted from generated code, lol
-struct class_List_Str {
-    REFCOUNT_HEADER
-    int64_t len;
-    int64_t alloc;
-    struct class_Str * smalldata[8];
-    struct class_Str * *data;
-};

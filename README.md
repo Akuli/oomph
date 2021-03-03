@@ -28,12 +28,15 @@ Bugs:
 - maybe still a few reference counting bugs left, not sure
 
 Missing features needed to write the oomph compiler in oomph:
+- multiple files
 - foreach
 - io
 - forward-declaring a class
 
 Other missing features:
 - `case Foo, Bar:`
+- get rid of `-> void`?
+- more agressively prevent variables from leaking: if variable defined inside 'if', not visible outside by default?
 - `r` strings
 - negative slices?
 - `Str.replace(mapping)` (I wish python had this)
