@@ -34,6 +34,8 @@ Missing features needed to write the oomph compiler in oomph:
 - forward-declaring a class
 
 Other missing features:
+- get rid of `-> void`?
+- more agressively prevent variables from leaking: if variable defined inside 'if', not visible outside by default?
 - `r` strings
 - negative slices?
 - `Str.replace(mapping)` (I wish python had this)
