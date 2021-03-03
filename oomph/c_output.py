@@ -80,7 +80,9 @@ class _FunctionEmitter:
             # depend on the old value
             var = self.declare_local_var(ast.value.type)
             value = self.emit_expression(ast.value)
-            decref = self.file_emitter.emit_decref(ast.refname, ast.value.type)
+            decref = self.file_emitter.emit_decref(
+                ast.refname, ast.value.type, semicolon=False
+            )
             return f"({var} = {value}, {decref}, {ast.refname} = {var})"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
@@ -123,11 +125,8 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.DecRef):
             var = self.declare_local_var(ast.value.type)
-            return (
-                self.file_emitter.emit_decref(
-                    self.emit_expression(ast.value), ast.value.type
-                )
-                + ";\n\t"
+            return self.file_emitter.emit_decref(
+                self.emit_expression(ast.value), ast.value.type
             )
 
         if isinstance(ast, tast.Return):
@@ -215,7 +214,7 @@ class _FunctionEmitter:
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
             + self.emit_label("out")
             + "".join(
-                self.file_emitter.emit_decref(refname, reftype) + ";\n\t"
+                self.file_emitter.emit_decref(refname, reftype)
                 for refname, reftype in reversed(funcdef.refs)
             )
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
@@ -386,12 +385,16 @@ class _FileEmitter:
             return f"incref(({c_expression}) {access})"
         return "(void)0"
 
-    def emit_decref(self, c_expression: str, the_type: Type) -> str:
+    def emit_decref(
+        self, c_expression: str, the_type: Type, *, semicolon: bool = True
+    ) -> str:
         if isinstance(the_type, UnionType):
-            return f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
-        if the_type.refcounted:
-            return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
-        return "(void)0"
+            result = f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
+        elif the_type.refcounted:
+            result = f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
+        else:
+            result = "(void)0"
+        return f"{result};\n\t" if semicolon else result
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type.generic_origin is None:
@@ -409,7 +412,7 @@ class _FileEmitter:
                 "itemtype_cname": self.get_type_c_name(itemtype),
                 "itemtype_string": the_type.name,
                 "incref_val": self.emit_incref("val", itemtype),
-                "decref_val": self.emit_decref("val", itemtype),
+                "decref_val": self.emit_decref("val", itemtype, semicolon=False),
             }
             self.beginning += "\n"
             return type_cname
@@ -483,7 +486,7 @@ class _FileEmitter:
                 + "{"
                 + f"\n\tstruct class_{self.get_type_c_name(top_statement.type)} *obj = ptr;\n\t"
                 + "".join(
-                    self.emit_decref(f"obj->memb_{nam}", typ) + ";\n\t"
+                    self.emit_decref(f"obj->memb_{nam}", typ)
                     for typ, nam in top_statement.type.members
                 )
                 + "free(obj);\n}\n\n"
@@ -535,7 +538,7 @@ class _FileEmitter:
                     f"\t\tcase {num}:\n"
                     + "\t\t\t"
                     + self.emit_decref(f"obj.val.item{num}", typ)
-                    + ";\n\t\t\tbreak;\n"
+                    + "\t\tbreak;\n"
                     for num, typ in enumerate(top_statement.type.type_members)
                 )
                 + "\t\tdefault: assert(0);\n"
