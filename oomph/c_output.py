@@ -380,6 +380,8 @@ class _FileEmitter:
 
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if the_type.refcounted:
+            # Every member of the union is a pointer to a struct starting with
+            # REFCOUNT_HEADER, so it doesn't matter which member is used.
             access = ".val.item0" if isinstance(the_type, UnionType) else ""
             return f"incref(({c_expression}) {access})"
         return "(void)0"
