@@ -28,6 +28,7 @@ Bugs:
 - maybe still a few reference counting bugs left, not sure
 
 Missing features needed to write the oomph compiler in oomph:
+- multiple files
 - foreach
 - io
 - union types
