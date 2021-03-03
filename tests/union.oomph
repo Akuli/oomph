@@ -8,7 +8,8 @@ class Bar()
 class Baz()
 
 func print_thing(Thing thing) -> void:
-    switch thing as t:   # TODO: switch to plain 'switch thing'
+    print(thing)
+    switch thing as t:   # TODO: plain 'switch thing'
         case Foo:
             print("Foo {t.foo_thing}")
         case Bar:

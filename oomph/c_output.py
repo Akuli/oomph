@@ -185,7 +185,7 @@ class _FunctionEmitter:
                 + f"\tswitch({var}.membernum)"
                 + "{\n\t"
                 + "".join(body_codes)
-                + "}\n\t"
+                + "default: assert(0);\n\t}\n\t"
             )
 
         raise NotImplementedError(ast)
@@ -483,20 +483,43 @@ class _FileEmitter:
 
         if isinstance(top_statement, tast.UnionDef):
             assert top_statement.type.types is not None
+            name = self.get_type_c_name(top_statement.type)
             return (
-                ("union union_%s {\n" % self.get_type_c_name(top_statement.type))
+                # Underlying C union
+                f"union union_{name} {{\n"
                 + "".join(
                     f"\t{self.emit_type(the_type)} item{index};\n"
                     for index, the_type in enumerate(top_statement.type.types)
                 )
                 + "};\n\n"
-                + (
-                    "struct class_%s { union union_%s val; int membernum; };\n\n"
-                    % (
-                        self.get_type_c_name(top_statement.type),
-                        self.get_type_c_name(top_statement.type),
-                    )
+                # Struct to also remember which member is active
+                + f"struct class_{name} {{ union union_{name} val; short membernum; }};\n\n"
+                # to_string method forward decls
+                + "".join(
+                    f"struct class_Str *meth_{self.get_type_c_name(typ)}_to_string({self.emit_type(typ)});\n"
+                    for typ in top_statement.type.types
                 )
+                # to_string method
+                + f"struct class_Str *meth_{name}_to_string(struct class_{name} obj) {{\n"
+                + "\tstruct class_Str *valstr;\n"
+                + f'\tconst char *typstr = "union {top_statement.type.name}";\n'  # TODO: escaping?
+                + "\tswitch(obj.membernum) {\n"
+                + "".join(
+                    f"\t\tcase {num}:\n"
+                    + f"\t\t\tvalstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});\n"
+                    + "\t\t\tbreak;\n"
+                    for num, typ in enumerate(top_statement.type.types)
+                )
+                + "\t\tdefault: assert(0);\n"
+                + "\t}\n"
+                + "\n"
+                + "\tstruct class_Str *res = cstr_to_string(typstr);\n"
+                + '\tstring_concat_inplace(&res, "(");\n'
+                + "\tstring_concat_inplace(&res, valstr->str);\n"
+                + '\tstring_concat_inplace(&res, ")");\n'
+                + "\tdecref(valstr, dtor_Str);\n"
+                + "\treturn res;\n"
+                + "}\n\n"
             )
 
         raise NotImplementedError(top_statement)

@@ -45,6 +45,7 @@ class UnionType(Type):
         # refcounted-ness is not used
         super().__init__(name, False)
         self.types = None  # to be set later
+        self.methods["to_string"] = FunctionType([self], STRING)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, types={self.types}>"
