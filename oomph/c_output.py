@@ -131,13 +131,12 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.Return):
             if ast.value is not None:
-                return (
-                    f"retval = {self.emit_expression(ast.value)};"
-                    + self.file_emitter.emit_incref("retval", ast.value.type)
-                    + ";"
-                    + "goto out;\n\t"
-                )
-            return "goto out;\n\t"
+                return f"""
+                retval = {self.emit_expression(ast.value)};
+                {self.file_emitter.emit_incref("retval", ast.value.type)}
+                goto out;
+                """
+            return "goto out;"
 
         if isinstance(ast, tast.If):
             return (
@@ -171,24 +170,26 @@ class _FunctionEmitter:
             assert ast.vartype.type_members is not None
 
             union_var = self.name_mapping[ast.varname]
-            body_codes = []
+            body_code = ""
             for membernum, the_type in enumerate(ast.vartype.type_members):
                 specific_var = self.declare_local_var(the_type)
                 self.name_mapping[ast.varname] = specific_var
-                body_codes.append(
-                    f"case {membernum}:\n\t"
-                    + f"{specific_var} = {union_var}.val.item{membernum};\n\t"
-                    + "".join(self.emit_statement(s) for s in ast.cases[the_type])
-                    + "break;\n\t"
-                )
+                case_content = "".join(self.emit_statement(s) for s in ast.cases[the_type])
+                body_code += f"""
+                case {membernum}:
+                    {specific_var} = {union_var}.val.item{membernum};
+                    {case_content}
+                    break;
+                """
             self.name_mapping[ast.varname] = union_var
 
-            return (
-                f"switch({union_var}.membernum)"
-                + "{\n\t"
-                + "".join(body_codes)
-                + "default: assert(0);\n\t}\n\t"
-            )
+            return f"""
+            switch ({union_var}.membernum) {{
+                {body_code}
+                default:
+                    assert(0);
+            }}
+            """
 
         raise NotImplementedError(ast)
 
@@ -377,13 +378,15 @@ class _FileEmitter:
         self.ending = ""
         self.generic_type_names: Dict[Type, str] = {}
 
-    def emit_incref(self, c_expression: str, the_type: Type) -> str:
+    def emit_incref(self, c_expression: str, the_type: Type, *, semicolon: bool = True) -> str:
         if the_type.refcounted:
             # Every member of the union is a pointer to a struct starting with
             # REFCOUNT_HEADER, so it doesn't matter which member is used.
             access = ".val.item0" if isinstance(the_type, UnionType) else ""
-            return f"incref(({c_expression}) {access})"
-        return "(void)0"
+            result = f"incref(({c_expression}) {access})"
+        else:
+            result = "(void)0"
+        return f"{result};\n\t" if semicolon else result
 
     def emit_decref(
         self, c_expression: str, the_type: Type, *, semicolon: bool = True
@@ -411,7 +414,7 @@ class _FileEmitter:
                 "itemtype": self.emit_type(itemtype),
                 "itemtype_cname": self.get_type_c_name(itemtype),
                 "itemtype_string": the_type.name,
-                "incref_val": self.emit_incref("val", itemtype),
+                "incref_val": self.emit_incref("val", itemtype, semicolon=False),
                 "decref_val": self.emit_decref("val", itemtype, semicolon=False),
             }
             self.beginning += "\n"
@@ -476,8 +479,6 @@ class _FileEmitter:
                 + "".join(
                     f"obj->memb_{name} = var_{name};"
                     + self.emit_incref(f"var_{name}", the_type)
-                    + ";"
-                    + "\n\t"
                     for the_type, name in top_statement.type.members
                 )
                 + "return obj;\n}\n\n"
@@ -545,20 +546,24 @@ class _FileEmitter:
                 + "\t}\n}\n\n"
             )
 
-            return (
-                # Underlying C union
-                f"union union_{name} {{\n"
-                + "".join(
-                    f"\t{self.emit_type(the_type)} item{index};\n"
-                    for index, the_type in enumerate(top_statement.type.type_members)
-                )
-                + "};\n\n"
-                # Struct to also remember which member is active
-                + f"struct class_{name} {{ union union_{name} val; short membernum; }};\n\n"
-                # forward decls of self.ending stuff
-                + f"struct class_Str *meth_{name}_to_string(struct class_{name} obj);\n"
-                + f"void decref_{name}(struct class_{name} obj);\n"
+            union_members = "".join(
+                f"\t{self.emit_type(the_type)} item{index};\n"
+                for index, the_type in enumerate(top_statement.type.type_members)
             )
+            return f"""
+            union union_{name} {{
+                {union_members}
+            }};
+
+            struct class_{name} {{
+                union union_{name} val;
+                short membernum;
+            }};
+
+            // Forward decls of self.ending stuff
+            struct class_Str *meth_{name}_to_string(struct class_{name} obj);
+            void decref_{name}(struct class_{name} obj);
+            """
 
         raise NotImplementedError(top_statement)
 
