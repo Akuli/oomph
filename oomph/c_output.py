@@ -17,7 +17,7 @@ class _FunctionEmitter:
     def __init__(self, file_emitter: _FileEmitter) -> None:
         self.file_emitter = file_emitter
         self.before_body = ""
-        self.name_mapping: Dict[str, str] = {}  # values are expressions in c
+        self.name_mapping: Dict[str, str] = {}  # values are names in c
 
     def declare_local_var(self, the_type: Type) -> str:
         name = next(_varnames)
