@@ -1,0 +1,16 @@
+union Thing:
+    Foo
+    Bar
+
+class Foo()
+class Bar()
+
+func do_nothing(Thing thing) -> Thing:
+    return thing
+
+func make_thing() -> Thing:
+    return new Thing(new Bar())
+
+func main() -> void:
+    do_nothing(new Thing(new Foo()))
+    make_thing()

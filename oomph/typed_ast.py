@@ -1,8 +1,8 @@
 import copy
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type
+from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type, UnionType
 
 
 @dataclass(eq=False)
@@ -12,11 +12,6 @@ class Expression:
 
 @dataclass(eq=False)
 class Statement:
-    pass
-
-
-@dataclass(eq=False)
-class Null(Expression):
     pass
 
 
@@ -84,6 +79,11 @@ class FloatConstant(Expression):
         self.value = value
 
 
+@dataclass(eq=False)
+class Null(Expression):
+    pass
+
+
 # And,Or are not function calls with is_special=True because evaluation order
 # is different than for function calls.
 class BoolAnd(Expression):
@@ -123,6 +123,12 @@ class ReturningCall(Expression, Statement):
         super().__init__(func.type.returntype)
         self.func = func
         self.args = args
+
+
+@dataclass(eq=False)
+class InstantiateUnion(Expression):
+    type: UnionType  # more specific than Expression.type
+    value: Expression
 
 
 @dataclass(eq=False)
@@ -174,6 +180,13 @@ class Loop(Statement):
 
 
 @dataclass(eq=False)
+class Switch(Statement):
+    varname: str
+    vartype: UnionType
+    cases: Dict[Type, List[Statement]]
+
+
+@dataclass(eq=False)
 class ToplevelStatement:
     pass
 
@@ -191,6 +204,11 @@ class FuncDef(ToplevelStatement):
 class ClassDef(ToplevelStatement):
     type: Type
     body: List[FuncDef]
+
+
+@dataclass(eq=False)
+class UnionDef(ToplevelStatement):
+    type: UnionType
 
 
 @dataclass(eq=False)

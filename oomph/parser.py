@@ -259,6 +259,12 @@ class _Parser:
         assert isinstance(expr, uast.Call), expr
         return expr
 
+    def parse_case(self) -> Tuple[uast.Type, List[uast.Statement]]:
+        self.get_token("keyword", "case")
+        the_type = self.parse_type()
+        body = self.parse_block(self.parse_statement)
+        return (the_type, body)
+
     def parse_statement(self) -> uast.Statement:
         if self.token_iter.peek() == ("keyword", "if"):
             self.get_token("keyword", "if")
@@ -308,6 +314,12 @@ class _Parser:
             body = self.parse_block(self.parse_statement)
             return uast.Loop(None, cond, None, body)
 
+        if self.token_iter.peek() == ("keyword", "switch"):
+            self.get_token("keyword", "switch")
+            varname = self.get_token("identifier")[1]
+            cases = self.parse_block(self.parse_case)
+            return uast.Switch(varname, dict(cases))
+
         result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
         return result
@@ -345,6 +357,11 @@ class _Parser:
         self.get_token("keyword", "meth")
         return self.parse_function_or_method()
 
+    def parse_union_member(self) -> uast.Type:
+        result = self.parse_type()
+        self.get_token("op", "\n")
+        return result
+
     def parse_toplevel(self) -> uast.ToplevelStatement:
         if self.token_iter.peek() == ("keyword", "generic"):
             self.get_token("keyword", "generic")
@@ -367,6 +384,13 @@ class _Parser:
                 body = []
                 self.get_token("op", "\n")
             return uast.ClassDef(the_type, args, body)
+
+        if self.token_iter.peek() == ("keyword", "union"):
+            assert not generic
+            self.get_token("keyword", "union")
+            name = self.get_token("identifier")[1]
+            types = self.parse_block(self.parse_union_member)
+            return uast.UnionDef(name, types)
 
         raise NotImplementedError(self.token_iter.peek())
 

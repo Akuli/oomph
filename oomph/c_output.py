@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, TypeVar, Union
 import more_itertools
 
 import oomph.typed_ast as tast
-from oomph.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type
+from oomph.types import BOOL, FLOAT, INT, LIST, OPTIONAL, STRING, Type, UnionType
 
 _T = TypeVar("_T")
 _varnames = (f"var{i}" for i in itertools.count())
@@ -80,14 +80,25 @@ class _FunctionEmitter:
             # depend on the old value
             var = self.declare_local_var(ast.value.type)
             value = self.emit_expression(ast.value)
-            decref = self.file_emitter.emit_decref(ast.refname, ast.value.type)
+            decref = self.file_emitter.emit_decref(
+                ast.refname, ast.value.type, semicolon=False
+            )
             return f"({var} = {value}, {decref}, {ast.refname} = {var})"
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
-            # This should return some kind of partial function, which isn't possible yet
+            # This should return some kind of partial function
             raise NotImplementedError(
                 "method objects without immediate calling don't work yet"
+            )
+        if isinstance(ast, tast.InstantiateUnion):
+            assert ast.type.type_members is not None
+            membernum = ast.type.type_members.index(ast.value.type)
+            return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
+                self.file_emitter.emit_type(ast.type),
+                membernum,
+                self.emit_expression(ast.value),
+                membernum,
             )
         raise NotImplementedError(ast)
 
@@ -114,19 +125,18 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.DecRef):
             var = self.declare_local_var(ast.value.type)
-            return (
-                self.file_emitter.emit_decref(
-                    self.emit_expression(ast.value), ast.value.type
-                )
-                + ";\n\t"
+            return self.file_emitter.emit_decref(
+                self.emit_expression(ast.value), ast.value.type
             )
 
         if isinstance(ast, tast.Return):
-            if ast.value is not None and ast.value.type.refcounted:
-                return f"retval = {self.emit_expression(ast.value)}; incref(retval); goto out;\n\t"
             if ast.value is not None:
-                return f"retval = {self.emit_expression(ast.value)}; goto out;\n\t"
-            return "goto out;\n\t"
+                return f"""
+                retval = {self.emit_expression(ast.value)};
+                {self.file_emitter.emit_incref("retval", ast.value.type)}
+                goto out;
+                """
+            return "goto out;"
 
         if isinstance(ast, tast.If):
             return (
@@ -155,6 +165,34 @@ class _FunctionEmitter:
         if isinstance(ast, tast.Break):
             return "break;\n\t"
 
+        if isinstance(ast, tast.Switch):
+            assert isinstance(ast.vartype, UnionType)
+            assert ast.vartype.type_members is not None
+
+            union_var = self.name_mapping[ast.varname]
+            body_code = ""
+            for membernum, the_type in enumerate(ast.vartype.type_members):
+                specific_var = self.declare_local_var(the_type)
+                self.name_mapping[ast.varname] = specific_var
+                case_content = "".join(
+                    self.emit_statement(s) for s in ast.cases[the_type]
+                )
+                body_code += f"""
+                case {membernum}:
+                    {specific_var} = {union_var}.val.item{membernum};
+                    {case_content}
+                    break;
+                """
+            self.name_mapping[ast.varname] = union_var
+
+            return f"""
+            switch ({union_var}.membernum) {{
+                {body_code}
+                default:
+                    assert(0);
+            }}
+            """
+
         raise NotImplementedError(ast)
 
     def emit_funcdef(self, funcdef: tast.FuncDef, c_name: str) -> str:
@@ -168,13 +206,18 @@ class _FunctionEmitter:
                 else f"{self.file_emitter.emit_type(funcdef.type.returntype)} retval;\n\t"
             )
             + "".join(
-                f"{self.file_emitter.emit_type(reftype)} {refname} = NULL;\n\t"
+                "%s %s = %s;\n\t"
+                % (
+                    self.file_emitter.emit_type(reftype),
+                    refname,
+                    "{0}" if isinstance(reftype, UnionType) else "NULL",
+                )
                 for refname, reftype in funcdef.refs
             )
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
             + self.emit_label("out")
             + "".join(
-                self.file_emitter.emit_decref(refname, reftype) + ";\n\t"
+                self.file_emitter.emit_decref(refname, reftype)
                 for refname, reftype in reversed(funcdef.refs)
             )
             + ("" if funcdef.type.returntype is None else "return retval;\n\t")
@@ -214,10 +257,9 @@ struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
 %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
 {
     assert(!opt.isnull);
-#if %(is_refcounted)s
-    incref(opt.value);
-#endif
-    return opt.value;
+    %(itemtype)s val = opt.value;
+    %(incref_val)s;
+    return val;
 }
 
 bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
@@ -262,10 +304,10 @@ struct class_%(type_cname)s *ctor_%(type_cname)s(void)
 void dtor_%(type_cname)s (void *ptr)
 {
     struct class_%(type_cname)s *self = ptr;
-#if %(is_refcounted)s
-    for (int64_t i = 0; i < self->len; i++)
-        decref(self->data[i], dtor_%(itemtype_cname)s);
-#endif
+    for (int64_t i = 0; i < self->len; i++) {
+        %(itemtype)s val = self->data[i];
+        %(decref_val)s;
+    }
     if (self->data != self->smalldata)
         free(self->data);
     free(self);
@@ -294,18 +336,15 @@ void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s va
 {
     class_%(type_cname)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
-#if %(is_refcounted)s
-    incref(val);
-#endif
+    %(incref_val)s;
 }
 
 %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
-#if %(is_refcounted)s
-    incref(self->data[i]);
-#endif
-    return self->data[i];
+    %(itemtype)s val = self->data[i];
+    %(incref_val)s;
+    return val;
 }
 
 int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
@@ -338,12 +377,31 @@ class _FileEmitter:
     def __init__(self) -> None:
         self.strings: Dict[str, str] = {}
         self.beginning = '#include "lib/oomph.h"\n\n'
+        self.ending = ""
         self.generic_type_names: Dict[Type, str] = {}
 
-    def emit_decref(self, c_expression: str, the_type: Type) -> str:
+    def emit_incref(
+        self, c_expression: str, the_type: Type, *, semicolon: bool = True
+    ) -> str:
         if the_type.refcounted:
-            return f"decref({c_expression}, dtor_{self.get_type_c_name(the_type)})"
-        return "(void)0"
+            # Every member of the union is a pointer to a struct starting with
+            # REFCOUNT_HEADER, so it doesn't matter which member is used.
+            access = ".val.item0" if isinstance(the_type, UnionType) else ""
+            result = f"incref(({c_expression}) {access})"
+        else:
+            result = "(void)0"
+        return f"{result};\n\t" if semicolon else result
+
+    def emit_decref(
+        self, c_expression: str, the_type: Type, *, semicolon: bool = True
+    ) -> str:
+        if isinstance(the_type, UnionType):
+            result = f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
+        elif the_type.refcounted:
+            result = f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
+        else:
+            result = "(void)0"
+        return f"{result};\n\t" if semicolon else result
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type.generic_origin is None:
@@ -352,14 +410,16 @@ class _FileEmitter:
         try:
             return self.generic_type_names[the_type]
         except KeyError:
-            type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
+            itemtype = the_type.generic_origin.arg
+            type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
             self.generic_type_names[the_type] = type_cname
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
                 "type_cname": type_cname,
-                "itemtype": self.emit_type(the_type.generic_origin.arg),
-                "itemtype_cname": self.get_type_c_name(the_type.generic_origin.arg),
+                "itemtype": self.emit_type(itemtype),
+                "itemtype_cname": self.get_type_c_name(itemtype),
                 "itemtype_string": the_type.name,
-                "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
+                "incref_val": self.emit_incref("val", itemtype, semicolon=False),
+                "decref_val": self.emit_decref("val", itemtype, semicolon=False),
             }
             self.beginning += "\n"
             return type_cname
@@ -373,7 +433,7 @@ class _FileEmitter:
             return "double"
         if the_type is BOOL:
             return "bool"
-        if the_type.refcounted:
+        if the_type.refcounted and not isinstance(the_type, UnionType):
             return f"struct class_{self.get_type_c_name(the_type)} *"
         return f"struct class_{self.get_type_c_name(the_type)}"
 
@@ -422,8 +482,7 @@ class _FileEmitter:
                 + "obj->refcount = 1;\n\t"
                 + "".join(
                     f"obj->memb_{name} = var_{name};"
-                    + (f"incref(var_{name});" if the_type.refcounted else "")
-                    + "\n\t"
+                    + self.emit_incref(f"var_{name}", the_type)
                     for the_type, name in top_statement.type.members
                 )
                 + "return obj;\n}\n\n"
@@ -432,7 +491,7 @@ class _FileEmitter:
                 + "{"
                 + f"\n\tstruct class_{self.get_type_c_name(top_statement.type)} *obj = ptr;\n\t"
                 + "".join(
-                    self.emit_decref(f"obj->memb_{nam}", typ) + ";\n\t"
+                    self.emit_decref(f"obj->memb_{nam}", typ)
                     for typ, nam in top_statement.type.members
                 )
                 + "free(obj);\n}\n\n"
@@ -446,6 +505,77 @@ class _FileEmitter:
                 )
             )
 
+        if isinstance(top_statement, tast.UnionDef):
+            assert top_statement.type.type_members is not None
+            name = self.get_type_c_name(top_statement.type)
+
+            # to_string method
+            to_string_cases = "".join(
+                f"""
+                case {num}:
+                    valstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});
+                    break;
+                """
+                for num, typ in enumerate(top_statement.type.type_members)
+            )
+            self.ending += f"""
+            struct class_Str *meth_{name}_to_string(struct class_{name} obj)
+            {{
+                struct class_Str *valstr;
+                switch(obj.membernum) {{
+                    {to_string_cases}
+                    default:
+                        assert(0);
+                }}
+
+                // TODO: escaping?
+                struct class_Str *res = cstr_to_string("union {top_statement.type.name}");
+                string_concat_inplace(&res, "(");
+                string_concat_inplace(&res, valstr->str);
+                string_concat_inplace(&res, ")");
+                decref(valstr, dtor_Str);
+                return res;
+            }}
+            """
+
+            # To decref unions, we need to know the value of membernum and
+            # decref the correct member of the union. This union-specific
+            # function handles that.
+            decref_cases = "".join(
+                f"""
+                case {num}:
+                    {self.emit_decref(f"obj.val.item{num}", typ)}
+                    break;
+                """
+                for num, typ in enumerate(top_statement.type.type_members)
+            )
+            self.ending += f"""
+            void decref_{name}(struct class_{name} obj) {{
+                switch(obj.membernum) {{
+                    {decref_cases}
+                    default:
+                        assert(0);
+                }}
+            }}
+            """
+
+            union_members = "".join(
+                f"\t{self.emit_type(the_type)} item{index};\n"
+                for index, the_type in enumerate(top_statement.type.type_members)
+            )
+            return f"""
+            struct class_{name} {{
+                union {{
+                    {union_members}
+                }} val;
+                short membernum;
+            }};
+
+            // Forward decls of self.ending stuff
+            struct class_Str *meth_{name}_to_string(struct class_{name} obj);
+            void decref_{name}(struct class_{name} obj);
+            """
+
         raise NotImplementedError(top_statement)
 
 
@@ -454,4 +584,4 @@ def run(ast: List[tast.ToplevelStatement]) -> str:
     code = "".join(
         emitter.emit_toplevel_statement(top_statement) for top_statement in ast
     )
-    return emitter.beginning + code
+    return emitter.beginning + code + emitter.ending

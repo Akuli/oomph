@@ -1,0 +1,24 @@
+union Thing:
+    Foo
+    Bar
+    Baz
+
+# Can be defined after the union
+class Foo(int foo_thing)
+class Bar()
+class Baz()
+
+func print_thing(Thing thing) -> void:
+    switch thing:
+        case Foo:
+            print("Foo {thing.foo_thing}")
+        case Bar:
+            print("Bar {thing}")
+        case Baz:
+            print("Baz")
+    print("Without switch: {thing}")
+
+func main() -> void:
+    print_thing(new Thing(new Foo(69)))
+    print_thing(new Thing(new Bar()))
+    print_thing(new Thing(new Baz()))

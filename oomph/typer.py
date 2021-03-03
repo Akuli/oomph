@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from oomph import typed_ast as tast
 from oomph import untyped_ast as uast
@@ -13,6 +13,7 @@ from oomph.types import (
     STRING,
     FunctionType,
     Type,
+    UnionType,
     builtin_generic_types,
     builtin_types,
     builtin_variables,
@@ -49,7 +50,7 @@ class _FunctionOrMethodTyper:
         self.file_typer = file_typer
         self.variables = variables
         self.reflist: List[Tuple[str, Type]] = []
-        self.loop_stack: List[str] = []
+        self.loop_stack: List[Optional[str]] = []  # None means a switch
         self.loop_counter = 0
         self.ref_names = (f"ref{n}" for n in itertools.count())
 
@@ -57,7 +58,7 @@ class _FunctionOrMethodTyper:
         self, func: tast.Expression, args: List[tast.Expression]
     ) -> Union[tast.SetRef, tast.ReturningCall]:
         result = tast.ReturningCall(func, args)
-        if result.type.refcounted:  # TODO: what else needs ref holding?
+        if result.type.refcounted:
             refname = next(self.ref_names)
             self.reflist.append((refname, result.type))
             return tast.SetRef(result.type, refname, result)
@@ -91,9 +92,7 @@ class _FunctionOrMethodTyper:
         else:
             args = [self.do_expression(arg) for arg in ast.args]
 
-        assert len(args) == len(func.type.argtypes)
-        for arg, argtype in zip(args, func.type.argtypes):
-            assert arg.type == argtype, (arg.type, argtype)
+        assert [arg.type for arg in args] == func.type.argtypes
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
@@ -205,6 +204,15 @@ class _FunctionOrMethodTyper:
                 )
             return result
         if isinstance(ast, uast.Call):
+            if isinstance(ast.func, uast.Constructor):
+                union_type = self.file_typer.get_type(ast.func.type)
+                if isinstance(union_type, UnionType):
+                    type_members = self.file_typer.post_process_union(union_type)
+                    assert len(ast.args) == 1
+                    arg = self.do_expression(ast.args[0])
+                    assert arg.type in type_members
+                    return tast.InstantiateUnion(union_type, arg)
+
             call = self.do_call(ast)
             assert not isinstance(call, tast.VoidCall)
             return call
@@ -262,9 +270,11 @@ class _FunctionOrMethodTyper:
             return []
 
         if isinstance(ast, uast.Continue):
+            assert self.loop_stack[-1] is not None, "can't continue in switch"
             return [tast.Continue(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Break):
+            assert self.loop_stack[-1] is not None, "can't break in switch"
             return [tast.Break(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Return):
@@ -309,6 +319,27 @@ class _FunctionOrMethodTyper:
                 return [loop, tast.DeleteLocalVar(ast.init.varname)]
             return [loop]
 
+        if isinstance(ast, uast.Switch):
+            utype = self.variables[ast.varname]
+            assert isinstance(utype, UnionType)
+            types_to_do = self.file_typer.post_process_union(utype).copy()
+            self.loop_stack.append(None)
+
+            cases: Dict[Type, List[tast.Statement]] = {}
+            for raw_type, raw_body in ast.cases.items():
+                nice_type = self.file_typer.get_type(raw_type)
+                types_to_do.remove(nice_type)
+
+                self.variables[ast.varname] = nice_type
+                cases[nice_type] = self.do_block(raw_body)
+
+            self.variables[ast.varname] = utype
+
+            assert not types_to_do, types_to_do
+            popped = self.loop_stack.pop()
+            assert popped is None
+            return [tast.Switch(ast.varname, utype, cases)]
+
         raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Statement]:
@@ -352,6 +383,9 @@ class _FileTyper:
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         self.variables = builtin_variables.copy()
+
+        # Union members don't need to exist when union is defined (allows nestedness)
+        self.union_laziness: Dict[UnionType, List[uast.Type]] = {}
 
     def get_type(self, raw_type: uast.Type) -> tast.Type:
         if raw_type.generic is None:
@@ -419,11 +453,28 @@ class _FileTyper:
 
             return tast.ClassDef(classtype, typed_method_defs)
 
+        if isinstance(top_statement, uast.UnionDef):
+            union_type = UnionType(top_statement.name)
+            self._types[top_statement.name] = union_type
+            self.union_laziness[union_type] = top_statement.type_members
+            return tast.UnionDef(union_type)
+
         raise NotImplementedError(top_statement)
+
+    def post_process_union(self, union: UnionType) -> List[Type]:
+        if union.type_members is None:
+            types = self.union_laziness.pop(union)
+            union.set_type_members([self.get_type(t) for t in types])
+
+        assert union.type_members is not None
+        return union.type_members
 
 
 def convert_program(
     program: List[uast.ToplevelStatement],
 ) -> List[tast.ToplevelStatement]:
     typer = _FileTyper()
-    return [typer.do_toplevel_statement(top) for top in program]
+    result = [typer.do_toplevel_statement(top) for top in program]
+    for key in list(typer.union_laziness):
+        typer.post_process_union(key)
+    return result

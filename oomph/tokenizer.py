@@ -10,6 +10,9 @@ _TOKEN_REGEX = r'''
         | func
         | meth
         | class
+        | union
+        | switch
+        | case
         | generic
         | new
         | void

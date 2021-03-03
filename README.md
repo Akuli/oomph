@@ -31,10 +31,11 @@ Missing features needed to write the oomph compiler in oomph:
 - multiple files
 - foreach
 - io
-- union types
 - forward-declaring a class
 
 Other missing features:
+- automatic dedenting in multiline strings
+- `case Foo, Bar:`
 - get rid of `-> void`?
 - more agressively prevent variables from leaking: if variable defined inside 'if', not visible outside by default?
 - `r` strings

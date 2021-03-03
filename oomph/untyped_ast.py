@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 @dataclass(eq=False)
@@ -135,6 +135,12 @@ class Loop(Statement):
 
 
 @dataclass(eq=False)
+class Switch(Statement):
+    varname: str
+    cases: Dict[Type, List[Statement]]
+
+
+@dataclass(eq=False)
 class ToplevelStatement:
     pass
 
@@ -152,3 +158,9 @@ class ClassDef(ToplevelStatement):
     type: Type
     members: List[Tuple[Type, str]]
     body: List[FuncDef]
+
+
+@dataclass(eq=False)
+class UnionDef(ToplevelStatement):
+    name: str
+    type_members: List[Type]
