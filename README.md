@@ -33,6 +33,7 @@ Missing features needed to write the oomph compiler in oomph:
 - forward-declaring a class
 
 Other missing features:
+- `case Foo, Bar:`
 - `r` strings
 - negative slices?
 - `Str.replace(mapping)` (I wish python had this)

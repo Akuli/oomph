@@ -90,8 +90,8 @@ class _FunctionEmitter:
                 "method objects without immediate calling don't work yet"
             )
         if isinstance(ast, tast.InstantiateUnion):
-            assert ast.type.types is not None
-            i = ast.type.types.index(ast.value.type)
+            assert ast.type.type_members is not None
+            i = ast.type.type_members.index(ast.value.type)
             return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
                 self.file_emitter.emit_type(ast.type),
                 i,
@@ -166,11 +166,11 @@ class _FunctionEmitter:
 
         if isinstance(ast, tast.Switch):
             assert isinstance(ast.vartype, UnionType)
-            assert ast.vartype.types is not None
+            assert ast.vartype.type_members is not None
 
             union_var = self.name_mapping[ast.varname]
             body_codes = []
-            for membernum, the_type in enumerate(ast.vartype.types):
+            for membernum, the_type in enumerate(ast.vartype.type_members):
                 specific_var = self.declare_local_var(the_type)
                 self.name_mapping[ast.varname] = specific_var
                 body_codes.append(
@@ -482,14 +482,14 @@ class _FileEmitter:
             )
 
         if isinstance(top_statement, tast.UnionDef):
-            assert top_statement.type.types is not None
+            assert top_statement.type.type_members is not None
             name = self.get_type_c_name(top_statement.type)
             return (
                 # Underlying C union
                 f"union union_{name} {{\n"
                 + "".join(
                     f"\t{self.emit_type(the_type)} item{index};\n"
-                    for index, the_type in enumerate(top_statement.type.types)
+                    for index, the_type in enumerate(top_statement.type.type_members)
                 )
                 + "};\n\n"
                 # Struct to also remember which member is active
@@ -497,7 +497,7 @@ class _FileEmitter:
                 # to_string method forward decls
                 + "".join(
                     f"struct class_Str *meth_{self.get_type_c_name(typ)}_to_string({self.emit_type(typ)});\n"
-                    for typ in top_statement.type.types
+                    for typ in top_statement.type.type_members
                 )
                 # to_string method
                 + f"struct class_Str *meth_{name}_to_string(struct class_{name} obj) {{\n"
@@ -508,7 +508,7 @@ class _FileEmitter:
                     f"\t\tcase {num}:\n"
                     + f"\t\t\tvalstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});\n"
                     + "\t\t\tbreak;\n"
-                    for num, typ in enumerate(top_statement.type.types)
+                    for num, typ in enumerate(top_statement.type.type_members)
                 )
                 + "\t\tdefault: assert(0);\n"
                 + "\t}\n"
