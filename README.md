@@ -30,7 +30,6 @@ Bugs:
 Missing features needed to write the oomph compiler in oomph:
 - foreach
 - io
-- union types
 - forward-declaring a class
 
 Other missing features:
