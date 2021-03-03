@@ -174,7 +174,9 @@ class _FunctionEmitter:
             for membernum, the_type in enumerate(ast.vartype.type_members):
                 specific_var = self.declare_local_var(the_type)
                 self.name_mapping[ast.varname] = specific_var
-                case_content = "".join(self.emit_statement(s) for s in ast.cases[the_type])
+                case_content = "".join(
+                    self.emit_statement(s) for s in ast.cases[the_type]
+                )
                 body_code += f"""
                 case {membernum}:
                     {specific_var} = {union_var}.val.item{membernum};
@@ -378,7 +380,9 @@ class _FileEmitter:
         self.ending = ""
         self.generic_type_names: Dict[Type, str] = {}
 
-    def emit_incref(self, c_expression: str, the_type: Type, *, semicolon: bool = True) -> str:
+    def emit_incref(
+        self, c_expression: str, the_type: Type, *, semicolon: bool = True
+    ) -> str:
         if the_type.refcounted:
             # Every member of the union is a pointer to a struct starting with
             # REFCOUNT_HEADER, so it doesn't matter which member is used.
@@ -506,45 +510,54 @@ class _FileEmitter:
             name = self.get_type_c_name(top_statement.type)
 
             # to_string method
-            self.ending += (
-                f"struct class_Str *meth_{name}_to_string(struct class_{name} obj) {{\n"
-                + "\tstruct class_Str *valstr;\n"
-                + f'\tconst char *typstr = "union {top_statement.type.name}";\n'  # TODO: escaping?
-                + "\tswitch(obj.membernum) {\n"
-                + "".join(
-                    f"\t\tcase {num}:\n"
-                    + f"\t\t\tvalstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});\n"
-                    + "\t\t\tbreak;\n"
-                    for num, typ in enumerate(top_statement.type.type_members)
-                )
-                + "\t\tdefault: assert(0);\n"
-                + "\t}\n"
-                + "\n"
-                + "\tstruct class_Str *res = cstr_to_string(typstr);\n"
-                + '\tstring_concat_inplace(&res, "(");\n'
-                + "\tstring_concat_inplace(&res, valstr->str);\n"
-                + '\tstring_concat_inplace(&res, ")");\n'
-                + "\tdecref(valstr, dtor_Str);\n"
-                + "\treturn res;\n"
-                + "}\n\n"
+            to_string_cases = "".join(
+                f"""
+                case {num}:
+                    valstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});
+                    break;
+                """
+                for num, typ in enumerate(top_statement.type.type_members)
             )
+            self.ending += f"""
+            struct class_Str *meth_{name}_to_string(struct class_{name} obj)
+            {{
+                struct class_Str *valstr;
+                switch(obj.membernum) {{
+                    {to_string_cases}
+                    default:
+                        assert(0);
+                }}
+
+                // TODO: escaping?
+                struct class_Str *res = cstr_to_string("union {top_statement.type.name}");
+                string_concat_inplace(&res, "(");
+                string_concat_inplace(&res, valstr->str);
+                string_concat_inplace(&res, ")");
+                decref(valstr, dtor_Str);
+                return res;
+            }}
+            """
 
             # To decref unions, we need to know the value of membernum and
             # decref the correct member of the union. This union-specific
             # function handles that.
-            self.ending += (
-                f"void decref_{name}(struct class_{name} obj) {{\n"
-                + "\tswitch(obj.membernum) {\n"
-                + "".join(
-                    f"\t\tcase {num}:\n"
-                    + "\t\t\t"
-                    + self.emit_decref(f"obj.val.item{num}", typ)
-                    + "\t\tbreak;\n"
-                    for num, typ in enumerate(top_statement.type.type_members)
-                )
-                + "\t\tdefault: assert(0);\n"
-                + "\t}\n}\n\n"
+            decref_cases = "".join(
+                f"""
+                case {num}:
+                    {self.emit_decref(f"obj.val.item{num}", typ)}
+                    break;
+                """
+                for num, typ in enumerate(top_statement.type.type_members)
             )
+            self.ending += f"""
+            void decref_{name}(struct class_{name} obj) {{
+                switch(obj.membernum) {{
+                    {decref_cases}
+                    default:
+                        assert(0);
+                }}
+            }}
+            """
 
             union_members = "".join(
                 f"\t{self.emit_type(the_type)} item{index};\n"
