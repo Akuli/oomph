@@ -13,3 +13,9 @@ func main() -> void:
     while k != 5:
         print(k)
         k = k+1
+
+    let foo = new List[Str]()
+    foo.push("hello")
+    foo.push("world")
+    foreach item of foo:
+        print(item)

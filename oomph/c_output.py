@@ -462,13 +462,13 @@ class _FileEmitter:
 
         if isinstance(top_statement, tast.ClassDef):
             struct_members = "".join(
-                    f"{self.emit_type(the_type)} memb_{name};\n\t"
-                    for the_type, name in top_statement.type.members
-                )
+                f"{self.emit_type(the_type)} memb_{name};\n\t"
+                for the_type, name in top_statement.type.members
+            )
             constructor_args = ",".join(
-                    f"{self.emit_type(the_type)} var_{name}"
-                    for the_type, name in top_statement.type.members
-                )
+                f"{self.emit_type(the_type)} var_{name}"
+                for the_type, name in top_statement.type.members
+            )
             member_assignments = "".join(
                 f"obj->memb_{name} = var_{name};"
                 for the_type, name in top_statement.type.members
@@ -478,16 +478,16 @@ class _FileEmitter:
                 for the_type, name in top_statement.type.members
             )
             member_decrefs = "".join(
-                    self.emit_decref(f"obj->memb_{nam}", typ)
-                    for typ, nam in top_statement.type.members
-                )
+                self.emit_decref(f"obj->memb_{nam}", typ)
+                for typ, nam in top_statement.type.members
+            )
             methods = "".join(
-                    _FunctionEmitter(self).emit_funcdef(
-                        method,
-                        f"meth_{self.get_type_c_name(top_statement.type)}_{method.name}",
-                    )
-                    for method in top_statement.body
+                _FunctionEmitter(self).emit_funcdef(
+                    method,
+                    f"meth_{self.get_type_c_name(top_statement.type)}_{method.name}",
                 )
+                for method in top_statement.body
+            )
 
             name = self.get_type_c_name(top_statement.type)
             return f"""

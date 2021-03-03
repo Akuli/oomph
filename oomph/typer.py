@@ -319,6 +319,48 @@ class _FunctionOrMethodTyper:
                 return [loop, tast.DeleteLocalVar(ast.init.varname)]
             return [loop]
 
+        if isinstance(ast, uast.ForEach):
+            # Convert to for loop (less code elsewhere)
+            list_var = f"__foreach_list_{self.loop_counter}"
+            index_var = f"__foreach_index_{self.loop_counter}"
+            self.loop_counter += 1
+
+            get_from_list_to_var: uast.Statement = uast.Let(
+                ast.varname,
+                uast.Call(
+                    uast.GetAttribute(uast.GetVar(list_var), "get"),
+                    [uast.GetVar(index_var)],
+                ),
+            )
+            the_loop = uast.Loop(
+                None,
+                uast.BinaryOperator(
+                    uast.GetVar(index_var),
+                    "<",
+                    uast.Call(
+                        uast.GetAttribute(uast.GetVar(list_var), "length"),
+                        [],
+                    ),
+                ),
+                uast.Assign(
+                    index_var,
+                    uast.BinaryOperator(
+                        uast.GetVar(index_var), "+", uast.IntConstant(1)
+                    ),
+                ),
+                [get_from_list_to_var] + ast.body,
+            )
+            return (
+                self.do_block(
+                    [
+                        uast.Let(index_var, uast.IntConstant(0)),
+                        uast.Let(list_var, ast.list),
+                        the_loop,
+                    ]
+                )
+                + [tast.DeleteLocalVar(index_var), tast.DeleteLocalVar(list_var)]
+            )
+
         if isinstance(ast, uast.Switch):
             utype = self.variables[ast.varname]
             assert isinstance(utype, UnionType)

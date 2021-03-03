@@ -308,6 +308,14 @@ class _Parser:
             body = self.parse_block(self.parse_statement)
             return uast.Loop(init, cond, incr, body)
 
+        if self.token_iter.peek() == ("keyword", "foreach"):
+            self.get_token("keyword", "foreach")
+            varname = self.get_token("identifier")[1]
+            self.get_token("keyword", "of")
+            the_list = self.parse_expression()
+            body = self.parse_block(self.parse_statement)
+            return uast.ForEach(varname, the_list, body)
+
         if self.token_iter.peek() == ("keyword", "while"):
             self.get_token("keyword", "while")
             cond = self.parse_expression()

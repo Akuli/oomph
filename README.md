@@ -29,10 +29,10 @@ Bugs:
 
 Missing features needed to write the oomph compiler in oomph:
 - multiple files
-- foreach
 - io
 
 Other missing features:
+- automaticly turn `x` into `new SomeUnion(x)` when needed
 - forward-declaring a class
 - automatic dedenting in multiline strings
 - `case Foo, Bar:`

@@ -26,8 +26,10 @@ _TOKEN_REGEX = r'''
         | if
         | elif
         | else
-        | for
         | while
+        | for
+        | foreach
+        | of
         | continue
         | break
     ) \b
