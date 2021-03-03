@@ -135,13 +135,6 @@ class Loop(Statement):
 
 
 @dataclass(eq=False)
-class ForEach(Statement):
-    varname: str
-    list: Expression
-    body: List[Statement]
-
-
-@dataclass(eq=False)
 class Switch(Statement):
     varname: str
     cases: Dict[Type, List[Statement]]

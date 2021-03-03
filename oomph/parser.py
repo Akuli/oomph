@@ -12,6 +12,7 @@ _T = TypeVar("_T")
 class _Parser:
     def __init__(self, token_iter: Iterator[Tuple[str, str]]):
         self.token_iter = more_itertools.peekable(token_iter)
+        self.foreach_counter = 0
 
     def get_token(
         self,
@@ -221,6 +222,12 @@ class _Parser:
         self.get_token("end_block", "")
         return result
 
+    def parse_block_of_statements(self) -> List[uast.Statement]:
+        result = []
+        for statement_list in self.parse_block(self.parse_statement):
+            result.extend(statement_list)
+        return result
+
     def parse_oneline_ish_statement(self) -> uast.Statement:
         if self.token_iter.peek() == ("keyword", "let"):
             self.get_token("keyword", "let")
@@ -262,29 +269,63 @@ class _Parser:
     def parse_case(self) -> Tuple[uast.Type, List[uast.Statement]]:
         self.get_token("keyword", "case")
         the_type = self.parse_type()
-        body = self.parse_block(self.parse_statement)
+        body = self.parse_block_of_statements()
         return (the_type, body)
 
-    def parse_statement(self) -> uast.Statement:
+    def foreach_loop_to_for_loop(
+        self, varname: str, the_list: uast.Expression, body: List[uast.Statement]
+    ) -> List[uast.Statement]:
+        list_var = f"__foreach_list_{self.foreach_counter}"
+        index_var = f"__foreach_index_{self.foreach_counter}"
+        self.foreach_counter += 1
+
+        let: uast.Statement = uast.Let(
+            varname,
+            uast.Call(
+                uast.GetAttribute(uast.GetVar(list_var), "get"),
+                [uast.GetVar(index_var)],
+            ),
+        )
+        return [
+            uast.Let(index_var, uast.IntConstant(0)),
+            uast.Let(list_var, the_list),
+            uast.Loop(
+                None,
+                uast.BinaryOperator(
+                    uast.GetVar(index_var),
+                    "<",
+                    uast.Call(uast.GetAttribute(uast.GetVar(list_var), "length"), []),
+                ),
+                uast.Assign(
+                    index_var,
+                    uast.BinaryOperator(
+                        uast.GetVar(index_var), "+", uast.IntConstant(1)
+                    ),
+                ),
+                [let] + body,
+            ),
+        ]
+
+    def parse_statement(self) -> List[uast.Statement]:
         if self.token_iter.peek() == ("keyword", "if"):
             self.get_token("keyword", "if")
             condition = self.parse_expression()
-            body = self.parse_block(self.parse_statement)
+            body = self.parse_block_of_statements()
             ifs = [(condition, body)]
 
             while self.token_iter.peek() == ("keyword", "elif"):
                 self.get_token("keyword", "elif")
                 condition = self.parse_expression()
-                body = self.parse_block(self.parse_statement)
+                body = self.parse_block_of_statements()
                 ifs.append((condition, body))
 
             if self.token_iter.peek() == ("keyword", "else"):
                 self.get_token("keyword", "else")
-                else_body = self.parse_block(self.parse_statement)
+                else_body = self.parse_block_of_statements()
             else:
                 else_body = []
 
-            return uast.If(ifs, else_body)
+            return [uast.If(ifs, else_body)]
 
         if self.token_iter.peek() == ("keyword", "for"):
             self.get_token("keyword", "for")
@@ -305,32 +346,32 @@ class _Parser:
                 if self.token_iter.peek() == ("op", ";")
                 else self.parse_oneline_ish_statement()
             )
-            body = self.parse_block(self.parse_statement)
-            return uast.Loop(init, cond, incr, body)
+            body = self.parse_block_of_statements()
+            return [uast.Loop(init, cond, incr, body)]
 
         if self.token_iter.peek() == ("keyword", "foreach"):
             self.get_token("keyword", "foreach")
             varname = self.get_token("identifier")[1]
             self.get_token("keyword", "of")
             the_list = self.parse_expression()
-            body = self.parse_block(self.parse_statement)
-            return uast.ForEach(varname, the_list, body)
+            body = self.parse_block_of_statements()
+            return self.foreach_loop_to_for_loop(varname, the_list, body)
 
         if self.token_iter.peek() == ("keyword", "while"):
             self.get_token("keyword", "while")
             cond = self.parse_expression()
-            body = self.parse_block(self.parse_statement)
-            return uast.Loop(None, cond, None, body)
+            body = self.parse_block_of_statements()
+            return [uast.Loop(None, cond, None, body)]
 
         if self.token_iter.peek() == ("keyword", "switch"):
             self.get_token("keyword", "switch")
             varname = self.get_token("identifier")[1]
             cases = self.parse_block(self.parse_case)
-            return uast.Switch(varname, dict(cases))
+            return [uast.Switch(varname, dict(cases))]
 
         result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
-        return result
+        return [result]
 
     def parse_type(self) -> uast.Type:
         name = self.get_token("identifier")[1]
@@ -357,9 +398,7 @@ class _Parser:
         else:
             returntype = self.parse_type()
 
-        return uast.FuncDef(
-            name, args, returntype, self.parse_block(self.parse_statement)
-        )
+        return uast.FuncDef(name, args, returntype, self.parse_block_of_statements())
 
     def parse_method(self) -> uast.FuncDef:
         self.get_token("keyword", "meth")
