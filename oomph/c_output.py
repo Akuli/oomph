@@ -17,6 +17,7 @@ class _FunctionEmitter:
     def __init__(self, file_emitter: _FileEmitter) -> None:
         self.file_emitter = file_emitter
         self.before_body = ""
+        self.after_body = ""
         self.name_mapping: Dict[str, str] = {}  # values are names in c
 
     def declare_local_var(self, the_type: Type) -> str:
@@ -41,14 +42,11 @@ class _FunctionEmitter:
         # and put them to temporary variables, then do the call with the
         # temporary variables as arguments.
         varnames = [self.declare_local_var(arg.type) for arg in args]
-        return (
-            "("
-            + " ".join(
-                f"{var} = ({self.emit_expression(arg)}),"
-                for var, arg in zip(varnames, args)
-            )
-            + f"{func}({','.join(varnames)}))"
+        comma_exprs = " ".join(
+            f"{var} = ({self.emit_expression(arg)}),"
+            for var, arg in zip(varnames, args)
         )
+        return f"( {comma_exprs} {func} ({','.join(varnames)}) )"
 
     def emit_expression(self, ast: tast.Expression) -> str:
         if isinstance(ast, tast.StringConstant):
@@ -139,31 +137,31 @@ class _FunctionEmitter:
             return "goto out;"
 
         if isinstance(ast, tast.If):
-            return (
-                ("if (%s) {\n\t" % self.emit_expression(ast.condition))
-                + "".join(self.emit_statement(s) for s in ast.then)
-                + "} else {\n\t"
-                + "".join(self.emit_statement(s) for s in ast.otherwise)
-                + "}\n\t"
-            )
+            return f"""
+            if ({self.emit_expression(ast.condition)}) {{
+                {"".join(self.emit_statement(s) for s in ast.then)}
+            }} else {{
+                {"".join(self.emit_statement(s) for s in ast.otherwise)}
+            }}
+            """
 
         if isinstance(ast, tast.Loop):
-            # Can't use C's for loop because it's limited to one statement
-            return (
-                "".join(self.emit_statement(s) for s in ast.init)
-                + ("while (%s) {\n\t" % self.emit_expression(ast.cond))
-                + "".join(self.emit_statement(s) for s in ast.body)
-                + self.emit_label(ast.loop_id)
-                + "".join(self.emit_statement(s) for s in ast.incr)
-                + "}\n\t"
-            )
+            # While loop because I couldn't get C's for loop to work here
+            return f"""
+            {"".join(self.emit_statement(s) for s in ast.init)}
+            while ({self.emit_expression(ast.cond)}) {{
+                {"".join(self.emit_statement(s) for s in ast.body)}
+                {self.emit_label(ast.loop_id)}  // oomph 'continue' jumps here
+                {"".join(self.emit_statement(s) for s in ast.incr)}
+            }}
+            """
 
         if isinstance(ast, tast.Continue):
             # Can't use C's continue because continue must emit_funcdef condition
-            return f"goto {ast.loop_id};\n\t"
+            return f"goto {ast.loop_id};"
 
         if isinstance(ast, tast.Break):
-            return "break;\n\t"
+            return "break;"
 
         if isinstance(ast, tast.Switch):
             assert isinstance(ast.vartype, UnionType)
@@ -199,43 +197,44 @@ class _FunctionEmitter:
         c_argnames = more_itertools.take(len(funcdef.argnames), _varnames)
         self.name_mapping.update(zip(funcdef.argnames, c_argnames))
 
-        body = (
-            (
-                ""
-                if funcdef.type.returntype is None
-                else f"{self.file_emitter.emit_type(funcdef.type.returntype)} retval;\n\t"
-            )
-            + "".join(
-                "%s %s = %s;\n\t"
-                % (
-                    self.file_emitter.emit_type(reftype),
-                    refname,
-                    "{0}" if isinstance(reftype, UnionType) else "NULL",
-                )
-                for refname, reftype in funcdef.refs
-            )
-            + "".join(self.emit_statement(statement) for statement in funcdef.body)
-            + self.emit_label("out")
-            + "".join(
-                self.file_emitter.emit_decref(refname, reftype)
-                for refname, reftype in reversed(funcdef.refs)
-            )
-            + ("" if funcdef.type.returntype is None else "return retval;\n\t")
+        arg_declarations = ",".join(
+            self.file_emitter.emit_type(the_type) + " " + name
+            for the_type, name in zip(funcdef.type.argtypes, c_argnames)
         )
-        return (
-            f"{self.file_emitter.emit_type(funcdef.type.returntype)} {c_name}("
-            + (
-                ",".join(
-                    self.file_emitter.emit_type(the_type) + " " + name
-                    for the_type, name in zip(funcdef.type.argtypes, c_argnames)
-                )
-                or "void"
+        ref_declarations = "".join(
+            "%s %s = %s;\n\t"
+            % (
+                self.file_emitter.emit_type(reftype),
+                refname,
+                "{0}" if isinstance(reftype, UnionType) else "NULL",
             )
-            + ") {\n\t"
-            + self.before_body
-            + body
-            + "\n}\n\n"
+            for refname, reftype in funcdef.refs
         )
+        decrefs = "".join(
+            self.file_emitter.emit_decref(refname, reftype)
+            for refname, reftype in reversed(funcdef.refs)
+        )
+        body_statements = "".join(self.emit_statement(s) for s in funcdef.body)
+
+        if funcdef.type.returntype is not None:
+            self.before_body += (
+                f"{self.file_emitter.emit_type(funcdef.type.returntype)} retval;"
+            )
+            self.after_body += "return retval;"
+
+        return f"""
+        {self.file_emitter.emit_type(funcdef.type.returntype)}
+        {c_name}({arg_declarations or "void"})
+        {{
+            {self.before_body}
+            {ref_declarations}
+            {body_statements}
+
+        {self.emit_label("out")}
+            {decrefs}
+            {self.after_body}
+        }}
+        """
 
 
 def _format_byte(byte: int) -> str:
@@ -447,12 +446,12 @@ class _FileEmitter:
             # followed by utf8, followed by zero byte
             # TODO: is this cross-platform enough?
             struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
-            self.beginning += (
-                f"{self.emit_type(STRING)} {self.strings[value]} = (void*)(unsigned char[])"
-                + "{"
-                + ", ".join(map(_format_byte, struct_bytes))
-                + "};\n"
-            )
+
+            array_content = ", ".join(map(_format_byte, struct_bytes))
+            self.beginning += f"""
+            {self.emit_type(STRING)} {self.strings[value]}
+            = (void*)(unsigned char[]){{ {array_content} }};
+            """
         return self.strings[value]
 
     def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> str:
@@ -462,48 +461,60 @@ class _FileEmitter:
             )
 
         if isinstance(top_statement, tast.ClassDef):
-            return (
-                # struct
-                ("struct class_%s {\n" % self.get_type_c_name(top_statement.type))
-                + "\tREFCOUNT_HEADER\n\t"
-                + "".join(
+            struct_members = "".join(
                     f"{self.emit_type(the_type)} memb_{name};\n\t"
                     for the_type, name in top_statement.type.members
                 )
-                + "\n};\n\n"
-                # constructor
-                + f"{self.emit_type(top_statement.type)} ctor_{self.get_type_c_name(top_statement.type)}("
-                + ",".join(
+            constructor_args = ",".join(
                     f"{self.emit_type(the_type)} var_{name}"
                     for the_type, name in top_statement.type.members
                 )
-                + ") {\n\t"
-                + f"{self.emit_type(top_statement.type)} obj = malloc(sizeof(*obj));\n\t"
-                + "obj->refcount = 1;\n\t"
-                + "".join(
-                    f"obj->memb_{name} = var_{name};"
-                    + self.emit_incref(f"var_{name}", the_type)
-                    for the_type, name in top_statement.type.members
-                )
-                + "return obj;\n}\n\n"
-                # destructor
-                + f"void dtor_{self.get_type_c_name(top_statement.type)}(void *ptr)"
-                + "{"
-                + f"\n\tstruct class_{self.get_type_c_name(top_statement.type)} *obj = ptr;\n\t"
-                + "".join(
+            member_assignments = "".join(
+                f"obj->memb_{name} = var_{name};"
+                for the_type, name in top_statement.type.members
+            )
+            member_increfs = "".join(
+                self.emit_incref(f"var_{name}", the_type)
+                for the_type, name in top_statement.type.members
+            )
+            member_decrefs = "".join(
                     self.emit_decref(f"obj->memb_{nam}", typ)
                     for typ, nam in top_statement.type.members
                 )
-                + "free(obj);\n}\n\n"
-                # methods
-                + "".join(
+            methods = "".join(
                     _FunctionEmitter(self).emit_funcdef(
                         method,
                         f"meth_{self.get_type_c_name(top_statement.type)}_{method.name}",
                     )
                     for method in top_statement.body
                 )
-            )
+
+            name = self.get_type_c_name(top_statement.type)
+            return f"""
+            struct class_{name} {{
+                REFCOUNT_HEADER
+                {struct_members}
+            }};
+
+            {self.emit_type(top_statement.type)} ctor_{name}({constructor_args})
+            {{
+                {self.emit_type(top_statement.type)} obj = malloc(sizeof(*obj));
+                assert(obj);
+                obj->refcount = 1;
+                {member_assignments}
+                {member_increfs}
+                return obj;
+            }}
+
+            void dtor_{name}(void *ptr)
+            {{
+                struct class_{name} *obj = ptr;
+                {member_decrefs}
+                free(obj);
+            }}
+
+            {methods}
+            """
 
         if isinstance(top_statement, tast.UnionDef):
             assert top_statement.type.type_members is not None
