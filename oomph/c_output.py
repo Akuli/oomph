@@ -551,12 +551,10 @@ class _FileEmitter:
                 for index, the_type in enumerate(top_statement.type.type_members)
             )
             return f"""
-            union union_{name} {{
-                {union_members}
-            }};
-
             struct class_{name} {{
-                union union_{name} val;
+                union {{
+                    {union_members}
+                }} val;
                 short membernum;
             }};
 
