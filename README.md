@@ -23,9 +23,8 @@ python3 -m oomph tests/hello.oomph   # compile and run hello world file
 - Some things are implemented in the language itself (see `stdlib.oomph`)
 - Refcounted types are named `LikeThis`, non-refcounted pass-by-value types `like_this`
 
-Bugs:
+Known bugs:
 - ref cycles are not prevented or garbage collected
-- maybe still a few reference counting bugs left, not sure
 
 Missing features needed to write the oomph compiler in oomph:
 - multiple files
@@ -33,18 +32,13 @@ Missing features needed to write the oomph compiler in oomph:
 
 Other missing features:
 - automaticly turn `x` into `new SomeUnion(x)` when needed
-- forward-declaring a class
 - automatic dedenting in multiline strings
 - `case Foo, Bar:`
-- get rid of `-> void`?
-- more agressively prevent variables from leaking: if variable defined inside 'if', not visible outside by default?
 - `r` strings
-- negative slices?
-- `Str.replace(mapping)` (I wish python had this)
 - `if cond then a else b`
 - named arguments
 - default values of arguments
-- do we want more implicit int to float conversion? `print_float(2)`
+- do we want more implicit int to float conversion? `sleep(2)` where `sleep` takes a float
 - string methods
     - reverse
     - find occurrence of substring
@@ -52,7 +46,7 @@ Other missing features:
         - all occurrences
         - only occurrence, failing if multiple are found
     - upper and lower (need unicode lib?)
-- should `self` be keyword?
+- should `self` be a keyword?
 - chained equalities `a == b == c`
 - `x++`
 - `+=`
@@ -63,6 +57,7 @@ Other missing features:
     - defining generic classes or functions
     - tuples
     - mappings
+        - `Str.replace(mapping)` (I wish python had this)
 - automatic types
     - `null[Str]` --> `null[auto]`
     - `null[auto]` --> `null`
@@ -73,9 +68,34 @@ Other missing features:
     - Idea 2: optional interpreted as boolean tells whether it's null, and 
       when it isn't, variables magically change type to get rid of `optional`
         - Leads to `while x`, `if x` and `assert x` (or `assert(x)`)
-- non-ref-counted pass-by-value classes
-- for pointer types, use C `NULL` to represent `null`?
-- avoid using lots of `strlen`
+- defining non-ref-counted pass-by-value classes
 - `starts_with` + `slice` string method
 - `list + list`
 - `list.starts_with` and `ends_with`
+- exceptions (easiest to implement similar to union?)
+
+Design questions to (re)think:
+- get rid of `-> void`?
+- should string lengths and indexing be done in unicode code points instead of
+  utf-8 bytes?
+    - Advantage: easier to understand
+    - Advantage: slicing or indexing never fails due to being in the middle of a
+      character
+    - Disadvantage: slightly slower in programs that input and output utf-8 strings
+        - Maybe store strings as utf-8, but somehow hopefully-not-shittily make
+          indexing work with unicode code points?
+- Should classes be named more consistently? Having `int` and `Str` feels weird
+  (and too much like Java), even though there is a reason for doing it.
+- More agressively prevent variables from leaking: if variable defined inside
+  `if`, not visible outside by default? Or at least can be overwritten with
+  another `let`?
+- Negative indexes? The downside is that `thing[-n:]` (in Python syntax) doesn't do
+  what you would expect when `n=0`.
+
+Optimization ideas:
+- avoiding allocations when an object isn't passed around and no reference
+  counting is actually needed
+- concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
+    - `List[str].join` and various other functions
+- caching `strlen` result
+- for pointer types, use C `NULL` to represent `null`, instead of a funny union
