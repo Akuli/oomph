@@ -525,7 +525,9 @@ class _FileEmitter:
                 + "}\n\n"
             )
 
-            # decreffer
+            # To decref unions, we need to know the value of membernum and
+            # decref the correct member of the union. This union-specific
+            # function handles that.
             self.ending += (
                 f"void decref_{name}(struct class_{name} obj) {{\n"
                 + "\tswitch(obj.membernum) {\n"
