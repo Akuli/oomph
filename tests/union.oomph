@@ -3,6 +3,7 @@ union Thing:
     Bar
     Baz
 
+# Can be defined after the union
 class Foo(int foo_thing)
 class Bar()
 class Baz()

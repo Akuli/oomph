@@ -131,10 +131,13 @@ class _FunctionEmitter:
             )
 
         if isinstance(ast, tast.Return):
-            if ast.value is not None and ast.value.type.refcounted:
-                return f"retval = {self.emit_expression(ast.value)}; incref(retval); goto out;\n\t"
             if ast.value is not None:
-                return f"retval = {self.emit_expression(ast.value)}; goto out;\n\t"
+                return (
+                    f"retval = {self.emit_expression(ast.value)};"
+                    + self.file_emitter.emit_incref("retval", ast.value.type)
+                    + ";"
+                    + "goto out;\n\t"
+                )
             return "goto out;\n\t"
 
         if isinstance(ast, tast.If):
@@ -201,7 +204,12 @@ class _FunctionEmitter:
                 else f"{self.file_emitter.emit_type(funcdef.type.returntype)} retval;\n\t"
             )
             + "".join(
-                f"{self.file_emitter.emit_type(reftype)} {refname} = NULL;\n\t"
+                "%s %s = %s;\n\t"
+                % (
+                    self.file_emitter.emit_type(reftype),
+                    refname,
+                    "{0}" if isinstance(reftype, UnionType) else "NULL",
+                )
                 for refname, reftype in funcdef.refs
             )
             + "".join(self.emit_statement(statement) for statement in funcdef.body)
@@ -247,10 +255,9 @@ struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
 %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
 {
     assert(!opt.isnull);
-#if %(is_refcounted)s
-    incref(opt.value);
-#endif
-    return opt.value;
+    %(itemtype)s val = opt.value;
+    %(incref_val)s;
+    return val;
 }
 
 bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
@@ -295,10 +302,10 @@ struct class_%(type_cname)s *ctor_%(type_cname)s(void)
 void dtor_%(type_cname)s (void *ptr)
 {
     struct class_%(type_cname)s *self = ptr;
-#if %(is_refcounted)s
-    for (int64_t i = 0; i < self->len; i++)
-        decref(self->data[i], dtor_%(itemtype_cname)s);
-#endif
+    for (int64_t i = 0; i < self->len; i++) {
+        %(itemtype)s val = self->data[i];
+        %(decref_val)s;
+    }
     if (self->data != self->smalldata)
         free(self->data);
     free(self);
@@ -327,18 +334,15 @@ void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s va
 {
     class_%(type_cname)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
-#if %(is_refcounted)s
-    incref(val);
-#endif
+    %(incref_val)s;
 }
 
 %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
-#if %(is_refcounted)s
-    incref(self->data[i]);
-#endif
-    return self->data[i];
+    %(itemtype)s val = self->data[i];
+    %(incref_val)s;
+    return val;
 }
 
 int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
@@ -373,9 +377,16 @@ class _FileEmitter:
         self.beginning = '#include "lib/oomph.h"\n\n'
         self.generic_type_names: Dict[Type, str] = {}
 
+    def emit_incref(self, c_expression: str, the_type: Type) -> str:
+        if the_type.refcounted:
+            access = ".val.item0" if isinstance(the_type, UnionType) else ""
+            return f"incref(({c_expression}) {access})"
+        return "(void)0"
+
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
         if the_type.refcounted:
-            return f"decref({c_expression}, dtor_{self.get_type_c_name(the_type)})"
+            access = ".val.item0" if isinstance(the_type, UnionType) else ""
+            return f"decref(({c_expression}) {access}, dtor_{self.get_type_c_name(the_type)})"
         return "(void)0"
 
     def get_type_c_name(self, the_type: Type) -> str:
@@ -385,14 +396,16 @@ class _FileEmitter:
         try:
             return self.generic_type_names[the_type]
         except KeyError:
-            type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(the_type.generic_origin.arg)}"
+            itemtype = the_type.generic_origin.arg
+            type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
             self.generic_type_names[the_type] = type_cname
             self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
                 "type_cname": type_cname,
-                "itemtype": self.emit_type(the_type.generic_origin.arg),
-                "itemtype_cname": self.get_type_c_name(the_type.generic_origin.arg),
+                "itemtype": self.emit_type(itemtype),
+                "itemtype_cname": self.get_type_c_name(itemtype),
                 "itemtype_string": the_type.name,
-                "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
+                "incref_val": self.emit_incref("val", itemtype),
+                "decref_val": self.emit_decref("val", itemtype),
             }
             self.beginning += "\n"
             return type_cname
@@ -406,7 +419,7 @@ class _FileEmitter:
             return "double"
         if the_type is BOOL:
             return "bool"
-        if the_type.refcounted:
+        if the_type.refcounted and not isinstance(the_type, UnionType):
             return f"struct class_{self.get_type_c_name(the_type)} *"
         return f"struct class_{self.get_type_c_name(the_type)}"
 
@@ -455,7 +468,8 @@ class _FileEmitter:
                 + "obj->refcount = 1;\n\t"
                 + "".join(
                     f"obj->memb_{name} = var_{name};"
-                    + (f"incref(var_{name});" if the_type.refcounted else "")
+                    + self.emit_incref(f"var_{name}", the_type)
+                    + ";"
                     + "\n\t"
                     for the_type, name in top_statement.type.members
                 )
@@ -517,6 +531,11 @@ class _FileEmitter:
                 + '\tstring_concat_inplace(&res, ")");\n'
                 + "\tdecref(valstr, dtor_Str);\n"
                 + "\treturn res;\n"
+                + "}\n\n"
+                # destructor method
+                + "#include <stdio.h>\n"
+                + f"void dtor_{name}(void *arg) {{\n"
+                + '\tprintf("FIXME: no way to access union member here\\n");\n'
                 + "}\n\n"
             )
 
