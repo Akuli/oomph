@@ -42,8 +42,7 @@ class UnionType(Type):
     type_members: Optional[List[Type]]
 
     def __init__(self, name: str):
-        # refcounted-ness is not used
-        super().__init__(name, False)
+        super().__init__(name, True)
         self.type_members = None  # to be set later
         self.methods["to_string"] = FunctionType([self], STRING)
 

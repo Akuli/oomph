@@ -12,7 +12,6 @@ _TOKEN_REGEX = r'''
         | class
         | union
         | switch
-        | as
         | case
         | generic
         | new

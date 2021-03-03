@@ -182,7 +182,7 @@ class _FunctionEmitter:
             self.name_mapping[ast.varname] = union_var
 
             return (
-                f"\tswitch({union_var}.membernum)"
+                f"switch({union_var}.membernum)"
                 + "{\n\t"
                 + "".join(body_codes)
                 + "default: assert(0);\n\t}\n\t"

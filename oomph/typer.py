@@ -208,10 +208,10 @@ class _FunctionOrMethodTyper:
                 union_type = self.file_typer.get_type(ast.func.type)
                 if isinstance(union_type, UnionType):
                     type_members = self.file_typer.post_process_union(union_type)
-                    args = [self.do_expression(arg) for arg in ast.args]
-                    assert len(args) == 1
-                    assert args[0].type in type_members
-                    return tast.InstantiateUnion(union_type, args[0])
+                    assert len(ast.args) == 1
+                    arg = self.do_expression(ast.args[0])
+                    assert arg.type in type_members
+                    return tast.InstantiateUnion(union_type, arg)
 
             call = self.do_call(ast)
             assert not isinstance(call, tast.VoidCall)
@@ -270,11 +270,11 @@ class _FunctionOrMethodTyper:
             return []
 
         if isinstance(ast, uast.Continue):
-            assert self.loop_stack[-1] is not None
+            assert self.loop_stack[-1] is not None, "can't continue in switch"
             return [tast.Continue(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Break):
-            assert self.loop_stack[-1] is not None
+            assert self.loop_stack[-1] is not None, "can't break in switch"
             return [tast.Break(self.loop_stack[-1])]
 
         if isinstance(ast, uast.Return):
