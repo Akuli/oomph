@@ -8,8 +8,7 @@ class Bar()
 class Baz()
 
 func main() -> void:
-    pass
-#    let u = new FooBarBaz(new Foo())
+    let u = new FooBarBaz(new Foo(69))
 #    switch new FooBarBaz(new Foo()) as foobarbaz:
 #        case Foo:
 #            print("Foo")

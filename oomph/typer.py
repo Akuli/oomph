@@ -92,9 +92,7 @@ class _FunctionOrMethodTyper:
         else:
             args = [self.do_expression(arg) for arg in ast.args]
 
-        assert len(args) == len(func.type.argtypes)
-        for arg, argtype in zip(args, func.type.argtypes):
-            assert arg.type == argtype, (arg.type, argtype)
+        assert [arg.type for arg in args] == func.type.argtypes
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
@@ -206,6 +204,16 @@ class _FunctionOrMethodTyper:
                 )
             return result
         if isinstance(ast, uast.Call):
+            if isinstance(ast.func, uast.Constructor):
+                union_type = self.file_typer.get_type(ast.func.type)
+                if isinstance(union_type, UnionType):
+                    self.file_typer.post_process_union(union_type)
+                    assert union_type.types is not None
+                    args = [self.do_expression(arg) for arg in ast.args]
+                    assert len(args) == 1
+                    assert args[0].type in union_type.types
+                    return tast.InstantiateUnion(union_type, args[0])
+
             call = self.do_call(ast)
             assert not isinstance(call, tast.VoidCall)
             return call
@@ -355,7 +363,7 @@ class _FileTyper:
         self.variables = builtin_variables.copy()
 
         # Union members don't need to exist when union is defined (allows nestedness)
-        self._union_laziness: List[Tuple[UnionType, List[uast.Type]]] = []
+        self.union_laziness: Dict[UnionType, List[uast.Type]] = {}
 
     def get_type(self, raw_type: uast.Type) -> tast.Type:
         if raw_type.generic is None:
@@ -426,13 +434,14 @@ class _FileTyper:
         if isinstance(top_statement, uast.UnionDef):
             union_type = UnionType(top_statement.name)
             self._types[top_statement.name] = union_type
-            self._union_laziness.append((union_type, top_statement.types))
+            self.union_laziness[union_type] = top_statement.types
             return tast.UnionDef(union_type)
 
         raise NotImplementedError(top_statement)
 
-    def post_process_unions(self) -> None:
-        for union, types in self._union_laziness:
+    def post_process_union(self, union: UnionType) -> None:
+        if union.types is None:
+            types = self.union_laziness.pop(union)
             union.set_types([self.get_type(t) for t in types])
 
 
@@ -441,5 +450,6 @@ def convert_program(
 ) -> List[tast.ToplevelStatement]:
     typer = _FileTyper()
     result = [typer.do_toplevel_statement(top) for top in program]
-    typer.post_process_unions()
+    for key in list(typer.union_laziness):
+        typer.post_process_union(key)
     return result

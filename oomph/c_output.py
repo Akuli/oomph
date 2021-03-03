@@ -89,6 +89,15 @@ class _FunctionEmitter:
             raise NotImplementedError(
                 "method objects without immediate calling don't work yet"
             )
+        if isinstance(ast, tast.InstantiateUnion):
+            assert ast.type.types is not None
+            i = ast.type.types.index(ast.value.type)
+            return "((%s){ { .item%d = %s }, %d })" % (
+                self.file_emitter.emit_type(ast.type),
+                i,
+                self.emit_expression(ast.value),
+                i,
+            )
         raise NotImplementedError(ast)
 
     def emit_label(self, name: str) -> str:
@@ -457,6 +466,13 @@ class _FileEmitter:
                     for index, the_type in enumerate(top_statement.type.types)
                 )
                 + "};\n\n"
+                + (
+                    "struct class_%s { union union_%s val; int which; };\n\n"
+                    % (
+                        self.get_type_c_name(top_statement.type),
+                        self.get_type_c_name(top_statement.type),
+                    )
+                )
             )
 
         raise NotImplementedError(top_statement)

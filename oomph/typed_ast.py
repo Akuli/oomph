@@ -126,6 +126,12 @@ class ReturningCall(Expression, Statement):
 
 
 @dataclass(eq=False)
+class InstantiateUnion(Expression):
+    type: UnionType  # more specific than Expression.type
+    value: Expression
+
+
+@dataclass(eq=False)
 class CreateLocalVar(Statement):
     varname: str
     value: Expression

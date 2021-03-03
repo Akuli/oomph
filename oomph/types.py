@@ -51,7 +51,8 @@ class UnionType(Type):
 
     def set_types(self, types: List[Type]) -> None:
         assert len(types) >= 2
-        assert all(t.refcounted for t in types)
+        assert len(types) == len(set(types))  # no duplicates
+        assert all(t.refcounted for t in types)  # TODO
         assert self.types is None
         self.types = types
 
