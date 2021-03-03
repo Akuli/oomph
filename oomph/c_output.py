@@ -91,12 +91,12 @@ class _FunctionEmitter:
             )
         if isinstance(ast, tast.InstantiateUnion):
             assert ast.type.type_members is not None
-            i = ast.type.type_members.index(ast.value.type)
+            membernum = ast.type.type_members.index(ast.value.type)
             return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
                 self.file_emitter.emit_type(ast.type),
-                i,
+                membernum,
                 self.emit_expression(ast.value),
-                i,
+                membernum,
             )
         raise NotImplementedError(ast)
 
@@ -392,9 +392,7 @@ class _FileEmitter:
                 "itemtype": self.emit_type(the_type.generic_origin.arg),
                 "itemtype_cname": self.get_type_c_name(the_type.generic_origin.arg),
                 "itemtype_string": the_type.name,
-                "is_refcounted": (
-                    "1" if the_type.generic_origin.arg.refcounted else "0"
-                ),
+                "is_refcounted": "1" if the_type.generic_origin.arg.refcounted else "0",
             }
             self.beginning += "\n"
             return type_cname
