@@ -18,7 +18,7 @@ function check()
     local out=test_out/$(basename $file | cut -d. -f1).txt
     if [[ $file == tests/*_error.oomph ]]; then
         local expect_fail=yes
-        local command="python3 -m oomph --quiet $file"
+        local command="python3 -m oomph $file"
     else
         local expect_fail=no
         local command="python3 -m oomph $opts $file"

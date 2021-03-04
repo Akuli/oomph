@@ -58,7 +58,6 @@ def main() -> None:
     arg_parser.add_argument("infile", type=argparse.FileType("r", encoding="utf-8"))
     arg_parser.add_argument("--valgrind", action="store_true")
     arg_parser.add_argument("--c-code", action="store_true")
-    arg_parser.add_argument("--quiet", action="store_true")
     args = arg_parser.parse_args()
 
     input_path = pathlib.Path(args.infile.name).absolute()
@@ -73,29 +72,14 @@ def main() -> None:
         exe_path = pathlib.Path.cwd() / ".oomph-cache" / input_path.stem
         exe_path.parent.mkdir(exist_ok=True)
 
-    compile_deps = (
-        [input_path, project_root / "stdlib.oomph"]
-        + list(python_code_dir.rglob("*.py"))
-        + list(project_root.glob("obj/*"))
-    )
-    try:
-        exe_mtime = exe_path.stat().st_mtime
-        skip_recompiling = all(exe_mtime > dep.stat().st_mtime for dep in compile_deps)
-    except FileNotFoundError:
-        skip_recompiling = False
+    with invoke_c_compiler(exe_path) as compiler_process:
+        assert compiler_process.stdin is not None
+        produce_c_code(args.infile, compiler_process.stdin)
+        compiler_process.stdin.close()
 
-    if not skip_recompiling:
-        if not args.quiet:
-            print("Must compile before running...", file=sys.stderr)
-
-        with invoke_c_compiler(exe_path) as compiler_process:
-            assert compiler_process.stdin is not None
-            produce_c_code(args.infile, compiler_process.stdin)
-            compiler_process.stdin.close()
-
-            status = compiler_process.wait()
-            if status != 0:
-                sys.exit(status)
+        status = compiler_process.wait()
+        if status != 0:
+            sys.exit(status)
 
     if args.valgrind:
         command = [
