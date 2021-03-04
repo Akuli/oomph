@@ -141,12 +141,12 @@ class Switch(Statement):
 
 
 @dataclass(eq=False)
-class ToplevelStatement:
+class ToplevelDeclaration:
     pass
 
 
 @dataclass(eq=False)
-class FuncDef(ToplevelStatement):
+class FuncDef(ToplevelDeclaration):
     name: str
     args: List[Tuple[Type, str]]
     returntype: Optional[Type]
@@ -154,13 +154,13 @@ class FuncDef(ToplevelStatement):
 
 
 @dataclass(eq=False)
-class ClassDef(ToplevelStatement):
-    type: Type
+class ClassDef(ToplevelDeclaration):
+    name: str
     members: List[Tuple[Type, str]]
     body: List[FuncDef]
 
 
 @dataclass(eq=False)
-class UnionDef(ToplevelStatement):
+class UnionDef(ToplevelDeclaration):
     name: str
     type_members: List[Type]

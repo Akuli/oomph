@@ -421,45 +421,44 @@ class _FileTyper:
             typer.reflist,
         )
 
-    def do_toplevel_statement(
+    def do_toplevel_declaration(
         self,
-        top_statement: uast.ToplevelStatement,
-    ) -> tast.ToplevelStatement:
-        if isinstance(top_statement, uast.FuncDef):
-            return self._do_funcdef(top_statement, create_variable=True)
+        top_declaration: uast.ToplevelDeclaration,
+    ) -> tast.ToplevelDeclaration:
+        if isinstance(top_declaration, uast.FuncDef):
+            return self._do_funcdef(top_declaration, create_variable=True)
 
-        if isinstance(top_statement, uast.ClassDef):
-            assert top_statement.type.generic is None
-            classtype = Type(top_statement.type.name, True)
-            assert top_statement.type.name not in self._types
-            self._types[top_statement.type.name] = classtype
+        if isinstance(top_declaration, uast.ClassDef):
+            classtype = Type(top_declaration.name, True)
+            assert top_declaration.name not in self._types
+            self._types[top_declaration.name] = classtype
             classtype.members.extend(
-                (self.get_type(typ), nam) for typ, nam in top_statement.members
+                (self.get_type(typ), nam) for typ, nam in top_declaration.members
             )
             classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
 
-            if "to_string" not in (method.name for method in top_statement.body):
-                top_statement.body.insert(
+            if "to_string" not in (method.name for method in top_declaration.body):
+                top_declaration.body.insert(
                     0,
                     _create_to_string_method(classtype),
                 )
 
             typed_method_defs = []
-            for method_def in top_statement.body:
-                method_def.args.insert(0, (top_statement.type, "self"))
+            for method_def in top_declaration.body:
+                method_def.args.insert(0, (uast.Type(top_declaration.name, None), "self"))
                 typed_def = self._do_funcdef(method_def, create_variable=False)
                 classtype.methods[method_def.name] = typed_def.type
                 typed_method_defs.append(typed_def)
 
             return tast.ClassDef(classtype, typed_method_defs)
 
-        if isinstance(top_statement, uast.UnionDef):
-            union_type = UnionType(top_statement.name)
-            self._types[top_statement.name] = union_type
-            self.union_laziness[union_type] = top_statement.type_members
+        if isinstance(top_declaration, uast.UnionDef):
+            union_type = UnionType(top_declaration.name)
+            self._types[top_declaration.name] = union_type
+            self.union_laziness[union_type] = top_declaration.type_members
             return tast.UnionDef(union_type)
 
-        raise NotImplementedError(top_statement)
+        raise NotImplementedError(top_declaration)
 
     def post_process_union(self, union: UnionType) -> List[Type]:
         if union.type_members is None:
@@ -471,10 +470,10 @@ class _FileTyper:
 
 
 def convert_program(
-    program: List[uast.ToplevelStatement],
-) -> List[tast.ToplevelStatement]:
+    program: List[uast.ToplevelDeclaration],
+) -> List[tast.ToplevelDeclaration]:
     typer = _FileTyper()
-    result = [typer.do_toplevel_statement(top) for top in program]
+    result = [typer.do_toplevel_declaration(top) for top in program]
     for key in list(typer.union_laziness):
         typer.post_process_union(key)
     return result

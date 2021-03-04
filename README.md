@@ -23,14 +23,20 @@ python3 -m oomph tests/hello.oomph   # compile and run hello world file
 - Some things are implemented in the language itself (see `stdlib.oomph`)
 - Refcounted types are named `LikeThis`, non-refcounted pass-by-value types `like_this`
 
+Docs:
+- [Syntax](docs/syntax.md)
+
 Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features needed to write the oomph compiler in oomph:
 - multiple files
 - io
+- `==` operator for optionals
 
 Other missing features:
+- trailing commas
+- newlines ignored inside parentheses
 - automaticly turn `x` into `new SomeUnion(x)` when needed
 - automatic dedenting in multiline strings
 - `case Foo, Bar:`

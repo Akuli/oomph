@@ -187,12 +187,12 @@ class Switch(Statement):
 
 
 @dataclass(eq=False)
-class ToplevelStatement:
+class ToplevelDeclaration:
     pass
 
 
 @dataclass(eq=False)
-class FuncDef(ToplevelStatement):
+class FuncDef(ToplevelDeclaration):
     name: str
     type: FunctionType
     argnames: List[str]
@@ -201,13 +201,13 @@ class FuncDef(ToplevelStatement):
 
 
 @dataclass(eq=False)
-class ClassDef(ToplevelStatement):
+class ClassDef(ToplevelDeclaration):
     type: Type
     body: List[FuncDef]
 
 
 @dataclass(eq=False)
-class UnionDef(ToplevelStatement):
+class UnionDef(ToplevelDeclaration):
     type: UnionType
 
 

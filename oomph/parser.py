@@ -82,7 +82,7 @@ class _Parser:
             return parts[0]
         return uast.StringFormatJoin(parts)
 
-    def parse_expression_without_operators(self) -> uast.Expression:
+    def parse_simple_expression(self) -> uast.Expression:
         result: uast.Expression
         if self.token_iter.peek()[0] == "oneline_string":
             result = self.do_string_formatting(
@@ -134,7 +134,7 @@ class _Parser:
     def parse_expression(self) -> uast.Expression:
         magic_list: List[Union[Tuple[int, str], uast.Expression]] = []
         magic_list.extend(self.get_unary_operators())
-        magic_list.append(self.parse_expression_without_operators())
+        magic_list.append(self.parse_simple_expression())
 
         while self.token_iter.peek() in {
             ("op", "+"),
@@ -153,7 +153,7 @@ class _Parser:
         }:
             magic_list.append((2, self.get_token()[1]))
             magic_list.extend(self.get_unary_operators())
-            magic_list.append(self.parse_expression_without_operators())
+            magic_list.append(self.parse_simple_expression())
 
         # A common python beginner mistake is writing "a and b or c", thinking it
         # means "a and (b or c)"
@@ -327,6 +327,12 @@ class _Parser:
 
             return [uast.If(ifs, else_body)]
 
+        if self.token_iter.peek() == ("keyword", "while"):
+            self.get_token("keyword", "while")
+            cond = self.parse_expression()
+            body = self.parse_block_of_statements()
+            return [uast.Loop(None, cond, None, body)]
+
         if self.token_iter.peek() == ("keyword", "for"):
             self.get_token("keyword", "for")
             init = (
@@ -357,12 +363,6 @@ class _Parser:
             body = self.parse_block_of_statements()
             return self.foreach_loop_to_for_loop(varname, the_list, body)
 
-        if self.token_iter.peek() == ("keyword", "while"):
-            self.get_token("keyword", "while")
-            cond = self.parse_expression()
-            body = self.parse_block_of_statements()
-            return [uast.Loop(None, cond, None, body)]
-
         if self.token_iter.peek() == ("keyword", "switch"):
             self.get_token("keyword", "switch")
             varname = self.get_token("identifier")[1]
@@ -391,9 +391,9 @@ class _Parser:
         name = self.get_token("identifier")[1]
         args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
 
-        if self.token_iter.peek() == ('op','->'):
+        if self.token_iter.peek() == ("op", "->"):
             self.get_token("op", "->")
-            returntype = self.parse_type()
+            returntype: Optional[uast.Type] = self.parse_type()
         else:
             returntype = None
 
@@ -408,7 +408,7 @@ class _Parser:
         self.get_token("op", "\n")
         return result
 
-    def parse_toplevel(self) -> uast.ToplevelStatement:
+    def parse_toplevel(self) -> uast.ToplevelDeclaration:
         if self.token_iter.peek() == ("keyword", "generic"):
             self.get_token("keyword", "generic")
             generic = True
@@ -422,14 +422,14 @@ class _Parser:
 
         if self.token_iter.peek() == ("keyword", "class"):
             self.get_token("keyword", "class")
-            the_type = self.parse_type()
+            name = self.get_token("identifier")[1]
             args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
             if self.token_iter.peek(None) == ("begin_block", ":"):
                 body = self.parse_block(self.parse_method)
             else:
                 body = []
                 self.get_token("op", "\n")
-            return uast.ClassDef(the_type, args, body)
+            return uast.ClassDef(name, args, body)
 
         if self.token_iter.peek() == ("keyword", "union"):
             assert not generic
@@ -441,7 +441,7 @@ class _Parser:
         raise NotImplementedError(self.token_iter.peek())
 
 
-def parse_file(code: str) -> List[uast.ToplevelStatement]:
+def parse_file(code: str) -> List[uast.ToplevelDeclaration]:
     parser = _Parser(tokenizer.tokenize(code))
     result = []
     while parser.token_iter:

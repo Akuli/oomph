@@ -1,7 +1,7 @@
 func main():
     print("""Hello world!
-This is a multiline string.
-Blah blah blah. Yadda yadda yadda.
+This is a "multiline string".
+Blah blah blah. Yadda yadda yadda. {"Some" + " " + "code"}.
 Lol""")
     let x = 1
     print("""This is another multiline string.

@@ -44,9 +44,9 @@ _TOKEN_REGEX = r'''
 )
 | (?P<multiline_string>
     """ (
-        [^{}"\\]            # Non-special character (newline allowed)
+        [^{}\\]             # Non-special character (newline allowed)
         | \\[{}t\\]         # \{ and friends, but no \n since that's confusing
-        | { [^{}"\n\\]* }   # Code between braces
+        | { [^{}\n\\]* }    # Code between braces
     )*? """
 )
 | (?P<oneline_string>

@@ -454,51 +454,51 @@ class _FileEmitter:
             """
         return self.strings[value]
 
-    def emit_toplevel_statement(self, top_statement: tast.ToplevelStatement) -> str:
-        if isinstance(top_statement, tast.FuncDef):
+    def emit_toplevel_declaration(self, top_declaration: tast.ToplevelDeclaration) -> str:
+        if isinstance(top_declaration, tast.FuncDef):
             return _FunctionEmitter(self).emit_funcdef(
-                top_statement, "var_" + top_statement.name
+                top_declaration, "var_" + top_declaration.name
             )
 
-        if isinstance(top_statement, tast.ClassDef):
+        if isinstance(top_declaration, tast.ClassDef):
             struct_members = "".join(
                 f"{self.emit_type(the_type)} memb_{name};\n\t"
-                for the_type, name in top_statement.type.members
+                for the_type, name in top_declaration.type.members
             )
             constructor_args = ",".join(
                 f"{self.emit_type(the_type)} var_{name}"
-                for the_type, name in top_statement.type.members
+                for the_type, name in top_declaration.type.members
             )
             member_assignments = "".join(
                 f"obj->memb_{name} = var_{name};"
-                for the_type, name in top_statement.type.members
+                for the_type, name in top_declaration.type.members
             )
             member_increfs = "".join(
                 self.emit_incref(f"var_{name}", the_type)
-                for the_type, name in top_statement.type.members
+                for the_type, name in top_declaration.type.members
             )
             member_decrefs = "".join(
                 self.emit_decref(f"obj->memb_{nam}", typ)
-                for typ, nam in top_statement.type.members
+                for typ, nam in top_declaration.type.members
             )
             methods = "".join(
                 _FunctionEmitter(self).emit_funcdef(
                     method,
-                    f"meth_{self.get_type_c_name(top_statement.type)}_{method.name}",
+                    f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
                 )
-                for method in top_statement.body
+                for method in top_declaration.body
             )
 
-            name = self.get_type_c_name(top_statement.type)
+            name = self.get_type_c_name(top_declaration.type)
             return f"""
             struct class_{name} {{
                 REFCOUNT_HEADER
                 {struct_members}
             }};
 
-            {self.emit_type(top_statement.type)} ctor_{name}({constructor_args})
+            {self.emit_type(top_declaration.type)} ctor_{name}({constructor_args})
             {{
-                {self.emit_type(top_statement.type)} obj = malloc(sizeof(*obj));
+                {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
                 assert(obj);
                 obj->refcount = 1;
                 {member_assignments}
@@ -516,9 +516,9 @@ class _FileEmitter:
             {methods}
             """
 
-        if isinstance(top_statement, tast.UnionDef):
-            assert top_statement.type.type_members is not None
-            name = self.get_type_c_name(top_statement.type)
+        if isinstance(top_declaration, tast.UnionDef):
+            assert top_declaration.type.type_members is not None
+            name = self.get_type_c_name(top_declaration.type)
 
             # to_string method
             to_string_cases = "".join(
@@ -527,7 +527,7 @@ class _FileEmitter:
                     valstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});
                     break;
                 """
-                for num, typ in enumerate(top_statement.type.type_members)
+                for num, typ in enumerate(top_declaration.type.type_members)
             )
             self.ending += f"""
             struct class_Str *meth_{name}_to_string(struct class_{name} obj)
@@ -540,7 +540,7 @@ class _FileEmitter:
                 }}
 
                 // TODO: escaping?
-                struct class_Str *res = cstr_to_string("union {top_statement.type.name}");
+                struct class_Str *res = cstr_to_string("union {top_declaration.type.name}");
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
                 string_concat_inplace(&res, ")");
@@ -558,7 +558,7 @@ class _FileEmitter:
                     {self.emit_decref(f"obj.val.item{num}", typ)}
                     break;
                 """
-                for num, typ in enumerate(top_statement.type.type_members)
+                for num, typ in enumerate(top_declaration.type.type_members)
             )
             self.ending += f"""
             void decref_{name}(struct class_{name} obj) {{
@@ -572,7 +572,7 @@ class _FileEmitter:
 
             union_members = "".join(
                 f"\t{self.emit_type(the_type)} item{index};\n"
-                for index, the_type in enumerate(top_statement.type.type_members)
+                for index, the_type in enumerate(top_declaration.type.type_members)
             )
             return f"""
             struct class_{name} {{
@@ -587,12 +587,12 @@ class _FileEmitter:
             void decref_{name}(struct class_{name} obj);
             """
 
-        raise NotImplementedError(top_statement)
+        raise NotImplementedError(top_declaration)
 
 
-def run(ast: List[tast.ToplevelStatement]) -> str:
+def run(ast: List[tast.ToplevelDeclaration]) -> str:
     emitter = _FileEmitter()
     code = "".join(
-        emitter.emit_toplevel_statement(top_statement) for top_statement in ast
+        emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
     )
     return emitter.beginning + code + emitter.ending

@@ -36,7 +36,7 @@ def invoke_c_compiler(exepath: pathlib.Path) -> subprocess.Popen[str]:
     )
 
 
-def get_ast(file: IO[str]) -> List[tast.ToplevelStatement]:
+def get_ast(file: IO[str]) -> List[tast.ToplevelDeclaration]:
     with file:
         return typer.convert_program(parser.parse_file(file.read()))
 

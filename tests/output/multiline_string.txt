@@ -1,6 +1,6 @@
 Hello world!
-This is a multiline string.
-Blah blah blah. Yadda yadda yadda.
+This is a "multiline string".
+Blah blah blah. Yadda yadda yadda. Some code.
 Lol
 This is another multiline string.
 Value of x is 1.
