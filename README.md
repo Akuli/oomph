@@ -90,6 +90,7 @@ Design questions to (re)think:
   another `let`?
 - Negative indexes? The downside is that `thing[-n:]` (in Python syntax) doesn't do
   what you would expect when `n=0`.
+- Mutable objects as arguments: yes or no? Mutable aliasing can be confusing, but efficient
 
 Optimization ideas:
 - avoiding allocations when an object isn't passed around and no reference
