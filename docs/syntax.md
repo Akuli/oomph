@@ -65,8 +65,8 @@ Once tokenized according to the above rules, the stream of tokens must be modifi
 2. If there is `:` operator followed by a newline and an indentation,
    all those tokens are replaced with one token signifying the beginning of a block.
    It is an error if the new indentation level is not 4 spaces more than the previous indentation level.
-3. If there is a newline token, then the indentation level changes according to that;
-   if there is not, then the indentation level changes to zero.
+3. If a newline token is followed by an indentation token,
+   then the indentation level changes according to that; if not, then the indentation level changes to zero.
    The new indentation level must be a multiple of 4 spaces,
    and less than or equal to the previous indentation level.
    For each decrease of 4 spaces in the level, a token indicating the end of a block is produced.
