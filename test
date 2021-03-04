@@ -64,7 +64,13 @@ rm -vf test_out/status
 touch test_out/status
 
 for file in tests/*.oomph; do
+    if [[ $file == tests/*_lib.oomph ]]; then
+        # The file is meant to be imported
+        continue
+    fi
+
     if grep -q fail test_out/status && [ $keep_going == no ]; then
+        # Test failed, stop instead of making more failures
         break
     fi
 

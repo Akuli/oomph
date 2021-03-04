@@ -1,4 +1,5 @@
 import copy
+import pathlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -15,13 +16,22 @@ class Statement:
     pass
 
 
+# TODO: split this
 @dataclass(eq=False)
-class GetVar(Expression):
+class GetLocalOrFileOrBuiltinVar(Expression):
     varname: str
     lineno: Optional[int] = None
-    # Special variables can't be accessed by writing their name into a program.
-    # Only the compiler can generate code to access them.
-    is_special: bool = False
+
+
+@dataclass(eq=False)
+class GetExportedVar(Expression):
+    path: pathlib.Path
+    name: str
+
+
+@dataclass(eq=False)
+class GetSpecialVar(Expression):
+    name: str
 
 
 @dataclass(eq=False)
@@ -198,6 +208,7 @@ class FuncDef(ToplevelDeclaration):
     argnames: List[str]
     body: List[Statement]
     refs: List[Tuple[str, Type]]
+    export: bool
 
 
 @dataclass(eq=False)

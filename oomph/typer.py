@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import pathlib
 from typing import Dict, List, Optional, Tuple, Union
 
 from oomph import typed_ast as tast
@@ -77,7 +78,7 @@ class _FunctionOrMethodTyper:
             functype.argtypes,
         )
         return self.create_returning_call(
-            tast.GetVar(_special_funcs[name], name, is_special=True), args
+            tast.GetSpecialVar(_special_funcs[name], name), args
         )
 
     def do_call(
@@ -87,7 +88,10 @@ class _FunctionOrMethodTyper:
         assert isinstance(func.type, FunctionType)
 
         # Stringify automagically when printing
-        if isinstance(func, tast.GetVar) and func.varname == "print":
+        if (
+            isinstance(func, tast.GetLocalOrFileOrBuiltinVar)
+            and func.varname == "print"
+        ):
             args = [self.do_expression_to_string(arg) for arg in ast.args]
         else:
             args = [self.do_expression(arg) for arg in ast.args]
@@ -221,7 +225,14 @@ class _FunctionOrMethodTyper:
                 return self.create_special_call("bool_true", [])
             if ast.varname == "false":
                 return self.create_special_call("bool_false", [])
-            return tast.GetVar(self.variables[ast.varname], ast.varname, ast.lineno)
+            if "::" in ast.varname:
+                module_id, name_in_module = ast.varname.split("::")
+                path = self.file_typer.imports[module_id]
+                the_type = self.file_typer.module_var_types[path][name_in_module]
+                return tast.GetExportedVar(the_type, path, name_in_module)
+            return tast.GetLocalOrFileOrBuiltinVar(
+                self.variables[ast.varname], ast.varname, ast.lineno
+            )
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
@@ -379,7 +390,12 @@ def _create_to_string_method(class_type: tast.Type) -> uast.FuncDef:
 
 
 class _FileTyper:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        module_var_types: Dict[pathlib.Path, Dict[str, Type]],
+    ) -> None:
+        self.module_var_types = module_var_types
+        self.imports: Dict[str, pathlib.Path] = {}
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         self.variables = builtin_variables.copy()
@@ -419,12 +435,17 @@ class _FileTyper:
             [argname for typename, argname in funcdef.args],
             body,
             typer.reflist,
+            funcdef.export,
         )
 
     def do_toplevel_declaration(
         self,
         top_declaration: uast.ToplevelDeclaration,
-    ) -> tast.ToplevelDeclaration:
+    ) -> Optional[tast.ToplevelDeclaration]:
+        if isinstance(top_declaration, uast.Import):
+            self.imports[top_declaration.name] = top_declaration.path
+            return None
+
         if isinstance(top_declaration, uast.FuncDef):
             return self._do_funcdef(top_declaration, create_variable=True)
 
@@ -445,7 +466,9 @@ class _FileTyper:
 
             typed_method_defs = []
             for method_def in top_declaration.body:
-                method_def.args.insert(0, (uast.Type(top_declaration.name, None), "self"))
+                method_def.args.insert(
+                    0, (uast.Type(top_declaration.name, None), "self")
+                )
                 typed_def = self._do_funcdef(method_def, create_variable=False)
                 classtype.methods[method_def.name] = typed_def.type
                 typed_method_defs.append(typed_def)
@@ -471,9 +494,12 @@ class _FileTyper:
 
 def convert_program(
     program: List[uast.ToplevelDeclaration],
+    module_var_types: Dict[pathlib.Path, Dict[str, Type]],
 ) -> List[tast.ToplevelDeclaration]:
-    typer = _FileTyper()
-    result = [typer.do_toplevel_declaration(top) for top in program]
+    typer = _FileTyper(module_var_types)
+    result = [
+        top for top in map(typer.do_toplevel_declaration, program) if top is not None
+    ]
     for key in list(typer.union_laziness):
         typer.post_process_union(key)
     return result

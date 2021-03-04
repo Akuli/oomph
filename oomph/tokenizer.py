@@ -7,6 +7,9 @@ _TOKEN_REGEX = r'''
 (?P<keyword>
     \b (
         let
+        | import
+        | as
+        | export
         | func
         | meth
         | class
@@ -34,7 +37,7 @@ _TOKEN_REGEX = r'''
     ) \b
 )
 | (?P<identifier>
-    [A-Za-z_] [A-Za-z0-9_]*
+    [A-Za-z_] [A-Za-z0-9_]* ( :: [A-Za-z_] [A-Za-z0-9_]* )?
 )
 | (?P<float>
     ( [1-9][0-9]* | 0 ) \. [0-9]+

@@ -1,7 +1,6 @@
 #CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Werror=incompatible-pointer-types
-CFLAGS += -Werror=implicit-function-declaration
 CFLAGS += -Werror=discarded-qualifiers
 CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -Wno-unused-parameter
@@ -11,16 +10,21 @@ CFLAGS += -Wno-unused-label
 CFLAGS += -g
 LDFLAGS += -lm
 
+# FIXME: hacks
+#CFLAGS += -Werror=implicit-function-declaration
+CFLAGS += -Wno-implicit-function-declaration
+CFLAGS += -Wno-unused-function
+
 SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)
 HEADERS := lib/oomph.h
 
 all: $(OBJ) obj/compile_info.txt
 
-obj/%.o: lib/%.c $(HEADERS)
+obj/%.o: lib/%.c $(HEADERS) Makefile
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
 
-obj/compile_info.txt:
+obj/compile_info.txt: Makefile
 	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" > $@
 
 clean:

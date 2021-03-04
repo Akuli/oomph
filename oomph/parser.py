@@ -1,3 +1,4 @@
+import pathlib
 import re
 from typing import Callable, Iterator, List, Optional, Tuple, TypeVar, Union
 
@@ -35,6 +36,17 @@ class _Parser:
                 value,
             )
         return (tokentype, value)
+
+    def parse_import(self, path_of_this_file: pathlib.Path) -> uast.Import:
+        self.get_token("keyword", "import")
+        string = self.get_token("oneline_string")[1]
+        self.get_token("keyword", "as")
+        name = self.get_token("identifier")[1]
+        self.get_token("op", "\n")
+
+        assert "\\" not in string and "{" not in string and "}" not in string
+        path = path_of_this_file.parent / string.strip('"')
+        return uast.Import(path, name)
 
     def parse_commasep_in_parens(self, content_callback: Callable[[], _T]) -> List[_T]:
         self.get_token("op", "(")
@@ -329,7 +341,7 @@ class _Parser:
 
         if self.token_iter.peek() == ("keyword", "while"):
             self.get_token("keyword", "while")
-            cond = self.parse_expression()
+            cond: Optional[uast.Expression] = self.parse_expression()
             body = self.parse_block_of_statements()
             return [uast.Loop(None, cond, None, body)]
 
@@ -409,18 +421,20 @@ class _Parser:
         return result
 
     def parse_toplevel(self) -> uast.ToplevelDeclaration:
-        if self.token_iter.peek() == ("keyword", "generic"):
-            self.get_token("keyword", "generic")
-            generic = True
+        if self.token_iter.peek() == ("keyword", "export"):
+            self.get_token("keyword", "export")
+            export = True
         else:
-            generic = False
+            export = False
 
         if self.token_iter.peek() == ("keyword", "func"):
-            assert not generic  # TODO
             self.get_token("keyword", "func")
-            return self.parse_function_or_method()
+            result = self.parse_function_or_method()
+            result.export = export
+            return result
 
         if self.token_iter.peek() == ("keyword", "class"):
+            assert not export  # TODO
             self.get_token("keyword", "class")
             name = self.get_token("identifier")[1]
             args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
@@ -432,7 +446,7 @@ class _Parser:
             return uast.ClassDef(name, args, body)
 
         if self.token_iter.peek() == ("keyword", "union"):
-            assert not generic
+            assert not export  # TODO
             self.get_token("keyword", "union")
             name = self.get_token("identifier")[1]
             types = self.parse_block(self.parse_union_member)
@@ -441,9 +455,16 @@ class _Parser:
         raise NotImplementedError(self.token_iter.peek())
 
 
-def parse_file(code: str) -> List[uast.ToplevelDeclaration]:
+def parse_file(
+    code: str, path: Optional[pathlib.Path]
+) -> List[uast.ToplevelDeclaration]:
     parser = _Parser(tokenizer.tokenize(code))
-    result = []
+
+    result: List[uast.ToplevelDeclaration] = []
+    while parser.token_iter.peek(None) == ("keyword", "import"):
+        assert path is not None
+        result.append(parser.parse_import(path))
     while parser.token_iter:
         result.append(parser.parse_toplevel())
+
     return result

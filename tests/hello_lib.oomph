@@ -1,0 +1,2 @@
+export func print_hello():
+    print("hello")

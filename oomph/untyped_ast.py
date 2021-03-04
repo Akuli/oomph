@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -146,11 +147,18 @@ class ToplevelDeclaration:
 
 
 @dataclass(eq=False)
+class Import(ToplevelDeclaration):
+    path: pathlib.Path
+    name: str
+
+
+@dataclass(eq=False)
 class FuncDef(ToplevelDeclaration):
     name: str
     args: List[Tuple[Type, str]]
     returntype: Optional[Type]
     body: List[Statement]
+    export: bool = False
 
 
 @dataclass(eq=False)

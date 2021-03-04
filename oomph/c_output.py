@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import itertools
+import pathlib
 import re
-from typing import Dict, List, Optional, TypeVar, Union
+from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 import more_itertools
 
@@ -29,7 +30,10 @@ class _FunctionEmitter:
         if isinstance(ast.func, tast.GetMethod):
             args = [ast.func.obj] + ast.args
             func = f"meth_{self.file_emitter.get_type_c_name(ast.func.obj.type)}_{ast.func.name}"
-        elif isinstance(ast.func, tast.GetVar) and ast.func.varname == "assert":
+        elif (
+            isinstance(ast.func, tast.GetLocalOrFileOrBuiltinVar)
+            and ast.func.varname == "assert"
+        ):
             assert ast.func.lineno is not None
             args = ast.args + [tast.IntConstant(ast.func.lineno)]
             func = self.emit_expression(ast.func)
@@ -67,9 +71,12 @@ class _FunctionEmitter:
             )
         if isinstance(ast, tast.Null):
             return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
-        if isinstance(ast, tast.GetVar):
-            if ast.is_special:
-                return ast.varname
+        if isinstance(ast, tast.GetExportedVar):
+            return self.file_emitter.exported_var_names[(ast.path, ast.name)]
+        if isinstance(ast, tast.GetSpecialVar):
+            return ast.name
+        if isinstance(ast, tast.GetLocalOrFileOrBuiltinVar):
+            assert "::" not in ast.varname, ast.varname
             return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
         if isinstance(ast, tast.Constructor):
             return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
@@ -193,7 +200,7 @@ class _FunctionEmitter:
 
         raise NotImplementedError(ast)
 
-    def emit_funcdef(self, funcdef: tast.FuncDef, c_name: str) -> str:
+    def emit_funcdef(self, funcdef: tast.FuncDef, c_name: str, static: bool) -> str:
         c_argnames = more_itertools.take(len(funcdef.argnames), _varnames)
         self.name_mapping.update(zip(funcdef.argnames, c_argnames))
 
@@ -223,6 +230,7 @@ class _FunctionEmitter:
             self.after_body += "return retval;"
 
         return f"""
+        {"static" if static else ""}
         {self.file_emitter.emit_type(funcdef.type.returntype)}
         {c_name}({arg_declarations or "void"})
         {{
@@ -248,12 +256,12 @@ struct class_%(type_cname)s {
     %(itemtype)s value;
 };
 
-struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
+static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
 {
     return (struct class_%(type_cname)s) { false, val };
 }
 
-%(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
+static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
 {
     assert(!opt.isnull);
     %(itemtype)s val = opt.value;
@@ -261,12 +269,12 @@ struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
     return val;
 }
 
-bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
+static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
 {
     return opt.isnull;
 }
 
-struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
+static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
 {
     if (opt.isnull)
         return cstr_to_string("null");
@@ -289,7 +297,7 @@ struct class_%(type_cname)s {
     %(itemtype)s *data;
 };
 
-struct class_%(type_cname)s *ctor_%(type_cname)s(void)
+static struct class_%(type_cname)s *ctor_%(type_cname)s(void)
 {
     struct class_%(type_cname)s *res = malloc(sizeof(*res));
     assert(res);
@@ -300,7 +308,7 @@ struct class_%(type_cname)s *ctor_%(type_cname)s(void)
     return res;
 }
 
-void dtor_%(type_cname)s (void *ptr)
+static void dtor_%(type_cname)s (void *ptr)
 {
     struct class_%(type_cname)s *self = ptr;
     for (int64_t i = 0; i < self->len; i++) {
@@ -312,7 +320,7 @@ void dtor_%(type_cname)s (void *ptr)
     free(self);
 }
 
-void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
+static void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
 {
     assert(n >= 0);
     if (self->alloc >= n)
@@ -331,14 +339,14 @@ void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_
     }
 }
 
-void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
+static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
 {
     class_%(type_cname)s_ensure_alloc(self, self->len + 1);
     self->data[self->len++] = val;
     %(incref_val)s;
 }
 
-%(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
+static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
 {
     assert(0 <= i && i < self->len);
     %(itemtype)s val = self->data[i];
@@ -346,13 +354,13 @@ void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s va
     return val;
 }
 
-int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
+static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
 {
     return self->len;
 }
 
 // TODO: rewrite better in the language itself
-struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
+static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
 {
     struct class_Str *res = cstr_to_string("[");
 
@@ -373,9 +381,15 @@ struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *sel
 
 
 class _FileEmitter:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        path: pathlib.Path,
+        exported_var_names: Dict[Tuple[pathlib.Path, str], str],
+    ):
+        self.path = path
+        self.exported_var_names = exported_var_names
         self.strings: Dict[str, str] = {}
-        self.beginning = '#include "lib/oomph.h"\n\n'
+        self.beginning = "#include <lib/oomph.h>\n\n"
         self.ending = ""
         self.generic_type_names: Dict[Type, str] = {}
 
@@ -449,15 +463,30 @@ class _FileEmitter:
 
             array_content = ", ".join(map(_format_byte, struct_bytes))
             self.beginning += f"""
-            {self.emit_type(STRING)} {self.strings[value]}
+            static {self.emit_type(STRING)} {self.strings[value]}
             = (void*)(unsigned char[]){{ {array_content} }};
             """
         return self.strings[value]
 
-    def emit_toplevel_declaration(self, top_declaration: tast.ToplevelDeclaration) -> str:
+    def emit_toplevel_declaration(
+        self, top_declaration: tast.ToplevelDeclaration
+    ) -> str:
         if isinstance(top_declaration, tast.FuncDef):
+            if top_declaration.name == 'main':
+                assert not top_declaration.export, "don't export main()"
+                c_name = 'var_main'
+                static = False
+            elif top_declaration.export:
+                c_name = 'var_' + top_declaration.name
+                while c_name in self.exported_var_names.values():
+                    c_name += '_'
+                self.exported_var_names[(self.path, top_declaration.name)] = c_name
+                static = False
+            else:
+                c_name = "var_" + top_declaration.name
+                static = True
             return _FunctionEmitter(self).emit_funcdef(
-                top_declaration, "var_" + top_declaration.name
+                top_declaration, c_name, static
             )
 
         if isinstance(top_declaration, tast.ClassDef):
@@ -485,6 +514,7 @@ class _FileEmitter:
                 _FunctionEmitter(self).emit_funcdef(
                     method,
                     f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
+                    static=True,
                 )
                 for method in top_declaration.body
             )
@@ -590,8 +620,12 @@ class _FileEmitter:
         raise NotImplementedError(top_declaration)
 
 
-def run(ast: List[tast.ToplevelDeclaration]) -> str:
-    emitter = _FileEmitter()
+def run(
+    ast: List[tast.ToplevelDeclaration],
+    path: pathlib.Path,
+    exported_var_names: Dict[Tuple[pathlib.Path, str], str],
+) -> str:
+    emitter = _FileEmitter(path, exported_var_names)
     code = "".join(
         emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
     )

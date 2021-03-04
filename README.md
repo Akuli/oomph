@@ -35,6 +35,8 @@ Missing features needed to write the oomph compiler in oomph:
 - `==` operator for optionals
 
 Other missing features:
+- path objects and maybe `p"/home/akuli"` syntax
+- `from "lib.oomph" import foo` syntax
 - trailing commas
 - newlines ignored inside parentheses
 - automaticly turn `x` into `new SomeUnion(x)` when needed
@@ -68,6 +70,8 @@ Other missing features:
     - `null[Str]` --> `null[auto]`
     - `null[auto]` --> `null`
     - `new List[Str]()` --> `[]`
+    - search for type annotations i have needed to put in the python code, to
+      get examples of things where oomph can be better than python+mypy
 - some nice way to check if an object is null (for at least `if` and `while`)
     - Idea: `x := y` returns false if `x` is null, and when isn't, sets `y` to true
         - Leads to `while x := y`, `if x := y` and `assert x := y`
