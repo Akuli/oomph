@@ -72,7 +72,7 @@ class _FunctionOrMethodTyper:
             args = [self.do_expression(arg) for arg in ast.args]
 
         assert [arg.type for arg in args] == func.type.argtypes, (
-            ast,
+            args,
             func.type.argtypes,
         )
 
