@@ -622,7 +622,6 @@ class _FileEmitter:
                 _FunctionEmitter(self).emit_funcdef(
                     method,
                     f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
-                    static=False,
                 )
                 for method in top_declaration.body
             )
