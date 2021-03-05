@@ -364,7 +364,7 @@ class _FileTyper:
     def __init__(
         self,
         path: pathlib.Path,
-        export_vars: List[tast.ExportVariable],
+        export_vars: List[tast.ExportVariable]
     ) -> None:
         self.path = path
         self.export_vars = export_vars
