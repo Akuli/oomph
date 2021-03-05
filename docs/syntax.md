@@ -25,6 +25,7 @@ If more than one of these rules match, then the first matching rule should be us
   uppercase and lowercase ASCII letters A-Z and a-z, the underscore, and digits 0-9.
   The fist character can't be a digit.
 - An import identifier consists of two simple identifiers with `::` in between.
+  In this documentation, "an identifier" can be a simple identifier or an import identifier.
 - If a simple identifier token is a keyword, such as `let` or `func`,
   it is converted to be a keyword token rather than an identifier token.
   This means that keywords can't be used as variable names, for example,
