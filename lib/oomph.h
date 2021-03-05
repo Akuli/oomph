@@ -19,6 +19,7 @@ struct class_Str *cstr_to_string(const char *s);
 void string_concat_inplace(struct class_Str **res, const char *suf);
 bool string_validate_utf8(const char *s);
 #define dtor_Str free
+struct class_List_Str;
 
 noreturn void panic_printf(const char *fmt, ...);
 
