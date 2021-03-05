@@ -3,7 +3,7 @@ import pathlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
-from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type, UnionType
+from oomph.types import BOOL, FLOAT, INT, LIST, STRING, FunctionType, Type, UnionType
 
 
 @dataclass(eq=False)
@@ -55,13 +55,14 @@ class SpecialVariable(Variable):
 builtin_variables = {
     var.name: var
     for var in [
-        BuiltinVariable("print", FunctionType([STRING], None)),
-        BuiltinVariable("assert", FunctionType([BOOL], None)),
-        BuiltinVariable("true", BOOL),
-        BuiltinVariable("false", BOOL),
+        BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
-        BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
+        BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
+        BuiltinVariable("assert", FunctionType([BOOL], None)),
+        BuiltinVariable("false", BOOL),
+        BuiltinVariable("print", FunctionType([STRING], None)),
+        BuiltinVariable("true", BOOL),
     ]
 }
 

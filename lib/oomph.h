@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdnoreturn.h>
 #include <string.h>
 
 #define REFCOUNT_HEADER int64_t refcount;
@@ -19,11 +20,14 @@ void string_concat_inplace(struct class_Str **res, const char *suf);
 bool string_validate_utf8(const char *s);
 #define dtor_Str free
 
+noreturn void panic_printf(const char *fmt, ...);
+
 struct class_Str *io_read_file(const struct class_Str *path);
 void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
 void oomph_assert(bool cond, int64_t lineno);
+int64_t subprocess_run(void *args);
 
 double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub);

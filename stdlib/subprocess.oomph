@@ -1,0 +1,2 @@
+export func run(List[Str] command) -> int:
+    return __subprocess_run(command)

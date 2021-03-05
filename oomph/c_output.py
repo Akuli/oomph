@@ -403,9 +403,10 @@ class _FileEmitter:
         self.export_var_names = export_var_names
         self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
+            tast.builtin_variables["__io_mkdir"]: "io_mkdir",
             tast.builtin_variables["__io_read_file"]: "io_read_file",
             tast.builtin_variables["__io_write_file"]: "io_write_file",
-            tast.builtin_variables["__io_mkdir"]: "io_mkdir",
+            tast.builtin_variables["__subprocess_run"]: "subprocess_run",
             tast.builtin_variables["assert"]: "oomph_assert",
             tast.builtin_variables["false"]: "false",
             tast.builtin_variables["print"]: "io_print",
@@ -420,7 +421,10 @@ class _FileEmitter:
         for var, name in export_var_names.items():
             self.variable_names[var] = name
             assert isinstance(var.type, tast.FunctionType)
-            self.beginning += self.declare_function(name, var.type, static=False) + ";"
+            # This does not work with 'self.beginning += ...'
+            # I don't understand why.
+            decl = self.declare_function(name, var.type, static=False) + ";"
+            self.beginning += decl
 
     def declare_function(
         self,
