@@ -184,7 +184,7 @@ class _FunctionEmitter:
             body_code = ""
             for membernum, the_type in enumerate(ast.union.type.type_members):
                 [(specific_var, body)] = [
-                    item for item in ast.cases.items() if item[0].type is the_type
+                    (var, body) for var, body in ast.cases.items() if var.type is the_type
                 ]
                 self.add_local_var(specific_var)
                 case_content = "".join(self.emit_statement(s) for s in body)
