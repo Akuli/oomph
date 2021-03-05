@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import pathlib
 import re
-from typing import Dict, List, Optional, TypeVar, Union
+from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 import oomph.typed_ast as tast
 from oomph.types import (
@@ -250,6 +251,13 @@ class _FunctionEmitter:
             self.after_body += "return retval;"
 
         varnames = [self.variable_names[var] for var in funcdef.argvars]
+
+        if not static:
+            self.file_emitter.h_code += (
+                self.file_emitter.declare_function(c_name, functype, static=False)
+                + ";\n"
+            )
+
         return f"""
         {self.file_emitter.declare_function(c_name, functype, varnames, static)}
         {{
@@ -269,139 +277,159 @@ def _format_byte(byte: int) -> str:
 
 
 _generic_c_codes = {
-    OPTIONAL: """
-struct class_%(type_cname)s {
-    bool isnull;
-    %(itemtype)s value;
-};
-
-static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
-{
-    return (struct class_%(type_cname)s) { false, val };
-}
-
-static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
-{
-    assert(!opt.isnull);
-    %(itemtype)s val = opt.value;
-    %(incref_val)s;
-    return val;
-}
-
-static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
-{
-    return opt.isnull;
-}
-
-static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
-{
-    if (opt.isnull)
-        return cstr_to_string("null");
-
-    struct class_Str *res = cstr_to_string("%(itemtype_string)s(");  // TODO: escaping?
-    struct class_Str *s = meth_%(itemtype_cname)s_to_string(opt.value);
-    string_concat_inplace(&res, s->str);
-    decref(s, dtor_Str);
-    string_concat_inplace(&res, ")");
-    return res;
-}
-""",
-    LIST: """
-// TODO: have this struct on stack when possible, same with strings
-struct class_%(type_cname)s {
-    REFCOUNT_HEADER
-    int64_t len;
-    int64_t alloc;
-    %(itemtype)s smalldata[8];
-    %(itemtype)s *data;
-};
-
-static struct class_%(type_cname)s *ctor_%(type_cname)s(void)
-{
-    struct class_%(type_cname)s *res = malloc(sizeof(*res));
-    assert(res);
-    res->refcount = 1;
-    res->len = 0;
-    res->data = res->smalldata;
-    res->alloc = sizeof(res->smalldata)/sizeof(res->smalldata[0]);
-    return res;
-}
-
-static void dtor_%(type_cname)s (void *ptr)
-{
-    struct class_%(type_cname)s *self = ptr;
-    for (int64_t i = 0; i < self->len; i++) {
-        %(itemtype)s val = self->data[i];
-        %(decref_val)s;
-    }
-    if (self->data != self->smalldata)
-        free(self->data);
-    free(self);
-}
-
-static void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
-{
-    assert(n >= 0);
-    if (self->alloc >= n)
-        return;
-
-    while (self->alloc < n)
-        self->alloc *= 2;
-
-    if (self->data == self->smalldata) {
-        self->data = malloc(self->alloc * sizeof(self->data[0]));
-        assert(self->data);
-        memcpy(self->data, self->smalldata, sizeof self->smalldata);
-    } else {
-        self->data = realloc(self->data, self->alloc * sizeof(self->data[0]));
-        assert(self->data);
-    }
-}
-
-static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
-{
-    class_%(type_cname)s_ensure_alloc(self, self->len + 1);
-    self->data[self->len++] = val;
-    %(incref_val)s;
-}
-
-static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
-{
-    assert(0 <= i && i < self->len);
-    %(itemtype)s val = self->data[i];
-    %(incref_val)s;
-    return val;
-}
-
-static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
-{
-    return self->len;
-}
-
-// TODO: rewrite better in the language itself
-static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
-{
-    struct class_Str *res = cstr_to_string("[");
-
-    for (int64_t i = 0; i < self->len; i++) {
-        if (i != 0) {
-            string_concat_inplace(&res, ", ");
+    OPTIONAL: (
+        """
+        struct class_%(type_cname)s {
+            bool isnull;
+            %(itemtype)s value;
+        };
+        static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
+        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
+        static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt);
+        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
+        """,
+        """
+        static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
+        {
+            return (struct class_%(type_cname)s) { false, val };
         }
-        struct class_Str *s = meth_%(itemtype_cname)s_to_string(self->data[i]);
-        string_concat_inplace(&res, s->str);
-        decref(s, dtor_Str);
-    }
 
-    string_concat_inplace(&res, "]");
-    return res;
-}
-""",
+        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
+        {
+            assert(!opt.isnull);
+            %(itemtype)s val = opt.value;
+            %(incref_val)s;
+            return val;
+        }
+
+        static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
+        {
+            return opt.isnull;
+        }
+
+        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
+        {
+            if (opt.isnull)
+                return cstr_to_string("null");
+
+            struct class_Str *res = cstr_to_string("%(itemtype_string)s(");  // TODO: escaping?
+            struct class_Str *s = meth_%(itemtype_cname)s_to_string(opt.value);
+            string_concat_inplace(&res, s->str);
+            decref(s, dtor_Str);
+            string_concat_inplace(&res, ")");
+            return res;
+        }
+        """,
+    ),
+    LIST: (
+        """
+        // TODO: have this struct on stack when possible, same with strings
+        struct class_%(type_cname)s {
+            REFCOUNT_HEADER
+            int64_t len;
+            int64_t alloc;
+            %(itemtype)s smalldata[8];
+            %(itemtype)s *data;
+        };
+
+        static struct class_%(type_cname)s *ctor_%(type_cname)s(void);
+        static void dtor_%(type_cname)s (void *ptr);
+        static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
+        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
+        static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
+        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
+        """,
+        """
+        static struct class_%(type_cname)s *ctor_%(type_cname)s(void)
+        {
+            struct class_%(type_cname)s *res = malloc(sizeof(*res));
+            assert(res);
+            res->refcount = 1;
+            res->len = 0;
+            res->data = res->smalldata;
+            res->alloc = sizeof(res->smalldata)/sizeof(res->smalldata[0]);
+            return res;
+        }
+
+        static void dtor_%(type_cname)s (void *ptr)
+        {
+            struct class_%(type_cname)s *self = ptr;
+            for (int64_t i = 0; i < self->len; i++) {
+                %(itemtype)s val = self->data[i];
+                %(decref_val)s;
+            }
+            if (self->data != self->smalldata)
+                free(self->data);
+            free(self);
+        }
+
+        static void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
+        {
+            assert(n >= 0);
+            if (self->alloc >= n)
+                return;
+
+            while (self->alloc < n)
+                self->alloc *= 2;
+
+            if (self->data == self->smalldata) {
+                self->data = malloc(self->alloc * sizeof(self->data[0]));
+                assert(self->data);
+                memcpy(self->data, self->smalldata, sizeof self->smalldata);
+            } else {
+                self->data = realloc(self->data, self->alloc * sizeof(self->data[0]));
+                assert(self->data);
+            }
+        }
+
+        static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
+        {
+            class_%(type_cname)s_ensure_alloc(self, self->len + 1);
+            self->data[self->len++] = val;
+            %(incref_val)s;
+        }
+
+        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
+        {
+            assert(0 <= i && i < self->len);
+            %(itemtype)s val = self->data[i];
+            %(incref_val)s;
+            return val;
+        }
+
+        static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
+        {
+            return self->len;
+        }
+
+        // TODO: rewrite better in the language itself
+        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
+        {
+            struct class_Str *res = cstr_to_string("[");
+
+            for (int64_t i = 0; i < self->len; i++) {
+                if (i != 0) {
+                    string_concat_inplace(&res, ", ");
+                }
+                struct class_Str *s = meth_%(itemtype_cname)s_to_string(self->data[i]);
+                string_concat_inplace(&res, s->str);
+                decref(s, dtor_Str);
+            }
+
+            string_concat_inplace(&res, "]");
+            return res;
+        }
+        """,
+    ),
 }
 
 
 class _FileEmitter:
     def __init__(
-        self, path: pathlib.Path, export_var_names: Dict[tast.ExportVariable, str]
+        self,
+        path: pathlib.Path,
+        export_var_names: Dict[tast.ExportVariable, str],
+        includes: List[str],
     ):
         self.path = path
         self.export_var_names = export_var_names
@@ -415,20 +443,18 @@ class _FileEmitter:
             tast.builtin_variables["false"]: "false",
             tast.builtin_variables["print"]: "io_print",
             tast.builtin_variables["true"]: "true",
+            # https://github.com/python/mypy/issues/10171
+            **export_var_names,  # type: ignore
             **{var: name for name, var in tast.special_variables.items()},
         }
         self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
 
-        self.beginning = "#include <lib/oomph.h>\n\n"
+        self.h_code = "#include <lib/oomph.h>\n" + "".join(
+            f'#include "{header}"\n' for header in includes
+        )
+        self.beginning = ""
         self.ending = ""
-        for var, name in export_var_names.items():
-            self.variable_names[var] = name
-            assert isinstance(var.type, tast.FunctionType)
-            # This does not work with 'self.beginning += ...'
-            # I don't understand why.
-            decl = self.declare_function(name, var.type, static=False) + ";"
-            self.beginning += decl
 
     def declare_function(
         self,
@@ -490,7 +516,10 @@ class _FileEmitter:
             itemtype = the_type.generic_origin.arg
             type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
             self.generic_type_names[the_type] = type_cname
-            self.beginning += _generic_c_codes[the_type.generic_origin.generic] % {
+
+            # TODO: use c code and h code separately
+            c_code, h_code = _generic_c_codes[the_type.generic_origin.generic]
+            self.beginning += (c_code + h_code) % {
                 "type_cname": type_cname,
                 "itemtype": self.emit_type(itemtype),
                 "itemtype_cname": self.get_type_c_name(itemtype),
@@ -694,9 +723,19 @@ def run(
     ast: List[tast.ToplevelDeclaration],
     path: pathlib.Path,
     export_var_names: Dict[tast.ExportVariable, str],
-) -> str:
-    emitter = _FileEmitter(path, export_var_names)
+    includes: List[str],
+) -> Tuple[str, str]:
+    emitter = _FileEmitter(path, export_var_names, includes)
     code = "".join(
         emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
     )
-    return emitter.beginning + code + emitter.ending
+    c_code = emitter.h_code + emitter.beginning + code + emitter.ending
+    header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
+    return (
+        c_code,
+        f"""
+        #ifndef {header_guard}
+        #define {header_guard}
+        {emitter.h_code}
+        #endif""",
+    )
