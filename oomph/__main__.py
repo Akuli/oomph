@@ -76,10 +76,7 @@ def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=pathlib.Path)
     arg_parser.add_argument("--valgrind", action="store_true")
-    arg_parser.add_argument("--c-code", action="store_true")
     args = arg_parser.parse_args()
-
-    assert not args.c_code  # TODO
 
     try:
         cache_dir = args.infile.parent / ".oomph-cache"
