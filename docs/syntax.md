@@ -21,10 +21,11 @@ this makes describing the tokenizing rules slightly easier.
 
 Here are the different kinds of tokens.
 If more than one of these rules match, then the first matching rule should be used.
-- An identifier consists of one or more of the following characters:
+- A simple identifier consists of one or more of the following characters:
   uppercase and lowercase ASCII letters A-Z and a-z, the underscore, and digits 0-9.
   The fist character can't be a digit.
-- If an identifier token is a keyword, such as `let` or `func`,
+- An import identifier consists of two simple identifiers with `::` in between.
+- If a simple identifier token is a keyword, such as `let` or `func`,
   it is converted to be a keyword token rather than an identifier token.
   This means that keywords can't be used as variable names, for example,
   because that requires an identifier token, not a keyword token.
@@ -97,17 +98,20 @@ In this documentation, we use the following phrases:
 
 The tokenized file consists of zero or more toplevel declarations.
 A toplevel declaration can be:
-- A union definition: the keyword `union` followed by an identifier, and then a block of union members.
+- An import: the keyword `import`, then a oneline string with no backslashes or braces,
+  then the keyword `as`, then a simple identifier.
+  Imports must be before other toplevel declarations.
+- A union definition: the keyword `union` followed by a simple identifier, and then a block of union members.
   Each union member is a type followed by a newline token.
-- A class definition: the keyword `class` followed by an identifier,
+- A class definition: the keyword `class` followed by a simple identifier,
   then parenthesized and comma-separated argument definitions,
   and then optionally a block of method definitions.
   A method definition is just like a function definition, but starting with `func` instead of `meth`.
-- A function definition, starting with the keyword `func`, then an identifier,
+- A function definition, starting with the keyword `func`, then a simple identifier,
   then parenthesized and comma-separated argument definitions, then a block of statements.
 
 A type is an identifier, possibly followed by another `[]`-parenthesized type to indicate a generic.
-An argument definition of a function, method or class is a type followed by an identifier.
+An argument definition of a function, method or class is a type followed by a simple identifier.
 
 A statement can be:
 - If statement: the keyword `if` followed by an expression, then a block of statements,
@@ -116,13 +120,13 @@ A statement can be:
 - While loop: the keyword `while` followed by an expression and then a block of statements.
 - For loop: the keyword `for` followed by a one-line-ish statement, then `;` operator,
   then an expression, then `;` operator, then another one-line-ish statement, then a block of statements.
-- Foreach loop: the keyword `foreach` followed by an identifier, then `of`, then an expression, then a block of statements.
+- Foreach loop: the keyword `foreach` followed by a simple identifier, then `of`, then an expression, then a block of statements.
 - Switch statement: the keyword `switch`, followed by an expression with a union type, and then block of cases.
   A case consists of the keyword `case` followed by a type and then a block of statements.
 - Any one-line-ish statement followed by a newline.
 
 A one-line-ish statement can be:
-- Let statement: the `let` keyword followed by an identifier, `=` operator, and an expression.
+- Let statement: the `let` keyword followed by a simple identifier, `=` operator, and an expression.
 - Return statement: the `return` keyword optionally followed by an expression.
 - Pass statement: the `pass` keyword.
 - Continue statement: the `continue` keyword.
@@ -157,4 +161,4 @@ A simple expression can be:
 - A parenthesized expression.
 Any simple expression can include zero or more of the following at the end:
 - Call: comma-separated parenthesized list of expressions.
-- Attribute lookup: `.` operator token followed by an identifier token.
+- Attribute lookup: `.` operator token followed by a simple identifier token.
