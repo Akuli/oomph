@@ -18,7 +18,9 @@ python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
 
 
-def _get_c_file_name(source_path: pathlib.Path, compilation_dir: pathlib.Path) -> str:
+def _get_compiled_file_name(
+    source_path: pathlib.Path, compilation_dir: pathlib.Path
+) -> str:
     # TODO: avoid long file names
     return (
         source_path.stem
@@ -28,7 +30,6 @@ def _get_c_file_name(source_path: pathlib.Path, compilation_dir: pathlib.Path) -
             .replace(".", "_dot_")
             .replace(os.sep, "_slash_")
         )
-        + ".c"
     )
 
 
@@ -36,8 +37,10 @@ class CompilationUnit:
     untyped_ast: List[uast.ToplevelDeclaration]
 
     def __init__(self, source_path: pathlib.Path, compilation_dir: pathlib.Path):
+        name = _get_compiled_file_name(source_path, compilation_dir)
         self.source_path = source_path
-        self.c_path = compilation_dir / _get_c_file_name(source_path, compilation_dir)
+        self.c_path = compilation_dir / (name + ".c")
+        self.h_path = compilation_dir / (name + ".h")
 
     def create_untyped_ast(self) -> None:
         builtins_code = (project_root / "builtins.oomph").read_text(encoding="utf-8")
@@ -47,18 +50,21 @@ class CompilationUnit:
             builtins_code, None, None
         ) + parser.parse_file(source_code, self.source_path, project_root / "stdlib")
 
-    def create_c_file(
+    def create_c_and_h_files(
         self,
         used_c_paths: Set[pathlib.Path],
         compilation_dir: pathlib.Path,
         export_vars: List[tast.ExportVariable],
         export_var_names: Dict[tast.ExportVariable, str],
+        headers: List[str],
     ) -> None:
-        with self.c_path.open("w") as file:
-            typed_ast = typer.convert_program(
-                self.untyped_ast, self.source_path, export_vars
-            )
-            file.write(c_output.run(typed_ast, self.source_path, export_var_names))
+        typed_ast = typer.convert_program(
+            self.untyped_ast, self.source_path, export_vars
+        )
+        c, h = c_output.run(typed_ast, self.source_path, export_var_names, headers)
+
+        self.c_path.write_text(c, encoding="utf-8")
+        self.h_path.write_text(h, encoding="utf-8")
 
 
 def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int:
@@ -114,11 +120,12 @@ def main() -> None:
     export_var_names: Dict[tast.ExportVariable, str] = {}
     for index, unit in enumerate(compilation_units):
         already_compiled = compilation_units[:index]
-        unit.create_c_file(
+        unit.create_c_and_h_files(
             {unit.c_path for unit in already_compiled},
             cache_dir,
             export_vars,
             export_var_names,
+            [unit.h_path.name for unit in already_compiled],
         )
 
     exe_path = cache_dir / args.infile.stem
