@@ -1,7 +1,7 @@
 #include "oomph.h"
 #include <stdio.h>
 
-void var_assert(bool cond, int64_t lineno)
+void oomph_assert(bool cond, int64_t lineno)
 {
 	if (!cond) {
 		fprintf(stderr, "assert() failed on line %d\n", (int)lineno);
@@ -10,13 +10,13 @@ void var_assert(bool cond, int64_t lineno)
 	}
 }
 
-void var_print(const struct class_Str *s)
+void oomph_print(const struct class_Str *s)
 {
 	puts(s->str);
 }
 
-void var_main(void);
+void oomph_main(void);
 int main(void) {
-	var_main();
+	oomph_main();
 	return 0;
 }

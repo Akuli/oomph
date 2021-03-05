@@ -17,11 +17,12 @@ HEADERS := lib/oomph.h
 
 all: $(OBJ) obj/compile_info.txt
 
-obj/%.o: lib/%.c $(HEADERS)
+obj/%.o: lib/%.c $(HEADERS) Makefile
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
 
-obj/compile_info.txt:
-	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" > $@
+obj/compile_info.txt: Makefile
+	# The compiler emits unused functions. It's fine.
+	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS) -Wno-unused-function" "$(LDFLAGS)" > $@
 
 clean:
 	rm -rvf obj test.out

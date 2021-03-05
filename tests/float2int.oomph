@@ -1,4 +1,4 @@
-func main():
+export func main():
     print(1.23.floor())
     print((-1.23).floor())
     print(1.23.ceil())

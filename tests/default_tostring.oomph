@@ -3,7 +3,7 @@ class Foo1(int x)
 class Foo2(int x, Str y)
 class Foo3(int x, Str y, bool z)
 
-func main():
+export func main():
     print(new Foo0())
     print(new Foo1(1))
     print(new Foo2(2, "lol"))

@@ -1,4 +1,4 @@
-func main():
+export func main():
     let x = true
     let y = true
     let z = true

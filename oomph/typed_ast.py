@@ -1,6 +1,7 @@
 import copy
+import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type, UnionType
 
@@ -16,12 +17,87 @@ class Statement:
 
 
 @dataclass(eq=False)
+class Variable:
+    name: str
+    type: Type
+
+
+# There can be different local variables with same name, even in the same
+# function. They are represented as different instances of this class.
+@dataclass(eq=False)
+class LocalVariable(Variable):
+    pass
+
+
+# Currently these are always functions. These would be called "global
+# variables" in Python, but that's confusing, because they are less global
+# than ExportVariables.
+@dataclass(eq=False)
+class ThisFileVariable(Variable):
+    pass
+
+
+@dataclass(eq=False)
+class ExportVariable(Variable):
+    path: pathlib.Path
+
+
+@dataclass(eq=False)
+class BuiltinVariable(Variable):
+    pass
+
+
+@dataclass(eq=False)
+class SpecialVariable(Variable):
+    pass
+
+
+builtin_variables = {
+    var.name: var
+    for var in [
+        BuiltinVariable("print", FunctionType([STRING], None)),
+        BuiltinVariable("assert", FunctionType([BOOL], None)),
+        BuiltinVariable("true", BOOL),
+        BuiltinVariable("false", BOOL),
+    ]
+}
+
+special_variables = {
+    var.name: var
+    for var in [
+        SpecialVariable("bool_eq", FunctionType([BOOL, BOOL], BOOL)),
+        SpecialVariable("bool_not", FunctionType([BOOL], BOOL)),
+        SpecialVariable("float_add", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_div", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_eq", FunctionType([FLOAT, FLOAT], BOOL)),
+        SpecialVariable("float_gt", FunctionType([FLOAT, FLOAT], BOOL)),
+        SpecialVariable("float_mod", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_mul", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_neg", FunctionType([FLOAT], FLOAT)),
+        SpecialVariable("float_sub", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("int2float", FunctionType([INT], FLOAT)),
+        SpecialVariable("int_add", FunctionType([INT, INT], INT)),
+        SpecialVariable("int_eq", FunctionType([INT, INT], BOOL)),
+        SpecialVariable("int_gt", FunctionType([INT, INT], BOOL)),
+        SpecialVariable("int_mod", FunctionType([INT, INT], INT)),
+        SpecialVariable("int_mul", FunctionType([INT, INT], INT)),
+        SpecialVariable("int_neg", FunctionType([INT], INT)),
+        SpecialVariable("int_sub", FunctionType([INT, INT], INT)),
+        SpecialVariable("string_concat", FunctionType([STRING, STRING], STRING)),
+        SpecialVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
+    ]
+}
+
+
+@dataclass(eq=False)
 class GetVar(Expression):
-    varname: str
-    lineno: Optional[int] = None
-    # Special variables can't be accessed by writing their name into a program.
-    # Only the compiler can generate code to access them.
-    is_special: bool = False
+    var: Variable
+    lineno: Optional[int]
+
+    def __init__(self, var: Variable, lineno: Optional[int] = None):
+        super().__init__(var.type)
+        self.var = var
+        self.lineno = lineno
 
 
 @dataclass(eq=False)
@@ -133,18 +209,13 @@ class InstantiateUnion(Expression):
 
 @dataclass(eq=False)
 class CreateLocalVar(Statement):
-    varname: str
+    var: LocalVariable
     value: Expression
 
 
 @dataclass(eq=False)
-class DeleteLocalVar(Statement):
-    varname: str
-
-
-@dataclass(eq=False)
 class SetLocalVar(Statement):
-    varname: str
+    var: LocalVariable
     value: Expression
 
 
@@ -181,9 +252,8 @@ class Loop(Statement):
 
 @dataclass(eq=False)
 class Switch(Statement):
-    varname: str
-    vartype: UnionType
-    cases: Dict[Type, List[Statement]]
+    union: Expression
+    cases: Dict[LocalVariable, List[Statement]]
 
 
 @dataclass(eq=False)
@@ -193,9 +263,17 @@ class ToplevelDeclaration:
 
 @dataclass(eq=False)
 class FuncDef(ToplevelDeclaration):
+    var: Union[ThisFileVariable, ExportVariable]
+    argvars: List[LocalVariable]
+    body: List[Statement]
+    refs: List[Tuple[str, Type]]
+
+
+@dataclass(eq=False)
+class MethodDef:
     name: str
     type: FunctionType
-    argnames: List[str]
+    argvars: List[LocalVariable]
     body: List[Statement]
     refs: List[Tuple[str, Type]]
 
@@ -203,7 +281,7 @@ class FuncDef(ToplevelDeclaration):
 @dataclass(eq=False)
 class ClassDef(ToplevelDeclaration):
     type: Type
-    body: List[FuncDef]
+    body: List[MethodDef]
 
 
 @dataclass(eq=False)

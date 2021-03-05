@@ -4,7 +4,7 @@ func print_point(Point p):
     print(p.x)
     print(p.y)
 
-func main():
+export func main():
     new Point(1, 2)
     let p = new Point(123, 456)
     print_point(p)

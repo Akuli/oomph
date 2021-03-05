@@ -2,7 +2,7 @@ class Foo(int x):
     meth show():
         print(self.x)
 
-func main():
+export func main():
     let f = new Foo(1)
     f.show()
     f = new Foo(2)

@@ -1,0 +1,4 @@
+import "hello_lib.oomph" as hello
+
+export func main():
+    hello::print_hello()

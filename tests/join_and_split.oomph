@@ -1,4 +1,4 @@
-func main():
+export func main():
     print("hello world".split("ll"))
     print("hello world".split("o"))
     print("hello world".split("l"))

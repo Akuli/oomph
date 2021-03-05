@@ -32,9 +32,17 @@ Known bugs:
 Missing features needed to write the oomph compiler in oomph:
 - multiple files
 - io
+- running subprocesses
 - `==` operator for optionals
+- `==` operator for pointer types
+- exporting classes
+- exporting unions
 
 Other missing features:
+- attributes of classes that are not arguments
+- init methods of classes (or something similar)
+- path objects and maybe `p"/home/akuli"` syntax
+- `from "lib.oomph" import foo` syntax
 - trailing commas
 - newlines ignored inside parentheses
 - automaticly turn `x` into `new SomeUnion(x)` when needed
@@ -68,6 +76,8 @@ Other missing features:
     - `null[Str]` --> `null[auto]`
     - `null[auto]` --> `null`
     - `new List[Str]()` --> `[]`
+    - search for type annotations i have needed to put in the python code, to
+      get examples of things where oomph can be better than python+mypy
 - some nice way to check if an object is null (for at least `if` and `while`)
     - Idea: `x := y` returns false if `x` is null, and when isn't, sets `y` to true
         - Leads to `while x := y`, `if x := y` and `assert x := y`
@@ -81,6 +91,7 @@ Other missing features:
 - exceptions (easiest to implement similar to union?)
 
 Design questions to (re)think:
+- requiring use of attributes (useful for going through data, avoid accidental ignoring)
 - should string lengths and indexing be done in unicode code points instead of
   utf-8 bytes?
     - Advantage: easier to understand

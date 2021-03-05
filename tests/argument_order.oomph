@@ -5,5 +5,5 @@ func do_thing(int x) -> int:
 func ignore_all_args(int x, int y, int z):
     pass
 
-func main():
+export func main():
     ignore_all_args(do_thing(1), do_thing(2), do_thing(3))

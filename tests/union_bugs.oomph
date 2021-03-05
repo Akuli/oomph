@@ -11,6 +11,6 @@ func do_nothing(Thing thing) -> Thing:
 func make_thing() -> Thing:
     return new Thing(new Bar())
 
-func main():
+export func main():
     do_nothing(new Thing(new Foo()))
     make_thing()

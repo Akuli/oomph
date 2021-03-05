@@ -1,4 +1,4 @@
-func main():
+export func main():
     print("""Hello world!
 This is a "multiline string".
 Blah blah blah. Yadda yadda yadda. {"Some" + " " + "code"}.

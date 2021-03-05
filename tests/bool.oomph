@@ -1,4 +1,4 @@
-func main():
+export func main():
     print(true)
     print(false)
 
