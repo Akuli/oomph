@@ -6,3 +6,7 @@ export func main():
     print("main: {x} {x.is_null()}")
     show(x)
     show(null[Str])
+
+    print(null[Str] == null[Str])
+    print(x == null[Str])
+    print(x == new optional[Str]("lolwat"))

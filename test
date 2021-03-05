@@ -48,6 +48,7 @@ function check()
             cp $out $outfile
             success=yes
         else
+            echo "========== diff does not match: $file"
             success=no
         fi
     fi

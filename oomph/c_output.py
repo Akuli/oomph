@@ -118,6 +118,10 @@ class _FunctionEmitter:
                 self.emit_expression(ast.value),
                 membernum,
             )
+        if isinstance(ast, tast.StatementAndExpression):
+            statement = self.emit_statement(ast.statement).rstrip().rstrip(";")
+            expression = self.emit_expression(ast.expression)
+            return f"(({statement}), ({expression}))"
         raise NotImplementedError(ast)
 
     def emit_label(self, name: str) -> str:

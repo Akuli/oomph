@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 import pathlib
 from dataclasses import dataclass
@@ -209,6 +211,19 @@ class ReturningCall(Expression, Statement):
 class InstantiateUnion(Expression):
     type: UnionType  # more specific than Expression.type
     value: Expression
+
+
+# Evaluate statement, then output the value of the expression
+# TODO: delete this and somehow rewrite things properly
+@dataclass(eq=False)
+class StatementAndExpression(Expression):
+    statement: Statement
+    expression: Expression
+
+    def __init__(self, statement: CreateLocalVar, expression: Expression):
+        super().__init__(expression.type)
+        self.statement = statement
+        self.expression = expression
 
 
 @dataclass(eq=False)

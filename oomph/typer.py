@@ -80,37 +80,69 @@ class _FunctionOrMethodTyper:
             return tast.VoidCall(func, args)
         return self.create_returning_call(func, args)
 
-    def do_binary_op(self, ast: uast.BinaryOperator) -> tast.Expression:
-        if ast.op == "!=":
-            return self.create_special_call(
-                "bool_not",
-                [self.do_binary_op(uast.BinaryOperator(ast.lhs, "==", ast.rhs))],
-            )
+    def _not(self, ast: tast.Expression) -> tast.Expression:
+        return self.create_special_call("bool_not", [ast])
+
+    def _is_null(self, ast: tast.Expression) -> tast.Expression:
+        return self.create_returning_call(tast.GetMethod(ast, "is_null"), [])
+
+    def _get_value_of_optional(self, ast: tast.Expression) -> tast.Expression:
+        return self.create_returning_call(tast.GetMethod(ast, "get"), [])
+
+    def _do_binary_op_typed(
+        self, lhs: tast.Expression, op: str, rhs: tast.Expression
+    ) -> tast.Expression:
+
+        if op == "!=":
+            return self._not(self._do_binary_op_typed(lhs, "==", rhs))
 
         # Reduce >=, <=, and < to use >
-        if ast.op == "<":
-            ast = uast.BinaryOperator(ast.rhs, ">", ast.lhs)
-        if ast.op == "<=":
-            ast = uast.BinaryOperator(ast.rhs, ">=", ast.lhs)
-        if ast.op == ">=":
-            return self.create_special_call(
-                "bool_not",
-                [self.do_binary_op(uast.BinaryOperator(ast.lhs, "<", ast.rhs))],
-            )
+        if op == "<":
+            return self._do_binary_op_typed(rhs, ">", lhs)
+        if op == "<=":
+            return self._not(self._do_binary_op_typed(lhs, ">", rhs))
+        if op == ">=":
+            return self._not(self._do_binary_op_typed(lhs, "<", rhs))
 
-        lhs = self.do_expression(ast.lhs)
-        rhs = self.do_expression(ast.rhs)
-        if lhs.type is STRING and ast.op == "+" and rhs.type is STRING:
+        if lhs.type is STRING and op == "+" and rhs.type is STRING:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
-        if lhs.type is STRING and ast.op == "==" and rhs.type is STRING:
+        if lhs.type is STRING and op == "==" and rhs.type is STRING:
             return self.create_special_call("string_eq", [lhs, rhs])
-
         if (
-            lhs.type is INT
-            and ast.op in {"+", "-", "*", "mod", ">"}
-            and rhs.type is INT
+            lhs.type.generic_origin is not None
+            and rhs.type.generic_origin is not None
+            and lhs.type.generic_origin.generic is OPTIONAL
+            and rhs.type.generic_origin.generic is OPTIONAL
         ):
+            lhs_var = tast.LocalVariable("optional_operator_lhs", lhs.type)
+            rhs_var = tast.LocalVariable("optional_operator_rhs", rhs.type)
+            lhs_with_side_effects = tast.StatementAndExpression(
+                tast.CreateLocalVar(lhs_var, lhs),
+                tast.StatementAndExpression(
+                    tast.CreateLocalVar(rhs_var, rhs),
+                    tast.GetVar(lhs_var),
+                ),
+            )
+            return tast.BoolOr(
+                tast.BoolAnd(
+                    self._is_null(lhs_with_side_effects),
+                    self._is_null(tast.GetVar(rhs_var)),
+                ),
+                tast.BoolAnd(
+                    tast.BoolAnd(
+                        self._not(self._is_null(tast.GetVar(lhs_var))),
+                        self._not(self._is_null(tast.GetVar(rhs_var))),
+                    ),
+                    self._do_binary_op_typed(
+                        self._get_value_of_optional(tast.GetVar(lhs_var)),
+                        "==",
+                        self._get_value_of_optional(tast.GetVar(rhs_var)),
+                    ),
+                ),
+            )
+
+        if lhs.type is INT and op in {"+", "-", "*", "mod", ">"} and rhs.type is INT:
             return self.create_special_call(
                 {
                     "+": "int_add",
@@ -118,11 +150,11 @@ class _FunctionOrMethodTyper:
                     "*": "int_mul",
                     "mod": "int_mod",
                     ">": "int_gt",
-                }[ast.op],
+                }[op],
                 [lhs, rhs],
             )
 
-        if lhs.type is INT and ast.op == "/" and rhs.type is INT:
+        if lhs.type is INT and op == "/" and rhs.type is INT:
             lhs = self.create_special_call("int2float", [lhs])
             rhs = self.create_special_call("int2float", [rhs])
         if lhs.type is INT and rhs.type is FLOAT:
@@ -132,7 +164,7 @@ class _FunctionOrMethodTyper:
 
         if (
             lhs.type is FLOAT
-            and ast.op in {"+", "-", "*", "/", "mod", ">"}
+            and op in {"+", "-", "*", "/", "mod", ">"}
             and rhs.type is FLOAT
         ):
             return self.create_special_call(
@@ -143,24 +175,29 @@ class _FunctionOrMethodTyper:
                     "/": "float_div",
                     "mod": "float_mod",
                     ">": "float_gt",
-                }[ast.op],
+                }[op],
                 [lhs, rhs],
             )
 
-        if lhs.type is BOOL and ast.op == "and" and rhs.type is BOOL:
+        if lhs.type is BOOL and op == "and" and rhs.type is BOOL:
             return tast.BoolAnd(lhs, rhs)
-        if lhs.type is BOOL and ast.op == "or" and rhs.type is BOOL:
+        if lhs.type is BOOL and op == "or" and rhs.type is BOOL:
             return tast.BoolOr(lhs, rhs)
-        if lhs.type is BOOL and ast.op == "==" and rhs.type is BOOL:
+        if lhs.type is BOOL and op == "==" and rhs.type is BOOL:
             return self.create_special_call("bool_eq", [lhs, rhs])
-        if lhs.type is INT and ast.op == "==" and rhs.type is INT:
+        if lhs.type is INT and op == "==" and rhs.type is INT:
             return self.create_special_call("int_eq", [lhs, rhs])
-        if lhs.type is FLOAT and ast.op == "==" and rhs.type is FLOAT:
+        if lhs.type is FLOAT and op == "==" and rhs.type is FLOAT:
             # Float equality sucks, but maybe it can be useful for something
             return self.create_special_call("float_eq", [lhs, rhs])
             return tast.NumberEqual(lhs, rhs)
 
-        raise NotImplementedError(f"{lhs.type} {ast.op} {rhs.type}")
+        raise NotImplementedError(f"{lhs.type} {op} {rhs.type}")
+
+    def do_binary_op(self, ast: uast.BinaryOperator) -> tast.Expression:
+        lhs = self.do_expression(ast.lhs)
+        rhs = self.do_expression(ast.rhs)
+        return self._do_binary_op_typed(lhs, ast.op, rhs)
 
     def do_expression_to_string(self, ast: uast.Expression) -> tast.Expression:
         result = self.do_expression(ast)
@@ -239,7 +276,6 @@ class _FunctionOrMethodTyper:
             return [tast.CreateLocalVar(var, value)]
 
         if isinstance(ast, uast.Assign):
-            # TODO: this assumes local variable without assert
             var2 = self.variables[ast.varname]  # fuck you mypy
             assert isinstance(var2, tast.LocalVariable)
             value = self.do_expression(ast.value)
