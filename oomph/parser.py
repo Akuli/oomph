@@ -399,7 +399,7 @@ class _Parser:
         arg_name = self.get_token("identifier")[1]
         return (type_name, arg_name)
 
-    def parse_function_or_method(self) -> uast.FuncDef:
+    def parse_function_or_method(self) -> uast.FuncOrMethodDef:
         name = self.get_token("identifier")[1]
         args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
 
@@ -409,9 +409,11 @@ class _Parser:
         else:
             returntype = None
 
-        return uast.FuncDef(name, args, returntype, self.parse_block_of_statements())
+        return uast.FuncOrMethodDef(
+            name, args, returntype, self.parse_block_of_statements()
+        )
 
-    def parse_method(self) -> uast.FuncDef:
+    def parse_method(self) -> uast.FuncOrMethodDef:
         self.get_token("keyword", "meth")
         return self.parse_function_or_method()
 

@@ -331,7 +331,7 @@ class _FunctionOrMethodTyper:
         return result
 
 
-def _create_to_string_method(class_type: tast.Type) -> uast.FuncDef:
+def _create_to_string_method(class_type: tast.Type) -> uast.FuncOrMethodDef:
     strings: List[uast.Expression] = []
     for typ, nam in class_type.members:
         if strings:
@@ -352,7 +352,7 @@ def _create_to_string_method(class_type: tast.Type) -> uast.FuncDef:
     strings.insert(0, uast.StringConstant(class_type.name + "("))
     strings.append(uast.StringConstant(")"))
 
-    return uast.FuncDef(
+    return uast.FuncOrMethodDef(
         "to_string",
         [],
         uast.Type("Str", None),
@@ -387,8 +387,8 @@ class _FileTyper:
             self.get_type(raw_type.generic)
         )
 
-    def _do_funcdef_or_classdef(
-        self, funcdef: uast.FuncDef, class_name: Optional[str]
+    def _do_func_or_method_def(
+        self, funcdef: uast.FuncOrMethodDef, class_name: Optional[str]
     ) -> Union[tast.FuncDef, tast.MethodDef]:
         if class_name is not None:
             funcdef.args.insert(0, (uast.Type(class_name, None), "self"))
@@ -441,7 +441,9 @@ class _FileTyper:
             )
 
     # FIXME: copy pasta
-    def _do_method_def(self, funcdef: uast.FuncDef, class_name: str) -> tast.MethodDef:
+    def _do_method_def(
+        self, funcdef: uast.FuncOrMethodDef, class_name: str
+    ) -> tast.MethodDef:
         funcdef.args.insert(0, (uast.Type(class_name, None), "self"))
         functype = FunctionType(
             [self.get_type(typ) for typ, nam in funcdef.args],
@@ -477,8 +479,8 @@ class _FileTyper:
                     self.add_var(var, top_declaration.name + "::" + var.name)
             return None
 
-        if isinstance(top_declaration, uast.FuncDef):
-            result = self._do_funcdef_or_classdef(top_declaration, class_name=None)
+        if isinstance(top_declaration, uast.FuncOrMethodDef):
+            result = self._do_func_or_method_def(top_declaration, class_name=None)
             assert isinstance(result, tast.FuncDef)
             return result
 

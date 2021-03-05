@@ -152,9 +152,8 @@ class Import(ToplevelDeclaration):
     name: str
 
 
-# TODO: rename to FuncOrMethodDef
 @dataclass(eq=False)
-class FuncDef(ToplevelDeclaration):
+class FuncOrMethodDef(ToplevelDeclaration):
     name: str
     args: List[Tuple[Type, str]]
     returntype: Optional[Type]
@@ -166,7 +165,7 @@ class FuncDef(ToplevelDeclaration):
 class ClassDef(ToplevelDeclaration):
     name: str
     members: List[Tuple[Type, str]]
-    body: List[FuncDef]
+    body: List[FuncOrMethodDef]
 
 
 @dataclass(eq=False)
