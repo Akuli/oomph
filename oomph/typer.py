@@ -387,23 +387,30 @@ class _FileTyper:
             self.get_type(raw_type.generic)
         )
 
-    def _do_funcdef(self, funcdef: uast.FuncDef) -> tast.FuncDef:
+    def _do_funcdef_or_classdef(
+        self, funcdef: uast.FuncDef, class_name: Optional[str]
+    ) -> Union[tast.FuncDef, tast.MethodDef]:
+        if class_name is not None:
+            funcdef.args.insert(0, (uast.Type(class_name, None), "self"))
+
         functype = FunctionType(
             [self.get_type(typ) for typ, nam in funcdef.args],
             None if funcdef.returntype is None else self.get_type(funcdef.returntype),
         )
-        assert funcdef.name not in self.variables, (
-            funcdef.name,
-            self.variables.keys(),
-        )
 
-        if funcdef.export:
-            func_var = tast.ExportVariable(funcdef.name, functype, self.path)
-            self.export_vars.append(func_var)
-            mypy_sucks: Union[tast.ExportVariable, tast.ThisFileVariable] = func_var
-        else:
-            mypy_sucks = tast.ThisFileVariable(funcdef.name, functype)
-        self.add_var(mypy_sucks)
+        if class_name is None:
+            assert funcdef.name not in self.variables, (
+                funcdef.name,
+                self.variables.keys(),
+            )
+
+            if funcdef.export:
+                func_var = tast.ExportVariable(funcdef.name, functype, self.path)
+                self.export_vars.append(func_var)
+                mypy_sucks: Union[tast.ExportVariable, tast.ThisFileVariable] = func_var
+            else:
+                mypy_sucks = tast.ThisFileVariable(funcdef.name, functype)
+            self.add_var(mypy_sucks)
 
         local_vars = self.variables.copy()
         argvars = []
@@ -415,12 +422,23 @@ class _FileTyper:
 
         typer = _FunctionOrMethodTyper(self, local_vars)
         body = typer.do_block(funcdef.body)
-        return tast.FuncDef(
-            mypy_sucks,
-            argvars,
-            body,
-            typer.reflist,
-        )
+
+        if class_name is None:
+            return tast.FuncDef(
+                mypy_sucks,
+                argvars,
+                body,
+                typer.reflist,
+            )
+        else:
+            assert not funcdef.export
+            return tast.MethodDef(
+                funcdef.name,
+                functype,
+                argvars,
+                body,
+                typer.reflist,
+            )
 
     # FIXME: copy pasta
     def _do_method_def(self, funcdef: uast.FuncDef, class_name: str) -> tast.MethodDef:
@@ -460,7 +478,9 @@ class _FileTyper:
             return None
 
         if isinstance(top_declaration, uast.FuncDef):
-            return self._do_funcdef(top_declaration)
+            result = self._do_funcdef_or_classdef(top_declaration, class_name=None)
+            assert isinstance(result, tast.FuncDef)
+            return result
 
         if isinstance(top_declaration, uast.ClassDef):
             classtype = Type(top_declaration.name, True)
