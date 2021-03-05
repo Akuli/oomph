@@ -258,11 +258,9 @@ class _FunctionEmitter:
                 + ";\n"
             )
 
-        declaration = self.file_emitter.declare_function(
-            c_name, functype, varnames, static
-        )
         return f"""
-        {declaration} {{
+        {self.file_emitter.declare_function(c_name, functype, varnames, static)}
+        {{
             {self.before_body}
             {ref_declarations}
             {body_statements}
