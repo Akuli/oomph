@@ -19,40 +19,16 @@ from oomph.types import (
     builtin_types,
 )
 
-_special_vars = {
-    var.name: var
-    for var in [
-        tast.SpecialVariable("bool_eq", FunctionType([BOOL, BOOL], BOOL)),
-        tast.SpecialVariable("bool_not", FunctionType([BOOL], BOOL)),
-        tast.SpecialVariable("float_add", FunctionType([FLOAT, FLOAT], FLOAT)),
-        tast.SpecialVariable("float_div", FunctionType([FLOAT, FLOAT], FLOAT)),
-        tast.SpecialVariable("float_eq", FunctionType([FLOAT, FLOAT], BOOL)),
-        tast.SpecialVariable("float_gt", FunctionType([FLOAT, FLOAT], BOOL)),
-        tast.SpecialVariable("float_mod", FunctionType([FLOAT, FLOAT], FLOAT)),
-        tast.SpecialVariable("float_mul", FunctionType([FLOAT, FLOAT], FLOAT)),
-        tast.SpecialVariable("float_neg", FunctionType([FLOAT], FLOAT)),
-        tast.SpecialVariable("float_sub", FunctionType([FLOAT, FLOAT], FLOAT)),
-        tast.SpecialVariable("int2float", FunctionType([INT], FLOAT)),
-        tast.SpecialVariable("int_add", FunctionType([INT, INT], INT)),
-        tast.SpecialVariable("int_eq", FunctionType([INT, INT], BOOL)),
-        tast.SpecialVariable("int_gt", FunctionType([INT, INT], BOOL)),
-        tast.SpecialVariable("int_mod", FunctionType([INT, INT], INT)),
-        tast.SpecialVariable("int_mul", FunctionType([INT, INT], INT)),
-        tast.SpecialVariable("int_neg", FunctionType([INT], INT)),
-        tast.SpecialVariable("int_sub", FunctionType([INT, INT], INT)),
-        tast.SpecialVariable("string_concat", FunctionType([STRING, STRING], STRING)),
-        tast.SpecialVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
-    ]
-}
-
 
 class _FunctionOrMethodTyper:
     def __init__(self, file_typer: _FileTyper, variables: Dict[str, tast.Variable]):
         self.file_typer = file_typer
         self.variables = variables
-        self.reflist: List[Tuple[str, Type]] = []
         self.loop_stack: List[Optional[str]] = []  # None means a switch
         self.loop_counter = 0
+
+        # TODO: replace with self.variables?
+        self.reflist: List[Tuple[str, Type]] = []
         self.ref_names = (f"ref{n}" for n in itertools.count())
 
     def create_returning_call(
@@ -70,7 +46,7 @@ class _FunctionOrMethodTyper:
         name: str,
         args: List[tast.Expression],
     ) -> Union[tast.SetRef, tast.ReturningCall]:
-        var = _special_vars[name]
+        var = tast.special_variables[name]
         actual_argtypes = [arg.type for arg in args]
         assert isinstance(var.type, FunctionType)
         assert actual_argtypes == var.type.argtypes, (
@@ -87,12 +63,18 @@ class _FunctionOrMethodTyper:
         assert isinstance(func.type, FunctionType)
 
         # Stringify automagically when printing
-        if isinstance(func, tast.GetVar) and func is tast.builtin_variables["print"]:
+        if (
+            isinstance(func, tast.GetVar)
+            and func.var is tast.builtin_variables["print"]
+        ):
             args = [self.do_expression_to_string(arg) for arg in ast.args]
         else:
             args = [self.do_expression(arg) for arg in ast.args]
 
-        assert [arg.type for arg in args] == func.type.argtypes
+        assert [arg.type for arg in args] == func.type.argtypes, (
+            ast,
+            func.type.argtypes,
+        )
 
         if func.type.returntype is None:
             return tast.VoidCall(func, args)
@@ -217,7 +199,7 @@ class _FunctionOrMethodTyper:
             assert not isinstance(call, tast.VoidCall)
             return call
         if isinstance(ast, uast.GetVar):
-            return tast.GetVar(self.variables[ast.varname])
+            return tast.GetVar(self.variables[ast.varname], ast.lineno)
         #            if ast.varname == "true":
         #                return tast.GetVar(_special_vars['true'])
         #            if ast.varname == "false":
@@ -326,9 +308,10 @@ class _FunctionOrMethodTyper:
             assert popped == loop_id
 
             loop = tast.Loop(loop_id, init, cond, incr, body)
-            if isinstance(init, tast.SetLocalVar):
-                var3 = self.variables.pop(init.var.name)
-                assert var3 is init.var
+            for statement in init:
+                if isinstance(statement, tast.CreateLocalVar):
+                    var3 = self.variables.pop(statement.var.name)
+                    assert var3 is statement.var
             return [loop]
 
         if isinstance(ast, uast.Switch):

@@ -43,9 +43,34 @@ builtin_variables = {
     var.name: var
     for var in [
         BuiltinVariable("print", FunctionType([STRING], None)),
-        BuiltinVariable("assert", FunctionType([STRING], None)),
+        BuiltinVariable("assert", FunctionType([BOOL], None)),
         BuiltinVariable("true", BOOL),
         BuiltinVariable("false", BOOL),
+    ]
+}
+special_variables = {
+    var.name: var
+    for var in [
+        SpecialVariable("bool_eq", FunctionType([BOOL, BOOL], BOOL)),
+        SpecialVariable("bool_not", FunctionType([BOOL], BOOL)),
+        SpecialVariable("float_add", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_div", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_eq", FunctionType([FLOAT, FLOAT], BOOL)),
+        SpecialVariable("float_gt", FunctionType([FLOAT, FLOAT], BOOL)),
+        SpecialVariable("float_mod", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_mul", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("float_neg", FunctionType([FLOAT], FLOAT)),
+        SpecialVariable("float_sub", FunctionType([FLOAT, FLOAT], FLOAT)),
+        SpecialVariable("int2float", FunctionType([INT], FLOAT)),
+        SpecialVariable("int_add", FunctionType([INT, INT], INT)),
+        SpecialVariable("int_eq", FunctionType([INT, INT], BOOL)),
+        SpecialVariable("int_gt", FunctionType([INT, INT], BOOL)),
+        SpecialVariable("int_mod", FunctionType([INT, INT], INT)),
+        SpecialVariable("int_mul", FunctionType([INT, INT], INT)),
+        SpecialVariable("int_neg", FunctionType([INT], INT)),
+        SpecialVariable("int_sub", FunctionType([INT, INT], INT)),
+        SpecialVariable("string_concat", FunctionType([STRING, STRING], STRING)),
+        SpecialVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
     ]
 }
 

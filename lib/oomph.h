@@ -18,8 +18,8 @@ struct class_Str *cstr_to_string(const char *s);
 void string_concat_inplace(struct class_Str **res, const char *suf);
 #define dtor_Str free
 
-void var_assert(bool cond, int64_t lineno);
-void var_print(const struct class_Str *s);
+void oomph_assert(bool cond, int64_t lineno);
+void oomph_print(const struct class_Str *s);
 
 double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub);
@@ -36,20 +36,20 @@ struct class_Str *meth_float_to_string(double d);
 struct class_Str *meth_int_to_string(int64_t n);
 
 // Class implemented in C, method implemented in oomph
-#define meth_List_Str_join var___string_join
-#define meth_Str_center_pad var___string_center_pad
-#define meth_Str_count var___string_count
-#define meth_Str_ends_with var___string_ends_with
-#define meth_Str_left_pad var___string_left_pad
-#define meth_Str_left_trim var___string_left_trim
-#define meth_Str_repeat var___string_repeat
-#define meth_Str_replace var___string_replace
-#define meth_Str_right_pad var___string_right_pad
-#define meth_Str_right_trim var___string_right_trim
-#define meth_Str_split var___string_split
-#define meth_Str_starts_with var___string_starts_with
-#define meth_Str_trim var___string_trim
-#define meth_bool_to_string var___bool_to_string
+#define meth_List_Str_join func___string_join
+#define meth_Str_center_pad func___string_center_pad
+#define meth_Str_count func___string_count
+#define meth_Str_ends_with func___string_ends_with
+#define meth_Str_left_pad func___string_left_pad
+#define meth_Str_left_trim func___string_left_trim
+#define meth_Str_repeat func___string_repeat
+#define meth_Str_replace func___string_replace
+#define meth_Str_right_pad func___string_right_pad
+#define meth_Str_right_trim func___string_right_trim
+#define meth_Str_split func___string_split
+#define meth_Str_starts_with func___string_starts_with
+#define meth_Str_trim func___string_trim
+#define meth_bool_to_string func___bool_to_string
 
 /*
 Can't be macros because of assumptions that compiler makes:

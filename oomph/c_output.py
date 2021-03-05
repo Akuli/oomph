@@ -27,28 +27,29 @@ class _FunctionEmitter:
         self.before_body = ""
         self.after_body = ""
 
-    def declare_local_var(self, var: tast.LocalVariable) -> None:
-        name = f"var{len(self.variable_names)}"
+    def add_local_var(self, var: tast.LocalVariable, *, declare: bool = True) -> None:
+        name = self.file_emitter.get_var_name()
         assert var not in self.variable_names
         self.variable_names[var] = name
-        self.before_body += f"{self.file_emitter.emit_type(var.type)} {name};\n\t"
+        if declare:
+            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name};\n\t"
 
     def create_local_var(self, the_type: Type) -> tast.LocalVariable:
         var = tast.LocalVariable("c_output_var", the_type)
-        self.declare_local_var(var)
+        self.add_local_var(var)
         return var
 
     def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
         if isinstance(ast.func, tast.GetMethod):
             args = [ast.func.obj] + ast.args
             func = f"meth_{self.file_emitter.get_type_c_name(ast.func.obj.type)}_{ast.func.name}"
-        #        elif (
-        #            isinstance(ast.func, tast.GetLocalOrFileOrBuiltinVar)
-        #            and ast.func.varname == "assert"
-        #        ):
-        #            assert ast.func.lineno is not None
-        #            args = ast.args + [tast.IntConstant(ast.func.lineno)]
-        #            func = self.emit_expression(ast.func)
+        elif (
+            isinstance(ast.func, tast.GetVar)
+            and ast.func.var is tast.builtin_variables["assert"]
+        ):
+            assert ast.func.lineno is not None, ast.func
+            args = ast.args + [tast.IntConstant(ast.func.lineno)]
+            func = self.emit_expression(ast.func)
         else:
             args = ast.args
             func = self.emit_expression(ast.func)
@@ -127,7 +128,7 @@ class _FunctionEmitter:
 
     def emit_statement(self, ast: tast.Statement) -> str:
         if isinstance(ast, tast.CreateLocalVar):
-            self.declare_local_var(ast.var)
+            self.add_local_var(ast.var)
             return f"{self.variable_names[ast.var]} = {self.emit_expression(ast.value)};\n\t"
 
         if isinstance(ast, tast.SetLocalVar):
@@ -182,22 +183,23 @@ class _FunctionEmitter:
             assert ast.union.type.type_members is not None
 
             union_var = self.create_local_var(ast.union.type)
-            self.emit_statement(tast.SetLocalVar(union_var, ast.union))
             body_code = ""
             for membernum, the_type in enumerate(ast.union.type.type_members):
                 [(specific_var, body)] = [
                     item for item in ast.cases.items() if item[0].type is the_type
                 ]
+                self.add_local_var(specific_var)
                 case_content = "".join(self.emit_statement(s) for s in body)
                 body_code += f"""
                 case {membernum}:
-                    {self.variable_names[specific_var]} = {self.variable_names[specific_var]}.val.item{membernum};
+                    {self.variable_names[specific_var]} = {self.variable_names[union_var]}.val.item{membernum};
                     {case_content}
                     break;
                 """
 
             return f"""
-            switch ({union_var}.membernum) {{
+            {self.variable_names[union_var]} = {self.emit_expression(ast.union)};
+            switch ({self.variable_names[union_var]}.membernum) {{
                 {body_code}
                 default:
                     assert(0);
@@ -206,10 +208,11 @@ class _FunctionEmitter:
 
         raise NotImplementedError(ast)
 
-    def emit_funcdef(self, funcdef: tast.FuncDef, c_name: str, static: bool) -> str:
-        assert not funcdef.argvars  # TODO
+    def emit_funcdef(
+        self, funcdef: Union[tast.FuncDef, tast.MethodDef], c_name: str, static: bool
+    ) -> str:
         for var in funcdef.argvars:
-            self.declare_local_var(var)
+            self.add_local_var(var, declare=False)
 
         arg_declarations = ",".join(
             self.file_emitter.emit_type(var.type) + " " + self.variable_names[var]
@@ -230,16 +233,21 @@ class _FunctionEmitter:
         )
         body_statements = "".join(self.emit_statement(s) for s in funcdef.body)
 
-        assert isinstance(funcdef.var.type, FunctionType)
-        if funcdef.var.type.returntype is not None:
+        if isinstance(funcdef, tast.FuncDef):
+            assert isinstance(funcdef.var.type, FunctionType)
+            functype = funcdef.var.type
+        else:
+            functype = funcdef.type
+
+        if functype.returntype is not None:
             self.before_body += (
-                f"{self.file_emitter.emit_type(funcdef.var.type.returntype)} retval;"
+                f"{self.file_emitter.emit_type(functype.returntype)} retval;"
             )
             self.after_body += "return retval;"
 
         return f"""
         {"static" if static else ""}
-        {self.file_emitter.emit_type(funcdef.var.type.returntype)}
+        {self.file_emitter.emit_type(functype.returntype)}
         {c_name}({arg_declarations or "void"})
         {{
             {self.before_body}
@@ -396,13 +404,23 @@ class _FileEmitter:
     ):
         self.path = path
         self._exported_var_names = exported_var_names
+        self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
-            tast.builtin_variables["print"]: "var_print",
+            tast.builtin_variables["assert"]: "oomph_assert",
+            tast.builtin_variables["false"]: "false",
+            tast.builtin_variables["print"]: "oomph_print",
+            tast.builtin_variables["true"]: "true",
         }
+        for name, var in tast.special_variables.items():
+            self.variable_names[var] = name
         self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
         self.beginning = "#include <lib/oomph.h>\n\n"
         self.ending = ""
+
+    def get_var_name(self) -> str:
+        self.varname_counter += 1
+        return f"var{self.varname_counter}"
 
     def emit_incref(
         self, c_expression: str, the_type: Type, *, semicolon: bool = True
@@ -484,22 +502,25 @@ class _FileEmitter:
     ) -> str:
         if isinstance(top_declaration, tast.FuncDef):
             assert top_declaration.var not in self.variable_names
-            assert top_declaration.var.name == "main"  # TODO
-            assert not top_declaration.export, "don't export main"
-            self.variable_names[top_declaration.var] = "var_main"
+            if top_declaration.var.name == "main":
+                assert not top_declaration.export, "don't export main"
+                self.variable_names[top_declaration.var] = "oomph_main"
+                static = False
+            else:
+                assert not top_declaration.export  # TODO
+                #            elif top_declaration.export:
+                #                c_name = "var_" + top_declaration.name
+                #                while c_name in self.exported_var_names.values():
+                #                    c_name += "_"
+                #                self.exported_var_names[(self.path, top_declaration.name)] = c_name
+                #                static = False
+                self.variable_names[top_declaration.var] = (
+                    "func_" + top_declaration.var.name
+                )
+                static = True
             return _FunctionEmitter(self).emit_funcdef(
-                top_declaration, "var_main", static=False
+                top_declaration, self.variable_names[top_declaration.var], static
             )
-        # TODO:
-        #            elif top_declaration.export:
-        #                c_name = "var_" + top_declaration.name
-        #                while c_name in self.exported_var_names.values():
-        #                    c_name += "_"
-        #                self.exported_var_names[(self.path, top_declaration.name)] = c_name
-        #                static = False
-        #            else:
-        #                c_name = "var_" + top_declaration.name
-        #                static = True
 
         if isinstance(top_declaration, tast.ClassDef):
             struct_members = "".join(
@@ -507,31 +528,29 @@ class _FileEmitter:
                 for the_type, name in top_declaration.type.members
             )
             constructor_args = ",".join(
-                f"{self.emit_type(the_type)} var_{name}"
+                f"{self.emit_type(the_type)} arg_{name}"
                 for the_type, name in top_declaration.type.members
             )
             member_assignments = "".join(
-                f"obj->memb_{name} = var_{name};"
+                f"obj->memb_{name} = arg_{name};"
                 for the_type, name in top_declaration.type.members
             )
             member_increfs = "".join(
-                self.emit_incref(f"var_{name}", the_type)
+                self.emit_incref(f"arg_{name}", the_type)
                 for the_type, name in top_declaration.type.members
             )
             member_decrefs = "".join(
                 self.emit_decref(f"obj->memb_{nam}", typ)
                 for typ, nam in top_declaration.type.members
             )
-            assert not top_declaration.body
-            #            methods = "".join(
-            #                _FunctionEmitter(self).emit_funcdef(
-            #                    method,
-            #                    f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
-            #                    static=True,
-            #                )
-            #                for method in top_declaration.body
-            #            )
-            methods = ""
+            methods = "".join(
+                _FunctionEmitter(self).emit_funcdef(
+                    method,
+                    f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
+                    static=True,
+                )
+                for method in top_declaration.body
+            )
 
             name = self.get_type_c_name(top_declaration.type)
             return f"""
