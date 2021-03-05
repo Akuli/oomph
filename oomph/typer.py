@@ -200,20 +200,6 @@ class _FunctionOrMethodTyper:
             return call
         if isinstance(ast, uast.GetVar):
             return tast.GetVar(self.variables[ast.varname], ast.lineno)
-        #            if ast.varname == "true":
-        #                return tast.GetVar(_special_vars['true'])
-        #            if ast.varname == "false":
-        #                return tast.GetVar(_special_vars['false'])
-        #            if "::" in ast.varname:
-        #                module_id, name_in_module = ast.varname.split("::")
-        #                path = self.file_typer.imports[module_id]
-        #                the_type = self.file_typer.module_var_types[path][name_in_module]
-        #                return tast.GetVar()
-        #                return tast.GetExportedVar(the_type, path, name_in_module)
-        #            var = self.variables
-        #            return tast.GetVar(
-        #                self.variables[ast.varname].type, self.variables[ast.varname], ast.lineno
-        #            )
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
