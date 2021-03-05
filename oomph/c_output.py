@@ -28,6 +28,8 @@ class _FunctionEmitter:
         self.after_body = ""
 
     def add_local_var(self, var: tast.LocalVariable, *, declare: bool = True) -> None:
+        # Ensure different functions don't share variable names.
+        # This makes grepping the C code easier.
         name = self.file_emitter.get_var_name()
         assert var not in self.variable_names
         self.variable_names[var] = name
