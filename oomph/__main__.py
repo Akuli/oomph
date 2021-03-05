@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import pathlib
 import shlex
 import signal
@@ -17,12 +18,21 @@ python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
 
 
+def _get_c_file_name(source_path: pathlib.Path, compilation_dir: pathlib.Path) -> str:
+    # TODO: avoid long file names
+    return source_path.stem + '_from_' + (
+        os.path.relpath(source_path, compilation_dir.parent)
+        .replace(".", "_dot_")
+        .replace(os.sep, "_slash_")
+    ) + ".c"
+
+
 class CompilationUnit:
-    c_path: pathlib.Path
     untyped_ast: List[uast.ToplevelDeclaration]
 
-    def __init__(self, source_path: pathlib.Path):
+    def __init__(self, source_path: pathlib.Path, compilation_dir: pathlib.Path):
         self.source_path = source_path
+        self.c_path = compilation_dir / _get_c_file_name(source_path, compilation_dir)
 
     def create_untyped_ast(self) -> None:
         builtins_code = (project_root / "builtins.oomph").read_text(encoding="utf-8")
@@ -32,19 +42,13 @@ class CompilationUnit:
             builtins_code, None, None
         ) + parser.parse_file(source_code, self.source_path, project_root / "stdlib")
 
-    def create_c_code(
+    def create_c_file(
         self,
         used_c_paths: Set[pathlib.Path],
         compilation_dir: pathlib.Path,
         export_vars: List[tast.ExportVariable],
         export_var_names: Dict[tast.ExportVariable, str],
     ) -> None:
-        self.c_path = compilation_dir / f"{self.source_path.stem}.c"
-        counter = 0
-        while self.c_path in used_c_paths:
-            counter += 1
-            self.c_path = compilation_dir / f"{self.source_path.stem}_{counter}.c"
-
         with self.c_path.open("w") as file:
             typed_ast = typer.convert_program(
                 self.untyped_ast, self.source_path, export_vars
@@ -90,7 +94,7 @@ def main() -> None:
         if source_path in (unit.source_path for unit in compilation_units):
             raise RuntimeError("import cycle")
 
-        unit = CompilationUnit(source_path)
+        unit = CompilationUnit(source_path, cache_dir)
         compilation_units.append(unit)
         unit.create_untyped_ast()
 
@@ -105,7 +109,7 @@ def main() -> None:
     export_var_names: Dict[tast.ExportVariable, str] = {}
     for index, unit in enumerate(compilation_units):
         already_compiled = compilation_units[:index]
-        unit.create_c_code(
+        unit.create_c_file(
             {unit.c_path for unit in already_compiled},
             cache_dir,
             export_vars,
