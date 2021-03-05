@@ -20,11 +20,16 @@ project_root = python_code_dir.parent
 
 def _get_c_file_name(source_path: pathlib.Path, compilation_dir: pathlib.Path) -> str:
     # TODO: avoid long file names
-    return source_path.stem + '_from_' + (
-        os.path.relpath(source_path, compilation_dir.parent)
-        .replace(".", "_dot_")
-        .replace(os.sep, "_slash_")
-    ) + ".c"
+    return (
+        source_path.stem
+        + "_from_"
+        + (
+            os.path.relpath(source_path, compilation_dir.parent)
+            .replace(".", "_dot_")
+            .replace(os.sep, "_slash_")
+        )
+        + ".c"
+    )
 
 
 class CompilationUnit:

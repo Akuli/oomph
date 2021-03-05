@@ -59,6 +59,9 @@ builtin_variables = {
         BuiltinVariable("assert", FunctionType([BOOL], None)),
         BuiltinVariable("true", BOOL),
         BuiltinVariable("false", BOOL),
+        BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
+        BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
+        BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
     ]
 }
 

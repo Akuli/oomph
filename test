@@ -60,7 +60,7 @@ function check()
 }
 
 mkdir -vp test_out
-rm -vf test_out/status
+rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
 
 for file in tests/*.oomph; do

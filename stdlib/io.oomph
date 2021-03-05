@@ -1,0 +1,8 @@
+export func read_file(Str path) -> Str:
+    return __io_read_file(path)
+
+export func write_file(Str path, Str content):
+    __io_write_file(path, content)
+
+export func mkdir(Str path):
+    __io_mkdir(path)

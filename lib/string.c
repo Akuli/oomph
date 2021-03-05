@@ -96,6 +96,33 @@ static int parse_utf8_start_byte(unsigned char c)
 	assert(0);
 }
 
+bool string_validate_utf8(const char *s)
+{
+	while(*s) {
+		int n = parse_utf8_start_byte(s[0]);
+		switch(n){
+			case 1:
+				break;
+			case 2:
+				if (!is_utf8_continuation_byte(s[1])) return false;
+				break;
+			case 3:
+				if (!is_utf8_continuation_byte(s[1])) return false;
+				if (!is_utf8_continuation_byte(s[2])) return false;
+				break;
+			case 4:
+				if (!is_utf8_continuation_byte(s[1])) return false;
+				if (!is_utf8_continuation_byte(s[2])) return false;
+				if (!is_utf8_continuation_byte(s[3])) return false;
+				break;
+			default:
+				assert(0);
+		}
+		s+=n;
+	}
+	return true;
+}
+
 int64_t meth_Str_unicode_length(const struct class_Str *s)
 {
 	const char *str = s->str;

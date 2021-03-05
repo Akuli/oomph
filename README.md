@@ -30,7 +30,6 @@ Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features needed to write the oomph compiler in oomph:
-- io
 - running subprocesses
 - `==` operator for optionals
 - `==` operator for pointer types

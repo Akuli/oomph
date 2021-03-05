@@ -403,9 +403,12 @@ class _FileEmitter:
         self.export_var_names = export_var_names
         self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
+            tast.builtin_variables["__io_read_file"]: "io_read_file",
+            tast.builtin_variables["__io_write_file"]: "io_write_file",
+            tast.builtin_variables["__io_mkdir"]: "io_mkdir",
             tast.builtin_variables["assert"]: "oomph_assert",
             tast.builtin_variables["false"]: "false",
-            tast.builtin_variables["print"]: "oomph_print",
+            tast.builtin_variables["print"]: "io_print",
             tast.builtin_variables["true"]: "true",
             **{var: name for name, var in tast.special_variables.items()},
         }

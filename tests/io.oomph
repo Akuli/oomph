@@ -1,0 +1,9 @@
+import "<stdlib>/io.oomph" as io
+
+export func main():
+    print(io::read_file("README.md").split("\n").get(0))
+
+    io::mkdir("test_out/io_testing_dir")
+    io::mkdir("test_out/io_testing_dir")  # no error if exists already
+    io::write_file("test_out/io_testing_dir/hello.txt", "Hello Files")
+    print(io::read_file("test_out/io_testing_dir/hello.txt"))
