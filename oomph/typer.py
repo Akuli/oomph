@@ -370,6 +370,7 @@ class _FileTyper:
         self.export_vars = export_vars
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
+        # https://github.com/python/typeshed/issues/5089
         self.variables: Dict[str, tast.Variable] = tast.builtin_variables.copy()  # type: ignore
 
         # Union members don't need to exist when union is defined (allows nestedness)
