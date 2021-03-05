@@ -30,7 +30,6 @@ Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features needed to write the oomph compiler in oomph:
-- multiple files
 - io
 - running subprocesses
 - `==` operator for optionals
