@@ -61,9 +61,7 @@ void decref(void *ptr, void (*destructor)(void *ptr));
 
 // Special functions. Keep up to date with typer.py.
 #define bool_eq(a, b) ((a)==(b))
-#define bool_false() false
 #define bool_not(a) (!(a))
-#define bool_true() true
 #define float_add(a, b) ((a)+(b))
 #define float_div(a, b) ((a)/(b))
 #define float_eq(a, b) ((a)==(b))

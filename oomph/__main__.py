@@ -8,9 +8,7 @@ import subprocess
 import sys
 from typing import Dict, List, Tuple
 
-from oomph import c_output, parser
-from oomph import typed_ast as tast
-from oomph import typer
+from oomph import c_output, parser, typer
 from oomph import untyped_ast as uast
 from oomph.types import Type
 
@@ -37,11 +35,11 @@ def create_c_code(
 ) -> str:
     typed_ast = typer.convert_program(untyped_ast, module_var_types)
     assert source_path not in module_var_types
-    module_var_types[source_path] = {
-        fdef.name: fdef.type
-        for fdef in typed_ast
-        if isinstance(fdef, tast.FuncDef) and fdef.export
-    }
+    #    module_var_types[source_path] = {
+    #        fdef.name: fdef.type
+    #        for fdef in typed_ast
+    #        if isinstance(fdef, tast.FuncDef) and fdef.export
+    #    }
     return c_output.run(typed_ast, source_path, exported_var_names)
 
 

@@ -85,6 +85,7 @@ Other missing features:
 - exceptions (easiest to implement similar to union?)
 
 Design questions to (re)think:
+- requiring use of attributes (useful for going through data, avoid accidental ignoring)
 - should string lengths and indexing be done in unicode code points instead of
   utf-8 bytes?
     - Advantage: easier to understand

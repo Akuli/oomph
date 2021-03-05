@@ -16,22 +16,61 @@ class Statement:
     pass
 
 
-# TODO: split this
 @dataclass(eq=False)
-class GetLocalOrFileOrBuiltinVar(Expression):
-    varname: str
-    lineno: Optional[int] = None
+class Variable:
+    name: str
+    type: Type
+
+
+# There can be different local variables with same name, even in the same
+# function. They are represented as different instances of this class.
+@dataclass(eq=False)
+class LocalVariable(Variable):
+    pass
 
 
 @dataclass(eq=False)
-class GetExportedVar(Expression):
+class BuiltinVariable(Variable):
+    pass
+
+
+@dataclass(eq=False)
+class SpecialVariable(Variable):
+    pass
+
+
+builtin_variables = {
+    var.name: var
+    for var in [
+        BuiltinVariable("print", FunctionType([STRING], None)),
+        BuiltinVariable("assert", FunctionType([STRING], None)),
+        BuiltinVariable("true", BOOL),
+        BuiltinVariable("false", BOOL),
+    ]
+}
+
+
+@dataclass(eq=False)
+class ImportVariable(Variable):
     path: pathlib.Path
-    name: str
+    pass
+
+
+# Currently these are always functions
+@dataclass(eq=False)
+class ThisFileVariable(Variable):
+    pass
 
 
 @dataclass(eq=False)
-class GetSpecialVar(Expression):
-    name: str
+class GetVar(Expression):
+    var: Variable
+    lineno: Optional[int]
+
+    def __init__(self, var: Variable, lineno: Optional[int] = None):
+        super().__init__(var.type)
+        self.var = var
+        self.lineno = lineno
 
 
 @dataclass(eq=False)
@@ -143,18 +182,13 @@ class InstantiateUnion(Expression):
 
 @dataclass(eq=False)
 class CreateLocalVar(Statement):
-    varname: str
+    var: LocalVariable
     value: Expression
 
 
 @dataclass(eq=False)
-class DeleteLocalVar(Statement):
-    varname: str
-
-
-@dataclass(eq=False)
 class SetLocalVar(Statement):
-    varname: str
+    var: LocalVariable
     value: Expression
 
 
@@ -191,9 +225,8 @@ class Loop(Statement):
 
 @dataclass(eq=False)
 class Switch(Statement):
-    varname: str
-    vartype: UnionType
-    cases: Dict[Type, List[Statement]]
+    union: Expression
+    cases: Dict[LocalVariable, List[Statement]]
 
 
 @dataclass(eq=False)
@@ -203,18 +236,26 @@ class ToplevelDeclaration:
 
 @dataclass(eq=False)
 class FuncDef(ToplevelDeclaration):
-    name: str
-    type: FunctionType
-    argnames: List[str]
+    var: ThisFileVariable
+    argvars: List[LocalVariable]
     body: List[Statement]
     refs: List[Tuple[str, Type]]
     export: bool
 
 
 @dataclass(eq=False)
+class MethodDef:
+    name: str
+    type: FunctionType
+    argvars: List[LocalVariable]
+    body: List[Statement]
+    refs: List[Tuple[str, Type]]
+
+
+@dataclass(eq=False)
 class ClassDef(ToplevelDeclaration):
     type: Type
-    body: List[FuncDef]
+    body: List[MethodDef]
 
 
 @dataclass(eq=False)
