@@ -428,13 +428,11 @@ class _FileEmitter:
     def __init__(
         self,
         path: pathlib.Path,
-        exports: List[tast.Export],
-        export_c_names: Dict[tast.Export, str],
+        session: Session,
         includes: List[str],
     ):
         self.path = path
-        self.exports = exports
-        self.export_c_names = export_c_names
+        self.session = session
         self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
             tast.builtin_variables["__io_mkdir"]: "io_mkdir",
@@ -447,7 +445,7 @@ class _FileEmitter:
             tast.builtin_variables["true"]: "true",
             **{
                 exp.value: name
-                for exp, name in export_c_names.items()
+                for exp, name in self.session.export_c_names.items()
                 if isinstance(exp.value, tast.ExportVariable)
             },
             **{var: name for name, var in tast.special_variables.items()},
@@ -576,20 +574,22 @@ class _FileEmitter:
                     c_name = "oomph_main"
                 else:
                     c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
-                    while c_name in self.export_c_names.values():
+                    while c_name in self.session.export_c_names.values():
                         c_name += "_"
             else:
                 c_name = "func_" + top_declaration.var.name
 
             assert top_declaration.var not in self.variable_names
-            assert top_declaration.var not in self.export_c_names
+            assert top_declaration.var not in self.session.export_c_names
 
             self.variable_names[top_declaration.var] = c_name
             if isinstance(top_declaration.var, tast.ExportVariable):
                 [export] = [
-                    exp for exp in self.exports if exp.value is top_declaration.var
+                    exp
+                    for exp in self.session.exports
+                    if exp.value is top_declaration.var
                 ]
-                self.export_c_names[export] = c_name
+                self.session.export_c_names[export] = c_name
 
             return _FunctionEmitter(self).emit_funcdef(
                 top_declaration,
@@ -629,9 +629,11 @@ class _FileEmitter:
             c_name = self.get_type_c_name(top_declaration.type)
             if top_declaration.export:
                 [export] = [
-                    exp for exp in self.exports if exp.value is top_declaration.type
+                    exp
+                    for exp in self.session.exports
+                    if exp.value is top_declaration.type
                 ]
-                self.export_c_names[export] = c_name
+                self.session.export_c_names[export] = c_name
             return f"""
             struct class_{c_name} {{
                 REFCOUNT_HEADER
@@ -732,24 +734,30 @@ class _FileEmitter:
         raise NotImplementedError(top_declaration)
 
 
-def run(
-    ast: List[tast.ToplevelDeclaration],
-    path: pathlib.Path,
-    exports: List[tast.Export],
-    export_c_names: Dict[tast.Export, str],
-    includes: List[str],
-) -> Tuple[str, str]:
-    emitter = _FileEmitter(path, exports, export_c_names, includes)
-    code = "".join(
-        emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
-    )
-    c_code = emitter.h_code + emitter.beginning + code + emitter.ending
-    header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
-    return (
-        c_code,
-        f"""
-        #ifndef {header_guard}
-        #define {header_guard}
-        {emitter.h_code}
-        #endif""",
-    )
+# Has state that is shared between different files
+class Session:
+    def __init__(self) -> None:
+        self.exports: List[tast.Export] = []
+        self.export_c_names: Dict[tast.Export, str] = {}
+
+    def create_c_code(
+        self,
+        ast: List[tast.ToplevelDeclaration],
+        path: pathlib.Path,
+        includes: List[str],
+    ) -> Tuple[str, str]:
+        emitter = _FileEmitter(path, self, includes)
+        code = "".join(
+            emitter.emit_toplevel_declaration(top_declaration)
+            for top_declaration in ast
+        )
+        c_code = emitter.h_code + emitter.beginning + code + emitter.ending
+        header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
+        return (
+            c_code,
+            f"""
+            #ifndef {header_guard}
+            #define {header_guard}
+            {emitter.h_code}
+            #endif""",
+        )

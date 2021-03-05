@@ -7,10 +7,9 @@ import shlex
 import signal
 import subprocess
 import sys
-from typing import Dict, List, Set
+from typing import List, Set
 
 from oomph import c_output, parser
-from oomph import typed_ast as tast
 from oomph import typer
 from oomph import untyped_ast as uast
 
@@ -54,14 +53,13 @@ class CompilationUnit:
         self,
         used_c_paths: Set[pathlib.Path],
         compilation_dir: pathlib.Path,
-        exports: List[tast.Export],
-        export_c_names: Dict[tast.Export, str],
+        session: c_output.Session,
         headers: List[str],
     ) -> None:
-        typed_ast = typer.convert_program(self.untyped_ast, self.source_path, exports)
-        c, h = c_output.run(
-            typed_ast, self.source_path, exports, export_c_names, headers
+        typed_ast = typer.convert_program(
+            self.untyped_ast, self.source_path, session.exports
         )
+        c, h = session.create_c_code(typed_ast, self.source_path, headers)
 
         self.c_path.write_text(c, encoding="utf-8")
         self.h_path.write_text(h, encoding="utf-8")
@@ -116,15 +114,13 @@ def main() -> None:
     # Compile dependencies first
     compilation_units.reverse()
 
-    exports: List[tast.Export] = []
-    export_c_names: Dict[tast.Export, str] = {}
+    session = c_output.Session()
     for index, unit in enumerate(compilation_units):
         already_compiled = compilation_units[:index]
         unit.create_c_and_h_files(
             {unit.c_path for unit in already_compiled},
             cache_dir,
-            exports,
-            export_c_names,
+            session,
             [unit.h_path.name for unit in already_compiled],
         )
 
