@@ -1,7 +1,7 @@
 func show(optional[Str] x):
     print("show: {x} {x.is_null()}")
 
-func main():
+export func main():
     let x = new optional[Str]("lol" + "wat")
     print("main: {x} {x.is_null()}")
     show(x)

@@ -1,5 +1,5 @@
 func foo() -> int:
     return 123
 
-func main():
+export func main():
     print(foo())

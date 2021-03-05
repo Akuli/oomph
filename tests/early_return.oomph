@@ -1,4 +1,4 @@
-func main():
+export func main():
     print(123)
     return
     print(456)

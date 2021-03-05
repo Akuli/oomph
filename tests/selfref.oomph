@@ -1,5 +1,5 @@
 # TODO: can't make instances of classes like this
 class SelfRef(SelfRef x)
 
-func main():
+export func main():
     pass

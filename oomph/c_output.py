@@ -521,16 +521,13 @@ class _FileEmitter:
     ) -> str:
         if isinstance(top_declaration, tast.FuncDef):
             assert top_declaration.var not in self.variable_names
-            if top_declaration.var.name == "main":
-                assert isinstance(
-                    top_declaration.var, tast.ThisFileVariable
-                ), "don't export main"
-                c_name = "oomph_main"
-                static = False
-            elif isinstance(top_declaration.var, tast.ExportVariable):
-                c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
-                while c_name in self.export_var_names.values():
-                    c_name += "_"
+            if isinstance(top_declaration.var, tast.ExportVariable):
+                if top_declaration.var.name == "main":
+                    c_name = "oomph_main"
+                else:
+                    c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
+                    while c_name in self.export_var_names.values():
+                        c_name += "_"
                 static = False
             else:
                 c_name = "func_" + top_declaration.var.name

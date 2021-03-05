@@ -8,7 +8,7 @@ func foo(int x):
     else:
         print(1234)
 
-func main():
+export func main():
     foo(1)
     foo(2)
     foo(3)

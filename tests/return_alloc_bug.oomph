@@ -5,5 +5,5 @@ func bar() -> Foo:
     let f2 = new Foo()
     return f2
 
-func main():
+export func main():
     bar()

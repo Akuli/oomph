@@ -8,7 +8,7 @@ class Point(int x, int y):
         return new Point(self.x + other.x, self.y + other.y)
 
 
-func main():
+export func main():
     new Point(100, 200).print()
     let p = new Point(100, 200)
     p.add(new Point(1, 2)).print()

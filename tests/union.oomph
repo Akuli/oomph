@@ -18,7 +18,7 @@ func print_thing(Thing thing):
             print("Baz")
     print("Without switch: {thing}")
 
-func main():
+export func main():
     print_thing(new Thing(new Foo(69)))
     print_thing(new Thing(new Bar()))
     print_thing(new Thing(new Baz()))

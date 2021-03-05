@@ -1,4 +1,4 @@
-func main():
+export func main():
     print(1 + 2*3)
     print((1 + 2)*3)
     print(1 - 2*3)

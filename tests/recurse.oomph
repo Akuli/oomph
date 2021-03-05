@@ -3,5 +3,5 @@ func countdown(int n):
         print(n)
         countdown(n-1)
 
-func main():
+export func main():
     countdown(10)

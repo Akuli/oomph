@@ -1,5 +1,5 @@
 # comment
-func main():  # comment
+export func main():  # comment
     # comment
     print(1)  # comment
     # comment

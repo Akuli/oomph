@@ -81,7 +81,7 @@ _TOKEN_REGEX = r'''
     # Ignore comments
     (?<=[\S\s])[ ] | [#].*
 )
-| (?P<error> .{1,10} )
+| (?P<error> .{1,15} )
 '''
 
 

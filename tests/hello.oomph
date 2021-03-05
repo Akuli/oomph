@@ -1,2 +1,2 @@
-func main():
+export func main():
     print("hello")

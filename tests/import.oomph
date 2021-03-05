@@ -1,4 +1,4 @@
 import "hello_lib.oomph" as hello
 
-func main():
+export func main():
     hello::print_hello()
