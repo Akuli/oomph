@@ -158,7 +158,7 @@ class FuncOrMethodDef(ToplevelDeclaration):
     args: List[Tuple[Type, str]]
     returntype: Optional[Type]
     body: List[Statement]
-    export: bool = False
+    export: bool = False  # never true for methods
 
 
 @dataclass(eq=False)
