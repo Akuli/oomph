@@ -445,8 +445,11 @@ class _FileEmitter:
             tast.builtin_variables["false"]: "false",
             tast.builtin_variables["print"]: "io_print",
             tast.builtin_variables["true"]: "true",
-            # https://github.com/python/mypy/issues/10171
-            **export_var_names,  # type: ignore
+            **{
+                exp.value: name
+                for exp, name in export_c_names.items()
+                if isinstance(exp.value, tast.ExportVariable)
+            },
             **{var: name for name, var in tast.special_variables.items()},
         }
         self.generic_type_names: Dict[Type, str] = {}
@@ -737,7 +740,7 @@ def run(
     export_c_names: Dict[tast.Export, str],
     includes: List[str],
 ) -> Tuple[str, str]:
-    emitter = _FileEmitter(path, export_c_names, includes)
+    emitter = _FileEmitter(path, exports, export_c_names, includes)
     code = "".join(
         emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
     )

@@ -58,10 +58,10 @@ class CompilationUnit:
         export_c_names: Dict[tast.Export, str],
         headers: List[str],
     ) -> None:
-        typed_ast = typer.convert_program(
-            self.untyped_ast, self.source_path, export_vars
+        typed_ast = typer.convert_program(self.untyped_ast, self.source_path, exports)
+        c, h = c_output.run(
+            typed_ast, self.source_path, exports, export_c_names, headers
         )
-        c, h = c_output.run(typed_ast, self.source_path, exports, export_c_names)
 
         self.c_path.write_text(c, encoding="utf-8")
         self.h_path.write_text(h, encoding="utf-8")

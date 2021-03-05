@@ -485,9 +485,7 @@ class _FileTyper:
 
                 name = top_declaration.name + "::" + export.name
                 if isinstance(export.value, tast.ExportVariable):
-                    self.add_var(
-                        export.value, name
-                    )
+                    self.add_var(export.value, name)
                 elif isinstance(export.value, tast.Type):
                     self._types[name] = export.value
                 else:
