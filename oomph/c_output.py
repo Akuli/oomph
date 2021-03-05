@@ -209,7 +209,11 @@ class _FunctionEmitter:
         raise NotImplementedError(ast)
 
     def emit_funcdef(
-        self, funcdef: Union[tast.FuncDef, tast.MethodDef], c_name: str, static: bool
+        self,
+        funcdef: Union[tast.FuncDef, tast.MethodDef],
+        c_name: str,
+        *,
+        static: bool = True,
     ) -> str:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False)
@@ -243,8 +247,7 @@ class _FunctionEmitter:
 
         varnames = [self.variable_names[var] for var in funcdef.argvars]
         return f"""
-        {"static" if static else ""}
-        {self.file_emitter.declare_function(c_name, functype, varnames)}
+        {self.file_emitter.declare_function(c_name, functype, varnames, static)}
         {{
             {self.before_body}
             {ref_declarations}
@@ -414,13 +417,14 @@ class _FileEmitter:
         for var, name in export_var_names.items():
             self.variable_names[var] = name
             assert isinstance(var.type, tast.FunctionType)
-            self.beginning += self.declare_function(name, var.type) + ";"
+            self.beginning += self.declare_function(name, var.type, static=False) + ";"
 
     def declare_function(
         self,
         function_name: str,
         the_type: FunctionType,
         argnames: Optional[List[str]] = None,
+        static: bool = True,
     ) -> str:
         if argnames is None:
             arg_decls = [self.emit_type(argtype) for argtype in the_type.argtypes]
@@ -431,7 +435,8 @@ class _FileEmitter:
                 for argtype, name in zip(the_type.argtypes, argnames)
             ]
 
-        return "%s %s(%s)" % (
+        return "%s %s %s(%s)" % (
+            ("static" if static else ""),
             self.emit_type(the_type.returntype),
             function_name,
             (", ".join(arg_decls) or "void"),
@@ -528,10 +533,8 @@ class _FileEmitter:
                     c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
                     while c_name in self.export_var_names.values():
                         c_name += "_"
-                static = False
             else:
                 c_name = "func_" + top_declaration.var.name
-                static = True
 
             assert top_declaration.var not in self.variable_names
             assert top_declaration.var not in self.export_var_names
@@ -541,7 +544,9 @@ class _FileEmitter:
                 self.export_var_names[top_declaration.var] = c_name
 
             return _FunctionEmitter(self).emit_funcdef(
-                top_declaration, self.variable_names[top_declaration.var], static
+                top_declaration,
+                self.variable_names[top_declaration.var],
+                static=(not isinstance(top_declaration.var, tast.ExportVariable)),
             )
 
         if isinstance(top_declaration, tast.ClassDef):
@@ -569,7 +574,6 @@ class _FileEmitter:
                 _FunctionEmitter(self).emit_funcdef(
                     method,
                     f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
-                    static=True,
                 )
                 for method in top_declaration.body
             )
