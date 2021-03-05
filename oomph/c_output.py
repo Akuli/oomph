@@ -443,6 +443,7 @@ class _FileEmitter:
             tast.builtin_variables["false"]: "false",
             tast.builtin_variables["print"]: "io_print",
             tast.builtin_variables["true"]: "true",
+            # https://github.com/python/mypy/issues/10171
             **export_var_names,  # type: ignore
             **{var: name for name, var in tast.special_variables.items()},
         }
