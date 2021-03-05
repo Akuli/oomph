@@ -111,7 +111,7 @@ def main() -> None:
             )
 
     exe_path = cache_dir / args.infile.stem
-    result = invoke_c_compiler([c_paths[s] for s in compilation_order], exe_path)
+    result = invoke_c_compiler([c_paths[source_path] for source_path in compilation_order], exe_path)
     if result != 0:
         sys.exit(result)
 
