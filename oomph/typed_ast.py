@@ -1,7 +1,7 @@
 import copy
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from oomph.types import BOOL, FLOAT, INT, STRING, FunctionType, Type, UnionType
 
@@ -29,6 +29,19 @@ class LocalVariable(Variable):
     pass
 
 
+# Currently these are always functions. These would be called "global
+# variables" in Python, but that's confusing, because they are less global
+# than ExportVariables.
+@dataclass(eq=False)
+class ThisFileVariable(Variable):
+    pass
+
+
+@dataclass(eq=False)
+class ExportVariable(Variable):
+    path: pathlib.Path
+
+
 @dataclass(eq=False)
 class BuiltinVariable(Variable):
     pass
@@ -48,6 +61,7 @@ builtin_variables = {
         BuiltinVariable("false", BOOL),
     ]
 }
+
 special_variables = {
     var.name: var
     for var in [
@@ -73,18 +87,6 @@ special_variables = {
         SpecialVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
     ]
 }
-
-
-@dataclass(eq=False)
-class ImportVariable(Variable):
-    path: pathlib.Path
-    pass
-
-
-# Currently these are always functions
-@dataclass(eq=False)
-class ThisFileVariable(Variable):
-    pass
 
 
 @dataclass(eq=False)
@@ -261,11 +263,10 @@ class ToplevelDeclaration:
 
 @dataclass(eq=False)
 class FuncDef(ToplevelDeclaration):
-    var: ThisFileVariable
+    var: Union[ThisFileVariable, ExportVariable]
     argvars: List[LocalVariable]
     body: List[Statement]
     refs: List[Tuple[str, Type]]
-    export: bool
 
 
 @dataclass(eq=False)

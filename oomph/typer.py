@@ -254,7 +254,7 @@ class _FunctionOrMethodTyper:
 
         if isinstance(ast, uast.Assign):
             # TODO: this assumes local variable without assert
-            var2 = self.variables[ast.varname]  # fuck you mypy
+            var2 = self.variables[ast.varname]  # mypy_sucks you mypy
             assert isinstance(var2, tast.LocalVariable)
             value = self.do_expression(ast.value)
             assert value.type is var2.type
@@ -377,10 +377,11 @@ def _create_to_string_method(class_type: tast.Type) -> uast.FuncDef:
 class _FileTyper:
     def __init__(
         self,
-        module_var_types: Dict[pathlib.Path, Dict[str, Type]],
+        path: pathlib.Path,
+        export_vars: List[tast.ExportVariable],
     ) -> None:
-        self.module_var_types = module_var_types
-        self.imports: Dict[str, pathlib.Path] = {}
+        self.path = path
+        self.export_vars = export_vars
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         self.variables: Dict[str, tast.Variable] = tast.builtin_variables.copy()  # type: ignore
@@ -388,9 +389,11 @@ class _FileTyper:
         # Union members don't need to exist when union is defined (allows nestedness)
         self.union_laziness: Dict[UnionType, List[uast.Type]] = {}
 
-    def add_var(self, var: tast.Variable) -> None:
-        assert var.name not in self.variables
-        self.variables[var.name] = var
+    def add_var(self, var: tast.Variable, name: Optional[str] = None) -> None:
+        if name is None:
+            name = var.name
+        assert name not in self.variables
+        self.variables[name] = var
 
     def get_type(self, raw_type: uast.Type) -> tast.Type:
         if raw_type.generic is None:
@@ -408,8 +411,14 @@ class _FileTyper:
             funcdef.name,
             self.variables.keys(),
         )
-        func_var = tast.ThisFileVariable(funcdef.name, functype)
-        self.add_var(func_var)
+
+        if funcdef.export:
+            func_var = tast.ExportVariable(funcdef.name, functype, self.path)
+            self.export_vars.append(func_var)
+            mypy_sucks: Union[tast.ExportVariable, tast.ThisFileVariable] = func_var
+        else:
+            mypy_sucks = tast.ThisFileVariable(funcdef.name, functype)
+        self.add_var(mypy_sucks)
 
         local_vars = self.variables.copy()
         argvars = []
@@ -422,11 +431,10 @@ class _FileTyper:
         typer = _FunctionOrMethodTyper(self, local_vars)
         body = typer.do_block(funcdef.body)
         return tast.FuncDef(
-            func_var,
+            mypy_sucks,
             argvars,
             body,
             typer.reflist,
-            funcdef.export,
         )
 
     # FIXME: copy pasta
@@ -461,7 +469,9 @@ class _FileTyper:
         top_declaration: uast.ToplevelDeclaration,
     ) -> Optional[tast.ToplevelDeclaration]:
         if isinstance(top_declaration, uast.Import):
-            self.imports[top_declaration.name] = top_declaration.path
+            for var in self.export_vars:
+                if var.path == top_declaration.path:
+                    self.add_var(var, top_declaration.name + "::" + var.name)
             return None
 
         if isinstance(top_declaration, uast.FuncDef):
@@ -509,9 +519,10 @@ class _FileTyper:
 
 def convert_program(
     program: List[uast.ToplevelDeclaration],
-    module_var_types: Dict[pathlib.Path, Dict[str, Type]],
+    path: pathlib.Path,
+    export_vars: List[tast.ExportVariable],
 ) -> List[tast.ToplevelDeclaration]:
-    typer = _FileTyper(module_var_types)
+    typer = _FileTyper(path, export_vars)
     result = [
         top for top in map(typer.do_toplevel_declaration, program) if top is not None
     ]

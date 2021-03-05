@@ -6,11 +6,12 @@ import shlex
 import signal
 import subprocess
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
-from oomph import c_output, parser, typer
+from oomph import c_output, parser
+from oomph import typed_ast as tast
+from oomph import typer
 from oomph import untyped_ast as uast
-from oomph.types import Type
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
@@ -29,18 +30,12 @@ def create_untyped_ast(source_path: pathlib.Path) -> List[uast.ToplevelDeclarati
 
 def create_c_code(
     untyped_ast: List[uast.ToplevelDeclaration],
-    module_var_types: Dict[pathlib.Path, Dict[str, Type]],
     source_path: pathlib.Path,
-    exported_var_names: Dict[Tuple[pathlib.Path, str], str],
+    export_vars: List[tast.ExportVariable],
+    export_var_names: Dict[tast.ExportVariable, str],
 ) -> str:
-    typed_ast = typer.convert_program(untyped_ast, module_var_types)
-    assert source_path not in module_var_types
-    #    module_var_types[source_path] = {
-    #        fdef.name: fdef.type
-    #        for fdef in typed_ast
-    #        if isinstance(fdef, tast.FuncDef) and fdef.export
-    #    }
-    return c_output.run(typed_ast, source_path, exported_var_names)
+    typed_ast = typer.convert_program(untyped_ast, source_path, export_vars)
+    return c_output.run(typed_ast, source_path, export_var_names)
 
 
 def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int:
@@ -102,16 +97,16 @@ def main() -> None:
 
     compilation_order.reverse()
 
-    export_dicts: Dict[pathlib.Path, Dict[str, Type]] = {}
-    exported_var_names: Dict[Tuple[pathlib.Path, str], str] = {}
+    export_vars: List[tast.ExportVariable] = []
+    export_var_names: Dict[tast.ExportVariable, str] = {}
     for source_path in compilation_order:
         with c_paths[source_path].open("w") as file:
             file.write(
                 create_c_code(
                     untyped_asts[source_path],
-                    export_dicts,
                     source_path,
-                    exported_var_names,
+                    export_vars,
+                    export_var_names,
                 )
             )
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import re
-from typing import Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Dict, List, Optional, TypeVar, Union
 
 import oomph.typed_ast as tast
 from oomph.types import (
@@ -84,13 +84,6 @@ class _FunctionEmitter:
             )
         if isinstance(ast, tast.Null):
             return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
-        #        if isinstance(ast, tast.GetExportedVar):
-        #            return self.file_emitter.exported_var_names[(ast.path, ast.name)]
-        #        if isinstance(ast, tast.GetSpecialVar):
-        #            return ast.name
-        #        if isinstance(ast, tast.GetLocalOrFileOrBuiltinVar):
-        #            assert "::" not in ast.varname, ast.varname
-        #            return self.name_mapping.get(ast.varname, f"var_{ast.varname}")
         if isinstance(ast, tast.GetVar):
             return self.variable_names[ast.var]
         if isinstance(ast, tast.Constructor):
@@ -214,10 +207,6 @@ class _FunctionEmitter:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False)
 
-        arg_declarations = ",".join(
-            self.file_emitter.emit_type(var.type) + " " + self.variable_names[var]
-            for var in funcdef.argvars
-        )
         ref_declarations = "".join(
             "%s %s = %s;\n\t"
             % (
@@ -245,10 +234,10 @@ class _FunctionEmitter:
             )
             self.after_body += "return retval;"
 
+        varnames = [self.variable_names[var] for var in funcdef.argvars]
         return f"""
         {"static" if static else ""}
-        {self.file_emitter.emit_type(functype.returntype)}
-        {c_name}({arg_declarations or "void"})
+        {self.file_emitter.declare_function(c_name, functype, varnames)}
         {{
             {self.before_body}
             {ref_declarations}
@@ -398,25 +387,48 @@ static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname
 
 class _FileEmitter:
     def __init__(
-        self,
-        path: pathlib.Path,
-        exported_var_names: Dict[Tuple[pathlib.Path, str], str],
+        self, path: pathlib.Path, export_var_names: Dict[tast.ExportVariable, str]
     ):
         self.path = path
-        self._exported_var_names = exported_var_names
+        self.export_var_names = export_var_names
         self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
             tast.builtin_variables["assert"]: "oomph_assert",
             tast.builtin_variables["false"]: "false",
             tast.builtin_variables["print"]: "oomph_print",
             tast.builtin_variables["true"]: "true",
+            **{var: name for name, var in tast.special_variables.items()},
         }
-        for name, var in tast.special_variables.items():
-            self.variable_names[var] = name
         self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
+
         self.beginning = "#include <lib/oomph.h>\n\n"
         self.ending = ""
+        for var, name in export_var_names.items():
+            self.variable_names[var] = name
+            assert isinstance(var.type, tast.FunctionType)
+            self.beginning += self.declare_function(name, var.type) + ';'
+
+    def declare_function(
+        self,
+        function_name: str,
+        the_type: FunctionType,
+        argnames: Optional[List[str]] = None,
+    ) -> str:
+        if argnames is None:
+            arg_decls = [self.emit_type(argtype) for argtype in the_type.argtypes]
+        else:
+            assert len(the_type.argtypes) == len(argnames)
+            arg_decls = [
+                self.emit_type(argtype) + " " + name
+                for argtype, name in zip(the_type.argtypes, argnames)
+            ]
+
+        return "%s %s(%s)" % (
+            self.emit_type(the_type.returntype),
+            function_name,
+            (", ".join(arg_decls) or "void"),
+        )
 
     def get_var_name(self) -> str:
         self.varname_counter += 1
@@ -503,21 +515,27 @@ class _FileEmitter:
         if isinstance(top_declaration, tast.FuncDef):
             assert top_declaration.var not in self.variable_names
             if top_declaration.var.name == "main":
-                assert not top_declaration.export, "don't export main"
-                self.variable_names[top_declaration.var] = "oomph_main"
+                assert isinstance(
+                    top_declaration.var, tast.ThisFileVariable
+                ), "don't export main"
+                c_name = "oomph_main"
+                static = False
+            elif isinstance(top_declaration.var, tast.ExportVariable):
+                c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
+                while c_name in self.export_var_names.values():
+                    c_name += "_"
                 static = False
             else:
-                assert not top_declaration.export  # TODO
-                #            elif top_declaration.export:
-                #                c_name = "var_" + top_declaration.name
-                #                while c_name in self.exported_var_names.values():
-                #                    c_name += "_"
-                #                self.exported_var_names[(self.path, top_declaration.name)] = c_name
-                #                static = False
-                self.variable_names[top_declaration.var] = (
-                    "func_" + top_declaration.var.name
-                )
+                c_name = "func_" + top_declaration.var.name
                 static = True
+
+            assert top_declaration.var not in self.variable_names
+            assert top_declaration.var not in self.export_var_names
+
+            self.variable_names[top_declaration.var] = c_name
+            if isinstance(top_declaration.var, tast.ExportVariable):
+                self.export_var_names[top_declaration.var] = c_name
+
             return _FunctionEmitter(self).emit_funcdef(
                 top_declaration, self.variable_names[top_declaration.var], static
             )
@@ -656,9 +674,9 @@ class _FileEmitter:
 def run(
     ast: List[tast.ToplevelDeclaration],
     path: pathlib.Path,
-    exported_var_names: Dict[Tuple[pathlib.Path, str], str],
+    export_var_names: Dict[tast.ExportVariable, str],
 ) -> str:
-    emitter = _FileEmitter(path, exported_var_names)
+    emitter = _FileEmitter(path, export_var_names)
     code = "".join(
         emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
     )

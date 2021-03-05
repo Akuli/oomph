@@ -152,6 +152,7 @@ class Import(ToplevelDeclaration):
     name: str
 
 
+# TODO: rename to FuncOrMethodDef
 @dataclass(eq=False)
 class FuncDef(ToplevelDeclaration):
     name: str
