@@ -3,18 +3,21 @@ true
 false
 false
 '
+Lengths:
 5
 5
 6
 5
 0
 0
+Slices:
 
 
 hello
 he
 llo
 hello
+Repeats:
 
 
 abc
@@ -22,32 +25,45 @@ abcabc
 abcabcabc
 abcabcabcabc
 abcabcabcabcabc
+Contains:
+true
+false
+true
+false
+true
+Starts with:
 true
 false
 true
 true
 false
 false
+Ends with:
 false
 true
 true
 true
 false
 false
+Pad:
 **abc
 abc**
 *abc*
 *abc**
+Find first:
 3
 -1
 0
+Count:
 2
 2
 0
 -1
+Trim:
 a 
  a
 a
+Replace:
 xcx
 xxa
 xx

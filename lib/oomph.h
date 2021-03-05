@@ -42,6 +42,7 @@ struct class_Str *meth_int_to_string(int64_t n);
 // Class implemented in C, method implemented in oomph
 #define meth_List_Str_join func___string_join
 #define meth_Str_center_pad func___string_center_pad
+#define meth_Str_contains func___string_contains
 #define meth_Str_count func___string_count
 #define meth_Str_ends_with func___string_ends_with
 #define meth_Str_left_pad func___string_left_pad

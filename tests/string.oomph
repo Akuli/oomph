@@ -6,6 +6,7 @@ export func main():
 
     print("'")
 
+    print("Lengths:")
     print("hello".length())
     print("hello".unicode_length())
     print("hellö".length())
@@ -13,6 +14,7 @@ export func main():
     print("".length())
     print("".unicode_length())
 
+    print("Slices:")
     print("hello".slice(9, -6))
     print("hello".slice(2, 2))
 
@@ -21,6 +23,7 @@ export func main():
     print("hello".slice(2, 5))
     print("hello".slice(-6, 9))
 
+    print("Repeats:")
     print("abc".repeat(-5))    # TODO: should negative repeats be disallowed?
     print("abc".repeat(0))
     print("abc".repeat(1))
@@ -29,6 +32,14 @@ export func main():
     print("abc".repeat(4))
     print("abc".repeat(5))
 
+    print("Contains:")
+    print("abc".contains("a"))
+    print("abc".contains("x"))
+    print("abc".contains("abc"))
+    print("abc".contains("abcd"))
+    print("abc".contains(""))
+
+    print("Starts with:")
     print("abc".starts_with("ab"))
     print("abc".starts_with("bc"))
     print("abc".starts_with("abc"))
@@ -36,6 +47,7 @@ export func main():
     print("abc".starts_with("abcx"))
     print("abc".starts_with("xabc"))
 
+    print("Ends with:")
     print("abc".ends_with("ab"))
     print("abc".ends_with("bc"))
     print("abc".ends_with("abc"))
@@ -43,24 +55,29 @@ export func main():
     print("abc".ends_with("abcx"))
     print("abc".ends_with("xabc"))
 
+    print("Pad:")
     print("abc".left_pad(5, "*"))
     print("abc".right_pad(5, "*"))
     print("abc".center_pad(5, "*"))
     print("abc".center_pad(6, "*"))
 
+    print("Find first:")
     print("abclolwatlolabc".find_first("lol"))
     print("abclolwatlolabc".find_first("x"))
     print("abclolwatlolabc".find_first(""))
 
+    print("Count:")
     print("abclolwatlolabc".count("lol"))
     print("aaaa".count("aa"))
     print("aaaa".count("b"))
     print("aaaa".count(""))
 
+    print("Trim:")
     print(" a ".left_trim())
     print(" a ".right_trim())
     print(" a ".trim())
 
+    print("Replace:")
     print("abcab".replace("ab", "x"))
     print("aaaaa".replace("aa", "x"))
     print("aaaa".replace("aa", "x"))
