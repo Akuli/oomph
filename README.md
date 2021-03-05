@@ -32,11 +32,13 @@ Known bugs:
 Missing features needed to write the oomph compiler in oomph:
 - multiple files
 - io
+- running subprocesses
 - `==` operator for optionals
-
-Other missing features:
+- `==` operator for pointer types
 - exporting classes
 - exporting unions
+
+Other missing features:
 - attributes of classes that are not arguments
 - init methods of classes (or something similar)
 - path objects and maybe `p"/home/akuli"` syntax

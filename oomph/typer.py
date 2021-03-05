@@ -440,35 +440,6 @@ class _FileTyper:
                 typer.reflist,
             )
 
-    # FIXME: copy pasta
-    def _do_method_def(
-        self, funcdef: uast.FuncOrMethodDef, class_name: str
-    ) -> tast.MethodDef:
-        funcdef.args.insert(0, (uast.Type(class_name, None), "self"))
-        functype = FunctionType(
-            [self.get_type(typ) for typ, nam in funcdef.args],
-            None if funcdef.returntype is None else self.get_type(funcdef.returntype),
-        )
-
-        local_vars = self.variables.copy()
-        argvars = []
-        for (typename, argname), the_type in zip(funcdef.args, functype.argtypes):
-            var = tast.LocalVariable(argname, the_type)
-            argvars.append(var)
-            assert var.name not in local_vars
-            local_vars[var.name] = var
-
-        typer = _FunctionOrMethodTyper(self, local_vars)
-        body = typer.do_block(funcdef.body)
-        assert not funcdef.export
-        return tast.MethodDef(
-            funcdef.name,
-            functype,
-            argvars,
-            body,
-            typer.reflist,
-        )
-
     def do_toplevel_declaration(
         self,
         top_declaration: uast.ToplevelDeclaration,
@@ -501,7 +472,10 @@ class _FileTyper:
 
             typed_method_defs = []
             for method_def in top_declaration.body:
-                typed_def = self._do_method_def(method_def, top_declaration.name)
+                typed_def = self._do_func_or_method_def(
+                    method_def, top_declaration.name
+                )
+                assert isinstance(typed_def, tast.MethodDef)
                 classtype.methods[method_def.name] = typed_def.type
                 typed_method_defs.append(typed_def)
 
