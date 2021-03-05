@@ -30,7 +30,6 @@ Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features needed to write the oomph compiler in oomph:
-- something like python's `__file__`
 - io
 - running subprocesses
 - `==` operator for optionals
@@ -39,6 +38,7 @@ Missing features needed to write the oomph compiler in oomph:
 - exporting unions
 
 Other missing features:
+- something like python's `__file__` (compile time and runtime)
 - attributes of classes that are not arguments
 - init methods of classes (or something similar)
 - path objects and maybe `p"/home/akuli"` syntax
