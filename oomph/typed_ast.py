@@ -41,7 +41,7 @@ class ThisFileVariable(Variable):
 
 @dataclass(eq=False)
 class ExportVariable(Variable):
-    path: pathlib.Path
+    path: pathlib.Path  # TODO: is this necessary
 
 
 @dataclass(eq=False)
@@ -301,6 +301,7 @@ class MethodDef:
 class ClassDef(ToplevelDeclaration):
     type: Type
     body: List[MethodDef]
+    export: bool
 
 
 @dataclass(eq=False)
@@ -322,3 +323,10 @@ class DecRef(Statement):
 @dataclass(eq=False)
 class Constructor(Expression):
     class_to_construct: Type
+
+
+@dataclass(eq=False)
+class Export:
+    path: pathlib.Path
+    name: str
+    value: Union[ExportVariable, Type]

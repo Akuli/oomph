@@ -4,3 +4,5 @@ import "<stdlib>/hello.oomph" as hello_std
 export func main():
     hello::print_hello()
     hello_std::print_hello()
+
+    print(new hello::Foo(123))

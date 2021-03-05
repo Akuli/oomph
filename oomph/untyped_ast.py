@@ -166,6 +166,7 @@ class ClassDef(ToplevelDeclaration):
     name: str
     members: List[Tuple[Type, str]]
     body: List[FuncOrMethodDef]
+    export: bool
 
 
 @dataclass(eq=False)

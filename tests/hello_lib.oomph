@@ -1,2 +1,4 @@
 export func print_hello():
     print("hello")
+
+export class Foo(int x)

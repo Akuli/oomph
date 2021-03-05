@@ -1,7 +1,7 @@
 #CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Werror=incompatible-pointer-types
-CFLAGS += -Werror=implicit-function-declaration
+CFLAGS += -Wno-implicit-function-declaration  # FIXME: hack
 CFLAGS += -Werror=discarded-qualifiers
 CFLAGS += -Werror=stack-usage=50000
 CFLAGS += -Wno-unused-parameter

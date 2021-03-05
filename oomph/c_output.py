@@ -401,10 +401,14 @@ static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname
 
 class _FileEmitter:
     def __init__(
-        self, path: pathlib.Path, export_var_names: Dict[tast.ExportVariable, str]
+        self,
+        path: pathlib.Path,
+        exports: List[tast.Export],
+        export_c_names: Dict[tast.Export, str],
     ):
         self.path = path
-        self.export_var_names = export_var_names
+        self.exports = exports
+        self.export_c_names = export_c_names
         self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
             tast.builtin_variables["__io_mkdir"]: "io_mkdir",
@@ -422,13 +426,23 @@ class _FileEmitter:
 
         self.beginning = "#include <lib/oomph.h>\n\n"
         self.ending = ""
-        for var, name in export_var_names.items():
-            self.variable_names[var] = name
-            assert isinstance(var.type, tast.FunctionType)
-            # This does not work with 'self.beginning += ...'
-            # I don't understand why.
-            decl = self.declare_function(name, var.type, static=False) + ";"
-            self.beginning += decl
+        for export, name in export_c_names.items():
+            if isinstance(export.value, tast.ExportVariable):
+                self.variable_names[export.value] = name
+                assert isinstance(export.value.type, tast.FunctionType)
+                # This does not work with 'self.beginning += ...'
+                # I don't understand why.
+                decl = (
+                    self.declare_function(name, export.value.type, static=False) + ";"
+                )
+                self.beginning += decl
+            elif isinstance(export.value, tast.Type):
+                # FIXME: is hacky
+                decl = f'void* ctor_{self.get_type_c_name(export.value)}();'
+                decl += f'void dtor_{self.get_type_c_name(export.value)}();'
+                self.beginning  += decl
+            else:
+                raise NotImplementedError(export)
 
     def declare_function(
         self,
@@ -542,17 +556,20 @@ class _FileEmitter:
                     c_name = "oomph_main"
                 else:
                     c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
-                    while c_name in self.export_var_names.values():
+                    while c_name in self.export_c_names.values():
                         c_name += "_"
             else:
                 c_name = "func_" + top_declaration.var.name
 
             assert top_declaration.var not in self.variable_names
-            assert top_declaration.var not in self.export_var_names
+            assert top_declaration.var not in self.export_c_names
 
             self.variable_names[top_declaration.var] = c_name
             if isinstance(top_declaration.var, tast.ExportVariable):
-                self.export_var_names[top_declaration.var] = c_name
+                [export] = [
+                    exp for exp in self.exports if exp.value is top_declaration.var
+                ]
+                self.export_c_names[export] = c_name
 
             return _FunctionEmitter(self).emit_funcdef(
                 top_declaration,
@@ -585,18 +602,24 @@ class _FileEmitter:
                 _FunctionEmitter(self).emit_funcdef(
                     method,
                     f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
+                    static=False,
                 )
                 for method in top_declaration.body
             )
 
-            name = self.get_type_c_name(top_declaration.type)
+            c_name = self.get_type_c_name(top_declaration.type)
+            if top_declaration.export:
+                [export] = [
+                    exp for exp in self.exports if exp.value is top_declaration.type
+                ]
+                self.export_c_names[export] = c_name
             return f"""
-            struct class_{name} {{
+            struct class_{c_name} {{
                 REFCOUNT_HEADER
                 {struct_members}
             }};
 
-            {self.emit_type(top_declaration.type)} ctor_{name}({constructor_args})
+            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args})
             {{
                 {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
                 assert(obj);
@@ -606,9 +629,9 @@ class _FileEmitter:
                 return obj;
             }}
 
-            void dtor_{name}(void *ptr)
+            void dtor_{c_name}(void *ptr)
             {{
-                struct class_{name} *obj = ptr;
+                struct class_{c_name} *obj = ptr;
                 {member_decrefs}
                 free(obj);
             }}
@@ -693,9 +716,10 @@ class _FileEmitter:
 def run(
     ast: List[tast.ToplevelDeclaration],
     path: pathlib.Path,
-    export_var_names: Dict[tast.ExportVariable, str],
+    exports: List[tast.Export],
+    export_c_names: Dict[tast.Export, str],
 ) -> str:
-    emitter = _FileEmitter(path, export_var_names)
+    emitter = _FileEmitter(path, exports, export_c_names)
     code = "".join(
         emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
     )

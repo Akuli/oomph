@@ -51,14 +51,16 @@ class CompilationUnit:
         self,
         used_c_paths: Set[pathlib.Path],
         compilation_dir: pathlib.Path,
-        export_vars: List[tast.ExportVariable],
-        export_var_names: Dict[tast.ExportVariable, str],
+        exports: List[tast.Export],
+        export_c_names: Dict[tast.Export, str],
     ) -> None:
         with self.c_path.open("w") as file:
             typed_ast = typer.convert_program(
-                self.untyped_ast, self.source_path, export_vars
+                self.untyped_ast, self.source_path, exports
             )
-            file.write(c_output.run(typed_ast, self.source_path, export_var_names))
+            file.write(
+                c_output.run(typed_ast, self.source_path, exports, export_c_names)
+            )
 
 
 def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int:
@@ -110,15 +112,15 @@ def main() -> None:
     # Compile dependencies first
     compilation_units.reverse()
 
-    export_vars: List[tast.ExportVariable] = []
-    export_var_names: Dict[tast.ExportVariable, str] = {}
+    exports: List[tast.Export] = []
+    export_c_names: Dict[tast.Export, str] = {}
     for index, unit in enumerate(compilation_units):
         already_compiled = compilation_units[:index]
         unit.create_c_file(
             {unit.c_path for unit in already_compiled},
             cache_dir,
-            export_vars,
-            export_var_names,
+            exports,
+            export_c_names,
         )
 
     exe_path = cache_dir / args.infile.stem
