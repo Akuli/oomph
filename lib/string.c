@@ -19,26 +19,6 @@ struct class_Str *cstr_to_string(const char *s)
 	return res;
 }
 
-/*
-struct class_Str *string_concat(const struct class_Str *strs[])
-{
-	size_t len=0;
-	size_t n;
-	for (n=0; strs[n]; n++)
-		len += strlen(strs[n]->str);
-
-	struct class_Str *res = malloc(sizeof(struct class_Str) + len + 1);
-	assert(res);
-
-	char *ptr = res->str;
-	for (size_t i=0; i<n; i++){
-		strcpy(ptr, strs[i]->str);
-		ptr += strlen(strs[i]->str);
-	}
-	return res;
-}
-*/
-
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
 {
 	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
@@ -146,14 +126,17 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 		end = 0;
 	if (end > len)
 		end = len;
+
 	if (start >= end)
 		return cstr_to_string("");
+	if (is_utf8_continuation_byte(s->str[start]))
+		panic_printf("can't slice string in the middle of continuation byte");
 
-	assert(!is_utf8_continuation_byte(s->str[start]));  // TODO: would unicode strings be better?
 	if (end == len)
 		return cstr_to_string(&s->str[start]);
+	if (is_utf8_continuation_byte(s->str[end]))
+		panic_printf("can't slice string in the middle of continuation byte");
 
-	assert(!is_utf8_continuation_byte(s->str[end]));
 	struct class_Str *res = alloc_string(end - start);
 	memcpy(res->str, &s->str[start], end - start);
 	res->str[end - start] = '\0';

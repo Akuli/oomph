@@ -36,6 +36,7 @@ Missing features needed to write the oomph compiler in oomph:
 - exporting unions
 
 Other missing features:
+- `>>>` prompt
 - something like python's `__file__` (compile time and runtime)
 - attributes of classes that are not arguments
 - init methods of classes (or something similar)

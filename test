@@ -28,7 +28,7 @@ function check()
 
     echo "$command"
     if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > $out; then
-        echo "========== SHOULD HAVE ERRORED but it didn't"
+        echo "========== SHOULD HAVE ERRORED but it didn't: $file"
         success=no
     elif [ $expect_fail == no ] && ! $command > $out; then
         echo "========== ERROR in $file"

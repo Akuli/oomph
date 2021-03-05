@@ -11,14 +11,15 @@ void io_print(const struct class_Str *s)
 
 void io_mkdir(const struct class_Str *path)
 {
-	if (mkdir(path->str, 0777) == -1)
-		assert(errno == EEXIST);
+	if (mkdir(path->str, 0777) == -1 && errno != EEXIST)
+		panic_printf("creating directory \"%s\" failed", path->str);
 }
 
 struct class_Str *io_read_file(const struct class_Str *path)
 {
 	FILE *f = fopen(path->str, "r");
-	assert(f);
+	if (!f)
+		panic_printf("opening file \"%s\" failed", path->str);
 
 	size_t bufsz = BUFSIZ, len = 0;
 	char *buf = malloc(bufsz);
@@ -32,11 +33,14 @@ struct class_Str *io_read_file(const struct class_Str *path)
 		buf = realloc(buf, bufsz);
 		assert(buf);
 	}
-	assert(feof(f) && !ferror(f));
+	if (ferror(f))
+		panic_printf("reading file \"%s\" failed", path->str);
 	fclose(f);
 
-	for (size_t i = 0; i < len; i++)
-		assert(buf[i] != '\0');
+	for (size_t i = 0; i < len; i++) {
+		if(!buf[i])
+			panic_printf("file \"%s\" contains a zero byte at offset %zu", path->str, i);
+	}
 	buf[len] = '\0';
 
 	if (!string_validate_utf8(buf)) {
@@ -53,9 +57,11 @@ struct class_Str *io_read_file(const struct class_Str *path)
 void io_write_file(const struct class_Str *path, const struct class_Str *content)
 {
 	FILE *f = fopen(path->str, "w");
-	assert(f);
+	if (!f)
+		panic_printf("opening file \"%s\" failed", path->str);
 	size_t len = strlen(content->str);
 	size_t n = fwrite(content->str, 1, len, f);
-	assert(n == len);
+	if (n != len || fflush(f) != 0)
+		panic_printf("writing to file \"%s\" failed", path->str);
 	fclose(f);
 }

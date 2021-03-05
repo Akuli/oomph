@@ -1,0 +1,2 @@
+opening file "/foo" failed (errno 13: Permission denied)
+Program killed by signal 6 (SIGABRT)
