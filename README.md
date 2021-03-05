@@ -35,6 +35,8 @@ Missing features needed to write the oomph compiler in oomph:
 - `==` operator for optionals
 
 Other missing features:
+- exporting classes
+- exporting unions
 - attributes of classes that are not arguments
 - init methods of classes (or something similar)
 - path objects and maybe `p"/home/akuli"` syntax
