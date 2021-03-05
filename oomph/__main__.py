@@ -75,7 +75,7 @@ def main() -> None:
     c_paths: Dict[pathlib.Path, pathlib.Path] = {}
     untyped_asts: Dict[pathlib.Path, List[uast.ToplevelDeclaration]] = {}
     todo_list = [args.infile]
-    compilation_order: List[pathlib.Path] = []
+    discovery_order: List[pathlib.Path] = []
 
     while todo_list:
         source_path = todo_list.pop()
@@ -88,18 +88,18 @@ def main() -> None:
             counter += 1
             cache_dir / f"{source_path.stem}_{counter}.c"
         c_paths[source_path] = c_path
-        compilation_order.append(source_path)
+        discovery_order.append(source_path)
 
         untyped_asts[source_path] = create_untyped_ast(source_path)
         for top_declaration in untyped_asts[source_path]:
             if isinstance(top_declaration, uast.Import):
                 todo_list.append(top_declaration.path)
 
-    compilation_order.reverse()
+    compilation_order = discovery_order[::-1]
 
     export_vars: List[tast.ExportVariable] = []
     export_var_names: Dict[tast.ExportVariable, str] = {}
-    for source_path in compilation_order:
+    for source_path in reversed(discovery_order):
         with c_paths[source_path].open("w") as file:
             file.write(
                 create_c_code(
@@ -111,7 +111,9 @@ def main() -> None:
             )
 
     exe_path = cache_dir / args.infile.stem
-    result = invoke_c_compiler([c_paths[source_path] for source_path in compilation_order], exe_path)
+    result = invoke_c_compiler(
+        [c_paths[source_path] for source_path in discovery_order], exe_path
+    )
     if result != 0:
         sys.exit(result)
 

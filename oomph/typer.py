@@ -362,9 +362,7 @@ def _create_to_string_method(class_type: tast.Type) -> uast.FuncDef:
 
 class _FileTyper:
     def __init__(
-        self,
-        path: pathlib.Path,
-        export_vars: List[tast.ExportVariable]
+        self, path: pathlib.Path, export_vars: List[tast.ExportVariable]
     ) -> None:
         self.path = path
         self.export_vars = export_vars
