@@ -98,7 +98,10 @@ class _FunctionEmitter:
             decref = self.file_emitter.emit_decref(
                 ast.refname, ast.value.type, semicolon=False
             )
-            return f"({self.variable_names[var]} = {value}, {decref}, {ast.refname} = {self.variable_names[var]})"
+            return f""" (
+            {self.variable_names[var]} = {value},
+            {decref},
+            {ast.refname} = {self.variable_names[var]} ) """
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
