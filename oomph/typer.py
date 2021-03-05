@@ -240,7 +240,7 @@ class _FunctionOrMethodTyper:
 
         if isinstance(ast, uast.Assign):
             # TODO: this assumes local variable without assert
-            var2 = self.variables[ast.varname]  # mypy_sucks you mypy
+            var2 = self.variables[ast.varname]  # fuck you mypy
             assert isinstance(var2, tast.LocalVariable)
             value = self.do_expression(ast.value)
             assert value.type is var2.type
