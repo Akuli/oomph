@@ -25,14 +25,12 @@ class CompilationUnit:
         self.source_path = source_path
 
     def create_untyped_ast(self) -> None:
-        with (project_root / "stdlib.oomph").open(encoding="utf-8") as file:
-            stdlib_code = file.read()
-        with self.source_path.open(encoding="utf-8") as file:
-            source_code = file.read()
+        builtins_code = (project_root / "builtins.oomph").read_text(encoding="utf-8")
+        source_code = self.source_path.read_text(encoding="utf-8")
 
-        self.untyped_ast = parser.parse_file(stdlib_code, None) + parser.parse_file(
-            source_code, self.source_path
-        )
+        self.untyped_ast = parser.parse_file(
+            builtins_code, None, None
+        ) + parser.parse_file(source_code, self.source_path, project_root / "stdlib")
 
     def create_c_code(
         self,
@@ -86,7 +84,7 @@ def main() -> None:
         cache_dir.mkdir(exist_ok=True)
 
     compilation_units: List[CompilationUnit] = []
-    todo_list = [args.infile]
+    todo_list = [args.infile.absolute()]
     while todo_list:
         source_path = todo_list.pop()
         if source_path in (unit.source_path for unit in compilation_units):

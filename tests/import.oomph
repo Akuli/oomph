@@ -1,4 +1,6 @@
 import "hello_lib.oomph" as hello
+import "<stdlib>/hello.oomph" as hello_std
 
 export func main():
     hello::print_hello()
+    hello_std::print_hello()

@@ -37,7 +37,9 @@ class _Parser:
             )
         return (tokentype, value)
 
-    def parse_import(self, path_of_this_file: pathlib.Path) -> uast.Import:
+    def parse_import(
+        self, path_of_this_file: pathlib.Path, stdlib: pathlib.Path
+    ) -> uast.Import:
         self.get_token("keyword", "import")
         string = self.get_token("oneline_string")[1]
         self.get_token("keyword", "as")
@@ -45,7 +47,10 @@ class _Parser:
         self.get_token("op", "\n")
 
         assert "\\" not in string and "{" not in string and "}" not in string
-        path = path_of_this_file.parent / string.strip('"')
+        if string.startswith('"<stdlib>/'):
+            path = stdlib / string.strip('"').split("/", 1)[1]
+        else:
+            path = path_of_this_file.parent / string.strip('"')
         return uast.Import(path, name)
 
     def parse_commasep_in_parens(self, content_callback: Callable[[], _T]) -> List[_T]:
@@ -458,14 +463,15 @@ class _Parser:
 
 
 def parse_file(
-    code: str, path: Optional[pathlib.Path]
+    code: str, path: Optional[pathlib.Path], stdlib: Optional[pathlib.Path]
 ) -> List[uast.ToplevelDeclaration]:
     parser = _Parser(tokenizer.tokenize(code))
 
     result: List[uast.ToplevelDeclaration] = []
     while parser.token_iter.peek(None) == ("keyword", "import"):
         assert path is not None
-        result.append(parser.parse_import(path))
+        assert stdlib is not None
+        result.append(parser.parse_import(path, stdlib))
     while parser.token_iter:
         result.append(parser.parse_toplevel())
 
