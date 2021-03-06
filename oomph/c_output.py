@@ -92,7 +92,6 @@ class _FunctionEmitter:
         if isinstance(ast, tast.GetVar):
             return self.variable_names[ast.var]
         if isinstance(ast, tast.Constructor):
-            # TODO: move ctor to end, so that it starts with oomph_
             return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
         if isinstance(ast, tast.SetRef):
             # Must evaluate expression before decref because expression might
