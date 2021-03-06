@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import pathlib
 import re
+import string as string_module
 from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 import oomph.typed_ast as tast
@@ -219,7 +220,7 @@ class _FunctionEmitter:
         self,
         funcdef: Union[tast.FuncDef, tast.MethodDef],
         c_name: str,
-    ) -> str:
+    ) -> None:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False)
 
@@ -252,11 +253,10 @@ class _FunctionEmitter:
 
         varnames = [self.variable_names[var] for var in funcdef.argvars]
 
-        self.file_emitter.h_code += (
+        self.file_emitter.function_decls += (
             self.file_emitter.declare_function(c_name, functype) + ";\n"
         )
-
-        return f"""
+        self.file_emitter.function_defs += f"""
         {self.file_emitter.declare_function(c_name, functype, varnames)}
         {{
             {self.before_body}
@@ -270,23 +270,21 @@ class _FunctionEmitter:
         """
 
 
-def _format_byte(byte: int) -> str:
-    return r"'\x%02x'" % byte
-
-
 _generic_c_codes = {
-    OPTIONAL: (
-        """
+    OPTIONAL: {
+        "structs": """
         struct class_%(type_cname)s {
             bool isnull;
             %(itemtype)s value;
         };
+        """,
+        "function_decls": """
         static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
         static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
         """,
-        """
+        "function_defs": """
         static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
         {
             return (struct class_%(type_cname)s) { false, val };
@@ -318,10 +316,10 @@ _generic_c_codes = {
             return res;
         }
         """,
-    ),
-    LIST: (
-        """
-        // TODO: have this struct on stack when possible, same with strings
+    },
+    LIST: {
+        # TODO: have this struct on stack when possible, same with strings
+        "structs": """
         struct class_%(type_cname)s {
             REFCOUNT_HEADER
             int64_t len;
@@ -329,7 +327,8 @@ _generic_c_codes = {
             %(itemtype)s smalldata[8];
             %(itemtype)s *data;
         };
-
+        """,
+        "function_decls": """
         static struct class_%(type_cname)s *ctor_%(type_cname)s(void);
         static void dtor_%(type_cname)s (void *ptr);
         static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
@@ -337,7 +336,7 @@ _generic_c_codes = {
         static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
         """,
-        """
+        "function_defs": """
         static struct class_%(type_cname)s *ctor_%(type_cname)s(void)
         {
             struct class_%(type_cname)s *res = malloc(sizeof(*res));
@@ -418,7 +417,7 @@ _generic_c_codes = {
             return res;
         }
         """,
-    ),
+    },
 }
 
 
@@ -427,7 +426,6 @@ class _FileEmitter:
         self,
         session: Session,
         path: pathlib.Path,
-        includes: List[str],
     ):
         self.path = path
         self.session = session
@@ -449,13 +447,11 @@ class _FileEmitter:
             **{var: name for name, var in tast.special_variables.items()},
         }
         self.generic_type_names: Dict[Type, str] = {}
-        self.strings: Dict[str, str] = {}
 
-        self.h_code = "#include <lib/oomph.h>\n" + "".join(
-            f'#include "{header}"\n' for header in includes
-        )
-        self.beginning = ""
-        self.ending = ""
+        self.union_decls = ""
+        self.structs = ""
+        self.function_decls = ""
+        self.function_defs = ""
 
     def _get_exportable_name(self, namespace: pathlib.Path, name: str) -> str:
         # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
@@ -523,7 +519,7 @@ class _FileEmitter:
             type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
             self.generic_type_names[the_type] = type_cname
 
-            h_code, c_code = _generic_c_codes[the_type.generic_origin.generic]
+            code_dict = _generic_c_codes[the_type.generic_origin.generic]
             substitutions = {
                 "type_cname": type_cname,
                 "itemtype": self.emit_type(itemtype),
@@ -532,13 +528,14 @@ class _FileEmitter:
                 "incref_val": self.emit_incref("val", itemtype, semicolon=False),
                 "decref_val": self.emit_decref("val", itemtype, semicolon=False),
             }
-            self.h_code += f"""
+            self.structs += f"""
             #ifndef {type_cname}_DEFINED
             #define {type_cname}_DEFINED
-            {h_code % substitutions}
+            {code_dict["structs"] % substitutions}
             #endif
             """
-            self.beginning += c_code % substitutions
+            self.function_decls += code_dict["function_decls"] % substitutions
+            self.function_defs += code_dict["function_defs"] % substitutions
             return type_cname
 
     def emit_type(self, the_type: Optional[Type]) -> str:
@@ -555,26 +552,23 @@ class _FileEmitter:
         return f"struct class_{self.get_type_c_name(the_type)}"
 
     def emit_string(self, value: str) -> str:
-        if value not in self.strings:
-            self.strings[value] = (
-                f"string{len(self.strings)}_" + re.sub(r"[^A-Za-z0-9]", "", value)[:30]
-            )
+        safe_bytes = (
+            string_module.ascii_letters
+            + string_module.digits
+            + "!#$%&'()*+,-./:;<=>?@[]^_`{|}~"
+        ).encode("ascii")
 
-            # String constants consist of int64_t refcount set to -1,
-            # followed by utf8, followed by zero byte
-            # TODO: is this cross-platform enough?
-            struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
-
-            array_content = ", ".join(map(_format_byte, struct_bytes))
-            self.beginning += f"""
-            static {self.emit_type(STRING)} {self.strings[value]}
-            = (void*)(unsigned char[]){{ {array_content} }};
-            """
-        return self.strings[value]
+        c_string = '""' + "".join(
+            '"' + bytes([byte]).decode("ascii") + '"'
+            if byte in safe_bytes
+            else r'"\x%02x"' % byte
+            for byte in value.encode("utf-8")
+        )
+        return "(cstr_to_string(%s))" % c_string
 
     def emit_toplevel_declaration(
         self, top_declaration: tast.ToplevelDeclaration
-    ) -> str:
+    ) -> None:
         if isinstance(top_declaration, tast.FuncDef):
             assert top_declaration.var not in self.variable_names
             if (
@@ -616,12 +610,12 @@ class _FileEmitter:
                 ]
                 self.session.export_c_names[export] = c_name
 
-            return _FunctionEmitter(self).emit_funcdef(
+            _FunctionEmitter(self).emit_funcdef(
                 top_declaration,
                 self.variable_names[top_declaration.var],
             )
 
-        if isinstance(top_declaration, tast.ClassDef):
+        elif isinstance(top_declaration, tast.ClassDef):
             struct_members = "".join(
                 f"{self.emit_type(the_type)} memb_{name};\n\t"
                 for the_type, name in top_declaration.type.members
@@ -630,16 +624,6 @@ class _FileEmitter:
                 f"{self.emit_type(the_type)} arg_{name}"
                 for the_type, name in top_declaration.type.members
             )
-            c_name = self.get_type_c_name(top_declaration.type)
-            self.h_code += f"""
-            struct class_{c_name} {{
-                REFCOUNT_HEADER
-                {struct_members}
-            }};
-            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args});
-            void dtor_{c_name}(void *ptr);
-            """
-
             member_assignments = "".join(
                 f"obj->memb_{name} = arg_{name};"
                 for the_type, name in top_declaration.type.members
@@ -652,14 +636,13 @@ class _FileEmitter:
                 self.emit_decref(f"obj->memb_{nam}", typ)
                 for typ, nam in top_declaration.type.members
             )
-            methods = "".join(
+            for method in top_declaration.body:
                 _FunctionEmitter(self).emit_funcdef(
                     method,
                     f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
                 )
-                for method in top_declaration.body
-            )
 
+            c_name = self.get_type_c_name(top_declaration.type)
             if top_declaration.export:
                 [export] = [
                     exp
@@ -668,7 +651,17 @@ class _FileEmitter:
                 ]
                 self.session.export_c_names[export] = c_name
 
-            return f"""
+            self.structs += f"""
+            struct class_{c_name} {{
+                REFCOUNT_HEADER
+                {struct_members}
+            }};
+            """
+            self.function_decls += f"""
+            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args});
+            void dtor_{c_name}(void *ptr);
+            """
+            self.function_defs += f"""
             {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args})
             {{
                 {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
@@ -685,13 +678,11 @@ class _FileEmitter:
                 {member_decrefs}
                 free(obj);
             }}
-
-            {methods}
             """
 
-        if isinstance(top_declaration, tast.UnionDef):
+        elif isinstance(top_declaration, tast.UnionDef):
             assert top_declaration.type.type_members is not None
-            name = self.get_type_c_name(top_declaration.type)
+            c_name = self.get_type_c_name(top_declaration.type)
 
             # to_string method
             to_string_cases = "".join(
@@ -702,8 +693,11 @@ class _FileEmitter:
                 """
                 for num, typ in enumerate(top_declaration.type.type_members)
             )
-            self.ending += f"""
-            struct class_Str *meth_{name}_to_string(struct class_{name} obj)
+            self.function_decls += (
+                f"struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj);"
+            )
+            self.function_defs += f"""
+            struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj)
             {{
                 struct class_Str *valstr;
                 switch(obj.membernum) {{
@@ -713,7 +707,7 @@ class _FileEmitter:
                 }}
 
                 // TODO: escaping?
-                struct class_Str *res = cstr_to_string("union {top_declaration.type.name}");
+                struct class_Str *res = {self.emit_string("union " + top_declaration.type.name)};
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
                 string_concat_inplace(&res, ")");
@@ -733,8 +727,9 @@ class _FileEmitter:
                 """
                 for num, typ in enumerate(top_declaration.type.type_members)
             )
-            self.ending += f"""
-            void decref_{name}(struct class_{name} obj) {{
+            self.function_decls += f"void decref_{c_name}(struct class_{c_name} obj);"
+            self.function_defs += f"""
+            void decref_{c_name}(struct class_{c_name} obj) {{
                 switch(obj.membernum) {{
                     {decref_cases}
                     default:
@@ -747,20 +742,17 @@ class _FileEmitter:
                 f"\t{self.emit_type(the_type)} item{index};\n"
                 for index, the_type in enumerate(top_declaration.type.type_members)
             )
-            return f"""
-            struct class_{name} {{
+            self.structs += f"""
+            struct class_{c_name} {{
                 union {{
                     {union_members}
                 }} val;
                 short membernum;
             }};
-
-            // Forward decls of self.ending stuff
-            struct class_Str *meth_{name}_to_string(struct class_{name} obj);
-            void decref_{name}(struct class_{name} obj);
             """
 
-        raise NotImplementedError(top_declaration)
+        else:
+            raise NotImplementedError(top_declaration)
 
 
 class Session:
@@ -773,20 +765,24 @@ class Session:
         self,
         ast: List[tast.ToplevelDeclaration],
         path: pathlib.Path,
-        includes: List[str],
+        include_list: List[str],
     ) -> Tuple[str, str]:
-        emitter = _FileEmitter(self, path, includes)
-        code = "".join(
-            emitter.emit_toplevel_declaration(top_declaration)
-            for top_declaration in ast
+        includes = "#include <lib/oomph.h>\n" + "".join(
+            f'#include "{header}"\n' for header in include_list
         )
-        c_code = emitter.h_code + emitter.beginning + code + emitter.ending
+
+        emitter = _FileEmitter(self, path)
+        for top_declaration in ast:
+            emitter.emit_toplevel_declaration(top_declaration)
+
+        h_code = includes + emitter.structs + emitter.function_decls
+        c_code = h_code + emitter.function_defs
         header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
         return (
             c_code,
             f"""
             #ifndef {header_guard}
             #define {header_guard}
-            {emitter.h_code}
+            {h_code}
             #endif""",
         )
