@@ -41,7 +41,7 @@ class ThisFileVariable(Variable):
 
 @dataclass(eq=False)
 class ExportVariable(Variable):
-    path: pathlib.Path  # TODO: is this necessary
+    pass
 
 
 @dataclass(eq=False)

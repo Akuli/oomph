@@ -439,7 +439,7 @@ class _FileTyper:
             )
 
             if funcdef.export:
-                func_var = tast.ExportVariable(funcdef.name, functype, self.path)
+                func_var = tast.ExportVariable(funcdef.name, functype)
                 self.exports.append(tast.Export(self.path, funcdef.name, func_var))
                 mypy_sucks: Union[tast.ExportVariable, tast.ThisFileVariable] = func_var
             else:
