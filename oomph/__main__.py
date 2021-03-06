@@ -126,7 +126,7 @@ def main() -> None:
         )
 
     exe_path = cache_dir / args.infile.stem
-    command = get_c_command([unit.c_path for unit in compilation_units], exe_path)
+    command = get_c_compiler_command([unit.c_path for unit in compilation_units], exe_path)
 
     result = run(command, args.verbose)
     if result != 0:
