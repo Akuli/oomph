@@ -523,9 +523,8 @@ class _FileEmitter:
             type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
             self.generic_type_names[the_type] = type_cname
 
-            # TODO: use c code and h code separately
-            c_code, h_code = _generic_c_codes[the_type.generic_origin.generic]
-            self.beginning += (c_code + h_code) % {
+            h_code, c_code = _generic_c_codes[the_type.generic_origin.generic]
+            substitutions = {
                 "type_cname": type_cname,
                 "itemtype": self.emit_type(itemtype),
                 "itemtype_cname": self.get_type_c_name(itemtype),
@@ -533,7 +532,13 @@ class _FileEmitter:
                 "incref_val": self.emit_incref("val", itemtype, semicolon=False),
                 "decref_val": self.emit_decref("val", itemtype, semicolon=False),
             }
-            self.beginning += "\n"
+            self.h_code += f"""
+            #ifndef {type_cname}_DEFINED
+            #define {type_cname}_DEFINED
+            {h_code % substitutions}
+            #endif
+            """
+            self.beginning += c_code % substitutions
             return type_cname
 
     def emit_type(self, the_type: Optional[Type]) -> str:
