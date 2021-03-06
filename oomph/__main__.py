@@ -59,14 +59,14 @@ class CompilationUnit:
         self.h_path.write_text(h, encoding="utf-8")
 
 
-def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int:
+def get_c_command(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> List[str]:
     compile_info = {}
     with (project_root / "obj" / "compile_info.txt").open() as file:
         for line in file:
             key, value = line.rstrip("\n").split("=", maxsplit=1)
             compile_info[key] = value
 
-    return subprocess.run(
+    return (
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
         + [str(path) for path in project_root.glob("obj/*.o")]
@@ -74,13 +74,20 @@ def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int
         + ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"])
         + ["-I", str(project_root)]
-    ).returncode
+    )
+
+
+def run(command: List[str], verbose: bool) -> int:
+    if verbose:
+        print("Running:", " ".join(map(shlex.quote, command)), file=sys.stderr)
+    return subprocess.run(command).returncode
 
 
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=pathlib.Path)
     arg_parser.add_argument("--valgrind", action="store_true")
+    arg_parser.add_argument("-v", "--verbose", action="store_true")
     args = arg_parser.parse_args()
 
     try:
@@ -119,7 +126,9 @@ def main() -> None:
         )
 
     exe_path = cache_dir / args.infile.stem
-    result = invoke_c_compiler([unit.c_path for unit in compilation_units], exe_path)
+    command = get_c_command([unit.c_path for unit in compilation_units], exe_path)
+
+    result = run(command, args.verbose)
     if result != 0:
         sys.exit(result)
 
@@ -134,7 +143,7 @@ def main() -> None:
     else:
         command = [str(exe_path)]
 
-    result = subprocess.run(command).returncode
+    result = run(command, args.verbose)
     if result < 0:  # killed by signal
         message = f"Program killed by signal {abs(result)}"
         try:
