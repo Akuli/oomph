@@ -558,13 +558,17 @@ class _FileEmitter:
             + "!#$%&'()*+,-./:;<=>?@[]^_`{|}~"
         ).encode("ascii")
 
-        c_string = '""' + "".join(
-            '"' + bytes([byte]).decode("ascii") + '"'
-            if byte in safe_bytes
-            else r'"\x%02x"' % byte
-            for byte in value.encode("utf-8")
+        escaped_content = (
+            '"'
+            + "".join(
+                bytes([byte]).decode("ascii")
+                if byte in safe_bytes
+                else r'\x%02x""' % byte
+                for byte in value.encode("utf-8")
+            )
+            + '"'
         )
-        return "(cstr_to_string(%s))" % c_string
+        return "(cstr_to_string(%s))" % escaped_content
 
     def emit_toplevel_declaration(
         self, top_declaration: tast.ToplevelDeclaration
