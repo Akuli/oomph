@@ -5,8 +5,8 @@ import pathlib
 import re
 from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
-import oomph.typed_ast as tast
-from oomph.types import (
+import pyoomph.typed_ast as tast
+from pyoomph.types import (
     BOOL,
     FLOAT,
     INT,
@@ -87,7 +87,9 @@ class _FunctionEmitter:
                 f"({self.emit_expression(ast.lhs)} || {self.emit_expression(ast.rhs)})"
             )
         if isinstance(ast, tast.PointersEqual):
-            return f"({self.emit_expression(ast.lhs)} == {self.emit_expression(ast.rhs)})"
+            return (
+                f"({self.emit_expression(ast.lhs)} == {self.emit_expression(ast.rhs)})"
+            )
         if isinstance(ast, tast.Null):
             return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
         if isinstance(ast, tast.GetVar):

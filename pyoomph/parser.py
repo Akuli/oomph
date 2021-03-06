@@ -4,8 +4,8 @@ from typing import Callable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import more_itertools
 
-from oomph import tokenizer
-from oomph import untyped_ast as uast
+from pyoomph import tokenizer
+from pyoomph import untyped_ast as uast
 
 _T = TypeVar("_T")
 

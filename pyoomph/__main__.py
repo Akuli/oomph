@@ -9,8 +9,8 @@ import subprocess
 import sys
 from typing import List, Set
 
-from oomph import c_output, parser, typer
-from oomph import untyped_ast as uast
+from pyoomph import c_output, parser, typer
+from pyoomph import untyped_ast as uast
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent

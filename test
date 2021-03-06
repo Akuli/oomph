@@ -8,7 +8,15 @@ if [ "$1" == --keep-going ]; then
 else
     keep_going=no
 fi
-opts="$@"
+
+if [ "$1" != "" ] && [[ "$1" != -* ]]; then
+    oomphcommand="$1"
+    shift
+else
+    oomphcommand="python3 -m oomph"
+fi
+
+oomphopts="$@"
 
 make
 
@@ -18,10 +26,10 @@ function check()
     local out=test_out/$(basename $file | cut -d. -f1).txt
     if [[ $file == tests/*_error.oomph ]]; then
         local expect_fail=yes
-        local command="python3 -m oomph $file"
+        local command="$oomphcommand $file"
     else
         local expect_fail=no
-        local command="python3 -m oomph $opts $file"
+        local command="$oomphcommand $oomphopts $file"
     fi
 
     local success

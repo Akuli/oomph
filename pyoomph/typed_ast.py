@@ -5,7 +5,7 @@ import pathlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 
-from oomph.types import BOOL, FLOAT, INT, LIST, STRING, FunctionType, Type, UnionType
+from pyoomph.types import BOOL, FLOAT, INT, LIST, STRING, FunctionType, Type, UnionType
 
 
 @dataclass(eq=False)
@@ -198,8 +198,6 @@ class PointersEqual(Expression):
         super().__init__(BOOL)
         self.lhs = lhs
         self.rhs = rhs
-
-
 
 
 @dataclass(eq=False)

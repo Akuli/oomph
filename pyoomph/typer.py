@@ -4,9 +4,9 @@ import itertools
 import pathlib
 from typing import Dict, List, Optional, Tuple, Union
 
-from oomph import typed_ast as tast
-from oomph import untyped_ast as uast
-from oomph.types import (
+from pyoomph import typed_ast as tast
+from pyoomph import untyped_ast as uast
+from pyoomph.types import (
     BOOL,
     FLOAT,
     INT,
