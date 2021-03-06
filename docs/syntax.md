@@ -102,6 +102,9 @@ A toplevel declaration can be:
 - An import: the keyword `import`, then a oneline string with no backslashes or braces,
   then the keyword `as`, then a simple identifier.
   Imports must be before other toplevel declarations.
+  The string of an import in `foo/bar/baz.oomph` is interpreted as a path relative to `foo/bar`,
+  unless the string starts with `<stdlib>/`;
+  in that case, it's interpreted relative to Oomph's standard library directory.
 - A union definition: the keyword `union` followed by a simple identifier, and then a block of union members.
   Each union member is a type followed by a newline token.
 - A class definition: the keyword `class` followed by a simple identifier,
@@ -110,6 +113,9 @@ A toplevel declaration can be:
   A method definition is just like a function definition, but starting with `func` instead of `meth`.
 - A function definition, starting with the keyword `func`, then a simple identifier,
   then parenthesized and comma-separated argument definitions, then a block of statements.
+
+There may be an `export` keyword in front of `func`, `class` or `union`.
+This makes the defined function or type visible in other files when the file is imported.
 
 A type is an identifier, possibly followed by another `[]`-parenthesized type to indicate a generic.
 An argument definition of a function, method or class is a type followed by a simple identifier.
