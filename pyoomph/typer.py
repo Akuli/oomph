@@ -20,6 +20,10 @@ from pyoomph.types import (
 )
 
 
+def _decref_var(var: tast.LocalVariable) -> tast.Statement:
+    return tast.DecRef(tast.GetVar(var, incref=False))
+
+
 class _FunctionOrMethodTyper:
     def __init__(self, file_typer: _FileTyper, variables: Dict[str, tast.Variable]):
         self.file_typer = file_typer
@@ -27,67 +31,60 @@ class _FunctionOrMethodTyper:
         self.loop_stack: List[Optional[str]] = []  # None means a switch
         self.loop_counter = 0
 
-        # TODO: replace with self.variables?
-        self.reflist: List[Tuple[str, Type]] = []
-        self.ref_names = (f"ref{n}" for n in itertools.count())
+    def stringify(self, expression: tast.Expression) -> tast.Expression:
+        if expression.type == STRING:
+            return expression
+        return self.create_call(tast.GetMethod(expression, "to_string"), [])
 
-    def create_returning_call(
-        self, func: tast.Expression, args: List[tast.Expression]
-    ) -> Union[tast.SetRef, tast.ReturningCall]:
-        result = tast.ReturningCall(func, args)
-        if result.type.refcounted:
-            refname = next(self.ref_names)
-            self.reflist.append((refname, result.type))
-            return tast.SetRef(result.type, refname, result)
-        return result
+    # Decrefs each argument
+    def create_call(self, func: tast.Expression, args: List[tast.Expression]) -> Union[tast.Expression, List[tast.Statement]]:
+        if (
+            isinstance(func, tast.GetVar)
+            and func.var is tast.builtin_variables["print"]
+        ):
+            args = [self.stringify(arg) for arg in args]
+        assert isinstance(func.type, FunctionType)
+        assert [arg.type for arg in args] == func.type.argtypes
+
+        # Assumptions:
+        #   - function does not need to be decreffed
+        #   - getting the function does not have side effects
+        assert not func.type.refcounted
+
+        argvars = [tast.LocalVariable('arg', arg.type) for arg in args]
+        statements: List[tast.Statement] = [tast.SetLocalVar(var, arg) for var, arg in zip(argvars, args)]
+        if func.type.returntype is None:
+            statements.append(tast.VoidCall(func, argvars))
+            statements.extend(_decref_var(var) for var in argvars)
+            return statements
+
+        returnvar = tast.LocalVariable('ret', func.type.returntype)
+        statements.append(tast.SetLocalVar(returnvar, tast.ReturningCall(func, argvars)))
+        statements.extend(_decref_var(var) for var in argvars)
+        return tast.StatementsAndExpression(statements, tast.GetVar(returnvar, decref=False))
 
     def create_special_call(
         self,
         name: str,
         args: List[tast.Expression],
-    ) -> Union[tast.SetRef, tast.ReturningCall]:
-        var = tast.special_variables[name]
-        actual_argtypes = [arg.type for arg in args]
-        assert isinstance(var.type, FunctionType)
-        assert actual_argtypes == var.type.argtypes, (
-            name,
-            actual_argtypes,
-            var.type.argtypes,
-        )
-        return self.create_returning_call(tast.GetVar(var), args)
+    ) -> tast.Expression:
+        result = self.create_call(tast.special_variables[name], args)
+        assert isinstance(result, tast.Expression)
+        return result
 
     def do_call(
         self, ast: uast.Call
-    ) -> Union[tast.VoidCall, tast.ReturningCall, tast.SetRef]:
-        func = self.do_expression(ast.func)
-        assert isinstance(func.type, FunctionType)
-
-        # Stringify automagically when printing
-        if (
-            isinstance(func, tast.GetVar)
-            and func.var is tast.builtin_variables["print"]
-        ):
-            args = [self.do_expression_to_string(arg) for arg in ast.args]
-        else:
-            args = [self.do_expression(arg) for arg in ast.args]
-
-        assert [arg.type for arg in args] == func.type.argtypes, (
-            args,
-            func.type.argtypes,
-        )
-
-        if func.type.returntype is None:
-            return tast.VoidCall(func, args)
-        return self.create_returning_call(func, args)
+    ) -> Union[tast.Expression, tast.Statement]:
+        return self.create_call(self.do_expression(ast.func), list(map(self.do_expression, ast.args)))
 
     def _not(self, ast: tast.Expression) -> tast.Expression:
         return self.create_special_call("bool_not", [ast])
 
     def _is_null(self, ast: tast.Expression) -> tast.Expression:
-        return self.create_returning_call(tast.GetMethod(ast, "is_null"), [])
+        return self.do_call(tast.GetMethod(ast, "is_null"), [])
 
     def _get_value_of_optional(self, ast: tast.Expression) -> tast.Expression:
-        return self.create_returning_call(tast.GetMethod(ast, "get"), [])
+        return self.do_call(tast.GetMethod(ast, "get"), [])
 
     def _do_binary_op_typed(
         self, lhs: tast.Expression, op: str, rhs: tast.Expression
@@ -182,7 +179,7 @@ class _FunctionOrMethodTyper:
         if lhs.type is BOOL and op == "or" and rhs.type is BOOL:
             return tast.BoolOr(lhs, rhs)
         if lhs.type == rhs.type and op == "==":
-            return self.create_returning_call(tast.GetMethod(lhs, "equals"), [rhs])
+            return tast.ReturningCall(tast.GetMethod(lhs, "equals"), [rhs])
 
         raise NotImplementedError(f"{lhs.type} {op} {rhs.type}")
 
@@ -194,7 +191,7 @@ class _FunctionOrMethodTyper:
     def do_expression_to_string(self, ast: uast.Expression) -> tast.Expression:
         result = self.do_expression(ast)
         if result.type != STRING:
-            result = self.create_returning_call(tast.GetMethod(result, "to_string"), [])
+            result = tast.ReturningCall(tast.GetMethod(result, "to_string"), [])
         return result
 
     def do_expression(self, ast: uast.Expression) -> tast.Expression:

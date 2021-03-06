@@ -98,11 +98,13 @@ special_variables = {
 @dataclass(eq=False)
 class GetVar(Expression):
     var: Variable
+    incref: bool
     lineno: Optional[int]
 
-    def __init__(self, var: Variable, lineno: Optional[int] = None):
+    def __init__(self, var: Variable, incref: bool, lineno: Optional[int] = None):
         super().__init__(var.type)
         self.var = var
+        self.incref = incref
         self.lineno = lineno
 
 
@@ -200,18 +202,21 @@ class PointersEqual(Expression):
         self.rhs = rhs
 
 
+# Arguments have to be in local variables because this way their evaluation
+# order is guaranteed, even though it's undefined in C. Also, to decref them
+# after calling, they need to be in variables anyway.
 @dataclass(eq=False)
 class VoidCall(Statement):
     func: Expression
-    args: List[Expression]
+    args: List[LocalVariable]
 
 
 @dataclass(eq=False)
-class ReturningCall(Expression, Statement):
+class ReturningCall(Statement):
     func: Expression
-    args: List[Expression]
+    args: List[LocalVariable]
 
-    def __init__(self, func: Expression, args: List[Expression]):
+    def __init__(self, func: Expression, args: List[LocalVariable]):
         assert isinstance(func.type, FunctionType)
         assert func.type.returntype is not None
         super().__init__(func.type.returntype)
@@ -228,13 +233,13 @@ class InstantiateUnion(Expression):
 # Evaluate statement, then output the value of the expression
 # TODO: delete this and somehow rewrite things properly
 @dataclass(eq=False)
-class StatementAndExpression(Expression):
-    statement: Statement
+class StatementsAndExpression(Expression):
+    statements: List[Statement]
     expression: Expression
 
-    def __init__(self, statement: CreateLocalVar, expression: Expression):
+    def __init__(self, statements: List[Statement], expression: Expression):
         super().__init__(expression.type)
-        self.statement = statement
+        self.statements = statements
         self.expression = expression
 
 
@@ -297,7 +302,6 @@ class FuncDef(ToplevelDeclaration):
     var: Union[ThisFileVariable, ExportVariable]
     argvars: List[LocalVariable]
     body: List[Statement]
-    refs: List[Tuple[str, Type]]
 
 
 @dataclass(eq=False)
@@ -306,7 +310,6 @@ class MethodDef:
     type: FunctionType
     argvars: List[LocalVariable]
     body: List[Statement]
-    refs: List[Tuple[str, Type]]
 
 
 @dataclass(eq=False)
@@ -319,12 +322,6 @@ class ClassDef(ToplevelDeclaration):
 @dataclass(eq=False)
 class UnionDef(ToplevelDeclaration):
     type: UnionType
-
-
-@dataclass(eq=False)
-class SetRef(Expression):
-    refname: str
-    value: Expression
 
 
 @dataclass(eq=False)
