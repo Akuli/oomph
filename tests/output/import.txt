@@ -1,3 +1,4 @@
 hello
 Hello from stdlib
-Foo(123)
+123
+Lol 123

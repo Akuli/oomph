@@ -21,13 +21,9 @@ def _get_compiled_file_name(
 ) -> str:
     # TODO: avoid long file names
     return (
-        source_path.stem
-        + "_from_"
-        + (
             os.path.relpath(source_path, compilation_dir.parent)
             .replace(".", "_dot_")
             .replace(os.sep, "_slash_")
-        )
     )
 
 
@@ -43,10 +39,7 @@ class CompilationUnit:
     def create_untyped_ast(self) -> None:
         builtins_code = (project_root / "builtins.oomph").read_text(encoding="utf-8")
         source_code = self.source_path.read_text(encoding="utf-8")
-
-        self.untyped_ast = parser.parse_file(
-            builtins_code, None, None
-        ) + parser.parse_file(source_code, self.source_path, project_root / "stdlib")
+        self.untyped_ast = parser.parse_file(source_code, self.source_path, project_root / "stdlib")
 
     def create_c_and_h_files(
         self,
@@ -96,7 +89,7 @@ def main() -> None:
         cache_dir.mkdir(exist_ok=True)
 
     compilation_units: List[CompilationUnit] = []
-    todo_list = [args.infile.absolute()]
+    todo_list = [project_root / "builtins.oomph", args.infile.absolute()]
     while todo_list:
         source_path = todo_list.pop()
         if source_path in (unit.source_path for unit in compilation_units):

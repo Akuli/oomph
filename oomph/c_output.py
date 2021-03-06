@@ -219,8 +219,6 @@ class _FunctionEmitter:
         self,
         funcdef: Union[tast.FuncDef, tast.MethodDef],
         c_name: str,
-        *,
-        static: bool = True,
     ) -> str:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False)
@@ -254,14 +252,12 @@ class _FunctionEmitter:
 
         varnames = [self.variable_names[var] for var in funcdef.argvars]
 
-        if not static:
-            self.file_emitter.h_code += (
-                self.file_emitter.declare_function(c_name, functype, static=False)
-                + ";\n"
-            )
+        self.file_emitter.h_code += (
+            self.file_emitter.declare_function(c_name, functype) + ";\n"
+        )
 
         return f"""
-        {self.file_emitter.declare_function(c_name, functype, varnames, static)}
+        {self.file_emitter.declare_function(c_name, functype, varnames)}
         {{
             {self.before_body}
             {ref_declarations}
@@ -470,7 +466,6 @@ class _FileEmitter:
         function_name: str,
         the_type: FunctionType,
         argnames: Optional[List[str]] = None,
-        static: bool = True,
     ) -> str:
         if argnames is None:
             arg_decls = [self.emit_type(argtype) for argtype in the_type.argtypes]
@@ -481,8 +476,7 @@ class _FileEmitter:
                 for argtype, name in zip(the_type.argtypes, argnames)
             ]
 
-        return "%s %s %s(%s)" % (
-            ("static" if static else ""),
+        return "%s %s(%s)" % (
             self.emit_type(the_type.returntype),
             function_name,
             (", ".join(arg_decls) or "void"),
@@ -620,7 +614,6 @@ class _FileEmitter:
             return _FunctionEmitter(self).emit_funcdef(
                 top_declaration,
                 self.variable_names[top_declaration.var],
-                static=(not isinstance(top_declaration.var, tast.ExportVariable)),
             )
 
         if isinstance(top_declaration, tast.ClassDef):
@@ -632,6 +625,16 @@ class _FileEmitter:
                 f"{self.emit_type(the_type)} arg_{name}"
                 for the_type, name in top_declaration.type.members
             )
+            c_name = self.get_type_c_name(top_declaration.type)
+            self.h_code += f"""
+            struct class_{c_name} {{
+                REFCOUNT_HEADER
+                {struct_members}
+            }};
+            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args});
+            void dtor_{c_name}(void *ptr);
+            """
+
             member_assignments = "".join(
                 f"obj->memb_{name} = arg_{name};"
                 for the_type, name in top_declaration.type.members
@@ -652,7 +655,6 @@ class _FileEmitter:
                 for method in top_declaration.body
             )
 
-            c_name = self.get_type_c_name(top_declaration.type)
             if top_declaration.export:
                 [export] = [
                     exp
@@ -660,12 +662,8 @@ class _FileEmitter:
                     if exp.value is top_declaration.type
                 ]
                 self.session.export_c_names[export] = c_name
-            return f"""
-            struct class_{c_name} {{
-                REFCOUNT_HEADER
-                {struct_members}
-            }};
 
+            return f"""
             {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args})
             {{
                 {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
@@ -760,9 +758,9 @@ class _FileEmitter:
         raise NotImplementedError(top_declaration)
 
 
-# Has state that is shared between different files
 class Session:
     def __init__(self) -> None:
+        # This state is shared between different files
         self.exports: List[tast.Export] = []
         self.export_c_names: Dict[tast.Export, str] = {}
 

@@ -5,4 +5,6 @@ export func main():
     hello::print_hello()
     hello_std::print_hello()
 
-    print(new hello::Foo(123))
+    let f = new hello::Foo(123)
+    print(f.thing)
+    f.lol()
