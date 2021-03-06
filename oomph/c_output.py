@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import pathlib
 import re
-import string as string_module
 from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 import oomph.typed_ast as tast
@@ -250,23 +249,20 @@ class _FunctionEmitter:
             )
             self.after_body += "return retval;"
 
-        varnames = [self.variable_names[var] for var in funcdef.argvars]
-
-        self.file_emitter.function_decls += (
-            self.file_emitter.declare_function(c_name, functype) + ";\n"
+        argnames = [self.variable_names[var] for var in funcdef.argvars]
+        self.file_emitter.define_function(
+            c_name,
+            functype,
+            argnames,
+            (
+                self.before_body
+                + ref_declarations
+                + body_statements
+                + self.emit_label("out")
+                + decrefs
+                + self.after_body
+            ),
         )
-        self.file_emitter.function_defs += f"""
-        {self.file_emitter.declare_function(c_name, functype, varnames)}
-        {{
-            {self.before_body}
-            {ref_declarations}
-            {body_statements}
-
-        {self.emit_label("out")}
-            {decrefs}
-            {self.after_body}
-        }}
-        """
 
 
 _generic_c_codes = {
@@ -458,12 +454,9 @@ class _FileEmitter:
         # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
         return "oomph_" + re.sub(r"[^A-Za-z_]", "", namespace.stem) + "_" + name
 
-    def declare_function(
-        self,
-        function_name: str,
-        the_type: FunctionType,
-        argnames: Optional[List[str]] = None,
-    ) -> str:
+    def define_function(
+        self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
+    ) -> None:
         if argnames is None:
             arg_decls = [self.emit_type(argtype) for argtype in the_type.argtypes]
         else:
@@ -473,11 +466,13 @@ class _FileEmitter:
                 for argtype, name in zip(the_type.argtypes, argnames)
             ]
 
-        return "%s %s(%s)" % (
+        declaration = "%s %s(%s)" % (
             self.emit_type(the_type.returntype),
             function_name,
             (", ".join(arg_decls) or "void"),
         )
+        self.function_decls += declaration + ";"
+        self.function_defs += declaration + "{" + body + "}"
 
     def get_var_name(self) -> str:
         self.varname_counter += 1

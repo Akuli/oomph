@@ -37,7 +37,6 @@ class CompilationUnit:
         self.h_path = compilation_dir / (name + ".h")
 
     def create_untyped_ast(self) -> None:
-        builtins_code = (project_root / "builtins.oomph").read_text(encoding="utf-8")
         source_code = self.source_path.read_text(encoding="utf-8")
         self.untyped_ast = parser.parse_file(
             source_code, self.source_path, project_root / "stdlib"
@@ -59,7 +58,9 @@ class CompilationUnit:
         self.h_path.write_text(h, encoding="utf-8")
 
 
-def get_c_compiler_command(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> List[str]:
+def get_c_compiler_command(
+    c_paths: List[pathlib.Path], exepath: pathlib.Path
+) -> List[str]:
     compile_info = {}
     with (project_root / "obj" / "compile_info.txt").open() as file:
         for line in file:
@@ -126,7 +127,9 @@ def main() -> None:
         )
 
     exe_path = cache_dir / args.infile.stem
-    command = get_c_compiler_command([unit.c_path for unit in compilation_units], exe_path)
+    command = get_c_compiler_command(
+        [unit.c_path for unit in compilation_units], exe_path
+    )
 
     result = run(command, args.verbose)
     if result != 0:
