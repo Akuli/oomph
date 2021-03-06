@@ -16,6 +16,7 @@ from oomph.types import (
     FunctionType,
     Type,
     UnionType,
+    builtin_types,
 )
 
 _T = TypeVar("_T")
@@ -217,9 +218,7 @@ class _FunctionEmitter:
         self,
         funcdef: Union[tast.FuncDef, tast.MethodDef],
         c_name: str,
-        *,
-        static: bool = True,
-    ) -> str:
+    ) -> None:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False)
 
@@ -250,45 +249,37 @@ class _FunctionEmitter:
             )
             self.after_body += "return retval;"
 
-        varnames = [self.variable_names[var] for var in funcdef.argvars]
-
-        if not static:
-            self.file_emitter.h_code += (
-                self.file_emitter.declare_function(c_name, functype, static=False)
-                + ";\n"
-            )
-
-        return f"""
-        {self.file_emitter.declare_function(c_name, functype, varnames, static)}
-        {{
-            {self.before_body}
-            {ref_declarations}
-            {body_statements}
-
-        {self.emit_label("out")}
-            {decrefs}
-            {self.after_body}
-        }}
-        """
-
-
-def _format_byte(byte: int) -> str:
-    return r"'\x%02x'" % byte
+        argnames = [self.variable_names[var] for var in funcdef.argvars]
+        self.file_emitter.define_function(
+            c_name,
+            functype,
+            argnames,
+            (
+                self.before_body
+                + ref_declarations
+                + body_statements
+                + self.emit_label("out")
+                + decrefs
+                + self.after_body
+            ),
+        )
 
 
 _generic_c_codes = {
-    OPTIONAL: (
-        """
+    OPTIONAL: {
+        "structs": """
         struct class_%(type_cname)s {
             bool isnull;
             %(itemtype)s value;
         };
+        """,
+        "function_decls": """
         static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
         static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
         """,
-        """
+        "function_defs": """
         static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
         {
             return (struct class_%(type_cname)s) { false, val };
@@ -320,10 +311,10 @@ _generic_c_codes = {
             return res;
         }
         """,
-    ),
-    LIST: (
-        """
-        // TODO: have this struct on stack when possible, same with strings
+    },
+    LIST: {
+        # TODO: have this struct on stack when possible, same with strings
+        "structs": """
         struct class_%(type_cname)s {
             REFCOUNT_HEADER
             int64_t len;
@@ -331,7 +322,8 @@ _generic_c_codes = {
             %(itemtype)s smalldata[8];
             %(itemtype)s *data;
         };
-
+        """,
+        "function_decls": """
         static struct class_%(type_cname)s *ctor_%(type_cname)s(void);
         static void dtor_%(type_cname)s (void *ptr);
         static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
@@ -339,7 +331,7 @@ _generic_c_codes = {
         static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
         """,
-        """
+        "function_defs": """
         static struct class_%(type_cname)s *ctor_%(type_cname)s(void)
         {
             struct class_%(type_cname)s *res = malloc(sizeof(*res));
@@ -420,19 +412,18 @@ _generic_c_codes = {
             return res;
         }
         """,
-    ),
+    },
 }
 
 
 class _FileEmitter:
     def __init__(
         self,
+        session: Session,
         path: pathlib.Path,
-        export_var_names: Dict[tast.ExportVariable, str],
-        includes: List[str],
     ):
         self.path = path
-        self.export_var_names = export_var_names
+        self.session = session
         self.varname_counter = 0
         self.variable_names: Dict[tast.Variable, str] = {
             tast.builtin_variables["__io_mkdir"]: "io_mkdir",
@@ -443,26 +434,29 @@ class _FileEmitter:
             tast.builtin_variables["false"]: "false",
             tast.builtin_variables["print"]: "io_print",
             tast.builtin_variables["true"]: "true",
-            # https://github.com/python/mypy/issues/10171
-            **export_var_names,  # type: ignore
+            **{
+                exp.value: name
+                for exp, name in self.session.export_c_names.items()
+                if isinstance(exp.value, tast.ExportVariable)
+            },
             **{var: name for name, var in tast.special_variables.items()},
         }
         self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
 
-        self.h_code = "#include <lib/oomph.h>\n" + "".join(
-            f'#include "{header}"\n' for header in includes
-        )
-        self.beginning = ""
-        self.ending = ""
+        self.union_decls = ""
+        self.structs = ""
+        self.function_decls = ""
+        self.function_defs = ""
+        self.string_defs = ""
 
-    def declare_function(
-        self,
-        function_name: str,
-        the_type: FunctionType,
-        argnames: Optional[List[str]] = None,
-        static: bool = True,
-    ) -> str:
+    def _get_exportable_name(self, namespace: pathlib.Path, name: str) -> str:
+        # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
+        return "oomph_" + re.sub(r"[^A-Za-z_]", "", namespace.stem) + "_" + name
+
+    def define_function(
+        self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
+    ) -> None:
         if argnames is None:
             arg_decls = [self.emit_type(argtype) for argtype in the_type.argtypes]
         else:
@@ -472,12 +466,13 @@ class _FileEmitter:
                 for argtype, name in zip(the_type.argtypes, argnames)
             ]
 
-        return "%s %s %s(%s)" % (
-            ("static" if static else ""),
+        declaration = "%s %s(%s)" % (
             self.emit_type(the_type.returntype),
             function_name,
             (", ".join(arg_decls) or "void"),
         )
+        self.function_decls += declaration + ";"
+        self.function_defs += declaration + "{" + body + "}"
 
     def get_var_name(self) -> str:
         self.varname_counter += 1
@@ -508,7 +503,10 @@ class _FileEmitter:
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type.generic_origin is None:
-            return the_type.name
+            if the_type in builtin_types.values():
+                return the_type.name
+            assert the_type.definition_path is not None, the_type
+            return self._get_exportable_name(the_type.definition_path, the_type.name)
 
         try:
             return self.generic_type_names[the_type]
@@ -517,9 +515,8 @@ class _FileEmitter:
             type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
             self.generic_type_names[the_type] = type_cname
 
-            # TODO: use c code and h code separately
-            c_code, h_code = _generic_c_codes[the_type.generic_origin.generic]
-            self.beginning += (c_code + h_code) % {
+            code_dict = _generic_c_codes[the_type.generic_origin.generic]
+            substitutions = {
                 "type_cname": type_cname,
                 "itemtype": self.emit_type(itemtype),
                 "itemtype_cname": self.get_type_c_name(itemtype),
@@ -527,7 +524,14 @@ class _FileEmitter:
                 "incref_val": self.emit_incref("val", itemtype, semicolon=False),
                 "decref_val": self.emit_decref("val", itemtype, semicolon=False),
             }
-            self.beginning += "\n"
+            self.structs += f"""
+            #ifndef {type_cname}_DEFINED
+            #define {type_cname}_DEFINED
+            {code_dict["structs"] % substitutions}
+            #endif
+            """
+            self.function_decls += code_dict["function_decls"] % substitutions
+            self.function_defs += code_dict["function_defs"] % substitutions
             return type_cname
 
     def emit_type(self, the_type: Optional[Type]) -> str:
@@ -554,8 +558,8 @@ class _FileEmitter:
             # TODO: is this cross-platform enough?
             struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
 
-            array_content = ", ".join(map(_format_byte, struct_bytes))
-            self.beginning += f"""
+            array_content = ", ".join(r"'\x%02x'" % byte for byte in struct_bytes)
+            self.string_defs += f"""
             static {self.emit_type(STRING)} {self.strings[value]}
             = (void*)(unsigned char[]){{ {array_content} }};
             """
@@ -563,33 +567,54 @@ class _FileEmitter:
 
     def emit_toplevel_declaration(
         self, top_declaration: tast.ToplevelDeclaration
-    ) -> str:
+    ) -> None:
         if isinstance(top_declaration, tast.FuncDef):
             assert top_declaration.var not in self.variable_names
-            if isinstance(top_declaration.var, tast.ExportVariable):
-                if top_declaration.var.name == "main":
-                    c_name = "oomph_main"
-                else:
-                    c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
-                    while c_name in self.export_var_names.values():
-                        c_name += "_"
+            if (
+                isinstance(top_declaration.var, tast.ExportVariable)
+                and top_declaration.var.name == "main"
+            ):
+                c_name = "oomph_main"
+            elif top_declaration.var.name in {
+                "__List_Str_join",
+                "__Str_center_pad",
+                "__Str_contains",
+                "__Str_count",
+                "__Str_ends_with",
+                "__Str_left_pad",
+                "__Str_left_trim",
+                "__Str_repeat",
+                "__Str_replace",
+                "__Str_right_pad",
+                "__Str_right_trim",
+                "__Str_split",
+                "__Str_starts_with",
+                "__Str_trim",
+                "__bool_to_string",
+            }:
+                # Class implemented in C, method implemented in builtins.oomph
+                c_name = "meth_" + top_declaration.var.name.lstrip("_")
             else:
-                c_name = "func_" + top_declaration.var.name
+                c_name = self._get_exportable_name(self.path, top_declaration.var.name)
 
             assert top_declaration.var not in self.variable_names
-            assert top_declaration.var not in self.export_var_names
+            assert top_declaration.var not in self.session.export_c_names
 
             self.variable_names[top_declaration.var] = c_name
             if isinstance(top_declaration.var, tast.ExportVariable):
-                self.export_var_names[top_declaration.var] = c_name
+                [export] = [
+                    exp
+                    for exp in self.session.exports
+                    if exp.value is top_declaration.var
+                ]
+                self.session.export_c_names[export] = c_name
 
-            return _FunctionEmitter(self).emit_funcdef(
+            _FunctionEmitter(self).emit_funcdef(
                 top_declaration,
                 self.variable_names[top_declaration.var],
-                static=(not isinstance(top_declaration.var, tast.ExportVariable)),
             )
 
-        if isinstance(top_declaration, tast.ClassDef):
+        elif isinstance(top_declaration, tast.ClassDef):
             struct_members = "".join(
                 f"{self.emit_type(the_type)} memb_{name};\n\t"
                 for the_type, name in top_declaration.type.members
@@ -610,22 +635,33 @@ class _FileEmitter:
                 self.emit_decref(f"obj->memb_{nam}", typ)
                 for typ, nam in top_declaration.type.members
             )
-            methods = "".join(
+            for method in top_declaration.body:
                 _FunctionEmitter(self).emit_funcdef(
                     method,
                     f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
                 )
-                for method in top_declaration.body
-            )
 
-            name = self.get_type_c_name(top_declaration.type)
-            return f"""
-            struct class_{name} {{
+            c_name = self.get_type_c_name(top_declaration.type)
+            if top_declaration.export:
+                [export] = [
+                    exp
+                    for exp in self.session.exports
+                    if exp.value is top_declaration.type
+                ]
+                self.session.export_c_names[export] = c_name
+
+            self.structs += f"""
+            struct class_{c_name} {{
                 REFCOUNT_HEADER
                 {struct_members}
             }};
-
-            {self.emit_type(top_declaration.type)} ctor_{name}({constructor_args})
+            """
+            self.function_decls += f"""
+            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args});
+            void dtor_{c_name}(void *ptr);
+            """
+            self.function_defs += f"""
+            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args})
             {{
                 {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
                 assert(obj);
@@ -635,19 +671,17 @@ class _FileEmitter:
                 return obj;
             }}
 
-            void dtor_{name}(void *ptr)
+            void dtor_{c_name}(void *ptr)
             {{
-                struct class_{name} *obj = ptr;
+                struct class_{c_name} *obj = ptr;
                 {member_decrefs}
                 free(obj);
             }}
-
-            {methods}
             """
 
-        if isinstance(top_declaration, tast.UnionDef):
+        elif isinstance(top_declaration, tast.UnionDef):
             assert top_declaration.type.type_members is not None
-            name = self.get_type_c_name(top_declaration.type)
+            c_name = self.get_type_c_name(top_declaration.type)
 
             # to_string method
             to_string_cases = "".join(
@@ -658,8 +692,11 @@ class _FileEmitter:
                 """
                 for num, typ in enumerate(top_declaration.type.type_members)
             )
-            self.ending += f"""
-            struct class_Str *meth_{name}_to_string(struct class_{name} obj)
+            self.function_decls += (
+                f"struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj);"
+            )
+            self.function_defs += f"""
+            struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj)
             {{
                 struct class_Str *valstr;
                 switch(obj.membernum) {{
@@ -668,8 +705,7 @@ class _FileEmitter:
                         assert(0);
                 }}
 
-                // TODO: escaping?
-                struct class_Str *res = cstr_to_string("union {top_declaration.type.name}");
+                struct class_Str *res = {self.emit_string("union " + top_declaration.type.name)};
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
                 string_concat_inplace(&res, ")");
@@ -689,8 +725,9 @@ class _FileEmitter:
                 """
                 for num, typ in enumerate(top_declaration.type.type_members)
             )
-            self.ending += f"""
-            void decref_{name}(struct class_{name} obj) {{
+            self.function_decls += f"void decref_{c_name}(struct class_{c_name} obj);"
+            self.function_defs += f"""
+            void decref_{c_name}(struct class_{c_name} obj) {{
                 switch(obj.membernum) {{
                     {decref_cases}
                     default:
@@ -703,39 +740,47 @@ class _FileEmitter:
                 f"\t{self.emit_type(the_type)} item{index};\n"
                 for index, the_type in enumerate(top_declaration.type.type_members)
             )
-            return f"""
-            struct class_{name} {{
+            self.structs += f"""
+            struct class_{c_name} {{
                 union {{
                     {union_members}
                 }} val;
                 short membernum;
             }};
-
-            // Forward decls of self.ending stuff
-            struct class_Str *meth_{name}_to_string(struct class_{name} obj);
-            void decref_{name}(struct class_{name} obj);
             """
 
-        raise NotImplementedError(top_declaration)
+        else:
+            raise NotImplementedError(top_declaration)
 
 
-def run(
-    ast: List[tast.ToplevelDeclaration],
-    path: pathlib.Path,
-    export_var_names: Dict[tast.ExportVariable, str],
-    includes: List[str],
-) -> Tuple[str, str]:
-    emitter = _FileEmitter(path, export_var_names, includes)
-    code = "".join(
-        emitter.emit_toplevel_declaration(top_declaration) for top_declaration in ast
-    )
-    c_code = emitter.h_code + emitter.beginning + code + emitter.ending
-    header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
-    return (
-        c_code,
-        f"""
-        #ifndef {header_guard}
-        #define {header_guard}
-        {emitter.h_code}
-        #endif""",
-    )
+class Session:
+    def __init__(self) -> None:
+        # This state is shared between different files
+        self.exports: List[tast.Export] = []
+        self.export_c_names: Dict[tast.Export, str] = {}
+
+    def create_c_code(
+        self,
+        ast: List[tast.ToplevelDeclaration],
+        path: pathlib.Path,
+        include_list: List[str],
+    ) -> Tuple[str, str]:
+        includes = "#include <lib/oomph.h>\n" + "".join(
+            f'#include "{header}"\n' for header in include_list
+        )
+
+        emitter = _FileEmitter(self, path)
+        for top_declaration in ast:
+            emitter.emit_toplevel_declaration(top_declaration)
+
+        h_code = includes + emitter.structs + emitter.function_decls
+        c_code = h_code + emitter.string_defs + emitter.function_defs
+        header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
+        return (
+            c_code,
+            f"""
+            #ifndef {header_guard}
+            #define {header_guard}
+            {h_code}
+            #endif""",
+        )

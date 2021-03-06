@@ -44,23 +44,6 @@ struct class_Str *meth_Str_to_string(struct class_Str *s);
 struct class_Str *meth_float_to_string(double d);
 struct class_Str *meth_int_to_string(int64_t n);
 
-// Class implemented in C, method implemented in oomph
-#define meth_List_Str_join func___string_join
-#define meth_Str_center_pad func___string_center_pad
-#define meth_Str_contains func___string_contains
-#define meth_Str_count func___string_count
-#define meth_Str_ends_with func___string_ends_with
-#define meth_Str_left_pad func___string_left_pad
-#define meth_Str_left_trim func___string_left_trim
-#define meth_Str_repeat func___string_repeat
-#define meth_Str_replace func___string_replace
-#define meth_Str_right_pad func___string_right_pad
-#define meth_Str_right_trim func___string_right_trim
-#define meth_Str_split func___string_split
-#define meth_Str_starts_with func___string_starts_with
-#define meth_Str_trim func___string_trim
-#define meth_bool_to_string func___bool_to_string
-
 /*
 Can't be macros because of assumptions that compiler makes:
 - Can be used in comma expressions, as in (decref(ptr), (ptr = new_value))

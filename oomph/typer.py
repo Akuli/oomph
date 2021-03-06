@@ -397,11 +397,9 @@ def _create_to_string_method(class_type: tast.Type) -> uast.FuncOrMethodDef:
 
 
 class _FileTyper:
-    def __init__(
-        self, path: pathlib.Path, export_vars: List[tast.ExportVariable]
-    ) -> None:
+    def __init__(self, path: pathlib.Path, exports: List[tast.Export]) -> None:
         self.path = path
-        self.export_vars = export_vars
+        self.exports = exports
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         # https://github.com/python/typeshed/issues/5089
@@ -441,8 +439,8 @@ class _FileTyper:
             )
 
             if funcdef.export:
-                func_var = tast.ExportVariable(funcdef.name, functype, self.path)
-                self.export_vars.append(func_var)
+                func_var = tast.ExportVariable(funcdef.name, functype)
+                self.exports.append(tast.Export(self.path, funcdef.name, func_var))
                 mypy_sucks: Union[tast.ExportVariable, tast.ThisFileVariable] = func_var
             else:
                 mypy_sucks = tast.ThisFileVariable(funcdef.name, functype)
@@ -481,9 +479,15 @@ class _FileTyper:
         top_declaration: uast.ToplevelDeclaration,
     ) -> Optional[tast.ToplevelDeclaration]:
         if isinstance(top_declaration, uast.Import):
-            for var in self.export_vars:
-                if var.path == top_declaration.path:
-                    self.add_var(var, top_declaration.name + "::" + var.name)
+            for export in self.exports:
+                if export.path != top_declaration.path:
+                    continue
+
+                name = top_declaration.name + "::" + export.name
+                if isinstance(export.value, tast.ExportVariable):
+                    self.add_var(export.value, name)
+                else:
+                    self._types[name] = export.value
             return None
 
         if isinstance(top_declaration, uast.FuncOrMethodDef):
@@ -492,7 +496,7 @@ class _FileTyper:
             return result
 
         if isinstance(top_declaration, uast.ClassDef):
-            classtype = Type(top_declaration.name, True)
+            classtype = Type(top_declaration.name, True, self.path)
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
             classtype.members.extend(
@@ -515,12 +519,20 @@ class _FileTyper:
                 classtype.methods[method_def.name] = typed_def.type
                 typed_method_defs.append(typed_def)
 
-            return tast.ClassDef(classtype, typed_method_defs)
+            if top_declaration.export:
+                self.exports.append(
+                    tast.Export(self.path, top_declaration.name, classtype)
+                )
+            return tast.ClassDef(classtype, typed_method_defs, top_declaration.export)
 
         if isinstance(top_declaration, uast.UnionDef):
-            union_type = UnionType(top_declaration.name)
+            union_type = UnionType(top_declaration.name, self.path)
             self._types[top_declaration.name] = union_type
             self.union_laziness[union_type] = top_declaration.type_members
+            if top_declaration.export:
+                self.exports.append(
+                    tast.Export(self.path, top_declaration.name, union_type)
+                )
             return tast.UnionDef(union_type)
 
         raise NotImplementedError(top_declaration)
@@ -537,9 +549,9 @@ class _FileTyper:
 def convert_program(
     program: List[uast.ToplevelDeclaration],
     path: pathlib.Path,
-    export_vars: List[tast.ExportVariable],
+    exports: List[tast.Export],
 ) -> List[tast.ToplevelDeclaration]:
-    typer = _FileTyper(path, export_vars)
+    typer = _FileTyper(path, exports)
     result = [
         top for top in map(typer.do_toplevel_declaration, program) if top is not None
     ]

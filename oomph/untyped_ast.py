@@ -166,9 +166,11 @@ class ClassDef(ToplevelDeclaration):
     name: str
     members: List[Tuple[Type, str]]
     body: List[FuncOrMethodDef]
+    export: bool
 
 
 @dataclass(eq=False)
 class UnionDef(ToplevelDeclaration):
     name: str
     type_members: List[Type]
+    export: bool

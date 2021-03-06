@@ -31,8 +31,6 @@ Known bugs:
 
 Missing features needed to write the oomph compiler in oomph:
 - `==` operator for pointer types
-- exporting classes
-- exporting unions
 
 Other missing features:
 - `>>>` prompt

@@ -4,3 +4,17 @@ import "<stdlib>/hello.oomph" as hello_std
 export func main():
     hello::print_hello()
     hello_std::print_hello()
+
+    let f = new hello::Bar(123, new optional[Str]("lol"))
+    print(f)
+    print(f.thing)
+    print(f.optional_thing)
+    f.lol()
+
+    let u = new hello::FooBar(f)
+    print(u)
+    switch u:
+        case hello::Foo:
+            print("Foo from switch: {u}")
+        case hello::Bar:
+            print("Bar from switch: {u}")

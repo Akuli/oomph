@@ -7,11 +7,9 @@ import shlex
 import signal
 import subprocess
 import sys
-from typing import Dict, List, Set
+from typing import List, Set
 
-from oomph import c_output, parser
-from oomph import typed_ast as tast
-from oomph import typer
+from oomph import c_output, parser, typer
 from oomph import untyped_ast as uast
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
@@ -23,13 +21,9 @@ def _get_compiled_file_name(
 ) -> str:
     # TODO: avoid long file names
     return (
-        source_path.stem
-        + "_from_"
-        + (
-            os.path.relpath(source_path, compilation_dir.parent)
-            .replace(".", "_dot_")
-            .replace(os.sep, "_slash_")
-        )
+        os.path.relpath(source_path, compilation_dir.parent)
+        .replace(".", "_dot_")
+        .replace(os.sep, "_slash_")
     )
 
 
@@ -43,38 +37,37 @@ class CompilationUnit:
         self.h_path = compilation_dir / (name + ".h")
 
     def create_untyped_ast(self) -> None:
-        builtins_code = (project_root / "builtins.oomph").read_text(encoding="utf-8")
         source_code = self.source_path.read_text(encoding="utf-8")
-
         self.untyped_ast = parser.parse_file(
-            builtins_code, None, None
-        ) + parser.parse_file(source_code, self.source_path, project_root / "stdlib")
+            source_code, self.source_path, project_root / "stdlib"
+        )
 
     def create_c_and_h_files(
         self,
         used_c_paths: Set[pathlib.Path],
         compilation_dir: pathlib.Path,
-        export_vars: List[tast.ExportVariable],
-        export_var_names: Dict[tast.ExportVariable, str],
+        session: c_output.Session,
         headers: List[str],
     ) -> None:
         typed_ast = typer.convert_program(
-            self.untyped_ast, self.source_path, export_vars
+            self.untyped_ast, self.source_path, session.exports
         )
-        c, h = c_output.run(typed_ast, self.source_path, export_var_names, headers)
+        c, h = session.create_c_code(typed_ast, self.source_path, headers)
 
         self.c_path.write_text(c, encoding="utf-8")
         self.h_path.write_text(h, encoding="utf-8")
 
 
-def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int:
+def get_c_compiler_command(
+    c_paths: List[pathlib.Path], exepath: pathlib.Path
+) -> List[str]:
     compile_info = {}
     with (project_root / "obj" / "compile_info.txt").open() as file:
         for line in file:
             key, value = line.rstrip("\n").split("=", maxsplit=1)
             compile_info[key] = value
 
-    return subprocess.run(
+    return (
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
         + [str(path) for path in project_root.glob("obj/*.o")]
@@ -82,13 +75,20 @@ def invoke_c_compiler(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> int
         + ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"])
         + ["-I", str(project_root)]
-    ).returncode
+    )
+
+
+def run(command: List[str], verbose: bool) -> int:
+    if verbose:
+        print("Running:", " ".join(map(shlex.quote, command)), file=sys.stderr)
+    return subprocess.run(command).returncode
 
 
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=pathlib.Path)
     arg_parser.add_argument("--valgrind", action="store_true")
+    arg_parser.add_argument("-v", "--verbose", action="store_true")
     args = arg_parser.parse_args()
 
     try:
@@ -99,7 +99,7 @@ def main() -> None:
         cache_dir.mkdir(exist_ok=True)
 
     compilation_units: List[CompilationUnit] = []
-    todo_list = [args.infile.absolute()]
+    todo_list = [project_root / "builtins.oomph", args.infile.absolute()]
     while todo_list:
         source_path = todo_list.pop()
         if source_path in (unit.source_path for unit in compilation_units):
@@ -116,20 +116,22 @@ def main() -> None:
     # Compile dependencies first
     compilation_units.reverse()
 
-    export_vars: List[tast.ExportVariable] = []
-    export_var_names: Dict[tast.ExportVariable, str] = {}
+    session = c_output.Session()
     for index, unit in enumerate(compilation_units):
         already_compiled = compilation_units[:index]
         unit.create_c_and_h_files(
             {unit.c_path for unit in already_compiled},
             cache_dir,
-            export_vars,
-            export_var_names,
+            session,
             [unit.h_path.name for unit in already_compiled],
         )
 
     exe_path = cache_dir / args.infile.stem
-    result = invoke_c_compiler([unit.c_path for unit in compilation_units], exe_path)
+    command = get_c_compiler_command(
+        [unit.c_path for unit in compilation_units], exe_path
+    )
+
+    result = run(command, args.verbose)
     if result != 0:
         sys.exit(result)
 
@@ -144,7 +146,7 @@ def main() -> None:
     else:
         command = [str(exe_path)]
 
-    result = subprocess.run(command).returncode
+    result = run(command, args.verbose)
     if result < 0:  # killed by signal
         message = f"Program killed by signal {abs(result)}"
         try:

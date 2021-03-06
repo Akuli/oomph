@@ -441,7 +441,6 @@ class _Parser:
             return result
 
         if self.token_iter.peek() == ("keyword", "class"):
-            assert not export  # TODO
             self.get_token("keyword", "class")
             name = self.get_token("identifier")[1]
             args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
@@ -450,14 +449,13 @@ class _Parser:
             else:
                 body = []
                 self.get_token("op", "\n")
-            return uast.ClassDef(name, args, body)
+            return uast.ClassDef(name, args, body, export)
 
         if self.token_iter.peek() == ("keyword", "union"):
-            assert not export  # TODO
             self.get_token("keyword", "union")
             name = self.get_token("identifier")[1]
             types = self.parse_block(self.parse_union_member)
-            return uast.UnionDef(name, types)
+            return uast.UnionDef(name, types, export)
 
         raise NotImplementedError(self.token_iter.peek())
 
