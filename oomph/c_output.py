@@ -710,7 +710,6 @@ class _FileEmitter:
                         assert(0);
                 }}
 
-                // TODO: escaping?
                 struct class_Str *res = {self.emit_string("union " + top_declaration.type.name)};
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
