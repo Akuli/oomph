@@ -1,6 +1,8 @@
 hello
 Hello from stdlib
-Foo(123, optional[Str]("lol"))
+Bar(123, optional[Str]("lol"))
 123
 optional[Str]("lol")
 Lol 123 optional[Str]("lol")
+union FooBar(Bar(123, optional[Str]("lol")))
+Bar from switch: Bar(123, optional[Str]("lol"))
