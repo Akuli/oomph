@@ -447,11 +447,13 @@ class _FileEmitter:
             **{var: name for name, var in tast.special_variables.items()},
         }
         self.generic_type_names: Dict[Type, str] = {}
+        self.strings: Dict[str, str] = {}
 
         self.union_decls = ""
         self.structs = ""
         self.function_decls = ""
         self.function_defs = ""
+        self.string_defs = ""
 
     def _get_exportable_name(self, namespace: pathlib.Path, name: str) -> str:
         # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
@@ -552,19 +554,22 @@ class _FileEmitter:
         return f"struct class_{self.get_type_c_name(the_type)}"
 
     def emit_string(self, value: str) -> str:
-        safe_bytes = (
-            string_module.ascii_letters
-            + string_module.digits
-            + "!#$%&'()*+,-./:;<=>?@[]^_`{|}~"
-        ).encode("ascii")
+        if value not in self.strings:
+            self.strings[value] = (
+                f"string{len(self.strings)}_" + re.sub(r"[^A-Za-z0-9]", "", value)[:30]
+            )
 
-        c_string = '""' + "".join(
-            '"' + bytes([byte]).decode("ascii") + '"'
-            if byte in safe_bytes
-            else r'"\x%02x"' % byte
-            for byte in value.encode("utf-8")
-        )
-        return "(cstr_to_string(%s))" % c_string
+            # String constants consist of int64_t refcount set to -1,
+            # followed by utf8, followed by zero byte
+            # TODO: is this cross-platform enough?
+            struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
+
+            array_content = ", ".join(r"'\x%02x'" % byte for byte in struct_bytes)
+            self.string_defs += f"""
+            static {self.emit_type(STRING)} {self.strings[value]}
+            = (void*)(unsigned char[]){{ {array_content} }};
+            """
+        return self.strings[value]
 
     def emit_toplevel_declaration(
         self, top_declaration: tast.ToplevelDeclaration
@@ -776,7 +781,7 @@ class Session:
             emitter.emit_toplevel_declaration(top_declaration)
 
         h_code = includes + emitter.structs + emitter.function_decls
-        c_code = h_code + emitter.function_defs
+        c_code = h_code + emitter.string_defs + emitter.function_defs
         header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
         return (
             c_code,
