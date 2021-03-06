@@ -452,11 +452,10 @@ class _Parser:
             return uast.ClassDef(name, args, body, export)
 
         if self.token_iter.peek() == ("keyword", "union"):
-            assert not export  # TODO
             self.get_token("keyword", "union")
             name = self.get_token("identifier")[1]
             types = self.parse_block(self.parse_union_member)
-            return uast.UnionDef(name, types)
+            return uast.UnionDef(name, types, export)
 
         raise NotImplementedError(self.token_iter.peek())
 

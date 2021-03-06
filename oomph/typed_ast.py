@@ -329,4 +329,4 @@ class Constructor(Expression):
 class Export:
     path: pathlib.Path
     name: str
-    value: Union[ExportVariable, Type]
+    value: Union[ExportVariable, Type]  # Type includes UnionType

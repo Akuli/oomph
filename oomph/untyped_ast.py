@@ -173,3 +173,4 @@ class ClassDef(ToplevelDeclaration):
 class UnionDef(ToplevelDeclaration):
     name: str
     type_members: List[Type]
+    export: bool

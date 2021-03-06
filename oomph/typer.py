@@ -531,6 +531,10 @@ class _FileTyper:
             union_type = UnionType(top_declaration.name, self.path)
             self._types[top_declaration.name] = union_type
             self.union_laziness[union_type] = top_declaration.type_members
+            if top_declaration.export:
+                self.exports.append(
+                    tast.Export(self.path, top_declaration.name, union_type)
+                )
             return tast.UnionDef(union_type)
 
         raise NotImplementedError(top_declaration)
