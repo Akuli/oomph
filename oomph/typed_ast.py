@@ -188,6 +188,20 @@ class BoolOr(Expression):
         self.rhs = rhs
 
 
+# Can't be a function call because arguments can be many different types
+@dataclass(eq=False)
+class PointersEqual(Expression):
+    lhs: Expression
+    rhs: Expression
+
+    def __init__(self, lhs: Expression, rhs: Expression):
+        super().__init__(BOOL)
+        self.lhs = lhs
+        self.rhs = rhs
+
+
+
+
 @dataclass(eq=False)
 class VoidCall(Statement):
     func: Expression

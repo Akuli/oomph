@@ -86,6 +86,8 @@ class _FunctionEmitter:
             return (
                 f"({self.emit_expression(ast.lhs)} || {self.emit_expression(ast.rhs)})"
             )
+        if isinstance(ast, tast.PointersEqual):
+            return f"({self.emit_expression(ast.lhs)} == {self.emit_expression(ast.rhs)})"
         if isinstance(ast, tast.Null):
             return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
         if isinstance(ast, tast.GetVar):

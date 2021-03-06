@@ -29,10 +29,7 @@ Docs:
 Known bugs:
 - ref cycles are not prevented or garbage collected
 
-Missing features needed to write the oomph compiler in oomph:
-- `==` operator for pointer types
-
-Other missing features:
+Missing features:
 - `>>>` prompt
 - something like python's `__file__` (compile time and runtime)
 - attributes of classes that are not arguments

@@ -30,6 +30,10 @@ void io_write_file(const struct class_Str *path, const struct class_Str *content
 void oomph_assert(bool cond, int64_t lineno);
 int64_t subprocess_run(void *args);
 
+#define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
+#define meth_bool_equals(a, b) ((a)==(b))
+#define meth_float_equals(a, b) ((a)==(b))
+#define meth_int_equals(a, b) ((a)==(b))
 double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub);
 int64_t meth_Str_length(const struct class_Str *s);
@@ -53,23 +57,19 @@ void incref(void *ptr);
 void decref(void *ptr, void (*destructor)(void *ptr));
 
 // Special functions. Keep up to date with typer.py.
-#define bool_eq(a, b) ((a)==(b))
 #define bool_not(a) (!(a))
 #define float_add(a, b) ((a)+(b))
 #define float_div(a, b) ((a)/(b))
-#define float_eq(a, b) ((a)==(b))
 #define float_gt(a, b) ((a)>(b))
 #define float_mul(a, b) ((a)*(b))
 #define float_neg(a) (-(a))
 #define float_sub(a, b) ((a)-(b))
 #define int2float(x) ((double)(x))
 #define int_add(a, b) ((a)+(b))
-#define int_eq(a, b) ((a)==(b))
 #define int_gt(a, b) ((a)>(b))
 #define int_mul(a, b) ((a)*(b))
 #define int_neg(a) (-(a))
 #define int_sub(a, b) ((a)-(b))
-#define string_eq(a, b) (strcmp((a)->str, (b)->str) == 0)
 double float_mod(double a, double b);
 int64_t int_mod(int64_t a, int64_t b);
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);

@@ -1,4 +1,15 @@
+class Foo()
+
+func bar(Str s) -> int:
+    print(s)
+    return 123
+
 export func main():
+    let f1 = new Foo()
+    let f2 = new Foo()
+
+    print(f1 == f1)
+    print(f1 == f2)
     print(1 == 1)
     print(1 == 2)
     print(1.0 == 1)
@@ -8,6 +19,10 @@ export func main():
     print(false == false)
     print(false == true)
 
+    print("-----------")
+
+    print(f1 != f1)
+    print(f1 != f2)
     print(1 != 1)
     print(1 != 2)
     print(1.0 != 1)
@@ -16,3 +31,9 @@ export func main():
     print(true != false)
     print(false != false)
     print(false != true)
+
+    print("-----------")
+
+    # Check for side-effects
+    print(bar("left") == bar("right"))
+    print(bar("left") != bar("right"))

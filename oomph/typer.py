@@ -107,8 +107,6 @@ class _FunctionOrMethodTyper:
         if lhs.type is STRING and op == "+" and rhs.type is STRING:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
-        if lhs.type is STRING and op == "==" and rhs.type is STRING:
-            return self.create_special_call("string_eq", [lhs, rhs])
         if (
             lhs.type.generic_origin is not None
             and rhs.type.generic_origin is not None
@@ -183,14 +181,8 @@ class _FunctionOrMethodTyper:
             return tast.BoolAnd(lhs, rhs)
         if lhs.type is BOOL and op == "or" and rhs.type is BOOL:
             return tast.BoolOr(lhs, rhs)
-        if lhs.type is BOOL and op == "==" and rhs.type is BOOL:
-            return self.create_special_call("bool_eq", [lhs, rhs])
-        if lhs.type is INT and op == "==" and rhs.type is INT:
-            return self.create_special_call("int_eq", [lhs, rhs])
-        if lhs.type is FLOAT and op == "==" and rhs.type is FLOAT:
-            # Float equality sucks, but maybe it can be useful for something
-            return self.create_special_call("float_eq", [lhs, rhs])
-            return tast.NumberEqual(lhs, rhs)
+        if lhs.type == rhs.type and op == "==":
+            return self.create_returning_call(tast.GetMethod(lhs, "equals"), [rhs])
 
         raise NotImplementedError(f"{lhs.type} {op} {rhs.type}")
 
@@ -474,6 +466,22 @@ class _FileTyper:
                 typer.reflist,
             )
 
+    def _create_equals_method(self, classtype: Type) -> tast.MethodDef:
+        functype = FunctionType([classtype, classtype], BOOL)
+        self_var = tast.LocalVariable("self", classtype)
+        other_var = tast.LocalVariable("other", classtype)
+        return tast.MethodDef(
+            "equals",
+            functype,
+            [self_var, other_var],
+            [
+                tast.Return(
+                    tast.PointersEqual(tast.GetVar(self_var), tast.GetVar(other_var))
+                )
+            ],
+            [],
+        )
+
     def do_toplevel_declaration(
         self,
         top_declaration: uast.ToplevelDeclaration,
@@ -505,12 +513,15 @@ class _FileTyper:
             classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
 
             if "to_string" not in (method.name for method in top_declaration.body):
-                top_declaration.body.insert(
-                    0,
-                    _create_to_string_method(classtype),
-                )
+                top_declaration.body.insert(0, _create_to_string_method(classtype))
 
             typed_method_defs = []
+
+            if "equals" not in (method.name for method in top_declaration.body):
+                equals_def = self._create_equals_method(classtype)
+                typed_method_defs.append(equals_def)
+                classtype.methods["equals"] = equals_def.type
+
             for method_def in top_declaration.body:
                 typed_def = self._do_func_or_method_def(
                     method_def, top_declaration.name

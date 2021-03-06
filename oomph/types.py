@@ -76,6 +76,7 @@ class Generic:
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
             result.methods["is_null"] = FunctionType([result], BOOL)
+            result.methods["equals"] = FunctionType([result, result], BOOL)
         elif self is LIST:
             result = Type(f"{self.name}[{generic_arg.name}]", True)
             result.generic_origin = GenericSource(self, generic_arg)
@@ -122,20 +123,24 @@ FLOAT = Type("float", False)
 INT = Type("int", False)
 STRING = Type("Str", True)
 
+BOOL.methods["equals"] = FunctionType([BOOL, BOOL], BOOL)
 BOOL.methods["to_string"] = FunctionType([BOOL], STRING)
 
 FLOAT.methods["ceil"] = FunctionType([FLOAT], INT)
+FLOAT.methods["equals"] = FunctionType([FLOAT, FLOAT], BOOL)
 FLOAT.methods["floor"] = FunctionType([FLOAT], INT)
 FLOAT.methods["round"] = FunctionType([FLOAT], INT)
 FLOAT.methods["to_string"] = FunctionType([FLOAT], STRING)
 FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 
+INT.methods["equals"] = FunctionType([INT, INT], BOOL)
 INT.methods["to_string"] = FunctionType([INT], STRING)
 
 STRING.methods["center_pad"] = FunctionType([STRING, INT, STRING], STRING)
 STRING.methods["contains"] = FunctionType([STRING, STRING], BOOL)
 STRING.methods["count"] = FunctionType([STRING, STRING], INT)
 STRING.methods["ends_with"] = FunctionType([STRING, STRING], BOOL)
+STRING.methods["equals"] = FunctionType([STRING, STRING], BOOL)
 STRING.methods["find_first"] = FunctionType([STRING, STRING], INT)
 STRING.methods["left_pad"] = FunctionType([STRING, INT, STRING], STRING)
 STRING.methods["left_trim"] = FunctionType([STRING], STRING)
