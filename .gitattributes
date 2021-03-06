@@ -1,2 +1,2 @@
 # https://github.com/ethereum/casper/pull/171/files
-*.vy linguist-language=Python
+*.oomph linguist-language=Python
