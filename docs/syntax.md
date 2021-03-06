@@ -53,9 +53,7 @@ If more than one of these rules match, then the first matching rule should be us
     - Code between braces must not contain `"` characters.
 - Operators, such as `==` or `(`. You can find a full list similarly to keywords.
 - Newline tokens, matching a single  newline character.
-- An indentation token consists of one or more space characters, following a newline character.
-  Note that indentation cannot be in the beginning of the file,
-  as there is no newline character before the beginning.
+- An indentation token consists of one or more space characters in the beginning of a line.
   There must not be `#` or a newline character immediately following the indentation;
   that does not produce an indentation token, but is ignored (see below).
 - Spaces are ignored anywhere except in the beginning of the file (and in indentation, described above).
