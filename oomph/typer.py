@@ -498,7 +498,7 @@ class _FileTyper:
             return result
 
         if isinstance(top_declaration, uast.ClassDef):
-            classtype = Type(top_declaration.name, True)
+            classtype = Type(top_declaration.name, True, self.path)
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
             classtype.members.extend(
@@ -528,7 +528,7 @@ class _FileTyper:
             return tast.ClassDef(classtype, typed_method_defs, top_declaration.export)
 
         if isinstance(top_declaration, uast.UnionDef):
-            union_type = UnionType(top_declaration.name)
+            union_type = UnionType(top_declaration.name, self.path)
             self._types[top_declaration.name] = union_type
             self.union_laziness[union_type] = top_declaration.type_members
             return tast.UnionDef(union_type)

@@ -16,6 +16,7 @@ from oomph.types import (
     FunctionType,
     Type,
     UnionType,
+    builtin_types,
 )
 
 _T = TypeVar("_T")
@@ -90,6 +91,7 @@ class _FunctionEmitter:
         if isinstance(ast, tast.GetVar):
             return self.variable_names[ast.var]
         if isinstance(ast, tast.Constructor):
+            # TODO: move ctor to end, so that it starts with oomph_
             return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
         if isinstance(ast, tast.SetRef):
             # Must evaluate expression before decref because expression might
@@ -427,8 +429,8 @@ _generic_c_codes = {
 class _FileEmitter:
     def __init__(
         self,
-        path: pathlib.Path,
         session: Session,
+        path: pathlib.Path,
         includes: List[str],
     ):
         self.path = path
@@ -458,6 +460,10 @@ class _FileEmitter:
         )
         self.beginning = ""
         self.ending = ""
+
+    def _get_exportable_name(self, namespace: pathlib.Path, name: str) -> str:
+        # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
+        return "oomph_" + re.sub(r"[^A-Za-z_]", "", namespace.stem) + "_" + name
 
     def declare_function(
         self,
@@ -511,7 +517,10 @@ class _FileEmitter:
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type.generic_origin is None:
-            return the_type.name
+            if the_type in builtin_types.values():
+                return the_type.name
+            assert the_type.definition_path is not None, the_type
+            return self._get_exportable_name(the_type.definition_path, the_type.name)
 
         try:
             return self.generic_type_names[the_type]
@@ -569,15 +578,32 @@ class _FileEmitter:
     ) -> str:
         if isinstance(top_declaration, tast.FuncDef):
             assert top_declaration.var not in self.variable_names
-            if isinstance(top_declaration.var, tast.ExportVariable):
-                if top_declaration.var.name == "main":
-                    c_name = "oomph_main"
-                else:
-                    c_name = "export_" + self.path.stem + "_" + top_declaration.var.name
-                    while c_name in self.session.export_c_names.values():
-                        c_name += "_"
+            if (
+                isinstance(top_declaration.var, tast.ExportVariable)
+                and top_declaration.var.name == "main"
+            ):
+                c_name = "oomph_main"
+            elif top_declaration.var.name in {
+                "__List_Str_join",
+                "__Str_center_pad",
+                "__Str_contains",
+                "__Str_count",
+                "__Str_ends_with",
+                "__Str_left_pad",
+                "__Str_left_trim",
+                "__Str_repeat",
+                "__Str_replace",
+                "__Str_right_pad",
+                "__Str_right_trim",
+                "__Str_split",
+                "__Str_starts_with",
+                "__Str_trim",
+                "__bool_to_string",
+            }:
+                # Class implemented in C, method implemented in builtins.oomph
+                c_name = "meth_" + top_declaration.var.name.lstrip("_")
             else:
-                c_name = "func_" + top_declaration.var.name
+                c_name = self._get_exportable_name(self.path, top_declaration.var.name)
 
             assert top_declaration.var not in self.variable_names
             assert top_declaration.var not in self.session.export_c_names
@@ -746,7 +772,7 @@ class Session:
         path: pathlib.Path,
         includes: List[str],
     ) -> Tuple[str, str]:
-        emitter = _FileEmitter(path, self, includes)
+        emitter = _FileEmitter(self, path, includes)
         code = "".join(
             emitter.emit_toplevel_declaration(top_declaration)
             for top_declaration in ast

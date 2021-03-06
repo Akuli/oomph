@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pathlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -12,9 +13,15 @@ class GenericSource:
 
 
 class Type:
-    def __init__(self, name: str, refcounted: bool):
+    def __init__(
+        self,
+        name: str,
+        refcounted: bool,
+        definition_path: Optional[pathlib.Path] = None,
+    ):
         self.name = name
         self.refcounted = refcounted
+        self.definition_path = definition_path
         self.methods: Dict[str, FunctionType] = {}
         self.members: List[Tuple[Type, str]] = []
         self.constructor_argtypes: Optional[List[Type]] = None
@@ -41,8 +48,8 @@ class Type:
 class UnionType(Type):
     type_members: Optional[List[Type]]
 
-    def __init__(self, name: str):
-        super().__init__(name, True)
+    def __init__(self, name: str, definition_path: Optional[pathlib.Path] = None):
+        super().__init__(name, True, definition_path)
         self.type_members = None  # to be set later
         self.methods["to_string"] = FunctionType([self], STRING)
 

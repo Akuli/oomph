@@ -3,33 +3,33 @@ func __bool_to_string(bool self) -> Str:
         return "true"
     return "false"
 
-func __string_repeat(Str self, int n) -> Str:
+func __Str_repeat(Str self, int n) -> Str:
     let result = self
     while result.length() < n*self.length():
         result = result + result
     return result.slice(0, n*self.length())
 
-func __string_starts_with(Str self, Str prefix) -> bool:
+func __Str_starts_with(Str self, Str prefix) -> bool:
     return self.slice(0, prefix.length()) == prefix
 
-func __string_ends_with(Str self, Str suffix) -> bool:
+func __Str_ends_with(Str self, Str suffix) -> bool:
     return self.slice(self.length() - suffix.length(), self.length()) == suffix
 
-func __string_contains(Str self, Str substring) -> bool:
+func __Str_contains(Str self, Str substring) -> bool:
     return self.find_first(substring) != -1
 
 # No need to use a third party library for this, lol
-func __string_left_pad(Str self, int len, Str pad_char) -> Str:
+func __Str_left_pad(Str self, int len, Str pad_char) -> Str:
     return pad_char.repeat(len - self.length()) + self
 
-func __string_right_pad(Str self, int len, Str pad_char) -> Str:
+func __Str_right_pad(Str self, int len, Str pad_char) -> Str:
     return self + pad_char.repeat(len - self.length())
 
-func __string_center_pad(Str self, int len, Str pad_char) -> Str:
+func __Str_center_pad(Str self, int len, Str pad_char) -> Str:
     let average = ((self.length() + len)/2).floor()
     return self.left_pad(average, pad_char).right_pad(len, pad_char)
 
-func __string_count(Str self, Str substring) -> int:
+func __Str_count(Str self, Str substring) -> int:
     let s = self
     let count = 0
 
@@ -49,23 +49,23 @@ func __starts_with_space(Str s) -> bool:
     # TODO: all ascii whitespace
     return s.starts_with(" ")
 
-func __string_left_trim(Str self) -> Str:
+func __Str_left_trim(Str self) -> Str:
     let s = self  # TODO: is this necessary?
     # TODO: all ascii whitespace
     while s.starts_with(" "):
         s = s.slice(1, s.length())
     return s
 
-func __string_right_trim(Str self) -> Str:
+func __Str_right_trim(Str self) -> Str:
     let s = self
     while s.ends_with(" "):
         s = s.slice(0, s.length() - 1)
     return s
 
-func __string_trim(Str self) -> Str:
+func __Str_trim(Str self) -> Str:
     return self.left_trim().right_trim()
 
-func __string_replace(Str self, Str old, Str neuw) -> Str:
+func __Str_replace(Str self, Str old, Str neuw) -> Str:
     if old == "":
         # TODO: error
         return self
@@ -80,7 +80,7 @@ func __string_replace(Str self, Str old, Str neuw) -> Str:
         result = result + remaining.slice(0, index) + neuw
         remaining = remaining.slice(index + old.length(), remaining.length())
 
-func __string_split(Str self, Str sep) -> List[Str]:
+func __Str_split(Str self, Str sep) -> List[Str]:
     let result = new List[Str]()
     if sep == "":
         result.push(self)
@@ -96,7 +96,7 @@ func __string_split(Str self, Str sep) -> List[Str]:
         result.push(s.slice(0, i))
         s = s.slice(i + sep.length(), s.length())
 
-func __string_join(List[Str] self, Str sep) -> Str:
+func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self.length() == 0:
         return self.get(0)
 
