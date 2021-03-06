@@ -59,7 +59,7 @@ class CompilationUnit:
         self.h_path.write_text(h, encoding="utf-8")
 
 
-def get_c_command(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> List[str]:
+def get_c_compiler_command(c_paths: List[pathlib.Path], exepath: pathlib.Path) -> List[str]:
     compile_info = {}
     with (project_root / "obj" / "compile_info.txt").open() as file:
         for line in file:
