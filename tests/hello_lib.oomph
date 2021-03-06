@@ -1,6 +1,6 @@
 export func print_hello():
     print("hello")
 
-export class Foo(int thing):
+export class Foo(int thing, optional[Str] optional_thing):
     meth lol():
-        print("Lol {self.thing}")
+        print("Lol {self.thing} {self.optional_thing}")

@@ -5,6 +5,8 @@ export func main():
     hello::print_hello()
     hello_std::print_hello()
 
-    let f = new hello::Foo(123)
+    let f = new hello::Foo(123, new optional[Str]("lol"))
+    print(f)
     print(f.thing)
+    print(f.optional_thing)
     f.lol()
