@@ -1,0 +1,18 @@
+# https://EditorConfig.org
+
+root = true
+
+[*]
+insert_final_newline = true
+charset = utf-8
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[{*.c,Makefile}]
+indent_style = tab
+
+[*.oomph]
+indent_style = space
+indent_size = 4
