@@ -28,6 +28,7 @@ class _FunctionEmitter:
         self.variable_names = self.file_emitter.variable_names.copy()
         self.before_body = ""
         self.after_body = ""
+        self.need_decref: List[tast.LocalVariable] = []
 
     def add_local_var(self, var: tast.LocalVariable, *, declare: bool = True) -> None:
         # Ensure different functions don't share variable names.
@@ -35,8 +36,12 @@ class _FunctionEmitter:
         name = self.file_emitter.get_var_name()
         assert var not in self.variable_names
         self.variable_names[var] = name
+
         if declare:
-            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name};\n\t"
+            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name}"
+            if var.type.refcounted and not isinstance(var.type, UnionType):
+                self.before_body += "= NULL"
+            self.before_body += ";\n"
 
     def create_local_var(self, the_type: Type) -> tast.LocalVariable:
         var = tast.LocalVariable("c_output_var", the_type)
@@ -44,30 +49,10 @@ class _FunctionEmitter:
         return var
 
     def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
-        if isinstance(ast.func, tast.GetMethod):
-            args = [ast.func.obj] + ast.args
-            func = f"meth_{self.file_emitter.get_type_c_name(ast.func.obj.type)}_{ast.func.name}"
-        elif (
-            isinstance(ast.func, tast.GetVar)
-            and ast.func.var is tast.builtin_variables["assert"]
-        ):
-            assert ast.func.lineno is not None, ast.func
-            args = ast.args + [tast.IntConstant(ast.func.lineno)]
-            func = self.emit_expression(ast.func)
-        else:
-            args = ast.args
-            func = self.emit_expression(ast.func)
-
-        # In C, argument order is not guaranteed, but evaluation of comma
-        # expressions is guaranteed. Comma-expression-evaluate all arguments
-        # and put them to temporary variables, then do the call with the
-        # temporary variables as arguments.
-        temp_vars = [self.create_local_var(arg.type) for arg in args]
-        comma_exprs = " ".join(
-            f"{self.variable_names[var]} = ({self.emit_expression(arg)}),"
-            for var, arg in zip(temp_vars, args)
+        return f"(%s(%s))" % (
+            self.emit_expression(ast.func),
+            ",".join(self.variable_names[var] for var in ast.args),
         )
-        return f"( {comma_exprs} {func} ({','.join(self.variable_names[v] for v in  temp_vars)}) )"
 
     def emit_expression(self, ast: tast.Expression) -> str:
         if isinstance(ast, tast.StringConstant):
@@ -93,28 +78,23 @@ class _FunctionEmitter:
         if isinstance(ast, tast.Null):
             return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
         if isinstance(ast, tast.GetVar):
+            if ast.incref and ast.type.refcounted:
+                return (
+                    "("
+                    + self.file_emitter.emit_incref(
+                        self.variable_names[ast.var], ast.type, semicolon=False
+                    )
+                    + ", "
+                    + self.variable_names[ast.var]
+                    + ")"
+                )
             return self.variable_names[ast.var]
         if isinstance(ast, tast.Constructor):
             return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
-        if isinstance(ast, tast.SetRef):
-            # Must evaluate expression before decref because expression might
-            # depend on the old value
-            var = self.create_local_var(ast.value.type)
-            value = self.emit_expression(ast.value)
-            decref = self.file_emitter.emit_decref(
-                ast.refname, ast.value.type, semicolon=False
-            )
-            return f""" (
-            {self.variable_names[var]} = {value},
-            {decref},
-            {ast.refname} = {self.variable_names[var]} ) """
         if isinstance(ast, tast.GetAttribute):
             return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
         if isinstance(ast, tast.GetMethod):
-            # This should return some kind of partial function
-            raise NotImplementedError(
-                "method objects without immediate calling don't work yet"
-            )
+            return f"meth_{self.file_emitter.get_type_c_name(ast.the_class)}_{ast.name}"
         if isinstance(ast, tast.InstantiateUnion):
             assert ast.type.type_members is not None
             membernum = ast.type.type_members.index(ast.value.type)
@@ -124,10 +104,13 @@ class _FunctionEmitter:
                 self.emit_expression(ast.value),
                 membernum,
             )
-        if isinstance(ast, tast.StatementAndExpression):
-            statement = self.emit_statement(ast.statement).rstrip().rstrip(";")
+        if isinstance(ast, tast.StatementsAndExpression):
+            statements = "".join(
+                "(" + self.emit_statement(s).rstrip().rstrip(";") + "),"
+                for s in ast.statements
+            )
             expression = self.emit_expression(ast.expression)
-            return f"(({statement}), ({expression}))"
+            return f"( {statements} {self.emit_expression(ast.expression)})"
         raise NotImplementedError(ast)
 
     def emit_label(self, name: str) -> str:
@@ -135,12 +118,22 @@ class _FunctionEmitter:
         return f"{name}: (void)0;\n\t"
 
     def emit_statement(self, ast: tast.Statement) -> str:
-        if isinstance(ast, tast.CreateLocalVar):
-            self.add_local_var(ast.var)
-            return f"{self.variable_names[ast.var]} = {self.emit_expression(ast.value)};\n\t"
-
         if isinstance(ast, tast.SetLocalVar):
-            return f"{self.variable_names[ast.var]} = {self.emit_expression(ast.value)};\n\t"
+            if ast.var not in self.variable_names:
+                self.add_local_var(ast.var)
+                self.need_decref.append(ast.var)
+
+            # Must evaluate expression before decref because expression might
+            # depend on the old value
+            temp_var = self.create_local_var(ast.value.type)
+            decref = self.file_emitter.emit_decref(
+                self.variable_names[ast.var], ast.value.type, semicolon=False
+            )
+            return f""" (
+            {self.variable_names[temp_var]} = {self.emit_expression(ast.value)},
+            {decref},
+            {self.variable_names[ast.var]} = {self.variable_names[temp_var]} );
+            """
 
         if isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
             return self.emit_call(ast) + ";\n\t"
@@ -226,20 +219,11 @@ class _FunctionEmitter:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False)
 
-        ref_declarations = "".join(
-            "%s %s = %s;\n\t"
-            % (
-                self.file_emitter.emit_type(reftype),
-                refname,
-                "{0}" if isinstance(reftype, UnionType) else "NULL",
-            )
-            for refname, reftype in funcdef.refs
-        )
-        decrefs = "".join(
-            self.file_emitter.emit_decref(refname, reftype)
-            for refname, reftype in reversed(funcdef.refs)
-        )
         body_statements = "".join(self.emit_statement(s) for s in funcdef.body)
+        decrefs = "".join(
+            self.file_emitter.emit_decref(self.variable_names[var], var.type)
+            for var in reversed(self.need_decref)
+        )
 
         if isinstance(funcdef, tast.FuncDef):
             assert isinstance(funcdef.var.type, FunctionType)
@@ -260,7 +244,6 @@ class _FunctionEmitter:
             argnames,
             (
                 self.before_body
-                + ref_declarations
                 + body_statements
                 + self.emit_label("out")
                 + decrefs

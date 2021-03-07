@@ -26,6 +26,9 @@ class Variable:
 
 # There can be different local variables with same name, even in the same
 # function. They are represented as different instances of this class.
+#
+# A local variable holds a reference. They are decreffed automatically when the
+# function exits.
 @dataclass(eq=False)
 class LocalVariable(Variable):
     pass
@@ -61,7 +64,7 @@ builtin_variables = {
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
         BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
-        BuiltinVariable("assert", FunctionType([BOOL], None)),
+        BuiltinVariable("assert", FunctionType([BOOL, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("print", FunctionType([STRING], None)),
         BuiltinVariable("true", BOOL),
@@ -101,7 +104,9 @@ class GetVar(Expression):
     incref: bool
     lineno: Optional[int]
 
-    def __init__(self, var: Variable, incref: bool, lineno: Optional[int] = None):
+    def __init__(
+        self, var: Variable, *, incref: bool = True, lineno: Optional[int] = None
+    ):
         super().__init__(var.type)
         self.var = var
         self.incref = incref
@@ -122,17 +127,12 @@ class GetAttribute(Expression):
 
 @dataclass(eq=False)
 class GetMethod(Expression):
-    obj: Expression
+    the_class: Type
     name: str
 
-    def __init__(self, obj: Expression, name: str):
-        the_type = copy.copy(obj.type.methods[name])  # shallow copy
-        self_type = the_type.argtypes[0]
-        assert self_type is obj.type
-        the_type.argtypes = the_type.argtypes[1:]  # don't modify argtypes list in-place
-
-        super().__init__(the_type)
-        self.obj = obj
+    def __init__(self, the_class: Type, name: str):
+        super().__init__(the_class.methods[name])
+        self.the_class = the_class
         self.name = name
 
 
@@ -212,7 +212,7 @@ class VoidCall(Statement):
 
 
 @dataclass(eq=False)
-class ReturningCall(Statement):
+class ReturningCall(Expression):
     func: Expression
     args: List[LocalVariable]
 
@@ -243,12 +243,9 @@ class StatementsAndExpression(Expression):
         self.expression = expression
 
 
-@dataclass(eq=False)
-class CreateLocalVar(Statement):
-    var: LocalVariable
-    value: Expression
-
-
+# Current value of variable is decreffed, if any. New value becomes the
+# reference held by the variable and will be decreffed eventually. In this
+# sense, this is a little bit like a decref.
 @dataclass(eq=False)
 class SetLocalVar(Statement):
     var: LocalVariable
