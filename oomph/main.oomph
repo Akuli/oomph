@@ -1,0 +1,34 @@
+import "<stdlib>/io.oomph" as io
+import "<stdlib>/subprocess.oomph" as subproc
+
+class KeyValue(Str key, Str value)
+
+func split_at_first_equal_sign(Str s) -> KeyValue:
+    let i = s.find_first("=")
+    return new KeyValue(s.slice(0, i), s.slice(i+1, s.length()))
+
+func get_c_compiler_command(Str c_path, Str exepath) -> List[Str]:
+    foreach line of io::read_file("obj/compile_info.txt").split("\n"):
+        if line == "":
+            continue
+
+        let pair = split_at_first_equal_sign(line)
+        # TODO: doesn't cause undefined variable warnings in oomph, it should
+        if pair.key == "cc":
+            let cc = pair.value
+        elif pair.key == "cflags":
+            let cflags = pair.value
+        elif pair.key == "ldflags":
+            let ldflags = pair.value
+        else:
+            print(pair)
+            assert(false)  # TODO: expose panic() function into oomph
+
+    print("cc: {cc}")
+    print("cflags: {cflags}")
+    return new List[Str]()
+
+export func main():
+    print("main runs")
+    print(subproc::get_args())
+    print(get_c_compiler_command("", ""))
