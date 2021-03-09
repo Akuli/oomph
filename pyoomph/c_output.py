@@ -209,7 +209,7 @@ class _FunctionEmitter:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False, need_decref=False)
 
-        body_instructions = "\n\t".join(self.emit_instruction(s) for s in funcdef.body)
+        body_instructions = "\n\t".join(map(self.emit_instruction, funcdef.body))
         decrefs = "".join(
             self.file_emitter.emit_decref(self.variable_names[var], var.type)
             for var in reversed(self.need_decref)

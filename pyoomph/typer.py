@@ -37,6 +37,12 @@ class _FunctionOrMethodTyper:
             self.return_var = tast.LocalVariable(returntype)
         self.code: List[tast.Instruction] = []
 
+    def create_var(self, the_type: Type) -> tast.LocalVariable:
+        # Newly created variables must be decreffed, in case we are in a loop.
+        result = tast.LocalVariable(the_type)
+        self.code.append(tast.DecRef(result))
+        return result
+
     @contextlib.contextmanager
     def redirect_code(self) -> Iterator[List[tast.Instruction]]:
         result: List[tast.Instruction] = []
@@ -50,7 +56,7 @@ class _FunctionOrMethodTyper:
         if var.type == STRING:
             return var
 
-        result_var = tast.LocalVariable(STRING)
+        result_var = self.create_var(STRING)
         self.code.append(tast.CallMethod(var, "to_string", [], result_var))
         return result_var
 
@@ -60,7 +66,7 @@ class _FunctionOrMethodTyper:
         func = tast.special_variables[name]
         assert isinstance(func.type, tast.FunctionType)
         assert func.type.returntype is not None
-        result_var = tast.LocalVariable(func.type.returntype)
+        result_var = self.create_var(func.type.returntype)
         self.code.append(tast.CallFunction(func, args, result_var))
         return result_var
 
@@ -71,7 +77,7 @@ class _FunctionOrMethodTyper:
             if result_type is None:
                 result_var = None
             else:
-                result_var = tast.LocalVariable(result_type)
+                result_var = self.create_var(result_type)
             args = [self.do_expression(arg) for arg in ast.args]
             self.code.append(
                 tast.CallMethod(self_arg, ast.func.attribute, args, result_var)
@@ -84,7 +90,7 @@ class _FunctionOrMethodTyper:
             if result_type is None:
                 result_var = None
             else:
-                result_var = tast.LocalVariable(result_type)
+                result_var = self.create_var(result_type)
 
             if func is tast.builtin_variables["print"]:
                 args = [self.stringify(self.do_expression(arg)) for arg in ast.args]
@@ -99,7 +105,7 @@ class _FunctionOrMethodTyper:
             assert the_class.constructor_argtypes is not None
             args = [self.do_expression(arg) for arg in ast.args]
             assert [arg.type for arg in args] == the_class.constructor_argtypes
-            result_var = tast.LocalVariable(the_class)
+            result_var = self.create_var(the_class)
             self.code.append(tast.CallConstructor(result_var, args))
         else:
             raise NotImplementedError
@@ -110,7 +116,7 @@ class _FunctionOrMethodTyper:
         return self.create_special_call("bool_not", [obj])
 
     def _is_null(self, obj: tast.LocalVariable) -> tast.LocalVariable:
-        result_var = tast.LocalVariable(BOOL)
+        result_var = self.create_var(BOOL)
         self.code.append(tast.CallMethod(obj, "to_string", [], result_var))
         return result_var
 
@@ -119,7 +125,7 @@ class _FunctionOrMethodTyper:
             obj.type.generic_origin is not None
             and obj.type.generic_origin.generic is OPTIONAL
         )
-        result_var = tast.LocalVariable(obj.type.generic_origin.arg)
+        result_var = self.create_var(obj.type.generic_origin.arg)
         self.code.append(tast.CallMethod(obj, "get", [], result_var))
         return result_var
 
@@ -209,7 +215,7 @@ class _FunctionOrMethodTyper:
             )
 
         if lhs.type == rhs.type and op == "==":
-            result_var = tast.LocalVariable(BOOL)
+            result_var = self.create_var(BOOL)
             self.code.append(tast.CallMethod(lhs, "equals", [rhs], result_var))
             return result_var
 
@@ -219,11 +225,13 @@ class _FunctionOrMethodTyper:
         # Avoid evaluating right side when not needed
         if ast.op in {"and", "or"}:
             lhs_var = self.do_expression(ast.lhs)
-            assert lhs_var.type == BOOL
-            result_var = tast.LocalVariable(BOOL)
+            result_var = self.create_var(BOOL)
             with self.redirect_code() as rhs_evaluation:
                 rhs_var = self.do_expression(ast.rhs)
-                assert rhs_var.type == BOOL
+
+            assert lhs_var.type == BOOL
+            assert rhs_var.type == BOOL
+
             if ast.op == "and":
                 self.code.append(
                     tast.If(
@@ -250,15 +258,15 @@ class _FunctionOrMethodTyper:
     def do_expression(self, ast: uast.Expression) -> tast.LocalVariable:
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
-            var = tast.LocalVariable(INT)
+            var = self.create_var(INT)
             self.code.append(tast.IntConstant(var, ast.value))
             return var
         if isinstance(ast, uast.FloatConstant):
-            var = tast.LocalVariable(FLOAT)
+            var = self.create_var(FLOAT)
             self.code.append(tast.FloatConstant(var, ast.value))
             return var
         if isinstance(ast, uast.StringConstant):
-            var = tast.LocalVariable(STRING)
+            var = self.create_var(STRING)
             self.code.append(tast.StringConstant(var, ast.value))
             return var
         if isinstance(ast, uast.StringFormatJoin):
@@ -274,7 +282,7 @@ class _FunctionOrMethodTyper:
             if isinstance(ast.func, uast.Constructor):
                 union_type = self.file_typer.get_type(ast.func.type)
                 if isinstance(union_type, UnionType):
-                    var = tast.LocalVariable(union_type)
+                    var = self.create_var(union_type)
                     self.file_typer.post_process_union(union_type)
                     assert len(ast.args) == 1
                     obj = self.do_expression(ast.args[0])
@@ -288,7 +296,7 @@ class _FunctionOrMethodTyper:
         if isinstance(ast, uast.GetVar):
             # Don't return the same variable, otherwise 'a = a' decrefs too much
             old_var = self.variables[ast.varname]
-            new_var = tast.LocalVariable(old_var.type)
+            new_var = self.create_var(old_var.type)
             self.code.append(tast.VarCpy(new_var, old_var))
             self.code.append(tast.IncRef(new_var))
             return new_var
@@ -310,11 +318,11 @@ class _FunctionOrMethodTyper:
             [member_type] = [
                 the_type for the_type, name in obj.type.members if name == ast.attribute
             ]
-            result = tast.LocalVariable(member_type)
+            result = self.create_var(member_type)
             self.code.append(tast.GetAttribute(obj, result, ast.attribute))
             return result
         elif isinstance(ast, uast.Null):
-            null_var = tast.LocalVariable(
+            null_var = self.create_var(
                 OPTIONAL.get_type(self.file_typer.get_type(ast.type))
             )
             self.code.append(tast.Null(null_var))
@@ -400,9 +408,12 @@ class _FunctionOrMethodTyper:
             for raw_type, raw_body in ast.cases.items():
                 nice_type = self.file_typer.get_type(raw_type)
                 types_to_do.remove(nice_type)
-                var = tast.LocalVariable(nice_type)
+                var = self.create_var(nice_type)
                 self.variables[ast.varname] = var
-                cases[nice_type] = [tast.GetFromUnion(var, union_var), tast.IncRef(var)] + self.do_block(raw_body)
+                cases[nice_type] = [
+                    tast.GetFromUnion(var, union_var),
+                    tast.IncRef(var),
+                ] + self.do_block(raw_body)
 
             self.variables[ast.varname] = union_var
 
@@ -503,14 +514,21 @@ class _FileTyper:
 
         local_vars = self.variables.copy()
         argvars = []
+        body: List[tast.Instruction] = []
         for (typename, argname), the_type in zip(funcdef.args, functype.argtypes):
-            var = tast.LocalVariable(the_type)
-            argvars.append(var)
+            argvar = tast.LocalVariable(the_type)
+            argvars.append(argvar)
+
+            # Copy arguments to separate local variables to allow assigning to arguments
+            copied_var = tast.LocalVariable(the_type)
+            body.append(tast.VarCpy(copied_var, argvar))
+            body.append(tast.IncRef(copied_var))
+
             assert argname not in local_vars
-            local_vars[argname] = var
+            local_vars[argname] = copied_var
 
         typer = _FunctionOrMethodTyper(self, local_vars, functype.returntype)
-        body = typer.do_block(funcdef.body)
+        body.extend(typer.do_block(funcdef.body))
 
         if class_name is None:
             return tast.FuncDef(mypy_sucks, argvars, body)

@@ -1,0 +1,5 @@
+func foo(Str s):
+    s = s.slice(1, s.length())
+
+export func main():
+    foo("abc".slice(0, 3))
