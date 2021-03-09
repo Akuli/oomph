@@ -15,7 +15,6 @@ class Instruction:
 
 # There can be different local variables with same name, even in the same
 # function. They are represented as different instances of this class.
-# TODO: make name optional
 #
 # A local variable holds a reference. They are decreffed automatically when the
 # function exits.
