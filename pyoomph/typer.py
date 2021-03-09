@@ -70,14 +70,17 @@ class _FunctionOrMethodTyper:
             assert isinstance(ast.func, uast.GetVar)
             func = self.variables[ast.func.varname]
             assert not isinstance(func, tast.LocalVariable)
-
             assert isinstance(func.type, tast.FunctionType)
             result_type = func.type.returntype
             if result_type is None:
                 result_var = None
             else:
                 result_var = tast.LocalVariable(result_type)
-            args = [self.do_expression(arg) for arg in ast.args]
+
+            if func is tast.builtin_variables['print']:
+                args = [self.stringify(self.do_expression(arg)) for arg in ast.args]
+            else:
+                args = [self.do_expression(arg) for arg in ast.args]
             self.code.append(tast.CallFunction(func, args, result_var))
 
         return result_var

@@ -50,6 +50,19 @@ class _FunctionEmitter:
             if ins.result is None:
                 return f"{func}({args});"
             return f"{self.emit_local_var(ins.result)} = {func}({args});"
+        if isinstance(ins, tast.VarCpy):
+            return f'{self.emit_local_var(ins.dest)} = {self.emit_local_var(ins.source)};'
+        if isinstance(ins, tast.CallMethod):
+            func = f"meth_{self.file_emitter.get_type_c_name(ins.obj.type)}_{ins.method_name}"
+            args = ",".join(map(self.emit_local_var, [ins.obj] + ins.args))
+            if ins.result is None:
+                return f"{func}({args});"
+            return f"{self.emit_local_var(ins.result)} = {func}({args});"
+        if isinstance(ins, tast.Return):
+            if ins.value is not None:
+                return f"{self.incref_var(ins.value)}; retval = {self.emit_local_var(ins.value)}; goto out;"
+            return "goto out;"
+
         raise NotImplementedError(ins)
 
     def add_local_var(
@@ -75,26 +88,7 @@ class _FunctionEmitter:
             self.add_local_var(var)
             return self.variable_names[var]
 
-    #    def create_local_var(self, the_type: Type) -> tast.LocalVariable:
-    #        var = tast.LocalVariable("c_output_var", the_type)
-    #        self.add_local_var(var)
-    #        return var
-    #
-    #    def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
-    #        return f"(%s(%s))" % (
-    #            self.emit_expression(ast.func),
-    #            ",".join(self.variable_names[var] for var in ast.args),
-    #        )
-    #
     #    def emit_expression(self, ast: tast.Expression) -> str:
-    #        if isinstance(ast, tast.StringConstant):
-    #            return self.file_emitter.emit_string(ast.value)
-    #        if isinstance(ast, tast.IntConstant):
-    #            return f"((int64_t){ast.value}LL)"
-    #        if isinstance(ast, tast.FloatConstant):
-    #            return f"({ast.value})"
-    #        if isinstance(ast, tast.ReturningCall):
-    #            return self.emit_call(ast)
     #        if isinstance(ast, tast.BoolAnd):
     #            return (
     #                f"({self.emit_expression(ast.lhs)} && {self.emit_expression(ast.rhs)})"
@@ -170,15 +164,6 @@ class _FunctionEmitter:
     #            return self.file_emitter.emit_decref(
     #                self.emit_expression(ast.value), ast.value.type
     #            )
-    #
-    #        if isinstance(ast, tast.Return):
-    #            if ast.value is not None:
-    #                return f"""
-    #                retval = {self.emit_expression(ast.value)};
-    #                {self.file_emitter.emit_incref("retval", ast.value.type)}
-    #                goto out;
-    #                """
-    #            return "goto out;"
     #
     #        if isinstance(ast, tast.If):
     #            return f"""
