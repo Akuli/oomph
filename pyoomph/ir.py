@@ -1,4 +1,3 @@
-# TODO: rename this, it's no longer ast
 from __future__ import annotations
 
 import pathlib

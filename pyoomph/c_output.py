@@ -5,7 +5,7 @@ import pathlib
 import re
 from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
-import pyoomph.typed_ast as tast
+from pyoomph import ir
 from pyoomph.types import (
     BOOL,
     FLOAT,
@@ -33,44 +33,44 @@ class _FunctionEmitter:
         self.variable_names = self.file_emitter.variable_names.copy()
         self.before_body = ""
         self.after_body = ""
-        self.need_decref: List[tast.LocalVariable] = []
+        self.need_decref: List[ir.LocalVariable] = []
 
-    def incref_var(self, var: tast.LocalVariable) -> str:
+    def incref_var(self, var: ir.LocalVariable) -> str:
         return self.file_emitter.emit_incref(self.variable_names[var], var.type) + ";"
 
     def emit_call(
         self,
         func: str,
-        args: List[tast.LocalVariable],
-        result_var: Optional[tast.LocalVariable],
+        args: List[ir.LocalVariable],
+        result_var: Optional[ir.LocalVariable],
     ) -> str:
         args_string = ",".join(map(self.emit_local_var, args))
         if result_var is None:
             return f"{func}({args_string});"
         return f"{self.emit_local_var(result_var)} = {func}({args_string});"
 
-    def emit_body(self, body: List[tast.Instruction]) -> str:
+    def emit_body(self, body: List[ir.Instruction]) -> str:
         return "\n\t".join(map(self.emit_instruction, body))
 
-    def emit_instruction(self, ins: tast.Instruction) -> str:
-        if isinstance(ins, tast.StringConstant):
+    def emit_instruction(self, ins: ir.Instruction) -> str:
+        if isinstance(ins, ir.StringConstant):
             return f"{self.emit_local_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
 
-        if isinstance(ins, tast.IntConstant):
+        if isinstance(ins, ir.IntConstant):
             return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
 
-        if isinstance(ins, tast.FloatConstant):
+        if isinstance(ins, ir.FloatConstant):
             return f"{self.emit_local_var(ins.result)} = {ins.value};"
 
-        if isinstance(ins, tast.VarCpy):
+        if isinstance(ins, ir.VarCpy):
             return (
                 f"{self.emit_local_var(ins.dest)} = {self.variable_names[ins.source]};"
             )
 
-        if isinstance(ins, tast.IncRef):
+        if isinstance(ins, ir.IncRef):
             return self.incref_var(ins.var) + ";"
 
-        if isinstance(ins, tast.DecRef):
+        if isinstance(ins, ir.DecRef):
             return (
                 self.file_emitter.emit_decref(
                     self.emit_local_var(ins.var), ins.var.type
@@ -78,35 +78,35 @@ class _FunctionEmitter:
                 + ";"
             )
 
-        if isinstance(ins, tast.CallFunction):
+        if isinstance(ins, ir.CallFunction):
             return self.emit_call(self.variable_names[ins.func], ins.args, ins.result)
 
-        if isinstance(ins, tast.CallMethod):
+        if isinstance(ins, ir.CallMethod):
             return self.emit_call(
                 f"meth_{self.file_emitter.get_type_c_name(ins.obj.type)}_{ins.method_name}",
                 [ins.obj] + ins.args,
                 ins.result,
             )
 
-        if isinstance(ins, tast.CallConstructor):
+        if isinstance(ins, ir.CallConstructor):
             return self.emit_call(
                 "ctor_" + self.file_emitter.get_type_c_name(ins.result.type),
                 ins.args,
                 ins.result,
             )
 
-        if isinstance(ins, tast.Return):
+        if isinstance(ins, ir.Return):
             if ins.value is not None:
                 return f"{self.incref_var(ins.value)}; retval = {self.emit_local_var(ins.value)}; goto out;"
             return "goto out;"
 
-        if isinstance(ins, tast.GetAttribute):
+        if isinstance(ins, ir.GetAttribute):
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
 
-        if isinstance(ins, tast.PointersEqual):
+        if isinstance(ins, ir.PointersEqual):
             return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
 
-        if isinstance(ins, tast.If):
+        if isinstance(ins, ir.If):
             then = self.emit_body(ins.then)
             otherwise = self.emit_body(ins.otherwise)
             return f"""
@@ -117,7 +117,7 @@ class _FunctionEmitter:
             }}
             """
 
-        if isinstance(ins, tast.Loop):
+        if isinstance(ins, ir.Loop):
             cond_code = self.emit_body(ins.cond_code)
             body = self.emit_body(ins.body)
             incr = self.emit_body(ins.incr)
@@ -132,15 +132,15 @@ class _FunctionEmitter:
             }}
             """
 
-        if isinstance(ins, tast.Continue):
+        if isinstance(ins, ir.Continue):
             # Can't use C's continue because continue must emit_funcdef condition
             return f"goto {ins.loop_id};"
 
-        if isinstance(ins, tast.Break):
+        if isinstance(ins, ir.Break):
             return "break;"
 
-        if isinstance(ins, tast.InstantiateUnion):
-            assert isinstance(ins.result.type, tast.UnionType)
+        if isinstance(ins, ir.InstantiateUnion):
+            assert isinstance(ins.result.type, ir.UnionType)
             assert ins.result.type.type_members is not None
             membernum = ins.result.type.type_members.index(ins.value.type)
             return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };" % (
@@ -151,17 +151,17 @@ class _FunctionEmitter:
                 membernum,
             )
 
-        if isinstance(ins, tast.Null):
+        if isinstance(ins, ir.Null):
             return self.emit_local_var(ins.result) + ".isnull = true;"
 
-        if isinstance(ins, tast.GetFromUnion):
-            assert isinstance(ins.union.type, tast.UnionType)
+        if isinstance(ins, ir.GetFromUnion):
+            assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.union)}.val.item{membernum};"
 
-        if isinstance(ins, tast.Switch):
-            assert isinstance(ins.union.type, tast.UnionType)
+        if isinstance(ins, ir.Switch):
+            assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
 
             body_code = ""
@@ -183,7 +183,7 @@ class _FunctionEmitter:
         raise NotImplementedError(ins)
 
     def add_local_var(
-        self, var: tast.LocalVariable, *, declare: bool = True, need_decref: bool = True
+        self, var: ir.LocalVariable, *, declare: bool = True, need_decref: bool = True
     ) -> None:
         assert var not in self.variable_names
         # Ensure different functions don't share variable names.
@@ -201,7 +201,7 @@ class _FunctionEmitter:
         if need_decref:
             self.need_decref.append(var)
 
-    def emit_local_var(self, var: tast.LocalVariable) -> str:
+    def emit_local_var(self, var: ir.LocalVariable) -> str:
         try:
             return self.variable_names[var]
         except KeyError:
@@ -210,7 +210,7 @@ class _FunctionEmitter:
 
     def emit_funcdef(
         self,
-        funcdef: Union[tast.FuncDef, tast.MethodDef],
+        funcdef: Union[ir.FuncDef, ir.MethodDef],
         c_name: str,
     ) -> None:
         for var in funcdef.argvars:
@@ -222,7 +222,7 @@ class _FunctionEmitter:
             for var in reversed(self.need_decref)
         )
 
-        if isinstance(funcdef, tast.FuncDef):
+        if isinstance(funcdef, ir.FuncDef):
             assert isinstance(funcdef.var.type, FunctionType)
             functype = funcdef.var.type
         else:
@@ -409,21 +409,21 @@ class _FileEmitter:
         self.path = path
         self.session = session
         self.varname_counter = 0
-        self.variable_names: Dict[tast.Variable, str] = {
-            tast.builtin_variables["__io_mkdir"]: "io_mkdir",
-            tast.builtin_variables["__io_read_file"]: "io_read_file",
-            tast.builtin_variables["__io_write_file"]: "io_write_file",
-            tast.builtin_variables["__subprocess_run"]: "subprocess_run",
-            tast.builtin_variables["assert"]: "oomph_assert",
-            tast.builtin_variables["false"]: "false",
-            tast.builtin_variables["print"]: "io_print",
-            tast.builtin_variables["true"]: "true",
+        self.variable_names: Dict[ir.Variable, str] = {
+            ir.builtin_variables["__io_mkdir"]: "io_mkdir",
+            ir.builtin_variables["__io_read_file"]: "io_read_file",
+            ir.builtin_variables["__io_write_file"]: "io_write_file",
+            ir.builtin_variables["__subprocess_run"]: "subprocess_run",
+            ir.builtin_variables["assert"]: "oomph_assert",
+            ir.builtin_variables["false"]: "false",
+            ir.builtin_variables["print"]: "io_print",
+            ir.builtin_variables["true"]: "true",
             **{
                 exp.value: name
                 for exp, name in self.session.export_c_names.items()
-                if isinstance(exp.value, tast.ExportVariable)
+                if isinstance(exp.value, ir.ExportVariable)
             },
-            **{var: name for name, var in tast.special_variables.items()},
+            **{var: name for name, var in ir.special_variables.items()},
         }
         self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
@@ -541,12 +541,12 @@ class _FileEmitter:
         return self.strings[value]
 
     def emit_toplevel_declaration(
-        self, top_declaration: tast.ToplevelDeclaration
+        self, top_declaration: ir.ToplevelDeclaration
     ) -> None:
-        if isinstance(top_declaration, tast.FuncDef):
+        if isinstance(top_declaration, ir.FuncDef):
             assert top_declaration.var not in self.variable_names
             if (
-                isinstance(top_declaration.var, tast.ExportVariable)
+                isinstance(top_declaration.var, ir.ExportVariable)
                 and top_declaration.var.name == "main"
             ):
                 c_name = "oomph_main"
@@ -576,7 +576,7 @@ class _FileEmitter:
             assert top_declaration.var not in self.session.export_c_names
 
             self.variable_names[top_declaration.var] = c_name
-            if isinstance(top_declaration.var, tast.ExportVariable):
+            if isinstance(top_declaration.var, ir.ExportVariable):
                 [export] = [
                     exp
                     for exp in self.session.exports
@@ -589,7 +589,7 @@ class _FileEmitter:
                 self.variable_names[top_declaration.var],
             )
 
-        elif isinstance(top_declaration, tast.ClassDef):
+        elif isinstance(top_declaration, ir.ClassDef):
             struct_members = "".join(
                 f"{self.emit_type(the_type)} memb_{name};\n\t"
                 for the_type, name in top_declaration.type.members
@@ -654,7 +654,7 @@ class _FileEmitter:
             }}
             """
 
-        elif isinstance(top_declaration, tast.UnionDef):
+        elif isinstance(top_declaration, ir.UnionDef):
             assert top_declaration.type.type_members is not None
             c_name = self.get_type_c_name(top_declaration.type)
 
@@ -733,12 +733,12 @@ class _FileEmitter:
 class Session:
     def __init__(self) -> None:
         # This state is shared between different files
-        self.exports: List[tast.Export] = []
-        self.export_c_names: Dict[tast.Export, str] = {}
+        self.exports: List[ir.Export] = []
+        self.export_c_names: Dict[ir.Export, str] = {}
 
     def create_c_code(
         self,
-        ast: List[tast.ToplevelDeclaration],
+        ast: List[ir.ToplevelDeclaration],
         path: pathlib.Path,
         include_list: List[str],
     ) -> Tuple[str, str]:

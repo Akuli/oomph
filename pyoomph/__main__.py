@@ -9,8 +9,7 @@ import subprocess
 import sys
 from typing import List, Set
 
-from pyoomph import c_output, parser, typer
-from pyoomph import untyped_ast as uast
+from pyoomph import ast, c_output, parser, typer
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
@@ -28,7 +27,7 @@ def _get_compiled_file_name(
 
 
 class CompilationUnit:
-    untyped_ast: List[uast.ToplevelDeclaration]
+    ast: List[ast.ToplevelDeclaration]
 
     def __init__(self, source_path: pathlib.Path, compilation_dir: pathlib.Path):
         name = _get_compiled_file_name(source_path, compilation_dir)
@@ -38,7 +37,7 @@ class CompilationUnit:
 
     def create_untyped_ast(self) -> None:
         source_code = self.source_path.read_text(encoding="utf-8")
-        self.untyped_ast = parser.parse_file(
+        self.ast = parser.parse_file(
             source_code, self.source_path, project_root / "stdlib"
         )
 
@@ -49,10 +48,8 @@ class CompilationUnit:
         session: c_output.Session,
         headers: List[str],
     ) -> None:
-        typed_ast = typer.convert_program(
-            self.untyped_ast, self.source_path, session.exports
-        )
-        c, h = session.create_c_code(typed_ast, self.source_path, headers)
+        ir = typer.convert_program(self.ast, self.source_path, session.exports)
+        c, h = session.create_c_code(ir, self.source_path, headers)
 
         self.c_path.write_text(c, encoding="utf-8")
         self.h_path.write_text(h, encoding="utf-8")
@@ -109,8 +106,8 @@ def main() -> None:
         compilation_units.append(unit)
         unit.create_untyped_ast()
 
-        for top_declaration in unit.untyped_ast:
-            if isinstance(top_declaration, uast.Import):
+        for top_declaration in unit.ast:
+            if isinstance(top_declaration, ast.Import):
                 todo_list.append(top_declaration.path)
 
     # Compile dependencies first
