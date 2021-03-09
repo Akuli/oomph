@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Dict, Generator, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from pyoomph import typed_ast as tast
 from pyoomph import untyped_ast as uast
@@ -34,41 +34,38 @@ class _FunctionOrMethodTyper:
             self.return_var = None
         else:
             self.return_var = tast.LocalVariable(returntype)
+        self.code: List[tast.Instruction] = []  # TODO: replace with yields
 
-    def stringify(
-        self, var: tast.LocalVariable
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
+    def stringify(self, var: tast.LocalVariable) -> tast.LocalVariable:
         if var.type == STRING:
             return var
 
         result_var = tast.LocalVariable(STRING)
-        yield tast.CallMethod(var, "to_string", [], result_var)
+        self.code.append(tast.CallMethod(var, "to_string", [], result_var))
         return result_var
 
     def create_special_call(
         self, name: str, args: List[tast.LocalVariable]
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
+    ) -> tast.LocalVariable:
         func = tast.special_variables[name]
         assert isinstance(func.type, tast.FunctionType)
         assert func.type.returntype is not None
         result_var = tast.LocalVariable(func.type.returntype)
-        yield tast.CallFunction(func, args, result_var)
+        self.code.append(tast.CallFunction(func, args, result_var))
         return result_var
 
-    def do_call(
-        self, ast: uast.Call
-    ) -> Generator[tast.Instruction, None, Optional[tast.LocalVariable]]:
+    def do_call(self, ast: uast.Call) -> Optional[tast.LocalVariable]:
         if isinstance(ast.func, uast.GetAttribute):
-            self_arg = yield from self.do_expression(ast.func.obj)
+            self_arg = self.do_expression(ast.func.obj)
             result_type = self_arg.type.methods[ast.func.attribute].returntype
             if result_type is None:
                 result_var = None
             else:
                 result_var = tast.LocalVariable(result_type)
-            args = []
-            for arg in ast.args:
-                args.append((yield from self.do_expression(arg)))
-            yield tast.CallMethod(self_arg, ast.func.attribute, args, result_var)
+            args = [self.do_expression(arg) for arg in ast.args]
+            self.code.append(
+                tast.CallMethod(self_arg, ast.func.attribute, args, result_var)
+            )
         elif isinstance(ast.func, uast.GetVar):
             func = self.variables[ast.func.varname]
             assert not isinstance(func, tast.LocalVariable)
@@ -80,96 +77,59 @@ class _FunctionOrMethodTyper:
                 result_var = tast.LocalVariable(result_type)
 
             if func is tast.builtin_variables["print"]:
-                # can't use list comp :(
-                args = []
-                for arg in ast.args:
-                    args.append(
-                        (
-                            yield from self.stringify(
-                                (yield from self.do_expression(arg))
-                            )
-                        )
-                    )
+                args = [self.stringify(self.do_expression(arg)) for arg in ast.args]
             else:
-                args = []
-                for arg in ast.args:
-                    args.append((yield from self.do_expression(arg)))
+                args = [self.do_expression(arg) for arg in ast.args]
                 if func is tast.builtin_variables["assert"]:
                     assert ast.func.lineno is not None
-                    args.append(
-                        (
-                            yield from self.do_expression(
-                                uast.IntConstant(ast.func.lineno)
-                            )
-                        )
-                    )
-            yield tast.CallFunction(func, args, result_var)
+                    args.append(self.do_expression(uast.IntConstant(ast.func.lineno)))
+            self.code.append(tast.CallFunction(func, args, result_var))
         elif isinstance(ast.func, uast.Constructor):
             the_class = self.file_typer.get_type(ast.func.type)
             assert the_class.constructor_argtypes is not None
-            args = []
-            for arg in ast.args:
-                args.append((yield from self.do_expression(arg)))
+            args = [self.do_expression(arg) for arg in ast.args]
             assert [arg.type for arg in args] == the_class.constructor_argtypes
             result_var = tast.LocalVariable(the_class)
-            yield tast.CallConstructor(result_var, args)
+            self.code.append(tast.CallConstructor(result_var, args))
         else:
             raise NotImplementedError
 
         return result_var
 
-    def _not(
-        self, obj: tast.LocalVariable
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
-        return (yield from self.create_special_call("bool_not", [obj]))
+    def _not(self, obj: tast.LocalVariable) -> tast.LocalVariable:
+        return self.create_special_call("bool_not", [obj])
 
-    def _is_null(
-        self, obj: tast.LocalVariable
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
+    def _is_null(self, obj: tast.LocalVariable) -> tast.LocalVariable:
         result_var = tast.LocalVariable(BOOL)
-        yield tast.CallMethod(obj, "to_string", [], result_var)
+        self.code.append(tast.CallMethod(obj, "to_string", [], result_var))
         return result_var
 
-    def _get_value_of_optional(
-        self, obj: tast.LocalVariable
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
+    def _get_value_of_optional(self, obj: tast.LocalVariable) -> tast.LocalVariable:
         assert (
             obj.type.generic_origin is not None
             and obj.type.generic_origin.generic is OPTIONAL
         )
         result_var = tast.LocalVariable(obj.type.generic_origin.arg)
-        yield tast.CallMethod(obj, "get", [], result_var)
+        self.code.append(tast.CallMethod(obj, "get", [], result_var))
         return result_var
 
     def _do_binary_op_typed(
         self, lhs: tast.LocalVariable, op: str, rhs: tast.LocalVariable
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
+    ) -> tast.LocalVariable:
         if op == "!=":
-            return (
-                yield from self._not(
-                    (yield from self._do_binary_op_typed(lhs, "==", rhs))
-                )
-            )
+            return self._not(self._do_binary_op_typed(lhs, "==", rhs))
 
         # Reduce >=, <=, and < to use >
         if op == "<":
-            return (yield from self._do_binary_op_typed(rhs, ">", lhs))
+            return self._do_binary_op_typed(rhs, ">", lhs)
         if op == "<=":
-            return (
-                yield from self._not(
-                    (yield from self._do_binary_op_typed(lhs, ">", rhs))
-                )
-            )
+            return self._not(self._do_binary_op_typed(lhs, ">", rhs))
         if op == ">=":
-            return (
-                yield from self._not(
-                    (yield from self._do_binary_op_typed(lhs, "<", rhs))
-                )
-            )
+            return self._not(self._do_binary_op_typed(lhs, "<", rhs))
 
         if lhs.type is STRING and op == "+" and rhs.type is STRING:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
-            return (yield from self.create_special_call("string_concat", [lhs, rhs]))
+            return self.create_special_call("string_concat", [lhs, rhs])
         if (
             lhs.type.generic_origin is not None
             and rhs.type.generic_origin is not None
@@ -202,44 +162,40 @@ class _FunctionOrMethodTyper:
         #            )
 
         if lhs.type is INT and op in {"+", "-", "*", "mod", ">"} and rhs.type is INT:
-            return (
-                yield from self.create_special_call(
-                    {
-                        "+": "int_add",
-                        "-": "int_sub",
-                        "*": "int_mul",
-                        "mod": "int_mod",
-                        ">": "int_gt",
-                    }[op],
-                    [lhs, rhs],
-                )
+            return self.create_special_call(
+                {
+                    "+": "int_add",
+                    "-": "int_sub",
+                    "*": "int_mul",
+                    "mod": "int_mod",
+                    ">": "int_gt",
+                }[op],
+                [lhs, rhs],
             )
 
         if lhs.type is INT and op == "/" and rhs.type is INT:
-            lhs = yield from self.create_special_call("int2float", [lhs])
-            rhs = yield from self.create_special_call("int2float", [rhs])
+            lhs = self.create_special_call("int2float", [lhs])
+            rhs = self.create_special_call("int2float", [rhs])
         if lhs.type is INT and rhs.type is FLOAT:
-            lhs = yield from self.create_special_call("int2float", [lhs])
+            lhs = self.create_special_call("int2float", [lhs])
         if lhs.type is FLOAT and rhs.type is INT:
-            rhs = yield from self.create_special_call("int2float", [rhs])
+            rhs = self.create_special_call("int2float", [rhs])
 
         if (
             lhs.type is FLOAT
             and op in {"+", "-", "*", "/", "mod", ">"}
             and rhs.type is FLOAT
         ):
-            return (
-                yield from self.create_special_call(
-                    {
-                        "+": "float_add",
-                        "-": "float_sub",
-                        "*": "float_mul",
-                        "/": "float_div",
-                        "mod": "float_mod",
-                        ">": "float_gt",
-                    }[op],
-                    [lhs, rhs],
-                )
+            return self.create_special_call(
+                {
+                    "+": "float_add",
+                    "-": "float_sub",
+                    "*": "float_mul",
+                    "/": "float_div",
+                    "mod": "float_mod",
+                    ">": "float_gt",
+                }[op],
+                [lhs, rhs],
             )
 
         if lhs.type is BOOL and op == "and" and rhs.type is BOOL:
@@ -250,52 +206,38 @@ class _FunctionOrMethodTyper:
         #            return tast.BoolOr(lhs, rhs)
         if lhs.type == rhs.type and op == "==":
             result_var = tast.LocalVariable(BOOL)
-            yield tast.CallMethod(lhs, "equals", [rhs], result_var)
+            self.code.append(tast.CallMethod(lhs, "equals", [rhs], result_var))
             return result_var
 
         raise NotImplementedError(f"{lhs.type} {op} {rhs.type}")
 
-    def do_binary_op(
-        self, ast: uast.BinaryOperator
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
-        lhs = yield from self.do_expression(ast.lhs)
-        rhs = yield from self.do_expression(ast.rhs)
-        return (yield from self._do_binary_op_typed(lhs, ast.op, rhs))
+    def do_binary_op(self, ast: uast.BinaryOperator) -> tast.LocalVariable:
+        lhs = self.do_expression(ast.lhs)
+        rhs = self.do_expression(ast.rhs)
+        return self._do_binary_op_typed(lhs, ast.op, rhs)
 
     # Always returns new variable
-    def do_expression(
-        self, ast: uast.Expression
-    ) -> Generator[tast.Instruction, None, tast.LocalVariable]:
+    def do_expression(self, ast: uast.Expression) -> tast.LocalVariable:
         if isinstance(ast, uast.IntConstant):
             assert -(2 ** 63) <= ast.value < 2 ** 63
             var = tast.LocalVariable(INT)
-            yield tast.IntConstant(var, ast.value)
+            self.code.append(tast.IntConstant(var, ast.value))
             return var
         if isinstance(ast, uast.FloatConstant):
             var = tast.LocalVariable(FLOAT)
-            yield tast.FloatConstant(var, ast.value)
+            self.code.append(tast.FloatConstant(var, ast.value))
             return var
         if isinstance(ast, uast.StringConstant):
             var = tast.LocalVariable(STRING)
-            yield tast.StringConstant(var, ast.value)
+            self.code.append(tast.StringConstant(var, ast.value))
             return var
         if isinstance(ast, uast.StringFormatJoin):
             assert len(ast.parts) >= 2
-            result = yield from self.stringify(
-                (yield from self.do_expression(ast.parts[0]))
-            )
+            result = self.stringify(self.do_expression(ast.parts[0]))
             for part in ast.parts[1:]:
                 # TODO: this results in slow nested code
-                result = yield from self.create_special_call(
-                    "string_concat",
-                    [
-                        result,
-                        (
-                            yield from self.stringify(
-                                (yield from self.do_expression(part))
-                            )
-                        ),
-                    ],
+                result = self.create_special_call(
+                    "string_concat", [result, self.stringify(self.do_expression(part))]
                 )
             return result
         if isinstance(ast, uast.Call):
@@ -305,87 +247,87 @@ class _FunctionOrMethodTyper:
                     var = tast.LocalVariable(union_type)
                     self.file_typer.post_process_union(union_type)
                     assert len(ast.args) == 1
-                    yield tast.InstantiateUnion(
-                        var, (yield from self.do_expression(ast.args[0]))
+                    self.code.append(
+                        tast.InstantiateUnion(var, self.do_expression(ast.args[0]))
                     )
                     return var
 
-            call = yield from self.do_call(ast)
+            call = self.do_call(ast)
             assert call is not None
             return call
         if isinstance(ast, uast.GetVar):
             # Don't return the same variable, otherwise 'a = a' decrefs too much
             old_var = self.variables[ast.varname]
             new_var = tast.LocalVariable(old_var.type)
-            yield tast.VarCpy(new_var, old_var)
-            yield tast.IncRef(new_var)
+            self.code.append(tast.VarCpy(new_var, old_var))
+            self.code.append(tast.IncRef(new_var))
             return new_var
         if isinstance(ast, uast.UnaryOperator):
-            obj = yield from self.do_expression(ast.obj)
+            obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
-                return (yield from self.create_special_call("bool_not", [obj]))
+                return self.create_special_call("bool_not", [obj])
             if obj.type is INT and ast.op == "-":
-                return (yield from self.create_special_call("int_neg", [obj]))
+                return self.create_special_call("int_neg", [obj])
             if obj.type is FLOAT and ast.op == "-":
-                return (yield from self.create_special_call("float_neg", [obj]))
+                return self.create_special_call("float_neg", [obj])
             raise NotImplementedError(f"{ast.op} {obj.type}")
         if isinstance(ast, uast.BinaryOperator):
-            return (yield from self.do_binary_op(ast))
+            return self.do_binary_op(ast)
+        if isinstance(ast, uast.Constructor):
+            raise NotImplementedError
         if isinstance(ast, uast.GetAttribute):
-            obj = yield from self.do_expression(ast.obj)
+            obj = self.do_expression(ast.obj)
             [member_type] = [
                 the_type for the_type, name in obj.type.members if name == ast.attribute
             ]
             result = tast.LocalVariable(member_type)
-            yield tast.GetAttribute(obj, result, ast.attribute)
+            self.code.append(tast.GetAttribute(obj, result, ast.attribute))
             return result
         elif isinstance(ast, uast.Null):
             null_var = tast.LocalVariable(
                 OPTIONAL.get_type(self.file_typer.get_type(ast.type))
             )
-            yield tast.Null(null_var)
+            self.code.append(tast.Null(null_var))
             return null_var
         raise NotImplementedError(ast)
 
-    def do_statement(
-        self, ast: uast.Statement
-    ) -> Generator[tast.Instruction, None, None]:
+    def do_statement(self, ast: uast.Statement) -> None:
         if isinstance(ast, uast.Call):
-            result = yield from self.do_call(ast)
+            result = self.do_call(ast)
             if result is not None:
-                yield tast.DecRef(result)
+                self.code.append(tast.DecRef(result))
 
         elif isinstance(ast, uast.Let):
-            self.variables[ast.varname] = yield from self.do_expression(ast.value)
+            self.variables[ast.varname] = self.do_expression(ast.value)
 
         elif isinstance(ast, uast.Assign):
             var = self.variables[ast.varname]
             assert isinstance(var, tast.LocalVariable)
-            new_value_var = yield from self.do_expression(ast.value)
-            yield tast.DecRef(var)
-            yield tast.VarCpy(var, new_value_var)
-            yield tast.IncRef(var)
+            new_value_var = self.do_expression(ast.value)
+            self.code.append(tast.DecRef(var))
+            self.code.append(tast.VarCpy(var, new_value_var))
+            self.code.append(tast.IncRef(var))
 
         elif isinstance(ast, uast.Pass):
             pass
 
         elif isinstance(ast, uast.Continue):
             assert self.loop_stack[-1] is not None, "can't continue in switch"
-            yield tast.Continue(self.loop_stack[-1])
+            self.code.append(tast.Continue(self.loop_stack[-1]))
 
         elif isinstance(ast, uast.Break):
             assert self.loop_stack[-1] is not None, "can't break in switch"
-            yield tast.Break(self.loop_stack[-1])
+            self.code.append(tast.Break(self.loop_stack[-1]))
 
         elif isinstance(ast, uast.Return):
             if ast.value is None:
-                yield tast.Return(None)
+                self.code.append(tast.Return(None))
             else:
-                yield tast.Return((yield from self.do_expression(ast.value)))
+                self.code.append(tast.Return(self.do_expression(ast.value)))
 
         elif isinstance(ast, uast.If):
             untyped_condition, untyped_body = ast.ifs_and_elifs[0]
-            condition = yield from self.do_expression(untyped_condition)
+            condition = self.do_expression(untyped_condition)
             assert condition.type is BOOL
             body = self.do_block(untyped_body)
 
@@ -395,14 +337,14 @@ class _FunctionOrMethodTyper:
                 )
             else:
                 otherwise = self.do_block(ast.else_block)
-            yield tast.If(condition, body, otherwise)
+            self.code.append(tast.If(condition, body, otherwise))
 
         elif isinstance(ast, uast.Loop):
             init = [] if ast.init is None else self.do_block([ast.init])
             cond = (
-                (yield from self.create_special_call("bool_true", []))
+                self.create_special_call("bool_true", [])
                 if ast.cond is None
-                else (yield from self.do_expression(ast.cond))
+                else self.do_expression(ast.cond)
             )
             incr = [] if ast.incr is None else self.do_block([ast.incr])
 
@@ -414,7 +356,7 @@ class _FunctionOrMethodTyper:
             popped = self.loop_stack.pop()
             assert popped == loop_id
 
-            yield tast.Loop(loop_id, init, cond, incr, body)
+            self.code.append(tast.Loop(loop_id, init, cond, incr, body))
             if isinstance(ast.init, uast.Let):
                 [set_var] = init
                 assert isinstance(set_var, tast.VarCpy)
@@ -443,16 +385,21 @@ class _FunctionOrMethodTyper:
             assert not types_to_do, types_to_do
             popped = self.loop_stack.pop()
             assert popped is None
-            yield tast.Switch(union_var, cases)
+            self.code.append(tast.Switch(union_var, cases))
 
         else:
             raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Instruction]:
-        result: List[tast.Instruction] = []
+        outer_code = self.code
+        inner_code: List[tast.Instruction] = []
+        self.code = inner_code
         for statement in block:
-            result.extend(self.do_statement(statement))  # yielded values to list
-        return result
+            self.do_statement(statement)
+
+        assert self.code is inner_code  # pointer equality
+        self.code = outer_code
+        return inner_code
 
 
 def _create_to_string_method(class_type: tast.Type) -> uast.FuncOrMethodDef:
