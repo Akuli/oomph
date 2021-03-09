@@ -68,8 +68,7 @@ func get_simple_identifier(Str code) -> optional[Str]:
     first_chars.push("_")
 
     let continue_chars = new List[Str]()
-    foreach letter of first_chars:
-        continue_chars.push(letter)
+    continue_chars.push_all(first_chars)
     for let i = 0; i <= 9; i = i+1:
         continue_chars.push(i.to_string())
 

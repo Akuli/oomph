@@ -80,6 +80,7 @@ class Generic:
             result.methods["get"] = FunctionType([result, INT], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["push"] = FunctionType([result, generic_arg], None)
+            result.methods["push_all"] = FunctionType([result, result], None)
             if generic_arg is STRING:
                 result.methods["join"] = FunctionType([result, STRING], STRING)
         else:

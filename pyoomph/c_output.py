@@ -314,6 +314,7 @@ _generic_c_codes = {
         static struct class_%(type_cname)s *ctor_%(type_cname)s(void);
         static void dtor_%(type_cname)s (void *ptr);
         static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
+        static void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
         static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
@@ -366,6 +367,17 @@ _generic_c_codes = {
             class_%(type_cname)s_ensure_alloc(self, self->len + 1);
             self->data[self->len++] = val;
             %(incref_val)s;
+        }
+
+        static void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src)
+        {
+            class_%(type_cname)s_ensure_alloc(self, self->len + src->len);
+            memcpy(self->data + self->len, src->data, sizeof(src->data[0]) * src->len);
+            for (int64_t i = 0; i < src->len; i++) {
+                %(itemtype)s val = src->data[i];
+                %(incref_val)s;
+            }
+            self->len += src->len;
         }
 
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)

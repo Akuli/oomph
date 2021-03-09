@@ -31,16 +31,13 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
 
     let result = new List[Str]()
     result.push(cc)
-    foreach flag of split(cflags):
-        result.push(flag)
+    result.push_all(split(cflags))
     # FIXME: hard-coded list
-    foreach o_file of "obj/io.o obj/misc.o obj/numbers.o obj/ref.o obj/string.o obj/subprocess.o".split(" "):
-        result.push(o_file)
+    result.push_all("obj/io.o obj/misc.o obj/numbers.o obj/ref.o obj/string.o obj/subprocess.o".split(" "))
     result.push(c_path)
     result.push("-o")
     result.push(exepath)
-    foreach flag of split(ldflags):
-        result.push(flag)
+    result.push_all(split(ldflags))
     result.push("-I")
     result.push(project_root)
     return result

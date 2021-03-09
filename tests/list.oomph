@@ -11,4 +11,12 @@ export func main():
     for let i = 0; i < a.length(); i = i+1:
         print(a.get(i))
     print(a)
-    print(a.length())
+
+    let b = new List[int]()
+    b.push(69)
+    b.push(123)
+    a.push_all(b)
+    print(a)
+
+    b.push_all(b)   # funny special case, must not fail
+    print(b)
