@@ -23,7 +23,7 @@ class LocalVariable:
 
     # Default dataclass repr does not distinguish different instances
     def __repr__(self) -> str:
-        return "<LocalVariable: %#x>" % id(self)
+        return "<LocalVariable %#x: %s>" % (id(self), self.type.name)
 
 
 # Currently these are always functions. These would be called "global
@@ -109,7 +109,7 @@ class VarCpy(Instruction):
     source: Variable
 
     def __post_init__(self) -> None:
-        assert self.dest.type == self.source.type
+        assert self.dest.type == self.source.type, (self.dest, self.source)
 
 
 @dataclass(eq=False)

@@ -18,7 +18,7 @@ func get_simple_identifier(Str code) -> optional[Str]:
 
 # TODO: enums
 # TODO: keep track of line numbers
-class Token(Str type, Str value):
+export class Token(Str type, Str value):
     meth matches(Str type, Str value) -> bool:
         return self.type == type and self.value == value
 

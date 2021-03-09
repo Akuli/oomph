@@ -1,0 +1,98 @@
+import "tokenizer.oomph" as tokenizer
+import "ast.oomph" as ast
+
+# FIXME: allow assigning to attribute
+class IntContainer(List[int] value):
+    meth set(int value):
+        # TODO: no way to clear list
+        self.value.push(value)
+    meth get() -> int:
+        return self.value.get(self.value.length() - 1)
+    meth increment():
+        self.set(self.get() + 1)
+
+func make_container() -> IntContainer:
+    let value = new List[int]()
+    value.push(0)
+    return new IntContainer(value)
+
+class Parser(List[tokenizer::Token] tokens, IntContainer token_index):
+    meth peek() -> tokenizer::Token:
+        assert(self.token_index.get() < self.tokens.length())  # TODO: error
+        return self.tokens.get(self.token_index.get())
+
+    # Use when end of file might occur
+    meth peek_carefully() -> optional[tokenizer::Token]:
+        if self.token_index.get() == self.tokens.length():
+            return null[tokenizer::Token]
+        return new optional[tokenizer::Token](self.peek())
+
+    meth get_token_by_type(Str type) -> tokenizer::Token:
+        let token = self.peek()   # Error if end of file
+        self.token_index.increment()
+        assert(token.type == type)  # TODO: error
+        return token
+
+    meth get_token(Str type, Str value) -> tokenizer::Token:
+        let token = self.get_token_by_type(type)
+        assert(token.value == value)  # TODO: error
+        return token
+
+    meth parse_expression() -> ast::Expression:
+        if self.peek().type == "string":
+            let string = self.get_token_by_type("string").value
+            assert(string.starts_with("\""))
+            assert(string.ends_with("\""))
+            let result = new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
+        elif self.peek().type == "id":
+            result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
+        else:
+            print("Don't know what to do: {self.peek()}")
+            assert(false)
+
+        while self.peek_carefully() != null[tokenizer::Token] and self.peek_carefully().get().matches("op", "("):
+            self.get_token("op", "(")
+            let args = new List[ast::Expression]()
+            if not self.peek().matches("op", ")"):
+                args.push(self.parse_expression())
+                while self.peek().matches("op", ","):
+                    self.get_token("op", ",")
+                    args.push(self.parse_expression())
+            self.get_token("op", ")")
+            result = new ast::Expression(new ast::Call(result, args))
+
+        return result
+
+    meth parse_statement() -> ast::Call:
+        let expr = self.parse_expression()
+        switch expr:
+            case ast::Call:
+                self.get_token("op", "\n")
+                return expr
+            case ast::GetVar:
+                assert(false)  # TODO: error
+            case ast::StringConstant:
+                assert(false)  # TODO: error
+
+    meth parse_block_of_statements() -> List[ast::Call]:
+        let result = new List[ast::Call]()
+        self.get_token_by_type("begin_block")
+        while self.token_index.get() != self.tokens.length() and self.peek().type != "end_block":
+            result.push(self.parse_statement())
+        self.get_token_by_type("end_block")
+        return result
+
+    meth parse_function() -> ast::FuncDef:
+        self.get_token("keyword", "export")
+        self.get_token("keyword", "func")
+        let name = self.get_token_by_type("id").value
+        self.get_token("op", "(")
+        self.get_token("op", ")")
+        return new ast::FuncDef(name, new List[ast::FuncDefArgument](), null[ast::Type], self.parse_block_of_statements())
+
+export func parse_file(Str code) -> List[ast::FuncDef]:
+    let parser = new Parser(tokenizer::tokenize(code), make_container())
+    let result = new List[ast::FuncDef]()
+    while parser.token_index.get() < parser.tokens.length():
+        result.push(parser.parse_function())
+    return result

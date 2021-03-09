@@ -1,0 +1,13 @@
+export class Type(Str name)
+
+export union Expression:
+    GetVar
+    StringConstant
+    Call
+
+export class GetVar(Str varname)
+export class StringConstant(Str value)
+export class Call(Expression function, List[Expression] args)
+
+export class FuncDefArgument(Type type, Str name)
+export class FuncDef(Str name, List[FuncDefArgument] args, optional[Type] returntype, List[Call] body)

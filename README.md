@@ -32,6 +32,8 @@ Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features:
+- better error messaging
+- using func/meth before defining (not just Unions)
 - `>>>` prompt
 - something like python's `__file__` (compile time and runtime)
 - attributes of classes that are not arguments
@@ -98,6 +100,7 @@ Deprecated features:
 - maybe traditional `for` loops? they seem more confusing than useful
 
 Design questions to (re)think:
+- name of `self`? maybe `instance` or `this`?
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.
 - requiring use of attributes (useful for going through data, avoid accidental ignoring)

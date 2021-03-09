@@ -1,6 +1,6 @@
 import "<stdlib>/io.oomph" as io
 import "<stdlib>/subprocess.oomph" as process
-import "tokenizer.oomph" as tokenizer
+import "parser.oomph" as parser
 
 # TODO: respect quoting rules
 func split(Str s) -> List[Str]:
@@ -64,4 +64,4 @@ func the_actual_main():
     assert(process::run(run_command) == 0)
 
 export func main():
-    tokenizer::tokenize(io::read_file("tests/hello.oomph"))
+    print(parser::parse_file(io::read_file("tests/hello.oomph")))

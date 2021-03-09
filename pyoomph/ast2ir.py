@@ -321,11 +321,13 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.GetAttribute):
             obj = self.do_expression(expr.obj)
-            [member_type] = [
+            matching_types = [
                 the_type
                 for the_type, name in obj.type.members
                 if name == expr.attribute
             ]
+            assert matching_types, expr.attribute
+            [member_type] = matching_types
             result = self.create_var(member_type)
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             return result

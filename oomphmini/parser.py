@@ -46,13 +46,6 @@ class _Parser:
         self.get_token("op", ")")
         return result
 
-    def tokenize_and_parse_expression(self, code: str) -> uast.Expression:
-        parser = _Parser(tokenizer.tokenize(code))
-        result = parser.parse_expression()
-        parser.get_token("op", "\n")
-        assert not parser.token_iter, parser.token_iter.peek()
-        return result
-
     def do_string_formatting(self, string: str) -> uast.Expression:
         return uast.StringConstant(string.strip('"'))
 
