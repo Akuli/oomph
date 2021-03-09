@@ -3,5 +3,12 @@ func countdown(int n):
         print(n)
         countdown(n-1)
 
+class Count():
+    meth down(int n):
+        if n != 0:
+            print(n)
+            self.down(n-1)
+
 export func main():
     countdown(10)
+    new Count().down(20)

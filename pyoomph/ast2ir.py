@@ -503,17 +503,17 @@ class _FileConverter:
         )
 
     def _do_func_or_method_def(
-        self, funcdef: ast.FuncOrMethodDef, class_name: Optional[str]
+        self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
     ) -> Union[ir.FuncDef, ir.MethodDef]:
-        if class_name is not None:
-            funcdef.args.insert(0, (ast.Type(class_name, None), "self"))
+        if classtype is not None:
+            funcdef.args.insert(0, (ast.Type(classtype.name, None), "self"))
 
         functype = FunctionType(
             [self.get_type(typ) for typ, nam in funcdef.args],
             None if funcdef.returntype is None else self.get_type(funcdef.returntype),
         )
 
-        if class_name is None:
+        if classtype is None:
             assert funcdef.name not in self.variables, (
                 funcdef.name,
                 self.variables.keys(),
@@ -526,6 +526,8 @@ class _FileConverter:
             else:
                 mypy_sucks = ir.ThisFileVariable(funcdef.name, functype)
             self.add_var(mypy_sucks, mypy_sucks.name)
+        else:
+            classtype.methods[funcdef.name] = functype
 
         local_vars = self.variables.copy()
         argvars = []
@@ -545,7 +547,7 @@ class _FileConverter:
         converter = _FunctionOrMethodConverter(self, local_vars)
         body.extend(converter.do_block(funcdef.body))
 
-        if class_name is None:
+        if classtype is None:
             return ir.FuncDef(mypy_sucks, argvars, body)
         else:
             assert not funcdef.export
@@ -583,7 +585,7 @@ class _FileConverter:
             return None
 
         if isinstance(top_declaration, ast.FuncOrMethodDef):
-            result = self._do_func_or_method_def(top_declaration, class_name=None)
+            result = self._do_func_or_method_def(top_declaration, classtype=None)
             assert isinstance(result, ir.FuncDef)
             return result
 
@@ -607,11 +609,8 @@ class _FileConverter:
                 classtype.methods["equals"] = equals_def.type
 
             for method_def in top_declaration.body:
-                typed_def = self._do_func_or_method_def(
-                    method_def, top_declaration.name
-                )
+                typed_def = self._do_func_or_method_def(method_def, classtype)
                 assert isinstance(typed_def, ir.MethodDef)
-                classtype.methods[method_def.name] = typed_def.type
                 typed_method_defs.append(typed_def)
 
             if top_declaration.export:
