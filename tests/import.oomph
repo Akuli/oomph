@@ -5,13 +5,13 @@ export func main():
     hello::print_hello()
     hello_std::print_hello()
 
-    let f = new hello::Bar(123, new optional[Str]("lol"))
-    print(f)
-    print(f.thing)
-    print(f.optional_thing)
-    f.lol()
+    let b = new hello::Bar(123, new optional[Str]("lol"))
+    print(b)
+    print(b.thing)
+    print(b.optional_thing)
+    b.lol()
 
-    let u = new hello::FooBar(f)
+    let u = new hello::FooBar(b)
     print(u)
     switch u:
         case hello::Foo:

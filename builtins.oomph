@@ -86,7 +86,7 @@ func __Str_split(Str self, Str sep) -> List[Str]:
         result.push(self)
         return result
 
-    let s = self  # TODO: is this necessary?
+    let s = self  # TODO: get rid of this, no longer necessary (even if it ever was)
     while true:
         let i = s.find_first(sep)
         if i == -1:
