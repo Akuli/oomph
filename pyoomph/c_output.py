@@ -704,7 +704,7 @@ class _FileEmitter:
             self.function_defs += f"""
             void decref_{c_name}(struct class_{c_name} obj) {{
                 switch(obj.membernum) {{
-                    case -1:   // uninitialized
+                    case -1:   // variable not in use
                         break;
                     {decref_cases}
                     default:
