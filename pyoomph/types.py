@@ -40,10 +40,6 @@ class Type:
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def get_constructor_type(self) -> FunctionType:
-        assert self.constructor_argtypes is not None
-        return FunctionType(self.constructor_argtypes, self)
-
 
 class UnionType(Type):
     type_members: Optional[List[Type]]
@@ -107,6 +103,7 @@ class FunctionType(Type):
         self.argtypes = argtypes
         self.returntype = returntype
 
+    # Currently not used
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, FunctionType)

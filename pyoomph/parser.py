@@ -292,10 +292,7 @@ class _Parser:
         return (the_type, body)
 
     def foreach_loop_to_for_loop(
-        self,
-        varname: str,
-        the_list: ast.Expression,
-        body: List[ast.Statement],
+        self, varname: str, the_list: ast.Expression, body: List[ast.Statement]
     ) -> List[ast.Statement]:
         list_var = f"__foreach_list_{self.foreach_counter}"
         index_var = f"__foreach_index_{self.foreach_counter}"

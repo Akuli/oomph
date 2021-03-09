@@ -441,14 +441,11 @@ class _FileEmitter:
     def define_function(
         self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
     ) -> None:
-        if argnames is None:
-            arg_decls = [self.emit_type(argtype) for argtype in the_type.argtypes]
-        else:
-            assert len(the_type.argtypes) == len(argnames)
-            arg_decls = [
-                self.emit_type(argtype) + " " + name
-                for argtype, name in zip(the_type.argtypes, argnames)
-            ]
+        assert len(the_type.argtypes) == len(argnames)
+        arg_decls = [
+            self.emit_type(argtype) + " " + name
+            for argtype, name in zip(the_type.argtypes, argnames)
+        ]
 
         declaration = "%s %s(%s)" % (
             self.emit_type(the_type.returntype),
