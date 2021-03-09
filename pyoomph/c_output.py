@@ -90,15 +90,17 @@ class _FunctionEmitter:
         if isinstance(ins, tast.GetAttribute):
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
         if isinstance(ins, tast.If):
-            then = '\n'.join(map(self.emit_instruction, ins.then))
-            otherwise = '\n'.join(map(self.emit_instruction, ins.otherwise))
-            return f'''
+            then = "\n\t\t".join(map(self.emit_instruction, ins.then))
+            otherwise = "\n\t\t".join(map(self.emit_instruction, ins.otherwise))
+            return f"""
             if ({self.emit_local_var(ins.condition)}) {{
                 {then}
             }} else {{
                 {otherwise}
             }}
-            '''
+            """
+        if isinstance(ins, tast.PointersEqual):
+            return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
         raise NotImplementedError(ins)
 
     def add_local_var(
@@ -132,10 +134,6 @@ class _FunctionEmitter:
     #        if isinstance(ast, tast.BoolOr):
     #            return (
     #                f"({self.emit_expression(ast.lhs)} || {self.emit_expression(ast.rhs)})"
-    #            )
-    #        if isinstance(ast, tast.PointersEqual):
-    #            return (
-    #                f"({self.emit_expression(ast.lhs)} == {self.emit_expression(ast.rhs)})"
     #            )
     #        if isinstance(ast, tast.Null):
     #            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"

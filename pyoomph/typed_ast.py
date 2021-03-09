@@ -200,7 +200,7 @@ class PointersEqual(Instruction):
     def __post_init__(self) -> None:
         assert self.lhs.type.refcounted
         assert self.rhs.type.refcounted
-        assert self.rhs.type == BOOL
+        assert self.result.type == BOOL
 
 
 @dataclass(eq=False)
@@ -285,7 +285,6 @@ class FuncDef(ToplevelDeclaration):
     var: Union[ThisFileVariable, ExportVariable]
     argvars: List[LocalVariable]
     body: List[Instruction]
-    returnvar: Optional[LocalVariable]
 
 
 @dataclass(eq=False)
@@ -294,7 +293,6 @@ class MethodDef:
     type: FunctionType
     argvars: List[LocalVariable]
     body: List[Instruction]
-    returnvar: Optional[LocalVariable]
 
 
 @dataclass(eq=False)

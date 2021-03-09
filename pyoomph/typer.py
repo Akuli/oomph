@@ -519,29 +519,25 @@ class _FileTyper:
         body = typer.do_block(funcdef.body)
 
         if class_name is None:
-            return tast.FuncDef(mypy_sucks, argvars, body, typer.return_var)
+            return tast.FuncDef(mypy_sucks, argvars, body)
         else:
             assert not funcdef.export
-            return tast.MethodDef(
-                funcdef.name, functype, argvars, body, typer.return_var
-            )
+            return tast.MethodDef(funcdef.name, functype, argvars, body)
 
     def _create_equals_method(self, classtype: Type) -> tast.MethodDef:
-        raise NotImplementedError
-
-    #        functype = FunctionType([classtype, classtype], BOOL)
-    #        self_var = tast.LocalVariable(classtype)
-    #        other_var = tast.LocalVariable(classtype)
-    #        return tast.MethodDef(
-    #            "equals",
-    #            functype,
-    #            [self_var, other_var],
-    #            [
-    #                tast.Return(
-    #                    tast.PointersEqual(tast.GetVar(self_var), tast.GetVar(other_var))
-    #                )
-    #            ],
-    #        )
+        functype = FunctionType([classtype, classtype], BOOL)
+        self_var = tast.LocalVariable(classtype)
+        other_var = tast.LocalVariable(classtype)
+        result_var = tast.LocalVariable(BOOL)
+        return tast.MethodDef(
+            "equals",
+            functype,
+            [self_var, other_var],
+            [
+                tast.PointersEqual(self_var, other_var, result_var),
+                tast.Return(result_var),
+            ],
+        )
 
     def do_toplevel_declaration(
         self,
@@ -579,10 +575,10 @@ class _FileTyper:
             typed_method_defs = []
 
             if "equals" not in (method.name for method in top_declaration.body):
-                pass  # FIXME
-                # equals_def = self._create_equals_method(classtype)
-                # typed_method_defs.append(equals_def)
-                # classtype.methods["equals"] = equals_def.type
+                pass
+                equals_def = self._create_equals_method(classtype)
+                typed_method_defs.append(equals_def)
+                classtype.methods["equals"] = equals_def.type
 
             for method_def in top_declaration.body:
                 typed_def = self._do_func_or_method_def(
