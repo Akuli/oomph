@@ -125,3 +125,4 @@ Optimization ideas:
     - `List[str].join` and various other functions
 - caching `strlen` result
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
+- streams, as an alternative to lists

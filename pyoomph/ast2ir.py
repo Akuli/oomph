@@ -366,6 +366,7 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.Break(self.loop_stack[-1]))
 
         elif isinstance(stmt, ast.Return):
+            # TODO: check return type
             if stmt.value is None:
                 self.code.append(ir.Return(None))
             else:
