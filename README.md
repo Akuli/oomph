@@ -95,6 +95,7 @@ Missing features:
 
 Deprecated features:
 - `is_null()` method (use `thing != null[type]`)
+- maybe traditional `for` loops? they seem more confusing than useful
 
 Design questions to (re)think:
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
