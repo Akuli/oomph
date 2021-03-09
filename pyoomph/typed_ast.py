@@ -151,7 +151,10 @@ class CallFunction(Instruction):
         else:
             assert self.result is not None
             assert self.result.type == self.func.type.returntype
-        assert [arg.type for arg in self.args] == self.func.type.argtypes, (self.func, self.args)
+        assert [arg.type for arg in self.args] == self.func.type.argtypes, (
+            self.func,
+            self.args,
+        )
 
 
 @dataclass(eq=False)

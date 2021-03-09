@@ -76,7 +76,7 @@ class _FunctionOrMethodTyper:
             else:
                 result_var = tast.LocalVariable(result_type)
 
-            if func is tast.builtin_variables['print']:
+            if func is tast.builtin_variables["print"]:
                 args = [self.stringify(self.do_expression(arg)) for arg in ast.args]
             else:
                 args = [self.do_expression(arg) for arg in ast.args]
@@ -300,8 +300,10 @@ class _FunctionOrMethodTyper:
         elif isinstance(ast, uast.Assign):
             var = self.variables[ast.varname]
             assert isinstance(var, tast.LocalVariable)
+            new_value_var = self.do_expression(ast.value)
             self.code.append(tast.DecRef(var))
-            self.code.append(tast.VarCpy(var, self.do_expression(ast.value)))
+            self.code.append(tast.VarCpy(var, new_value_var))
+            self.code.append(tast.IncRef(var))
 
         elif isinstance(ast, uast.Pass):
             pass
@@ -549,10 +551,10 @@ class _FileTyper:
             typed_method_defs = []
 
             if "equals" not in (method.name for method in top_declaration.body):
-                pass# FIXME
-                #equals_def = self._create_equals_method(classtype)
-                #typed_method_defs.append(equals_def)
-                #classtype.methods["equals"] = equals_def.type
+                pass  # FIXME
+                # equals_def = self._create_equals_method(classtype)
+                # typed_method_defs.append(equals_def)
+                # classtype.methods["equals"] = equals_def.type
 
             for method_def in top_declaration.body:
                 typed_def = self._do_func_or_method_def(
