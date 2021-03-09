@@ -57,6 +57,8 @@ class _FunctionEmitter:
             return f"{self.emit_local_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
         if isinstance(ins, tast.IntConstant):
             return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
+        if isinstance(ins, tast.FloatConstant):
+            return f"{self.emit_local_var(ins.result)} = {ins.value};"
         if isinstance(ins, tast.VarCpy):
             return (
                 f"{self.emit_local_var(ins.dest)} = {self.variable_names[ins.source]};"
