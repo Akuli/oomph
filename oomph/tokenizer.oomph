@@ -1,0 +1,84 @@
+func list_contains(List[Str] list, Str s) -> bool:
+    foreach item of list:
+        if item == s:
+            return true
+    return false
+
+func get_simple_identifier(Str code) -> optional[Str]:
+    # TODO: put this to stdlib
+    let first_chars = new List[Str]()
+    first_chars.push("a")
+    first_chars.push("b")
+    first_chars.push("c")
+    first_chars.push("d")
+    first_chars.push("e")
+    first_chars.push("f")
+    first_chars.push("g")
+    first_chars.push("h")
+    first_chars.push("i")
+    first_chars.push("j")
+    first_chars.push("k")
+    first_chars.push("l")
+    first_chars.push("m")
+    first_chars.push("n")
+    first_chars.push("o")
+    first_chars.push("p")
+    first_chars.push("q")
+    first_chars.push("r")
+    first_chars.push("s")
+    first_chars.push("t")
+    first_chars.push("u")
+    first_chars.push("v")
+    first_chars.push("w")
+    first_chars.push("x")
+    first_chars.push("y")
+    first_chars.push("z")
+    first_chars.push("A")
+    first_chars.push("B")
+    first_chars.push("C")
+    first_chars.push("D")
+    first_chars.push("E")
+    first_chars.push("F")
+    first_chars.push("G")
+    first_chars.push("H")
+    first_chars.push("I")
+    first_chars.push("J")
+    first_chars.push("K")
+    first_chars.push("L")
+    first_chars.push("M")
+    first_chars.push("N")
+    first_chars.push("O")
+    first_chars.push("P")
+    first_chars.push("Q")
+    first_chars.push("R")
+    first_chars.push("S")
+    first_chars.push("T")
+    first_chars.push("U")
+    first_chars.push("V")
+    first_chars.push("W")
+    first_chars.push("X")
+    first_chars.push("Y")
+    first_chars.push("Z")
+    first_chars.push("_")
+
+    let continue_chars = new List[Str]()
+    foreach letter of first_chars:
+        continue_chars.push(letter)
+    for let i = 0; i <= 9; i = i+1:
+        continue_chars.push(i.to_string())
+
+    if not list_contains(first_chars, code.slice(0, 1)):
+        return null[Str]
+
+    let i = 1
+    while list_contains(continue_chars, code.slice(i, i + 1)):
+        i = i + 1
+    return new optional[Str](code.slice(0, i))
+
+
+export func tokenize(Str code):
+    print(code)
+    print(get_simple_identifier(code))
+
+export func main():
+    print(get_simple_identifier("print x"))

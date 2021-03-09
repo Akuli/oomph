@@ -1,5 +1,6 @@
 import "<stdlib>/io.oomph" as io
 import "<stdlib>/subprocess.oomph" as process
+import "tokenizer.oomph" as tokenizer
 
 # TODO: respect quoting rules
 func split(Str s) -> List[Str]:
@@ -44,7 +45,7 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
     result.push(project_root)
     return result
 
-export func main():
+func the_actual_main():
     let project_root = "."
     let cache_dir = "{project_root}/.oomph-cache"
     io::mkdir(cache_dir)
@@ -64,3 +65,7 @@ export func main():
     for let i = 1; i < args.length(); i = i+1:
         run_command.push(args.get(i))
     assert(process::run(run_command) == 0)
+
+export func main():
+    #tokenizer::tokenize(io::read_file("tests/hello.oomph"))
+    tokenizer::tokenize("print x")
