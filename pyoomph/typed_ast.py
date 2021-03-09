@@ -253,6 +253,7 @@ class If(Instruction):
 @dataclass(eq=False)
 class Loop(Instruction):
     loop_id: str
+    cond_code: List[Instruction]
     cond: LocalVariable
     incr: List[Instruction]
     body: List[Instruction]

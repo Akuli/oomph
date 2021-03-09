@@ -378,11 +378,11 @@ class _FunctionOrMethodTyper:
         elif isinstance(ast, uast.Loop):
             if ast.init is not None:
                 self.do_statement(ast.init)
-            cond = (
-                self.create_special_call("bool_true", [])
-                if ast.cond is None
-                else self.do_expression(ast.cond)
-            )
+            if ast.cond is None:
+                cond_var = self.create_special_call("bool_true", [])
+            else:
+                with self.redirect_code() as cond_code:
+                    cond_var = self.do_expression(ast.cond)
             incr = [] if ast.incr is None else self.do_block([ast.incr])
 
             loop_id = f"loop{self.loop_counter}"
@@ -393,7 +393,7 @@ class _FunctionOrMethodTyper:
             popped = self.loop_stack.pop()
             assert popped == loop_id
 
-            self.code.append(tast.Loop(loop_id, cond, incr, body))
+            self.code.append(tast.Loop(loop_id, cond_code, cond_var, incr, body))
             if isinstance(ast.init, uast.Let):
                 del self.variables[ast.init.varname]
 

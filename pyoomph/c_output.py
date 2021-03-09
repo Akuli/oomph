@@ -89,6 +89,8 @@ class _FunctionEmitter:
             return "goto out;"
         if isinstance(ins, tast.GetAttribute):
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
+        if isinstance(ins, tast.PointersEqual):
+            return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
         if isinstance(ins, tast.If):
             then = "\n\t\t".join(map(self.emit_instruction, ins.then))
             otherwise = "\n\t\t".join(map(self.emit_instruction, ins.otherwise))
@@ -99,14 +101,16 @@ class _FunctionEmitter:
                 {otherwise}
             }}
             """
-        if isinstance(ins, tast.PointersEqual):
-            return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
         if isinstance(ins, tast.Loop):
             # While loop because I couldn't get C's for loop to work here
+            cond_code = "\n\t\t".join(map(self.emit_instruction, ins.cond_code))
             body = "\n\t\t".join(map(self.emit_instruction, ins.body))
             incr = "\n\t\t".join(map(self.emit_instruction, ins.incr))
             return f"""
-            while ({self.emit_local_var(ins.cond)}) {{
+            while(1) {{
+                {cond_code}
+                if (!{self.emit_local_var(ins.cond)})
+                    break;
                 {body}
                 {_emit_label(ins.loop_id)}  // oomph 'continue' jumps here
                 {incr}
@@ -162,8 +166,11 @@ class _FunctionEmitter:
         self.variable_names[var] = name
         if declare:
             self.before_body += f"{self.file_emitter.emit_type(var.type)} {name}"
-            if var.type.refcounted and not isinstance(var.type, UnionType):
-                self.before_body += "= NULL"
+            if var.type.refcounted:
+                if isinstance(var.type, UnionType):
+                    self.before_body += "= { .membernum = -1 }"
+                else:
+                    self.before_body += "= NULL"
             self.before_body += ";\n"
         if need_decref:
             self.need_decref.append(var)
@@ -706,6 +713,8 @@ class _FileEmitter:
             self.function_defs += f"""
             void decref_{c_name}(struct class_{c_name} obj) {{
                 switch(obj.membernum) {{
+                    case -1:   // uninitialized
+                        break;
                     {decref_cases}
                     default:
                         assert(0);
