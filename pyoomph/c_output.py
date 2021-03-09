@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import pathlib
 import re
-from typing import Dict, List, Optional, Set, Tuple, TypeVar, Union
+from typing import Dict, List, Optional, Tuple, TypeVar, Union
 
 import pyoomph.typed_ast as tast
 from pyoomph.types import (
@@ -36,7 +36,7 @@ class _FunctionEmitter:
         self.need_decref: List[tast.LocalVariable] = []
 
     # TODO: do we need both this and emit_incref?
-    def incref_var(self, var: tast.LocalVariable):
+    def incref_var(self, var: tast.LocalVariable) -> str:
         return self.file_emitter.emit_incref(
             self.variable_names[var], var.type, semicolon=False
         )
@@ -59,7 +59,7 @@ class _FunctionEmitter:
             return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
         if isinstance(ins, tast.VarCpy):
             return (
-                f"{self.emit_local_var(ins.dest)} = {self.emit_local_var(ins.source)};"
+                f"{self.emit_local_var(ins.dest)} = {self.variable_names[ins.source]};"
             )
         if isinstance(ins, tast.IncRef):
             return self.incref_var(ins.var) + ";"

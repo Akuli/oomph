@@ -80,7 +80,8 @@ class _FunctionOrMethodTyper:
                 args = [self.stringify(self.do_expression(arg)) for arg in ast.args]
             else:
                 args = [self.do_expression(arg) for arg in ast.args]
-                if func is tast.builtin_variables['assert']:
+                if func is tast.builtin_variables["assert"]:
+                    assert ast.func.lineno is not None
                     args.append(self.do_expression(uast.IntConstant(ast.func.lineno)))
             self.code.append(tast.CallFunction(func, args, result_var))
         elif isinstance(ast.func, uast.Constructor):
