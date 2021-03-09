@@ -116,6 +116,11 @@ class _FunctionEmitter:
                 {incr}
             }}
             """
+        if isinstance(ins, tast.Continue):
+            # Can't use C's continue because continue must emit_funcdef condition
+            return f"goto {ins.loop_id};"
+        if isinstance(ins, tast.Break):
+            return "break;"
         if isinstance(ins, tast.InstantiateUnion):
             assert isinstance(ins.result.type, tast.UnionType)
             assert ins.result.type.type_members is not None
@@ -156,6 +161,9 @@ class _FunctionEmitter:
             """
         raise NotImplementedError(ins)
 
+    #        if isinstance(ast, tast.Null):
+    #            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
+
     def add_local_var(
         self, var: tast.LocalVariable, *, declare: bool = True, need_decref: bool = True
     ) -> None:
@@ -181,32 +189,6 @@ class _FunctionEmitter:
         except KeyError:
             self.add_local_var(var)
             return self.variable_names[var]
-
-    #    def emit_expression(self, ast: tast.Expression) -> str:
-    #        if isinstance(ast, tast.Null):
-    #            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
-    #        raise NotImplementedError(ast)
-    #
-    #    def emit_statement(self, ast: tast.Statement) -> str:
-    #        if isinstance(ast, tast.Loop):
-    #            # While loop because I couldn't get C's for loop to work here
-    #            return f"""
-    #            {"".join(self.emit_statement(s) for s in ast.init)}
-    #            while ({self.emit_expression(ast.cond)}) {{
-    #                {"".join(self.emit_statement(s) for s in ast.body)}
-    #                {_emit_label(ast.loop_id)}  // oomph 'continue' jumps here
-    #                {"".join(self.emit_statement(s) for s in ast.incr)}
-    #            }}
-    #            """
-    #
-    #        if isinstance(ast, tast.Continue):
-    #            # Can't use C's continue because continue must emit_funcdef condition
-    #            return f"goto {ast.loop_id};"
-    #
-    #        if isinstance(ast, tast.Break):
-    #            return "break;"
-    #
-    #        raise NotImplementedError(ast)
 
     def emit_funcdef(
         self,
