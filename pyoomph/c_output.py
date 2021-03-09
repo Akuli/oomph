@@ -39,30 +39,33 @@ class _FunctionEmitter:
     def incref_var(self, var: tast.LocalVariable):
         return self.file_emitter.emit_incref(self.variable_names[var], var.type, semicolon=False)
 
+    def emit_call(self, func: str, args: List[tast.LocalVariable], result_var: Optional[tast.LocalVariable]) -> str:
+        args_string = ",".join(map(self.emit_local_var, args))
+        if result_var is None:
+            return f"{func}({args_string});"
+        return f"{self.emit_local_var(result_var)} = {func}({args_string});"
+
     def emit_instruction(self, ins: tast.Instruction) -> str:
         if isinstance(ins, tast.StringConstant):
             return f"{self.emit_local_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
         if isinstance(ins, tast.IntConstant):
             return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
-        if isinstance(ins, tast.CallFunction):
-            func = self.variable_names[ins.func]
-            args = ",".join(map(self.emit_local_var, ins.args))
-            if ins.result is None:
-                return f"{func}({args});"
-            return f"{self.emit_local_var(ins.result)} = {func}({args});"
         if isinstance(ins, tast.VarCpy):
             return f'{self.emit_local_var(ins.dest)} = {self.emit_local_var(ins.source)};'
+        if isinstance(ins, tast.IncRef):
+            return self.file_emitter.emit_incref(self.emit_local_var(ins.var), ins.var.type)
+        if isinstance(ins, tast.CallFunction):
+            return self.emit_call(self.variable_names[ins.func], ins.args, ins.result)
         if isinstance(ins, tast.CallMethod):
-            func = f"meth_{self.file_emitter.get_type_c_name(ins.obj.type)}_{ins.method_name}"
-            args = ",".join(map(self.emit_local_var, [ins.obj] + ins.args))
-            if ins.result is None:
-                return f"{func}({args});"
-            return f"{self.emit_local_var(ins.result)} = {func}({args});"
+            return self.emit_call(f"meth_{self.file_emitter.get_type_c_name(ins.obj.type)}_{ins.method_name}", [ins.obj] + ins.args, ins.result)
+        if isinstance(ins, tast.CallConstructor):
+            return self.emit_call("ctor_" + self.file_emitter.get_type_c_name(ins.result.type), ins.args, ins.result)
         if isinstance(ins, tast.Return):
             if ins.value is not None:
                 return f"{self.incref_var(ins.value)}; retval = {self.emit_local_var(ins.value)}; goto out;"
             return "goto out;"
-
+        if isinstance(ins, tast.GetAttribute):
+            return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
         raise NotImplementedError(ins)
 
     def add_local_var(
@@ -115,8 +118,6 @@ class _FunctionEmitter:
     #                    + ")"
     #                )
     #            return self.variable_names[ast.var]
-    #        if isinstance(ast, tast.Constructor):
-    #            return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
     #        if isinstance(ast, tast.GetAttribute):
     #            return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
     #        if isinstance(ast, tast.GetMethod):

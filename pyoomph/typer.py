@@ -34,7 +34,7 @@ class _FunctionOrMethodTyper:
             self.return_var = None
         else:
             self.return_var = tast.LocalVariable(returntype)
-        self.code: List[tast.Instruction] = []
+        self.code: List[tast.Instruction] = []  # TODO: replace with yields
 
     def stringify(self, var: tast.LocalVariable) -> tast.LocalVariable:
         if var.type == STRING:
@@ -66,8 +66,7 @@ class _FunctionOrMethodTyper:
             self.code.append(
                 tast.CallMethod(self_arg, ast.func.attribute, args, result_var)
             )
-        else:
-            assert isinstance(ast.func, uast.GetVar)
+        elif isinstance(ast.func, uast.GetVar):
             func = self.variables[ast.func.varname]
             assert not isinstance(func, tast.LocalVariable)
             assert isinstance(func.type, tast.FunctionType)
@@ -82,6 +81,15 @@ class _FunctionOrMethodTyper:
             else:
                 args = [self.do_expression(arg) for arg in ast.args]
             self.code.append(tast.CallFunction(func, args, result_var))
+        elif isinstance(ast.func, uast.Constructor):
+            the_class = self.file_typer.get_type(ast.func.type)
+            assert the_class.constructor_argtypes is not None
+            args = [self.do_expression(arg) for arg in ast.args]
+            assert [arg.type for arg in args] == the_class.constructor_argtypes
+            result_var = tast.LocalVariable(the_class)
+            self.code.append(tast.CallConstructor(result_var, args))
+        else:
+            raise NotImplementedError
 
         return result_var
 
@@ -249,6 +257,7 @@ class _FunctionOrMethodTyper:
             old_var = self.variables[ast.varname]
             new_var = tast.LocalVariable(old_var.type)
             self.code.append(tast.VarCpy(new_var, old_var))
+            self.code.append(tast.IncRef(new_var))
             return new_var
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
@@ -540,9 +549,10 @@ class _FileTyper:
             typed_method_defs = []
 
             if "equals" not in (method.name for method in top_declaration.body):
-                equals_def = self._create_equals_method(classtype)
-                typed_method_defs.append(equals_def)
-                classtype.methods["equals"] = equals_def.type
+                pass# FIXME
+                #equals_def = self._create_equals_method(classtype)
+                #typed_method_defs.append(equals_def)
+                #classtype.methods["equals"] = equals_def.type
 
             for method_def in top_declaration.body:
                 typed_def = self._do_func_or_method_def(
