@@ -86,17 +86,17 @@ def main() -> None:
     arg_parser.add_argument("infile", type=pathlib.Path)
     arg_parser.add_argument("--valgrind", action="store_true")
     arg_parser.add_argument("-v", "--verbose", action="store_true")
-    args = arg_parser.parse_args()
+    compiler_args, program_args = arg_parser.parse_known_args()
 
     try:
-        cache_dir = args.infile.parent / ".oomph-cache"
+        cache_dir = compiler_args.infile.parent / ".oomph-cache"
         cache_dir.mkdir(exist_ok=True)
     except OSError:
         cache_dir = pathlib.Path.cwd() / ".oomph-cache"
         cache_dir.mkdir(exist_ok=True)
 
     compilation_units: List[CompilationUnit] = []
-    todo_list = [project_root / "builtins.oomph", args.infile.absolute()]
+    todo_list = [project_root / "builtins.oomph", compiler_args.infile.absolute()]
     while todo_list:
         source_path = todo_list.pop()
         if source_path in (unit.source_path for unit in compilation_units):
@@ -123,27 +123,26 @@ def main() -> None:
             [unit.h_path.name for unit in already_compiled],
         )
 
-    exe_path = cache_dir / args.infile.stem
+    exe_path = cache_dir / compiler_args.infile.stem
     command = get_c_compiler_command(
         [unit.c_path for unit in compilation_units], exe_path
     )
 
-    result = run(command, args.verbose)
+    result = run(command, compiler_args.verbose)
     if result != 0:
         sys.exit(result)
 
-    if args.valgrind:
-        command = [
+    command = []
+    if compiler_args.valgrind:
+        command.extend([
             "valgrind",
             "-q",
             "--leak-check=full",
             "--show-leak-kinds=all",
-            str(exe_path),
-        ]
-    else:
-        command = [str(exe_path)]
+        ])
+    command.extend([str(exe_path)] + program_args)
 
-    result = run(command, args.verbose)
+    result = run(command, compiler_args.verbose)
     if result < 0:  # killed by signal
         message = f"Program killed by signal {abs(result)}"
         try:
