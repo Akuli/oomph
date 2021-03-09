@@ -34,7 +34,7 @@ class _FunctionOrMethodTyper:
             self.return_var = None
         else:
             self.return_var = tast.LocalVariable(returntype)
-        self.code: List[tast.Instruction] = []  # TODO: replace with yields
+        self.code: List[tast.Instruction] = []
 
     def stringify(self, var: tast.LocalVariable) -> tast.LocalVariable:
         if var.type == STRING:
