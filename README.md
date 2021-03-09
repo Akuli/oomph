@@ -79,6 +79,7 @@ Missing features:
     - Idea 2: optional interpreted as boolean tells whether it's null, and 
       when it isn't, variables magically change type to get rid of `optional`
         - Leads to `while x`, `if x` and `assert x` (or `assert(x)`)
+        - Or without optional as boolean interpreting: explicit `while x != null` etc
     - rename `optional.get()` to `.get_not_null_value()` to make it stand out
       in code reviews as possible bug
 - defining non-ref-counted pass-by-value classes
