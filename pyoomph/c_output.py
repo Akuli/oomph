@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import pathlib
 import re
-from typing import Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Dict, List, Optional, Set, Tuple, TypeVar, Union
 
 import pyoomph.typed_ast as tast
 from pyoomph.types import (
@@ -22,6 +22,11 @@ from pyoomph.types import (
 _T = TypeVar("_T")
 
 
+def _emit_label(name: str) -> str:
+    # It's invalid c syntax to end a block with a label, (void)0 fixes
+    return f"{name}: (void)0;\n\t"
+
+
 class _FunctionEmitter:
     def __init__(self, file_emitter: _FileEmitter) -> None:
         self.file_emitter = file_emitter
@@ -30,186 +35,209 @@ class _FunctionEmitter:
         self.after_body = ""
         self.need_decref: List[tast.LocalVariable] = []
 
-    def add_local_var(self, var: tast.LocalVariable, *, declare: bool = True) -> None:
+    # TODO: do we need both this and emit_incref?
+    def incref_var(self, var: tast.LocalVariable):
+        return self.file_emitter.emit_incref(self.variable_names[var], var.type, semicolon=False)
+
+    def emit_instruction(self, ins: tast.Instruction) -> str:
+        if isinstance(ins, tast.StringConstant):
+            return f"{self.emit_local_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
+        if isinstance(ins, tast.IntConstant):
+            return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
+        if isinstance(ins, tast.CallFunction):
+            func = self.variable_names[ins.func]
+            args = ",".join(map(self.emit_local_var, ins.args))
+            if ins.result is None:
+                return f"{func}({args});"
+            return f"{self.emit_local_var(ins.result)} = {func}({args});"
+        raise NotImplementedError(ins)
+
+    def add_local_var(
+        self, var: tast.LocalVariable, *, declare: bool = True, need_decref: bool = True
+    ) -> None:
+        assert var not in self.variable_names
         # Ensure different functions don't share variable names.
         # This makes grepping the C code easier.
         name = self.file_emitter.get_var_name()
-        assert var not in self.variable_names
         self.variable_names[var] = name
-
         if declare:
             self.before_body += f"{self.file_emitter.emit_type(var.type)} {name}"
             if var.type.refcounted and not isinstance(var.type, UnionType):
                 self.before_body += "= NULL"
             self.before_body += ";\n"
+        if need_decref:
+            self.need_decref.append(var)
 
-    def create_local_var(self, the_type: Type) -> tast.LocalVariable:
-        var = tast.LocalVariable("c_output_var", the_type)
-        self.add_local_var(var)
-        return var
+    def emit_local_var(self, var: tast.LocalVariable) -> str:
+        try:
+            return self.variable_names[var]
+        except KeyError:
+            self.add_local_var(var)
+            return self.variable_names[var]
 
-    def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
-        return f"(%s(%s))" % (
-            self.emit_expression(ast.func),
-            ",".join(self.variable_names[var] for var in ast.args),
-        )
-
-    def emit_expression(self, ast: tast.Expression) -> str:
-        if isinstance(ast, tast.StringConstant):
-            return self.file_emitter.emit_string(ast.value)
-        if isinstance(ast, tast.IntConstant):
-            return f"((int64_t){ast.value}LL)"
-        if isinstance(ast, tast.FloatConstant):
-            return f"({ast.value})"
-        if isinstance(ast, tast.ReturningCall):
-            return self.emit_call(ast)
-        if isinstance(ast, tast.BoolAnd):
-            return (
-                f"({self.emit_expression(ast.lhs)} && {self.emit_expression(ast.rhs)})"
-            )
-        if isinstance(ast, tast.BoolOr):
-            return (
-                f"({self.emit_expression(ast.lhs)} || {self.emit_expression(ast.rhs)})"
-            )
-        if isinstance(ast, tast.PointersEqual):
-            return (
-                f"({self.emit_expression(ast.lhs)} == {self.emit_expression(ast.rhs)})"
-            )
-        if isinstance(ast, tast.Null):
-            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
-        if isinstance(ast, tast.GetVar):
-            if ast.incref and ast.type.refcounted:
-                return (
-                    "("
-                    + self.file_emitter.emit_incref(
-                        self.variable_names[ast.var], ast.type, semicolon=False
-                    )
-                    + ", "
-                    + self.variable_names[ast.var]
-                    + ")"
-                )
-            return self.variable_names[ast.var]
-        if isinstance(ast, tast.Constructor):
-            return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
-        if isinstance(ast, tast.GetAttribute):
-            return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
-        if isinstance(ast, tast.GetMethod):
-            return f"meth_{self.file_emitter.get_type_c_name(ast.the_class)}_{ast.name}"
-        if isinstance(ast, tast.InstantiateUnion):
-            assert ast.type.type_members is not None
-            membernum = ast.type.type_members.index(ast.value.type)
-            return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
-                self.file_emitter.emit_type(ast.type),
-                membernum,
-                self.emit_expression(ast.value),
-                membernum,
-            )
-        if isinstance(ast, tast.StatementsAndExpression):
-            statements = "".join(
-                "(" + self.emit_statement(s).rstrip().rstrip(";") + "),"
-                for s in ast.statements
-            )
-            expression = self.emit_expression(ast.expression)
-            return f"( {statements} {self.emit_expression(ast.expression)})"
-        raise NotImplementedError(ast)
-
-    def emit_label(self, name: str) -> str:
-        # It's invalid c syntax to end a block with a label, (void)0 fixes
-        return f"{name}: (void)0;\n\t"
-
-    def emit_statement(self, ast: tast.Statement) -> str:
-        if isinstance(ast, tast.SetLocalVar):
-            if ast.var not in self.variable_names:
-                self.add_local_var(ast.var)
-                self.need_decref.append(ast.var)
-
-            # Must evaluate expression before decref because expression might
-            # depend on the old value
-            temp_var = self.create_local_var(ast.value.type)
-            decref = self.file_emitter.emit_decref(
-                self.variable_names[ast.var], ast.value.type, semicolon=False
-            )
-            return f""" (
-            {self.variable_names[temp_var]} = {self.emit_expression(ast.value)},
-            {decref},
-            {self.variable_names[ast.var]} = {self.variable_names[temp_var]} );
-            """
-
-        if isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
-            return self.emit_call(ast) + ";\n\t"
-
-        if isinstance(ast, tast.DecRef):
-            return self.file_emitter.emit_decref(
-                self.emit_expression(ast.value), ast.value.type
-            )
-
-        if isinstance(ast, tast.Return):
-            if ast.value is not None:
-                return f"""
-                retval = {self.emit_expression(ast.value)};
-                {self.file_emitter.emit_incref("retval", ast.value.type)}
-                goto out;
-                """
-            return "goto out;"
-
-        if isinstance(ast, tast.If):
-            return f"""
-            if ({self.emit_expression(ast.condition)}) {{
-                {"".join(self.emit_statement(s) for s in ast.then)}
-            }} else {{
-                {"".join(self.emit_statement(s) for s in ast.otherwise)}
-            }}
-            """
-
-        if isinstance(ast, tast.Loop):
-            # While loop because I couldn't get C's for loop to work here
-            return f"""
-            {"".join(self.emit_statement(s) for s in ast.init)}
-            while ({self.emit_expression(ast.cond)}) {{
-                {"".join(self.emit_statement(s) for s in ast.body)}
-                {self.emit_label(ast.loop_id)}  // oomph 'continue' jumps here
-                {"".join(self.emit_statement(s) for s in ast.incr)}
-            }}
-            """
-
-        if isinstance(ast, tast.Continue):
-            # Can't use C's continue because continue must emit_funcdef condition
-            return f"goto {ast.loop_id};"
-
-        if isinstance(ast, tast.Break):
-            return "break;"
-
-        if isinstance(ast, tast.Switch):
-            assert isinstance(ast.union.type, UnionType)
-            assert ast.union.type.type_members is not None
-
-            union_var = self.create_local_var(ast.union.type)
-            body_code = ""
-            for membernum, the_type in enumerate(ast.union.type.type_members):
-                [(specific_var, body)] = [
-                    (var, body)
-                    for var, body in ast.cases.items()
-                    if var.type is the_type
-                ]
-                self.add_local_var(specific_var)
-                case_content = "".join(self.emit_statement(s) for s in body)
-                body_code += f"""
-                case {membernum}:
-                    {self.variable_names[specific_var]} = {self.variable_names[union_var]}.val.item{membernum};
-                    {case_content}
-                    break;
-                """
-
-            return f"""
-            {self.variable_names[union_var]} = {self.emit_expression(ast.union)};
-            switch ({self.variable_names[union_var]}.membernum) {{
-                {body_code}
-                default:
-                    assert(0);
-            }}
-            """
-
-        raise NotImplementedError(ast)
+    #    def create_local_var(self, the_type: Type) -> tast.LocalVariable:
+    #        var = tast.LocalVariable("c_output_var", the_type)
+    #        self.add_local_var(var)
+    #        return var
+    #
+    #    def emit_call(self, ast: Union[tast.ReturningCall, tast.VoidCall]) -> str:
+    #        return f"(%s(%s))" % (
+    #            self.emit_expression(ast.func),
+    #            ",".join(self.variable_names[var] for var in ast.args),
+    #        )
+    #
+    #    def emit_expression(self, ast: tast.Expression) -> str:
+    #        if isinstance(ast, tast.StringConstant):
+    #            return self.file_emitter.emit_string(ast.value)
+    #        if isinstance(ast, tast.IntConstant):
+    #            return f"((int64_t){ast.value}LL)"
+    #        if isinstance(ast, tast.FloatConstant):
+    #            return f"({ast.value})"
+    #        if isinstance(ast, tast.ReturningCall):
+    #            return self.emit_call(ast)
+    #        if isinstance(ast, tast.BoolAnd):
+    #            return (
+    #                f"({self.emit_expression(ast.lhs)} && {self.emit_expression(ast.rhs)})"
+    #            )
+    #        if isinstance(ast, tast.BoolOr):
+    #            return (
+    #                f"({self.emit_expression(ast.lhs)} || {self.emit_expression(ast.rhs)})"
+    #            )
+    #        if isinstance(ast, tast.PointersEqual):
+    #            return (
+    #                f"({self.emit_expression(ast.lhs)} == {self.emit_expression(ast.rhs)})"
+    #            )
+    #        if isinstance(ast, tast.Null):
+    #            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
+    #        if isinstance(ast, tast.GetVar):
+    #            if ast.incref and ast.type.refcounted:
+    #                return (
+    #                    "("
+    #                    + self.file_emitter.emit_incref(
+    #                        self.variable_names[ast.var], ast.type, semicolon=False
+    #                    )
+    #                    + ", "
+    #                    + self.variable_names[ast.var]
+    #                    + ")"
+    #                )
+    #            return self.variable_names[ast.var]
+    #        if isinstance(ast, tast.Constructor):
+    #            return "ctor_" + self.file_emitter.get_type_c_name(ast.class_to_construct)
+    #        if isinstance(ast, tast.GetAttribute):
+    #            return f"(({self.emit_expression(ast.obj)})->memb_{ast.attribute})"
+    #        if isinstance(ast, tast.GetMethod):
+    #            return f"meth_{self.file_emitter.get_type_c_name(ast.the_class)}_{ast.name}"
+    #        if isinstance(ast, tast.InstantiateUnion):
+    #            assert ast.type.type_members is not None
+    #            membernum = ast.type.type_members.index(ast.value.type)
+    #            return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
+    #                self.file_emitter.emit_type(ast.type),
+    #                membernum,
+    #                self.emit_expression(ast.value),
+    #                membernum,
+    #            )
+    #        if isinstance(ast, tast.StatementsAndExpression):
+    #            statements = "".join(
+    #                "(" + self.emit_statement(s).rstrip().rstrip(";") + "),"
+    #                for s in ast.statements
+    #            )
+    #            expression = self.emit_expression(ast.expression)
+    #            return f"( {statements} {self.emit_expression(ast.expression)})"
+    #        raise NotImplementedError(ast)
+    #
+    #    def emit_statement(self, ast: tast.Statement) -> str:
+    #        if isinstance(ast, tast.SetLocalVar):
+    #            if ast.var not in self.variable_names:
+    #                self.add_local_var(ast.var)
+    #                self.need_decref.append(ast.var)
+    #
+    #            # Must evaluate expression before decref because expression might
+    #            # depend on the old value
+    #            temp_var = self.create_local_var(ast.value.type)
+    #            decref = self.file_emitter.emit_decref(
+    #                self.variable_names[ast.var], ast.value.type, semicolon=False
+    #            )
+    #            return f""" (
+    #            {self.variable_names[temp_var]} = {self.emit_expression(ast.value)},
+    #            {decref},
+    #            {self.variable_names[ast.var]} = {self.variable_names[temp_var]} );
+    #            """
+    #
+    #        if isinstance(ast, (tast.ReturningCall, tast.VoidCall)):
+    #            return self.emit_call(ast) + ";\n\t"
+    #
+    #        if isinstance(ast, tast.DecRef):
+    #            return self.file_emitter.emit_decref(
+    #                self.emit_expression(ast.value), ast.value.type
+    #            )
+    #
+    #        if isinstance(ast, tast.Return):
+    #            if ast.value is not None:
+    #                return f"""
+    #                retval = {self.emit_expression(ast.value)};
+    #                {self.file_emitter.emit_incref("retval", ast.value.type)}
+    #                goto out;
+    #                """
+    #            return "goto out;"
+    #
+    #        if isinstance(ast, tast.If):
+    #            return f"""
+    #            if ({self.emit_expression(ast.condition)}) {{
+    #                {"".join(self.emit_statement(s) for s in ast.then)}
+    #            }} else {{
+    #                {"".join(self.emit_statement(s) for s in ast.otherwise)}
+    #            }}
+    #            """
+    #
+    #        if isinstance(ast, tast.Loop):
+    #            # While loop because I couldn't get C's for loop to work here
+    #            return f"""
+    #            {"".join(self.emit_statement(s) for s in ast.init)}
+    #            while ({self.emit_expression(ast.cond)}) {{
+    #                {"".join(self.emit_statement(s) for s in ast.body)}
+    #                {_emit_label(ast.loop_id)}  // oomph 'continue' jumps here
+    #                {"".join(self.emit_statement(s) for s in ast.incr)}
+    #            }}
+    #            """
+    #
+    #        if isinstance(ast, tast.Continue):
+    #            # Can't use C's continue because continue must emit_funcdef condition
+    #            return f"goto {ast.loop_id};"
+    #
+    #        if isinstance(ast, tast.Break):
+    #            return "break;"
+    #
+    #        if isinstance(ast, tast.Switch):
+    #            assert isinstance(ast.union.type, UnionType)
+    #            assert ast.union.type.type_members is not None
+    #
+    #            union_var = self.create_local_var(ast.union.type)
+    #            body_code = ""
+    #            for membernum, the_type in enumerate(ast.union.type.type_members):
+    #                [(specific_var, body)] = [
+    #                    (var, body)
+    #                    for var, body in ast.cases.items()
+    #                    if var.type is the_type
+    #                ]
+    #                self.add_local_var(specific_var)
+    #                case_content = "".join(self.emit_statement(s) for s in body)
+    #                body_code += f"""
+    #                case {membernum}:
+    #                    {self.variable_names[specific_var]} = {self.variable_names[union_var]}.val.item{membernum};
+    #                    {case_content}
+    #                    break;
+    #                """
+    #
+    #            return f"""
+    #            {self.variable_names[union_var]} = {self.emit_expression(ast.union)};
+    #            switch ({self.variable_names[union_var]}.membernum) {{
+    #                {body_code}
+    #                default:
+    #                    assert(0);
+    #            }}
+    #            """
+    #
+    #        raise NotImplementedError(ast)
 
     def emit_funcdef(
         self,
@@ -217,9 +245,9 @@ class _FunctionEmitter:
         c_name: str,
     ) -> None:
         for var in funcdef.argvars:
-            self.add_local_var(var, declare=False)
+            self.add_local_var(var, declare=False, need_decref=False)
 
-        body_statements = "".join(self.emit_statement(s) for s in funcdef.body)
+        body_instructions = "\n\t".join(self.emit_instruction(s) for s in funcdef.body)
         decrefs = "".join(
             self.file_emitter.emit_decref(self.variable_names[var], var.type)
             for var in reversed(self.need_decref)
@@ -244,8 +272,8 @@ class _FunctionEmitter:
             argnames,
             (
                 self.before_body
-                + body_statements
-                + self.emit_label("out")
+                + body_instructions
+                + _emit_label("out")
                 + decrefs
                 + self.after_body
             ),

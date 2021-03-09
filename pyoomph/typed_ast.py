@@ -1,60 +1,59 @@
+# TODO: rename this, it's no longer ast
 from __future__ import annotations
 
-import copy
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 
 from pyoomph.types import BOOL, FLOAT, INT, LIST, STRING, FunctionType, Type, UnionType
 
 
 @dataclass(eq=False)
-class Expression:
-    type: Type
-
-
-@dataclass(eq=False)
-class Statement:
+class Instruction:
     pass
-
-
-@dataclass(eq=False)
-class Variable:
-    name: str
-    type: Type
 
 
 # There can be different local variables with same name, even in the same
 # function. They are represented as different instances of this class.
+# TODO: make name optional
 #
 # A local variable holds a reference. They are decreffed automatically when the
 # function exits.
 @dataclass(eq=False)
-class LocalVariable(Variable):
-    pass
+class LocalVariable:
+    type: Type
 
 
 # Currently these are always functions. These would be called "global
 # variables" in Python, but that's confusing, because they are less global
 # than ExportVariables.
 @dataclass(eq=False)
-class ThisFileVariable(Variable):
-    pass
+class ThisFileVariable:
+    name: str
+    type: Type
 
 
 @dataclass(eq=False)
-class ExportVariable(Variable):
-    pass
+class ExportVariable:
+    name: str
+    type: Type
 
 
 @dataclass(eq=False)
-class BuiltinVariable(Variable):
-    pass
+class BuiltinVariable:
+    name: str
+    type: Type
 
 
 @dataclass(eq=False)
-class SpecialVariable(Variable):
-    pass
+class SpecialVariable:
+    name: str
+    type: Type
+
+
+Variable = Union[
+    LocalVariable, ThisFileVariable, ExportVariable, BuiltinVariable, SpecialVariable
+]
 
 
 builtin_variables = {
@@ -99,194 +98,196 @@ special_variables = {
 
 
 @dataclass(eq=False)
-class GetVar(Expression):
-    var: Variable
-    incref: bool
-    lineno: Optional[int]
+class VarCpy(Instruction):
+    # Arguments are same order as memcpy
+    dest: LocalVariable
+    source: Variable
 
-    def __init__(
-        self, var: Variable, *, incref: bool = True, lineno: Optional[int] = None
-    ):
-        super().__init__(var.type)
-        self.var = var
-        self.incref = incref
-        self.lineno = lineno
+    def __post_init__(self) -> None:
+        assert self.dest.type == self.source.type
 
 
 @dataclass(eq=False)
-class GetAttribute(Expression):
-    obj: Expression
+class GetAttribute(Instruction):
+    obj: LocalVariable
+    result: LocalVariable
     attribute: str
 
-    def __init__(self, obj: Expression, attribute: str):
-        the_type = {name: the_type for the_type, name in obj.type.members}[attribute]
-        super().__init__(the_type)
-        self.obj = obj
-        self.attribute = attribute
+    def __post_init__(self) -> None:
+        assert (self.result.type, self.attribute) in self.obj.type.members
+
+
+# Currently you can't use a function, method or ctor without immediately calling it
+@dataclass(eq=False)
+class CallMethod(Instruction):
+    obj: LocalVariable
+    method_name: str
+    args: List[LocalVariable]
+    result: Optional[LocalVariable]
+
+    def __post_init__(self) -> None:
+        functype = self.obj.type.methods[self.method_name]
+        if functype.returntype is None:
+            assert self.result is None
+        else:
+            assert self.result is not None
+            assert self.result.type == functype.returntype
+        assert [self.obj.type] + [
+            arg.type for arg in self.args
+        ] == functype.argtypes, self.method_name
 
 
 @dataclass(eq=False)
-class GetMethod(Expression):
-    the_class: Type
-    name: str
+class CallFunction(Instruction):
+    func: Variable
+    args: List[LocalVariable]
+    result: Optional[LocalVariable]
 
-    def __init__(self, the_class: Type, name: str):
-        super().__init__(the_class.methods[name])
-        self.the_class = the_class
-        self.name = name
+    def __post_init__(self) -> None:
+        assert not isinstance(self.func, LocalVariable)
+        assert isinstance(self.func.type, FunctionType)
+        if self.func.type.returntype is None:
+            assert self.result is None
+        else:
+            assert self.result is not None
+            assert self.result.type == self.func.type.returntype
+        assert [arg.type for arg in self.args] == self.func.type.argtypes
 
 
 @dataclass(eq=False)
-class StringConstant(Expression):
+class CallConstructor(Instruction):
+    result: LocalVariable
+    args: List[LocalVariable]
+
+    def __post_init__(self) -> None:
+        assert self.result.type.constructor_argtypes is not None
+        assert [arg.type for arg in self.args] == self.result.type.constructor_argtypes
+
+
+@dataclass(eq=False)
+class StringConstant(Instruction):
+    result: LocalVariable
     value: str
 
-    def __init__(self, value: str):
-        super().__init__(STRING)
-        self.value = value
-
 
 @dataclass(eq=False)
-class IntConstant(Expression):
+class IntConstant(Instruction):
+    result: LocalVariable
     value: int
 
-    def __init__(self, value: int):
-        super().__init__(INT)
-        self.value = value
-
 
 @dataclass(eq=False)
-class FloatConstant(Expression):
+class FloatConstant(Instruction):
+    result: LocalVariable
     value: str
 
-    def __init__(self, value: str):
-        super().__init__(FLOAT)
-        self.value = value
-
 
 @dataclass(eq=False)
-class Null(Expression):
-    pass
+class Null(Instruction):
+    result: LocalVariable
 
 
-# And,Or are not function calls with is_special=True because evaluation order
-# is different than for function calls.
-class BoolAnd(Expression):
-    lhs: Expression
-    rhs: Expression
+# And,Or are not function calls because evaluation order is different than for function calls.
+class BoolAnd(Instruction):
+    lhs: LocalVariable
+    rhs: LocalVariable
+    result: LocalVariable
 
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(BOOL)
-        self.lhs = lhs
-        self.rhs = rhs
+    def __post_init__(self) -> None:
+        assert self.lhs.type == BOOL
+        assert self.rhs.type == BOOL
+        assert self.result.type == BOOL
 
 
-class BoolOr(Expression):
-    lhs: Expression
-    rhs: Expression
+class BoolOr(Instruction):
+    lhs: LocalVariable
+    rhs: LocalVariable
+    result: LocalVariable
 
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(BOOL)
-        self.lhs = lhs
-        self.rhs = rhs
+    def __post_init__(self) -> None:
+        assert self.lhs.type == BOOL
+        assert self.rhs.type == BOOL
+        assert self.result.type == BOOL
 
 
 # Can't be a function call because arguments can be many different types
 @dataclass(eq=False)
-class PointersEqual(Expression):
-    lhs: Expression
-    rhs: Expression
+class PointersEqual(Instruction):
+    lhs: LocalVariable
+    rhs: LocalVariable
+    result: LocalVariable
 
-    def __init__(self, lhs: Expression, rhs: Expression):
-        super().__init__(BOOL)
-        self.lhs = lhs
-        self.rhs = rhs
-
-
-# Arguments have to be in local variables because this way their evaluation
-# order is guaranteed, even though it's undefined in C. Also, to decref them
-# after calling, they need to be in variables anyway.
-@dataclass(eq=False)
-class VoidCall(Statement):
-    func: Expression
-    args: List[LocalVariable]
+    def __post_init__(self) -> None:
+        assert self.lhs.type.refcounted
+        assert self.rhs.type.refcounted
+        assert self.rhs.type == BOOL
 
 
 @dataclass(eq=False)
-class ReturningCall(Expression):
-    func: Expression
-    args: List[LocalVariable]
+class InstantiateUnion(Instruction):
+    result: LocalVariable
+    value: LocalVariable
 
-    def __init__(self, func: Expression, args: List[LocalVariable]):
-        assert isinstance(func.type, FunctionType)
-        assert func.type.returntype is not None
-        super().__init__(func.type.returntype)
-        self.func = func
-        self.args = args
+    def __post_init__(self) -> None:
+        assert isinstance(self.result.type, UnionType)
+        assert self.result.type.type_members is not None
+        assert self.value.type in self.result.type.type_members
 
 
+# Doesn't do anything if variable is unset
 @dataclass(eq=False)
-class InstantiateUnion(Expression):
-    type: UnionType  # more specific than Expression.type
-    value: Expression
-
-
-# Evaluate statement, then output the value of the expression
-# TODO: delete this and somehow rewrite things properly
-@dataclass(eq=False)
-class StatementsAndExpression(Expression):
-    statements: List[Statement]
-    expression: Expression
-
-    def __init__(self, statements: List[Statement], expression: Expression):
-        super().__init__(expression.type)
-        self.statements = statements
-        self.expression = expression
-
-
-# Current value of variable is decreffed, if any. New value becomes the
-# reference held by the variable and will be decreffed eventually. In this
-# sense, this is a little bit like a decref.
-@dataclass(eq=False)
-class SetLocalVar(Statement):
+class DecRef(Instruction):
     var: LocalVariable
-    value: Expression
 
 
 @dataclass(eq=False)
-class Continue(Statement):
+class Continue(Instruction):
     loop_id: str
 
 
 @dataclass(eq=False)
-class Break(Statement):
+class Break(Instruction):
     loop_id: str
 
 
 @dataclass(eq=False)
-class Return(Statement):
-    value: Optional[Expression]
+class Return(Instruction):
+    value: Optional[LocalVariable]
 
 
 @dataclass(eq=False)
-class If(Statement):
-    condition: Expression
-    then: List[Statement]
-    otherwise: List[Statement]
+class If(Instruction):
+    condition: LocalVariable
+    then: List[Instruction]
+    otherwise: List[Instruction]
+
+    def __post_init__(self) -> None:
+        assert self.condition.type == BOOL
 
 
 @dataclass(eq=False)
-class Loop(Statement):
+class Loop(Instruction):
     loop_id: str
-    init: List[Statement]
-    cond: Expression
-    incr: List[Statement]
-    body: List[Statement]
+    # for init; cond; incr:
+    #     body
+    init: List[Instruction]
+    cond: LocalVariable
+    incr: List[Instruction]
+    body: List[Instruction]
+
+    def __post_init__(self) -> None:
+        assert self.cond.type == BOOL
 
 
 @dataclass(eq=False)
-class Switch(Statement):
-    union: Expression
-    cases: Dict[LocalVariable, List[Statement]]
+class Switch(Instruction):
+    union: LocalVariable
+    cases: Dict[LocalVariable, List[Instruction]]
+
+
+@dataclass(eq=False)
+class Constructor(Instruction):
+    result: LocalVariable
 
 
 @dataclass(eq=False)
@@ -298,7 +299,8 @@ class ToplevelDeclaration:
 class FuncDef(ToplevelDeclaration):
     var: Union[ThisFileVariable, ExportVariable]
     argvars: List[LocalVariable]
-    body: List[Statement]
+    body: List[Instruction]
+    returnvar: Optional[LocalVariable]
 
 
 @dataclass(eq=False)
@@ -306,7 +308,8 @@ class MethodDef:
     name: str
     type: FunctionType
     argvars: List[LocalVariable]
-    body: List[Statement]
+    body: List[Instruction]
+    returnvar: Optional[LocalVariable]
 
 
 @dataclass(eq=False)
@@ -319,16 +322,6 @@ class ClassDef(ToplevelDeclaration):
 @dataclass(eq=False)
 class UnionDef(ToplevelDeclaration):
     type: UnionType
-
-
-@dataclass(eq=False)
-class DecRef(Statement):
-    value: Expression
-
-
-@dataclass(eq=False)
-class Constructor(Expression):
-    class_to_construct: Type
 
 
 @dataclass(eq=False)

@@ -86,6 +86,9 @@ Missing features:
 - `list + list`
 - `list.starts_with` and `ends_with`
 - exceptions (easiest to implement similar to union?)
+- compilation errors or warnings for bad/unconventional/complicated style
+    - `string.length() == 0` is more complicated than `string == ""`
+    - `not (a and not b)` is more complicated than `(not a) or b`
 
 Design questions to (re)think:
 - requiring use of attributes (useful for going through data, avoid accidental ignoring)
