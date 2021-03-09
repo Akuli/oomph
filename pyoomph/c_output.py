@@ -132,6 +132,8 @@ class _FunctionEmitter:
                 self.emit_local_var(ins.value),
                 membernum,
             )
+        if isinstance(ins, tast.Null):
+            return self.emit_local_var(ins.result) + '.isnull = true;'
         if isinstance(ins, tast.GetFromUnion):
             assert isinstance(ins.union.type, tast.UnionType)
             assert ins.union.type.type_members is not None
@@ -160,9 +162,6 @@ class _FunctionEmitter:
             }}
             """
         raise NotImplementedError(ins)
-
-    #        if isinstance(ast, tast.Null):
-    #            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
 
     def add_local_var(
         self, var: tast.LocalVariable, *, declare: bool = True, need_decref: bool = True

@@ -117,7 +117,7 @@ class _FunctionOrMethodTyper:
 
     def _is_null(self, obj: tast.LocalVariable) -> tast.LocalVariable:
         result_var = self.create_var(BOOL)
-        self.code.append(tast.CallMethod(obj, "to_string", [], result_var))
+        self.code.append(tast.CallMethod(obj, "is_null", [], result_var))
         return result_var
 
     def _get_value_of_optional(self, obj: tast.LocalVariable) -> tast.LocalVariable:
@@ -152,30 +152,27 @@ class _FunctionOrMethodTyper:
             and lhs.type.generic_origin.generic is OPTIONAL
             and rhs.type.generic_origin.generic is OPTIONAL
         ):
-            raise NotImplementedError("sowwy")
-        #            lhs_var = tast.LocalVariable("optional_operator_lhs", lhs.type)
-        #            rhs_var = tast.LocalVariable("optional_operator_rhs", rhs.type)
-        #            lhs_with_side_effects = tast.StatementsAndExpression(
-        #                [tast.SetLocalVar(lhs_var, lhs), tast.SetLocalVar(rhs_var, rhs)],
-        #                tast.GetVar(lhs_var, incref=False),
-        #            )
-        #            return tast.BoolOr(
-        #                tast.BoolAnd(
-        #                    self._is_null(lhs_with_side_effects),
-        #                    self._is_null(tast.GetVar(rhs_var, incref=False)),
-        #                ),
-        #                tast.BoolAnd(
-        #                    tast.BoolAnd(
-        #                        self._not(self._is_null(tast.GetVar(lhs_var, incref=False))),
-        #                        self._not(self._is_null(tast.GetVar(rhs_var, incref=False))),
-        #                    ),
-        #                    self._do_binary_op_typed(
-        #                        self._get_value_of_optional(tast.GetVar(lhs_var, incref=False)),
-        #                        "==",
-        #                        self._get_value_of_optional(tast.GetVar(rhs_var, incref=False)),
-        #                    ),
-        #                ),
-        #            )
+            result_var = self.create_var(BOOL)
+            with self.redirect_code() as neither_null_code:
+                lhs_value = self._get_value_of_optional(lhs)
+                rhs_value = self._get_value_of_optional(rhs)
+                equal_value = self._do_binary_op_typed(lhs_value, '==', rhs_value)
+                self.code.append(tast.VarCpy(result_var, equal_value))
+
+            self.code.append(
+                tast.If(
+                    self._is_null(lhs),
+                    [tast.VarCpy(result_var, self._is_null(rhs))],
+                    [
+                        tast.If(
+                            self._is_null(rhs),
+                            [tast.VarCpy(result_var, tast.builtin_variables["false"])],
+                            neither_null_code
+                        )
+                    ],
+                )
+            )
+            return result_var
 
         if lhs.type is INT and op in {"+", "-", "*", "mod", ">"} and rhs.type is INT:
             return self.create_special_call(
