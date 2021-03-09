@@ -19,13 +19,13 @@ from pyoomph.types import (
 )
 
 
-class _FunctionOrMethodTyper:
+class _FunctionOrMethodConverter:
     def __init__(
         self,
-        file_typer: _FileTyper,
+        file_converter: _FileConverter,
         variables: Dict[str, ir.Variable],
     ):
-        self.file_typer = file_typer
+        self.file_converter = file_converter
         self.variables = variables
         self.loop_stack: List[Optional[str]] = []  # None means a switch
         self.loop_counter = 0
@@ -95,7 +95,7 @@ class _FunctionOrMethodTyper:
                     args.append(self.do_expression(ast.IntConstant(call.func.lineno)))
             self.code.append(ir.CallFunction(func, args, result_var))
         elif isinstance(call.func, ast.Constructor):
-            the_class = self.file_typer.get_type(call.func.type)
+            the_class = self.file_converter.get_type(call.func.type)
             assert the_class.constructor_argtypes is not None
             args = [self.do_expression(arg) for arg in call.args]
             assert [arg.type for arg in args] == the_class.constructor_argtypes
@@ -276,10 +276,10 @@ class _FunctionOrMethodTyper:
 
         if isinstance(expr, ast.Call):
             if isinstance(expr.func, ast.Constructor):
-                union_type = self.file_typer.get_type(expr.func.type)
+                union_type = self.file_converter.get_type(expr.func.type)
                 if isinstance(union_type, UnionType):
                     var = self.create_var(union_type)
-                    self.file_typer.post_process_union(union_type)
+                    self.file_converter.post_process_union(union_type)
                     assert len(expr.args) == 1
                     obj = self.do_expression(expr.args[0])
                     self.code.append(ir.IncRef(obj))
@@ -327,7 +327,7 @@ class _FunctionOrMethodTyper:
 
         if isinstance(expr, ast.Null):
             null_var = self.create_var(
-                OPTIONAL.get_type(self.file_typer.get_type(expr.type))
+                OPTIONAL.get_type(self.file_converter.get_type(expr.type))
             )
             self.code.append(ir.Null(null_var))
             return null_var
@@ -406,12 +406,12 @@ class _FunctionOrMethodTyper:
             union_var = self.variables[stmt.varname]
             assert isinstance(union_var, ir.LocalVariable)
             assert isinstance(union_var.type, UnionType)
-            types_to_do = self.file_typer.post_process_union(union_var.type).copy()
+            types_to_do = self.file_converter.post_process_union(union_var.type).copy()
             self.loop_stack.append(None)
 
             cases: Dict[ir.Type, List[ir.Instruction]] = {}
             for raw_type, raw_body in stmt.cases.items():
-                nice_type = self.file_typer.get_type(raw_type)
+                nice_type = self.file_converter.get_type(raw_type)
                 types_to_do.remove(nice_type)
                 var = self.create_var(nice_type)
                 self.variables[stmt.varname] = var
@@ -467,7 +467,7 @@ def _create_to_string_method(class_type: ir.Type) -> ast.FuncOrMethodDef:
     )
 
 
-class _FileTyper:
+class _FileConverter:
     def __init__(self, path: pathlib.Path, exports: List[ir.Export]) -> None:
         self.path = path
         self.exports = exports
@@ -530,8 +530,8 @@ class _FileTyper:
             assert argname not in local_vars
             local_vars[argname] = copied_var
 
-        typer = _FunctionOrMethodTyper(self, local_vars)
-        body.extend(typer.do_block(funcdef.body))
+        converter = _FunctionOrMethodConverter(self, local_vars)
+        body.extend(converter.do_block(funcdef.body))
 
         if class_name is None:
             return ir.FuncDef(mypy_sucks, argvars, body)
@@ -634,10 +634,12 @@ def convert_program(
     path: pathlib.Path,
     exports: List[ir.Export],
 ) -> List[ir.ToplevelDeclaration]:
-    typer = _FileTyper(path, exports)
+    converter = _FileConverter(path, exports)
     result = [
-        top for top in map(typer.do_toplevel_declaration, program) if top is not None
+        top
+        for top in map(converter.do_toplevel_declaration, program)
+        if top is not None
     ]
-    for key in list(typer.union_laziness):
-        typer.post_process_union(key)
+    for key in list(converter.union_laziness):
+        converter.post_process_union(key)
     return result

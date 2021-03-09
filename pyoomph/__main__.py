@@ -9,7 +9,7 @@ import subprocess
 import sys
 from typing import List, Set
 
-from pyoomph import ast, c_output, parser, typer
+from pyoomph import ast, ast2ir, c_output, parser
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
@@ -48,7 +48,7 @@ class CompilationUnit:
         session: c_output.Session,
         headers: List[str],
     ) -> None:
-        ir = typer.convert_program(self.ast, self.source_path, session.exports)
+        ir = ast2ir.convert_program(self.ast, self.source_path, session.exports)
         c, h = session.create_c_code(ir, self.source_path, headers)
 
         self.c_path.write_text(c, encoding="utf-8")
