@@ -67,7 +67,10 @@ class _FunctionOrMethodConverter:
     def do_call(self, call: ast.Call) -> Optional[ir.LocalVariable]:
         if isinstance(call.func, ast.GetAttribute):
             self_arg = self.do_expression(call.func.obj)
-            result_type = self_arg.type.methods[call.func.attribute].returntype
+            try:
+                result_type = self_arg.type.methods[call.func.attribute].returntype
+            except KeyError:
+                raise RuntimeError(f"{self_arg.type.name} has no method {call.func.attribute}()")
             if result_type is None:
                 result_var = None
             else:
@@ -287,7 +290,7 @@ class _FunctionOrMethodConverter:
                     return var
 
             call = self.do_call(expr)
-            assert call is not None
+            assert call is not None, f"return value of void function {expr.func} used"
             return call
 
         if isinstance(expr, ast.GetVar):

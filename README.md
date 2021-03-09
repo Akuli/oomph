@@ -92,6 +92,9 @@ Missing features:
     - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
 - warnings about unused things (unions, classes, functions, methods, variables)
 
+Deprecated features:
+- `is_null()` method (use `thing != null[type]`)
+
 Design questions to (re)think:
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.

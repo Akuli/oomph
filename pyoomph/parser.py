@@ -72,6 +72,7 @@ class _Parser:
 
     def do_string_formatting(self, string: str) -> ast.Expression:
         parts = []
+        # FIXME: corner cases
         while string:
             if string[0] == "{":
                 end = string.index("}")
@@ -87,6 +88,7 @@ class _Parser:
                         .replace("\\t", "\t")
                         .replace("\\{", "{")
                         .replace("\\}", "}")
+                        .replace('\\"', '"')
                         .replace("\\\\", "\\")
                     )
                 )

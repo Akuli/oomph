@@ -45,9 +45,11 @@ _TOKEN_REGEX = r'''
 | (?P<int>
     [1-9][0-9]* | 0
 )
+# There are slight differences between multiline_string and oneline_string.
+# See docs/syntax.md.
 | (?P<multiline_string>
     """ (
-        [^{}\\]             # Non-special character (newline allowed)
+        [^{}\\]             # Non-special character
         | \\[{}t\\]         # \{ and friends, but no \n since that's confusing
         | { [^{}\n\\]* }    # Code between braces
     )*? """
@@ -55,7 +57,7 @@ _TOKEN_REGEX = r'''
 | (?P<oneline_string>
     " (
         [^{}"\n\\]          # Non-special character
-        | \\[{}nt\\]        # \{ and friends
+        | \\[{}"nt\\]       # \{ and friends
         | { [^{}"\n\\]* }   # Code between braces
     )* "
 )

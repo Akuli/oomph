@@ -67,5 +67,4 @@ func the_actual_main():
     assert(process::run(run_command) == 0)
 
 export func main():
-    #tokenizer::tokenize(io::read_file("tests/hello.oomph"))
-    tokenizer::tokenize("print x")
+    tokenizer::tokenize(io::read_file("tests/hello.oomph"))

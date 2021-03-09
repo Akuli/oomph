@@ -4,6 +4,12 @@ func list_contains(List[Str] list, Str s) -> bool:
             return true
     return false
 
+func starts_with_any(Str s, List[Str] prefixes) -> optional[Str]:
+    foreach prefix of prefixes:
+        if s.starts_with(prefix):
+            return new optional[Str](prefix)
+    return null[Str]
+
 func get_simple_identifier(Str code) -> optional[Str]:
     # TODO: put this to stdlib
     let first_chars = new List[Str]()
@@ -75,10 +81,61 @@ func get_simple_identifier(Str code) -> optional[Str]:
         i = i + 1
     return new optional[Str](code.slice(0, i))
 
+# TODO: enums
+class Token(Str type, Str value):
+    meth matches(Str type, Str value) -> bool:
+        return self.type == type and self.value == value
 
 export func tokenize(Str code):
-    print(code)
-    print(get_simple_identifier(code))
+    let ops = new List[Str]()
+    ops.push("(")
+    ops.push(")")
+    ops.push(":")
+    ops.push("\n")
 
-export func main():
-    print(get_simple_identifier("print x"))
+    let result = new List[Token]()
+    while code != "":
+        let id = get_simple_identifier(code)
+        if id != null[Str]:
+            if id.get() == "export" or id.get() == "func":
+                result.push(new Token("keyword", id.get()))
+            else:
+                result.push(new Token("id", id.get()))
+
+            code = code.slice(id.get().length(), code.length())
+            continue
+
+        let op = starts_with_any(code, ops)
+        if op != null[Str]:
+            result.push(new Token("op", op.get()))
+            code = code.slice(op.get().length(), code.length())
+            continue
+
+        if code.starts_with(" "):
+            if result.get(result.length() - 1).matches("op", "\n"):
+                # Space after newline: indentation
+                assert(result.length() != 0)  # TODO: error
+                let indent_level = 0
+                while code.slice(indent_level, indent_level + 1) == " ":
+                    indent_level = indent_level + 1
+                result.push(new Token("indent", code.slice(0, indent_level)))
+                code = code.slice(indent_level, code.length())
+            else:
+                # Space to be ignored
+                code = code.slice(1, code.length())
+            continue
+
+        if code.starts_with("\""):
+            # TODO: escapes
+            # TODO: error handling
+            let content_length = code.slice(1, code.length()).find_first("\"")
+            let token_length = content_length + 2
+            result.push(new Token("string", code.slice(0, token_length)))
+            code = code.slice(token_length, code.length())
+            continue
+
+        print(result)
+        print("Invalid syntax: {code}")
+        assert(false)  # TODO: error
+
+    print("Success: {result}")

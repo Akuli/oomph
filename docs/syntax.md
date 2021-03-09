@@ -49,8 +49,9 @@ If more than one of these rules match, then the first matching rule should be us
 - Oneline strings start and end with `"`. The text between the `"` characters is interpreted
   just like for a multiline string, but with these differences:
     - Writing `\n`, a backslash followed by `n`, is allowed.
-    - Actual newline characters are not allowed.
+    - Writing `\"` is allowed.
     - Code between braces must not contain `"` characters.
+    - Actual newline characters are not allowed.
 - Operators, such as `==` or `(`. You can find a full list similarly to keywords.
 - Newline tokens, matching a single  newline character.
 - An indentation token consists of one or more space characters in the beginning of a line.
