@@ -370,7 +370,8 @@ class _FunctionOrMethodTyper:
             self.code.append(tast.If(condition, body, otherwise))
 
         elif isinstance(ast, uast.Loop):
-            init = [] if ast.init is None else self.do_block([ast.init])
+            if ast.init is not None:
+                self.do_statement(ast.init)
             cond = (
                 self.create_special_call("bool_true", [])
                 if ast.cond is None
@@ -386,14 +387,9 @@ class _FunctionOrMethodTyper:
             popped = self.loop_stack.pop()
             assert popped == loop_id
 
-            self.code.append(tast.Loop(loop_id, init, cond, incr, body))
+            self.code.append(tast.Loop(loop_id, cond, incr, body))
             if isinstance(ast.init, uast.Let):
-                [set_var] = init
-                assert isinstance(set_var, tast.VarCpy)
-                [name] = [
-                    name for name, var in self.variables.items() if var == set_var.dest
-                ]
-                del self.variables[name]
+                del self.variables[ast.init.varname]
 
         elif isinstance(ast, uast.Switch):
             union_var = self.variables[ast.varname]

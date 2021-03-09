@@ -101,6 +101,17 @@ class _FunctionEmitter:
             """
         if isinstance(ins, tast.PointersEqual):
             return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
+        if isinstance(ins, tast.Loop):
+            # While loop because I couldn't get C's for loop to work here
+            body = "\n\t\t".join(map(self.emit_instruction, ins.body))
+            incr = "\n\t\t".join(map(self.emit_instruction, ins.incr))
+            return f"""
+            while ({self.emit_local_var(ins.cond)}) {{
+                {body}
+                {_emit_label(ins.loop_id)}  // oomph 'continue' jumps here
+                {incr}
+            }}
+            """
         raise NotImplementedError(ins)
 
     def add_local_var(
