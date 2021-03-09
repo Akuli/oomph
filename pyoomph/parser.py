@@ -371,7 +371,7 @@ class _Parser:
             self.get_token("op", ";")
             incr = (
                 None
-                if self.token_iter.peek() == ("op", ";")
+                if self.token_iter.peek() == ("begin_block", ":")
                 else self.parse_oneline_ish_statement()
             )
             body = self.parse_block_of_statements()

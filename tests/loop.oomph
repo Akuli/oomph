@@ -9,6 +9,10 @@ export func main():
             break
         print(i)
 
+    for let i = 0; ; :
+        print("Lol")
+        break
+
     let k = 0
     while k != 5:
         print(k)

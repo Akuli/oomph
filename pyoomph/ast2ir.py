@@ -386,11 +386,14 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.Loop):
             if stmt.init is not None:
                 self.do_statement(stmt.init)
+
             if stmt.cond is None:
-                cond_var = self.create_special_call("bool_true", [])
+                cond_var = self.create_var(BOOL)
+                cond_code = [ir.VarCpy(cond_var, ir.builtin_variables['true'])]
             else:
                 with self.code_to_separate_list() as cond_code:
                     cond_var = self.do_expression(stmt.cond)
+
             incr = [] if stmt.incr is None else self.do_block([stmt.incr])
 
             loop_id = f"loop{self.loop_counter}"
