@@ -53,10 +53,6 @@ export func main():
     assert(args.length() != 0)  # TODO: error
     let source_path = args.get(0)
 
-    let program_args = new List[Str]()
-    for let i = 0; i < args.length(); i = i+1:
-        program_args.push(args.get(i))
-
     io::write_file("{cache_dir}/out.c", """
     #include <stdio.h>
     void oomph_main(void) \{ puts("Hello World!\\n"); \}
@@ -65,4 +61,6 @@ export func main():
 
     let run_command = new List[Str]()
     run_command.push("{cache_dir}/out")
+    for let i = 1; i < args.length(); i = i+1:
+        run_command.push(args.get(i))
     assert(process::run(run_command) == 0)
