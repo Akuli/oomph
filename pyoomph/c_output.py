@@ -410,6 +410,8 @@ class _FileEmitter:
         self.session = session
         self.varname_counter = 0
         self.variable_names: Dict[ir.Variable, str] = {
+            ir.builtin_variables["__argv_count"]: "argv_count",
+            ir.builtin_variables["__argv_get"]: "argv_get",
             ir.builtin_variables["__io_mkdir"]: "io_mkdir",
             ir.builtin_variables["__io_read_file"]: "io_read_file",
             ir.builtin_variables["__io_write_file"]: "io_write_file",

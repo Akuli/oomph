@@ -61,6 +61,8 @@ Variable = Union[
 builtin_variables = {
     var.name: var
     for var in [
+        BuiltinVariable("__argv_count", FunctionType([], INT)),
+        BuiltinVariable("__argv_get", FunctionType([INT], STRING)),
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
