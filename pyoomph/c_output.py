@@ -118,7 +118,6 @@ class _FunctionEmitter:
             """
 
         if isinstance(ins, tast.Loop):
-            # While loop because I couldn't get C's for loop to work here
             cond_code = self.emit_body(ins.cond_code)
             body = self.emit_body(ins.body)
             incr = self.emit_body(ins.incr)
