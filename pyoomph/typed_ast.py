@@ -261,10 +261,19 @@ class Loop(Instruction):
         assert self.cond.type == BOOL
 
 
+# errors if trying to get wrong type
+# think of it as VarCpy for unions
+@dataclass(eq=False)
+class GetFromUnion(Instruction):
+    result: LocalVariable
+    union: LocalVariable
+
+
+# TODO: replace with nested Ifs or something like that?
 @dataclass(eq=False)
 class Switch(Instruction):
     union: LocalVariable
-    cases: Dict[LocalVariable, List[Instruction]]
+    cases: Dict[Type, List[Instruction]]
 
 
 @dataclass(eq=False)

@@ -277,9 +277,9 @@ class _FunctionOrMethodTyper:
                     var = tast.LocalVariable(union_type)
                     self.file_typer.post_process_union(union_type)
                     assert len(ast.args) == 1
-                    self.code.append(
-                        tast.InstantiateUnion(var, self.do_expression(ast.args[0]))
-                    )
+                    obj = self.do_expression(ast.args[0])
+                    self.code.append(tast.IncRef(obj))
+                    self.code.append(tast.InstantiateUnion(var, obj))
                     return var
 
             call = self.do_call(ast)
@@ -323,9 +323,7 @@ class _FunctionOrMethodTyper:
 
     def do_statement(self, ast: uast.Statement) -> None:
         if isinstance(ast, uast.Call):
-            result = self.do_call(ast)
-            if result is not None:
-                self.code.append(tast.DecRef(result))
+            self.do_call(ast)
 
         elif isinstance(ast, uast.Let):
             self.variables[ast.varname] = self.do_expression(ast.value)
@@ -398,13 +396,13 @@ class _FunctionOrMethodTyper:
             types_to_do = self.file_typer.post_process_union(union_var.type).copy()
             self.loop_stack.append(None)
 
-            cases: Dict[tast.LocalVariable, List[tast.Instruction]] = {}
+            cases: Dict[tast.Type, List[tast.Instruction]] = {}
             for raw_type, raw_body in ast.cases.items():
                 nice_type = self.file_typer.get_type(raw_type)
                 types_to_do.remove(nice_type)
                 var = tast.LocalVariable(nice_type)
                 self.variables[ast.varname] = var
-                cases[var] = self.do_block(raw_body)
+                cases[nice_type] = [tast.GetFromUnion(var, union_var), tast.IncRef(var)] + self.do_block(raw_body)
 
             self.variables[ast.varname] = union_var
 

@@ -123,18 +123,22 @@ class _FunctionEmitter:
                 self.emit_local_var(ins.value),
                 membernum,
             )
+        if isinstance(ins, tast.GetFromUnion):
+            assert isinstance(ins.union.type, tast.UnionType)
+            assert ins.union.type.type_members is not None
+            membernum = ins.union.type.type_members.index(ins.result.type)
+            return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.union)}.val.item{membernum};"
         if isinstance(ins, tast.Switch):
             assert isinstance(ins.union.type, tast.UnionType)
             assert ins.union.type.type_members is not None
 
             body_code = ""
-            for specific_var, body in ins.cases.items():
-                membernum = ins.union.type.type_members.index(specific_var.type)
-                specific_var_string = self.emit_local_var(specific_var)
-                case_content = "\n\t\t".join(map(self.emit_instruction, body))
+            for membernum, the_type in enumerate(ins.union.type.type_members):
+                case_content = "\n\t\t".join(
+                    map(self.emit_instruction, ins.cases[the_type])
+                )
                 body_code += f"""
                 case {membernum}:
-                    {specific_var_string} = {self.emit_local_var(ins.union)}.val.item{membernum};
                     {case_content}
                     break;
                 """
