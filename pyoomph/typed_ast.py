@@ -23,6 +23,10 @@ class Instruction:
 class LocalVariable:
     type: Type
 
+    # Default dataclass repr does not distinguish different instances
+    def __repr__(self) -> str:
+        return "<LocalVariable: %#x>" % id(self)
+
 
 # Currently these are always functions. These would be called "global
 # variables" in Python, but that's confusing, because they are less global

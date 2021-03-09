@@ -91,6 +91,8 @@ Missing features:
     - `not (a and not b)` is more complicated than `(not a) or b`
 
 Design questions to (re)think:
+- some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
+    you want multiple lines of code before the condition of a loop.
 - requiring use of attributes (useful for going through data, avoid accidental ignoring)
 - should string lengths and indexing be done in unicode code points instead of
   utf-8 bytes?

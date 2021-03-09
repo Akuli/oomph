@@ -25,16 +25,11 @@ class _FunctionOrMethodTyper:
         self,
         file_typer: _FileTyper,
         variables: Dict[str, tast.Variable],
-        returntype: Optional[tast.Type],
     ):
         self.file_typer = file_typer
         self.variables = variables
         self.loop_stack: List[Optional[str]] = []  # None means a switch
         self.loop_counter = 0
-        if returntype is None:
-            self.return_var = None
-        else:
-            self.return_var = tast.LocalVariable(returntype)
         self.code: List[tast.Instruction] = []
 
     def create_var(self, the_type: Type) -> tast.LocalVariable:
@@ -44,7 +39,7 @@ class _FunctionOrMethodTyper:
         return result
 
     @contextlib.contextmanager
-    def redirect_code(self) -> Iterator[List[tast.Instruction]]:
+    def code_to_separate_list(self) -> Iterator[List[tast.Instruction]]:
         result: List[tast.Instruction] = []
         old_code = self.code
         self.code = result
@@ -153,10 +148,10 @@ class _FunctionOrMethodTyper:
             and rhs.type.generic_origin.generic is OPTIONAL
         ):
             result_var = self.create_var(BOOL)
-            with self.redirect_code() as neither_null_code:
+            with self.code_to_separate_list() as neither_null_code:
                 lhs_value = self._get_value_of_optional(lhs)
                 rhs_value = self._get_value_of_optional(rhs)
-                equal_value = self._do_binary_op_typed(lhs_value, '==', rhs_value)
+                equal_value = self._do_binary_op_typed(lhs_value, "==", rhs_value)
                 self.code.append(tast.VarCpy(result_var, equal_value))
 
             self.code.append(
@@ -167,7 +162,7 @@ class _FunctionOrMethodTyper:
                         tast.If(
                             self._is_null(rhs),
                             [tast.VarCpy(result_var, tast.builtin_variables["false"])],
-                            neither_null_code
+                            neither_null_code,
                         )
                     ],
                 )
@@ -220,10 +215,11 @@ class _FunctionOrMethodTyper:
 
     def do_binary_op(self, ast: uast.BinaryOperator) -> tast.LocalVariable:
         # Avoid evaluating right side when not needed
+        # TODO: mention this in docs
         if ast.op in {"and", "or"}:
             lhs_var = self.do_expression(ast.lhs)
             result_var = self.create_var(BOOL)
-            with self.redirect_code() as rhs_evaluation:
+            with self.code_to_separate_list() as rhs_evaluation:
                 rhs_var = self.do_expression(ast.rhs)
 
             assert lhs_var.type == BOOL
@@ -258,14 +254,17 @@ class _FunctionOrMethodTyper:
             var = self.create_var(INT)
             self.code.append(tast.IntConstant(var, ast.value))
             return var
+
         if isinstance(ast, uast.FloatConstant):
             var = self.create_var(FLOAT)
             self.code.append(tast.FloatConstant(var, ast.value))
             return var
+
         if isinstance(ast, uast.StringConstant):
             var = self.create_var(STRING)
             self.code.append(tast.StringConstant(var, ast.value))
             return var
+
         if isinstance(ast, uast.StringFormatJoin):
             assert len(ast.parts) >= 2
             result = self.stringify(self.do_expression(ast.parts[0]))
@@ -275,6 +274,7 @@ class _FunctionOrMethodTyper:
                     "string_concat", [result, self.stringify(self.do_expression(part))]
                 )
             return result
+
         if isinstance(ast, uast.Call):
             if isinstance(ast.func, uast.Constructor):
                 union_type = self.file_typer.get_type(ast.func.type)
@@ -290,6 +290,7 @@ class _FunctionOrMethodTyper:
             call = self.do_call(ast)
             assert call is not None
             return call
+
         if isinstance(ast, uast.GetVar):
             # Don't return the same variable, otherwise 'a = a' decrefs too much
             old_var = self.variables[ast.varname]
@@ -297,6 +298,7 @@ class _FunctionOrMethodTyper:
             self.code.append(tast.VarCpy(new_var, old_var))
             self.code.append(tast.IncRef(new_var))
             return new_var
+
         if isinstance(ast, uast.UnaryOperator):
             obj = self.do_expression(ast.obj)
             if obj.type is BOOL and ast.op == "not":
@@ -306,10 +308,13 @@ class _FunctionOrMethodTyper:
             if obj.type is FLOAT and ast.op == "-":
                 return self.create_special_call("float_neg", [obj])
             raise NotImplementedError(f"{ast.op} {obj.type}")
+
         if isinstance(ast, uast.BinaryOperator):
             return self.do_binary_op(ast)
+
         if isinstance(ast, uast.Constructor):
             raise NotImplementedError
+
         if isinstance(ast, uast.GetAttribute):
             obj = self.do_expression(ast.obj)
             [member_type] = [
@@ -318,12 +323,14 @@ class _FunctionOrMethodTyper:
             result = self.create_var(member_type)
             self.code.append(tast.GetAttribute(obj, result, ast.attribute))
             return result
-        elif isinstance(ast, uast.Null):
+
+        if isinstance(ast, uast.Null):
             null_var = self.create_var(
                 OPTIONAL.get_type(self.file_typer.get_type(ast.type))
             )
             self.code.append(tast.Null(null_var))
             return null_var
+
         raise NotImplementedError(ast)
 
     def do_statement(self, ast: uast.Statement) -> None:
@@ -378,7 +385,7 @@ class _FunctionOrMethodTyper:
             if ast.cond is None:
                 cond_var = self.create_special_call("bool_true", [])
             else:
-                with self.redirect_code() as cond_code:
+                with self.code_to_separate_list() as cond_code:
                     cond_var = self.do_expression(ast.cond)
             incr = [] if ast.incr is None else self.do_block([ast.incr])
 
@@ -423,7 +430,7 @@ class _FunctionOrMethodTyper:
             raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Instruction]:
-        with self.redirect_code() as result:
+        with self.code_to_separate_list() as result:
             for statement in block:
                 self.do_statement(statement)
         return result
@@ -470,10 +477,7 @@ class _FileTyper:
         # Union members don't need to exist when union is defined (allows nestedness)
         self.union_laziness: Dict[UnionType, List[uast.Type]] = {}
 
-    def add_var(self, var: tast.Variable, name: Optional[str] = None) -> None:
-        if name is None:
-            assert not isinstance(var, tast.LocalVariable)  # these have no names
-            name = var.name
+    def add_var(self, var: tast.Variable, name: str) -> None:
         assert name not in self.variables
         self.variables[name] = var
 
@@ -507,7 +511,7 @@ class _FileTyper:
                 mypy_sucks: Union[tast.ExportVariable, tast.ThisFileVariable] = func_var
             else:
                 mypy_sucks = tast.ThisFileVariable(funcdef.name, functype)
-            self.add_var(mypy_sucks)
+            self.add_var(mypy_sucks, mypy_sucks.name)
 
         local_vars = self.variables.copy()
         argvars = []
@@ -524,7 +528,7 @@ class _FileTyper:
             assert argname not in local_vars
             local_vars[argname] = copied_var
 
-        typer = _FunctionOrMethodTyper(self, local_vars, functype.returntype)
+        typer = _FunctionOrMethodTyper(self, local_vars)
         body.extend(typer.do_block(funcdef.body))
 
         if class_name is None:

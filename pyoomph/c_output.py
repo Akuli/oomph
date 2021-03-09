@@ -24,7 +24,7 @@ _T = TypeVar("_T")
 
 def _emit_label(name: str) -> str:
     # It's invalid c syntax to end a block with a label, (void)0 fixes
-    return f"{name}: (void)0;\n\t"
+    return f"{name}: (void)0;"
 
 
 class _FunctionEmitter:
@@ -35,11 +35,8 @@ class _FunctionEmitter:
         self.after_body = ""
         self.need_decref: List[tast.LocalVariable] = []
 
-    # TODO: do we need both this and emit_incref?
     def incref_var(self, var: tast.LocalVariable) -> str:
-        return self.file_emitter.emit_incref(
-            self.variable_names[var], var.type, semicolon=False
-        )
+        return self.file_emitter.emit_incref(self.variable_names[var], var.type) + ";"
 
     def emit_call(
         self,
@@ -52,48 +49,66 @@ class _FunctionEmitter:
             return f"{func}({args_string});"
         return f"{self.emit_local_var(result_var)} = {func}({args_string});"
 
+    def emit_body(self, body: List[tast.Instruction]) -> str:
+        return "\n\t".join(map(self.emit_instruction, body))
+
     def emit_instruction(self, ins: tast.Instruction) -> str:
         if isinstance(ins, tast.StringConstant):
             return f"{self.emit_local_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
+
         if isinstance(ins, tast.IntConstant):
             return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
+
         if isinstance(ins, tast.FloatConstant):
             return f"{self.emit_local_var(ins.result)} = {ins.value};"
+
         if isinstance(ins, tast.VarCpy):
             return (
                 f"{self.emit_local_var(ins.dest)} = {self.variable_names[ins.source]};"
             )
+
         if isinstance(ins, tast.IncRef):
             return self.incref_var(ins.var) + ";"
+
         if isinstance(ins, tast.DecRef):
-            return self.file_emitter.emit_decref(
-                self.emit_local_var(ins.var), ins.var.type
+            return (
+                self.file_emitter.emit_decref(
+                    self.emit_local_var(ins.var), ins.var.type
+                )
+                + ";"
             )
+
         if isinstance(ins, tast.CallFunction):
             return self.emit_call(self.variable_names[ins.func], ins.args, ins.result)
+
         if isinstance(ins, tast.CallMethod):
             return self.emit_call(
                 f"meth_{self.file_emitter.get_type_c_name(ins.obj.type)}_{ins.method_name}",
                 [ins.obj] + ins.args,
                 ins.result,
             )
+
         if isinstance(ins, tast.CallConstructor):
             return self.emit_call(
                 "ctor_" + self.file_emitter.get_type_c_name(ins.result.type),
                 ins.args,
                 ins.result,
             )
+
         if isinstance(ins, tast.Return):
             if ins.value is not None:
                 return f"{self.incref_var(ins.value)}; retval = {self.emit_local_var(ins.value)}; goto out;"
             return "goto out;"
+
         if isinstance(ins, tast.GetAttribute):
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
+
         if isinstance(ins, tast.PointersEqual):
             return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
+
         if isinstance(ins, tast.If):
-            then = "\n\t\t".join(map(self.emit_instruction, ins.then))
-            otherwise = "\n\t\t".join(map(self.emit_instruction, ins.otherwise))
+            then = self.emit_body(ins.then)
+            otherwise = self.emit_body(ins.otherwise)
             return f"""
             if ({self.emit_local_var(ins.condition)}) {{
                 {then}
@@ -101,11 +116,12 @@ class _FunctionEmitter:
                 {otherwise}
             }}
             """
+
         if isinstance(ins, tast.Loop):
             # While loop because I couldn't get C's for loop to work here
-            cond_code = "\n\t\t".join(map(self.emit_instruction, ins.cond_code))
-            body = "\n\t\t".join(map(self.emit_instruction, ins.body))
-            incr = "\n\t\t".join(map(self.emit_instruction, ins.incr))
+            cond_code = self.emit_body(ins.cond_code)
+            body = self.emit_body(ins.body)
+            incr = self.emit_body(ins.incr)
             return f"""
             while(1) {{
                 {cond_code}
@@ -116,11 +132,14 @@ class _FunctionEmitter:
                 {incr}
             }}
             """
+
         if isinstance(ins, tast.Continue):
             # Can't use C's continue because continue must emit_funcdef condition
             return f"goto {ins.loop_id};"
+
         if isinstance(ins, tast.Break):
             return "break;"
+
         if isinstance(ins, tast.InstantiateUnion):
             assert isinstance(ins.result.type, tast.UnionType)
             assert ins.result.type.type_members is not None
@@ -132,22 +151,23 @@ class _FunctionEmitter:
                 self.emit_local_var(ins.value),
                 membernum,
             )
+
         if isinstance(ins, tast.Null):
-            return self.emit_local_var(ins.result) + '.isnull = true;'
+            return self.emit_local_var(ins.result) + ".isnull = true;"
+
         if isinstance(ins, tast.GetFromUnion):
             assert isinstance(ins.union.type, tast.UnionType)
             assert ins.union.type.type_members is not None
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.union)}.val.item{membernum};"
+
         if isinstance(ins, tast.Switch):
             assert isinstance(ins.union.type, tast.UnionType)
             assert ins.union.type.type_members is not None
 
             body_code = ""
             for membernum, the_type in enumerate(ins.union.type.type_members):
-                case_content = "\n\t\t".join(
-                    map(self.emit_instruction, ins.cases[the_type])
-                )
+                case_content = self.emit_body(ins.cases[the_type])
                 body_code += f"""
                 case {membernum}:
                     {case_content}
@@ -197,9 +217,9 @@ class _FunctionEmitter:
         for var in funcdef.argvars:
             self.add_local_var(var, declare=False, need_decref=False)
 
-        body_instructions = "\n\t".join(map(self.emit_instruction, funcdef.body))
+        body_instructions = self.emit_body(funcdef.body)
         decrefs = "".join(
-            self.file_emitter.emit_decref(self.variable_names[var], var.type)
+            self.file_emitter.emit_decref(self.variable_names[var], var.type) + ";"
             for var in reversed(self.need_decref)
         )
 
@@ -443,28 +463,19 @@ class _FileEmitter:
         self.varname_counter += 1
         return f"var{self.varname_counter}"
 
-    def emit_incref(
-        self, c_expression: str, the_type: Type, *, semicolon: bool = True
-    ) -> str:
-        if the_type.refcounted:
-            # Every member of the union is a pointer to a struct starting with
-            # REFCOUNT_HEADER, so it doesn't matter which member is used.
-            access = ".val.item0" if isinstance(the_type, UnionType) else ""
-            result = f"incref(({c_expression}) {access})"
-        else:
-            result = "(void)0"
-        return f"{result};\n\t" if semicolon else result
-
-    def emit_decref(
-        self, c_expression: str, the_type: Type, *, semicolon: bool = True
-    ) -> str:
+    def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
-            result = f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
-        elif the_type.refcounted:
-            result = f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
-        else:
-            result = "(void)0"
-        return f"{result};\n\t" if semicolon else result
+            return f"incref(({c_expression}).val.item0)"
+        if the_type.refcounted:
+            return f"incref({c_expression})"
+        return "(void)0"
+
+    def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        if isinstance(the_type, UnionType):
+            return f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
+        if the_type.refcounted:
+            return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
+        return "(void)0"
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type.generic_origin is None:
@@ -486,8 +497,8 @@ class _FileEmitter:
                 "itemtype": self.emit_type(itemtype),
                 "itemtype_cname": self.get_type_c_name(itemtype),
                 "itemtype_string": the_type.name,
-                "incref_val": self.emit_incref("val", itemtype, semicolon=False),
-                "decref_val": self.emit_decref("val", itemtype, semicolon=False),
+                "incref_val": self.emit_incref("val", itemtype),
+                "decref_val": self.emit_decref("val", itemtype),
             }
             self.structs += f"""
             #ifndef {type_cname}_DEFINED
@@ -589,15 +600,15 @@ class _FileEmitter:
                 for the_type, name in top_declaration.type.members
             )
             member_assignments = "".join(
-                f"obj->memb_{name} = arg_{name};"
+                f"obj->memb_{name} = arg_{name};\n"
                 for the_type, name in top_declaration.type.members
             )
             member_increfs = "".join(
-                self.emit_incref(f"arg_{name}", the_type)
+                self.emit_incref(f"arg_{name}", the_type) + ";\n"
                 for the_type, name in top_declaration.type.members
             )
             member_decrefs = "".join(
-                self.emit_decref(f"obj->memb_{nam}", typ)
+                self.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
                 for typ, nam in top_declaration.type.members
             )
             for method in top_declaration.body:
@@ -685,7 +696,7 @@ class _FileEmitter:
             decref_cases = "".join(
                 f"""
                 case {num}:
-                    {self.emit_decref(f"obj.val.item{num}", typ)}
+                    {self.emit_decref(f"obj.val.item{num}", typ)};
                     break;
                 """
                 for num, typ in enumerate(top_declaration.type.type_members)
