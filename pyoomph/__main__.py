@@ -97,10 +97,11 @@ def main() -> None:
 
     compilation_units: List[CompilationUnit] = []
     todo_list = [project_root / "builtins.oomph", compiler_args.infile.absolute()]
+    # TODO: figure out what import cycles do here, and disallow them
     while todo_list:
         source_path = todo_list.pop()
         if source_path in (unit.source_path for unit in compilation_units):
-            raise RuntimeError("import cycle")
+            continue
 
         unit = CompilationUnit(source_path, cache_dir)
         compilation_units.append(unit)
