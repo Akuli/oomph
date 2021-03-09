@@ -4,7 +4,7 @@ func __bool_to_string(bool self) -> Str:
     return "false"
 
 func __Str_find_first(Str self, Str substring) -> optional[int]:
-    let result = __string_find_first_internal(self, substring)
+    let result = __string_find_internal(self, substring)
     if result == -1:   # Currently it's difficult to have optionals in C code
         return null[int]
     return new optional[int](result)

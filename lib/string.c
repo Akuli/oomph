@@ -143,7 +143,7 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 	return res;
 }
 
-int64_t string_find_first_internal(const struct class_Str *s, const struct class_Str *sub)
+int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub)
 {
 	const char *ptr = strstr(s->str, sub->str);
 	if (!ptr)

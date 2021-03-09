@@ -70,7 +70,9 @@ class _FunctionOrMethodConverter:
             try:
                 result_type = self_arg.type.methods[call.func.attribute].returntype
             except KeyError:
-                raise RuntimeError(f"{self_arg.type.name} has no method {call.func.attribute}()")
+                raise RuntimeError(
+                    f"{self_arg.type.name} has no method {call.func.attribute}()"
+                )
             if result_type is None:
                 result_var = None
             else:
@@ -389,7 +391,10 @@ class _FunctionOrMethodConverter:
 
             if stmt.cond is None:
                 cond_var = self.create_var(BOOL)
-                cond_code = [ir.VarCpy(cond_var, ir.builtin_variables['true'])]
+                mypy_sucks: ir.Instruction = ir.VarCpy(
+                    cond_var, ir.builtin_variables["true"]
+                )
+                cond_code = [mypy_sucks]
             else:
                 with self.code_to_separate_list() as cond_code:
                     cond_var = self.do_expression(stmt.cond)

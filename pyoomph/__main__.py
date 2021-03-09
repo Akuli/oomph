@@ -134,12 +134,14 @@ def main() -> None:
 
     command = []
     if compiler_args.valgrind:
-        command.extend([
-            "valgrind",
-            "-q",
-            "--leak-check=full",
-            "--show-leak-kinds=all",
-        ])
+        command.extend(
+            [
+                "valgrind",
+                "-q",
+                "--leak-check=full",
+                "--show-leak-kinds=all",
+            ]
+        )
     command.extend([str(exe_path)] + program_args)
 
     result = run(command, compiler_args.verbose)

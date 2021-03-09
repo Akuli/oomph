@@ -32,7 +32,7 @@ void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
 void oomph_assert(bool cond, int64_t lineno);
-int64_t string_find_first_internal(const struct class_Str *s, const struct class_Str *sub);
+int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub);
 int64_t subprocess_run(void *args);
 
 #define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
