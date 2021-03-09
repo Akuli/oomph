@@ -190,29 +190,6 @@ class Null(Instruction):
     result: LocalVariable
 
 
-# And,Or are not function calls because evaluation order is different than for function calls.
-class BoolAnd(Instruction):
-    lhs: LocalVariable
-    rhs: LocalVariable
-    result: LocalVariable
-
-    def __post_init__(self) -> None:
-        assert self.lhs.type == BOOL
-        assert self.rhs.type == BOOL
-        assert self.result.type == BOOL
-
-
-class BoolOr(Instruction):
-    lhs: LocalVariable
-    rhs: LocalVariable
-    result: LocalVariable
-
-    def __post_init__(self) -> None:
-        assert self.lhs.type == BOOL
-        assert self.rhs.type == BOOL
-        assert self.result.type == BOOL
-
-
 # Can't be a function call because arguments can be many different types
 @dataclass(eq=False)
 class PointersEqual(Instruction):

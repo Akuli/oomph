@@ -99,8 +99,7 @@ def main() -> None:
         cache_dir.mkdir(exist_ok=True)
 
     compilation_units: List[CompilationUnit] = []
-    # todo_list = [project_root / "builtins.oomph", args.infile.absolute()]
-    todo_list = [args.infile.absolute()]
+    todo_list = [project_root / "builtins.oomph", args.infile.absolute()]
     while todo_list:
         source_path = todo_list.pop()
         if source_path in (unit.source_path for unit in compilation_units):

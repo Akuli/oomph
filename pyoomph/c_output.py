@@ -87,6 +87,16 @@ class _FunctionEmitter:
             return "goto out;"
         if isinstance(ins, tast.GetAttribute):
             return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
+        if isinstance(ins, tast.If):
+            then = '\n'.join(map(self.emit_instruction, ins.then))
+            otherwise = '\n'.join(map(self.emit_instruction, ins.otherwise))
+            return f'''
+            if ({self.emit_local_var(ins.condition)}) {{
+                {then}
+            }} else {{
+                {otherwise}
+            }}
+            '''
         raise NotImplementedError(ins)
 
     def add_local_var(

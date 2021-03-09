@@ -208,12 +208,6 @@ class _FunctionOrMethodTyper:
                 [lhs, rhs],
             )
 
-        if lhs.type is BOOL and op == "and" and rhs.type is BOOL:
-            raise NotImplementedError
-        #            return tast.BoolAnd(lhs, rhs)
-        if lhs.type is BOOL and op == "or" and rhs.type is BOOL:
-            raise NotImplementedError
-        #            return tast.BoolOr(lhs, rhs)
         if lhs.type == rhs.type and op == "==":
             result_var = tast.LocalVariable(BOOL)
             self.code.append(tast.CallMethod(lhs, "equals", [rhs], result_var))
@@ -222,6 +216,32 @@ class _FunctionOrMethodTyper:
         raise NotImplementedError(f"{lhs.type} {op} {rhs.type}")
 
     def do_binary_op(self, ast: uast.BinaryOperator) -> tast.LocalVariable:
+        # Avoid evaluating right side when not needed
+        if ast.op in {"and", "or"}:
+            lhs_var = self.do_expression(ast.lhs)
+            assert lhs_var.type == BOOL
+            result_var = tast.LocalVariable(BOOL)
+            with self.redirect_code() as rhs_evaluation:
+                rhs_var = self.do_expression(ast.rhs)
+                assert rhs_var.type == BOOL
+            if ast.op == "and":
+                self.code.append(
+                    tast.If(
+                        lhs_var,
+                        rhs_evaluation + [tast.VarCpy(result_var, rhs_var)],
+                        [tast.VarCpy(result_var, tast.builtin_variables["false"])],
+                    )
+                )
+            else:
+                self.code.append(
+                    tast.If(
+                        lhs_var,
+                        [tast.VarCpy(result_var, tast.builtin_variables["true"])],
+                        rhs_evaluation + [tast.VarCpy(result_var, rhs_var)],
+                    )
+                )
+            return result_var
+
         lhs = self.do_expression(ast.lhs)
         rhs = self.do_expression(ast.rhs)
         return self._do_binary_op_typed(lhs, ast.op, rhs)
