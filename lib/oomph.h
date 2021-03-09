@@ -23,6 +23,10 @@ struct class_List_Str;
 
 noreturn void panic_printf(const char *fmt, ...);
 
+// Currently it's not easy to return a list of strings from C function
+int64_t argv_count(void);
+struct class_Str *argv_get(int64_t i);
+
 struct class_Str *io_read_file(const struct class_Str *path);
 void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
