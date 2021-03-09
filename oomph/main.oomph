@@ -1,34 +1,68 @@
 import "<stdlib>/io.oomph" as io
-import "<stdlib>/subprocess.oomph" as subproc
+import "<stdlib>/subprocess.oomph" as process
 
-class KeyValue(Str key, Str value)
+# TODO: respect quoting rules
+func split(Str s) -> List[Str]:
+    let result = new List[Str]()
+    foreach part of s.split(" "):
+        if part != "":
+            result.push(part)
+    return result
 
-func split_at_first_equal_sign(Str s) -> KeyValue:
-    let i = s.find_first("=")
-    return new KeyValue(s.slice(0, i), s.slice(i+1, s.length()))
+func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[Str]:
+    # TODO: dict
+    let cc = ""
+    let cflags = ""
+    let ldflags = ""
 
-func get_c_compiler_command(Str c_path, Str exepath) -> List[Str]:
     foreach line of io::read_file("obj/compile_info.txt").split("\n"):
         if line == "":
             continue
-
-        let pair = split_at_first_equal_sign(line)
-        # TODO: doesn't cause undefined variable warnings in oomph, it should
-        if pair.key == "cc":
-            let cc = pair.value
-        elif pair.key == "cflags":
-            let cflags = pair.value
-        elif pair.key == "ldflags":
-            let ldflags = pair.value
+        if line.starts_with("cc="):
+            # TODO: remove_prefix or similar method
+            cc = line.slice("cc=".length(), line.length())
+        elif line.starts_with("cflags="):
+            cflags = line.slice("cflags=".length(), line.length())
+        elif line.starts_with("ldflags="):
+            ldflags = line.slice("ldflags=".length(), line.length())
         else:
-            print(pair)
-            assert(false)  # TODO: expose panic() function into oomph
+            assert(false)   # TODO: error
 
-    print("cc: {cc}")
-    print("cflags: {cflags}")
-    return new List[Str]()
+    let result = new List[Str]()
+    result.push(cc)
+    foreach flag of split(cflags):
+        result.push(flag)
+    # FIXME: hard-coded list
+    foreach o_file of "obj/io.o obj/misc.o obj/numbers.o obj/ref.o obj/string.o obj/subprocess.o".split(" "):
+        result.push(o_file)
+    result.push(c_path)
+    result.push("-o")
+    result.push(exepath)
+    foreach flag of split(ldflags):
+        result.push(flag)
+    result.push("-I")
+    result.push(project_root)
+    return result
 
 export func main():
-    print("main runs")
-    print(subproc::get_args())
-    print(get_c_compiler_command("", ""))
+    let project_root = "."
+    let cache_dir = "{project_root}/.oomph-cache"
+    io::mkdir(cache_dir)
+
+    let args = process::get_args()
+    assert(args.length() != 0)  # TODO: error
+    let source_path = args.get(0)
+
+    let program_args = new List[Str]()
+    for let i = 0; i < args.length(); i = i+1:
+        program_args.push(args.get(i))
+
+    io::write_file("{cache_dir}/out.c", """
+    #include <stdio.h>
+    void oomph_main(void) \{ puts("Hello World!\\n"); \}
+    """)
+    assert(process::run(get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")) == 0)
+
+    let run_command = new List[Str]()
+    run_command.push("{cache_dir}/out")
+    assert(process::run(run_command) == 0)
