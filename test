@@ -30,6 +30,9 @@ function check()
     else
         local expect_fail=no
         local command="$oomphcommand $oomphopts $file"
+        if [ $file == tests/args.oomph ]; then
+            command="$command hello world"
+        fi
     fi
 
     local success
