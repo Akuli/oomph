@@ -32,6 +32,7 @@ void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
 void oomph_assert(bool cond, int64_t lineno);
+int64_t string_find_first_internal(const struct class_Str *s, const struct class_Str *sub);
 int64_t subprocess_run(void *args);
 
 #define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
@@ -39,7 +40,6 @@ int64_t subprocess_run(void *args);
 #define meth_float_equals(a, b) ((a)==(b))
 #define meth_int_equals(a, b) ((a)==(b))
 double meth_Str_to_float(const struct class_Str *s);
-int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub);
 int64_t meth_Str_length(const struct class_Str *s);
 int64_t meth_Str_to_int(const struct class_Str *s);
 int64_t meth_Str_unicode_length(const struct class_Str *s);

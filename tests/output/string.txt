@@ -51,14 +51,14 @@ abc**
 *abc*
 *abc**
 Find first:
-3
--1
-0
+optional[int](3)
+null
+optional[int](0)
 Count:
 2
 2
 0
--1
+5
 Trim:
 a 
  a

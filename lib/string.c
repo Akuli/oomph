@@ -143,10 +143,10 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 	return res;
 }
 
-int64_t meth_Str_find_first(const struct class_Str *s, const struct class_Str *sub)
+int64_t string_find_first_internal(const struct class_Str *s, const struct class_Str *sub)
 {
 	const char *ptr = strstr(s->str, sub->str);
 	if (!ptr)
-		return -1;   // TODO: optional type instead
+		return -1;
 	return ptr - s->str;
 }

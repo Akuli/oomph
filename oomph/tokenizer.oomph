@@ -127,7 +127,7 @@ export func tokenize(Str code):
         if code.starts_with("\""):
             # TODO: escapes
             # TODO: error handling
-            let content_length = code.slice(1, code.length()).find_first("\"")
+            let content_length = code.slice(1, code.length()).find_first("\"").get()
             let token_length = content_length + 2
             result.push(new Token("string", code.slice(0, token_length)))
             code = code.slice(token_length, code.length())

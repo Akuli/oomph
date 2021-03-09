@@ -66,6 +66,7 @@ builtin_variables = {
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
+        BuiltinVariable("__string_find_first_internal", FunctionType([STRING, STRING], INT)),
         BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, INT], None)),
         BuiltinVariable("false", BOOL),

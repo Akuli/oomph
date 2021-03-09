@@ -3,6 +3,12 @@ func __bool_to_string(bool self) -> Str:
         return "true"
     return "false"
 
+func __Str_find_first(Str self, Str substring) -> optional[int]:
+    let result = __string_find_first_internal(self, substring)
+    if result == -1:   # Currently it's difficult to have optionals in C code
+        return null[int]
+    return new optional[int](result)
+
 func __Str_repeat(Str self, int n) -> Str:
     let result = self
     while result.length() < n*self.length():
@@ -16,7 +22,7 @@ func __Str_ends_with(Str self, Str suffix) -> bool:
     return self.slice(self.length() - suffix.length(), self.length()) == suffix
 
 func __Str_contains(Str self, Str substring) -> bool:
-    return self.find_first(substring) != -1
+    return self.find_first(substring) != null[int]
 
 # No need to use a third party library for this, lol
 func __Str_left_pad(Str self, int len, Str pad_char) -> Str:
@@ -30,37 +36,31 @@ func __Str_center_pad(Str self, int len, Str pad_char) -> Str:
     return self.left_pad(average, pad_char).right_pad(len, pad_char)
 
 func __Str_count(Str self, Str substring) -> int:
-    let s = self
-    let count = 0
 
     if substring == "":
-        # TODO: error
-        return -1
+        # Same as what Python does
+        return self.length() + 1
 
-    # TODO: this loop isn't elegant, ideally would be 'while i := s.find_first(...)'
-    while true:
-        let i = s.find_first(substring)
-        if i == -1:
+    # TODO: this loop isn't elegant, ideally condition could be 'i := self.find_first(...)'
+    for let count = 0; ; count = count + 1:
+        let i = self.find_first(substring)
+        if i == null[int]:
             return count
-        s = s.slice(i + substring.length(), s.length())
-        count = count + 1
+        self = self.slice(i.get() + substring.length(), self.length())
 
-func __starts_with_space(Str s) -> bool:
+func starts_with_space(Str s) -> bool:
     # TODO: all ascii whitespace
-    return s.starts_with(" ")
+    return s.starts_with(" ") or s.starts_with("\n")
 
 func __Str_left_trim(Str self) -> Str:
-    let s = self  # TODO: is this necessary?
-    # TODO: all ascii whitespace
-    while s.starts_with(" "):
-        s = s.slice(1, s.length())
-    return s
+    while starts_with_space(self):
+        self = self.slice(1, self.length())
+    return self
 
 func __Str_right_trim(Str self) -> Str:
-    let s = self
-    while s.ends_with(" "):
-        s = s.slice(0, s.length() - 1)
-    return s
+    while self.ends_with(" "):
+        self = self.slice(0, self.length() - 1)
+    return self
 
 func __Str_trim(Str self) -> Str:
     return self.left_trim().right_trim()
@@ -75,10 +75,10 @@ func __Str_replace(Str self, Str old, Str neuw) -> Str:
 
     while true:
         let index = remaining.find_first(old)
-        if index == -1:
+        if index == null[int]:
             return result + remaining
-        result = result + remaining.slice(0, index) + neuw
-        remaining = remaining.slice(index + old.length(), remaining.length())
+        result = result + remaining.slice(0, index.get()) + neuw
+        remaining = remaining.slice(index.get() + old.length(), remaining.length())
 
 func __Str_split(Str self, Str sep) -> List[Str]:
     let result = new List[Str]()
@@ -86,15 +86,14 @@ func __Str_split(Str self, Str sep) -> List[Str]:
         result.push(self)
         return result
 
-    let s = self  # TODO: get rid of this, no longer necessary (even if it ever was)
     while true:
-        let i = s.find_first(sep)
-        if i == -1:
-            result.push(s)
+        let i = self.find_first(sep)
+        if i == null[int]:
+            result.push(self)
             return result
 
-        result.push(s.slice(0, i))
-        s = s.slice(i + sep.length(), s.length())
+        result.push(self.slice(0, i.get()))
+        self = self.slice(i.get() + sep.length(), self.length())
 
 func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self.length() == 0:
