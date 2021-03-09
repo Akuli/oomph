@@ -266,7 +266,7 @@ class Loop(Instruction):
         assert self.cond.type == BOOL
 
 
-# errors if trying to get wrong type
+# Runtime error if trying to get wrong union member
 # think of it as VarCpy for unions
 @dataclass(eq=False)
 class GetFromUnion(Instruction):
