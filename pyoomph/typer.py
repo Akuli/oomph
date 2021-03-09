@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import pathlib
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterator, List, Optional, Union
 
 from pyoomph import typed_ast as tast
 from pyoomph import untyped_ast as uast
@@ -35,6 +36,15 @@ class _FunctionOrMethodTyper:
         else:
             self.return_var = tast.LocalVariable(returntype)
         self.code: List[tast.Instruction] = []
+
+    @contextlib.contextmanager
+    def redirect_code(self) -> Iterator[List[tast.Instruction]]:
+        result: List[tast.Instruction] = []
+        old_code = self.code
+        self.code = result
+        yield result
+        assert self.code is result
+        self.code = old_code
 
     def stringify(self, var: tast.LocalVariable) -> tast.LocalVariable:
         if var.type == STRING:
@@ -391,15 +401,10 @@ class _FunctionOrMethodTyper:
             raise NotImplementedError(ast)
 
     def do_block(self, block: List[uast.Statement]) -> List[tast.Instruction]:
-        outer_code = self.code
-        inner_code: List[tast.Instruction] = []
-        self.code = inner_code
-        for statement in block:
-            self.do_statement(statement)
-
-        assert self.code is inner_code  # pointer equality
-        self.code = outer_code
-        return inner_code
+        with self.redirect_code() as result:
+            for statement in block:
+                self.do_statement(statement)
+        return result
 
 
 def _create_to_string_method(class_type: tast.Type) -> uast.FuncOrMethodDef:
