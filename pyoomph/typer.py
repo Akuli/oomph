@@ -575,7 +575,6 @@ class _FileTyper:
             typed_method_defs = []
 
             if "equals" not in (method.name for method in top_declaration.body):
-                pass
                 equals_def = self._create_equals_method(classtype)
                 typed_method_defs.append(equals_def)
                 classtype.methods["equals"] = equals_def.type
