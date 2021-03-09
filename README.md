@@ -89,6 +89,8 @@ Missing features:
 - compilation errors or warnings for bad/unconventional/complicated style
     - `string.length() == 0` is more complicated than `string == ""`
     - `not (a and not b)` is more complicated than `(not a) or b`
+    - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
+- warnings about unused things (unions, classes, functions, methods, variables)
 
 Design questions to (re)think:
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if

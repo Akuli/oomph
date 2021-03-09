@@ -1,0 +1,5 @@
+func foo() -> optional[Str]:
+    return new optional[Str]("aaa".slice(0, 1))
+
+export func main():
+    print(foo())

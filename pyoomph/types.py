@@ -67,7 +67,7 @@ class Generic:
 
     def get_type(self, generic_arg: Type) -> Type:
         if self is OPTIONAL:
-            result = Type(f"{self.name}[{generic_arg.name}]", False)
+            result = Type(f"{self.name}[{generic_arg.name}]", generic_arg.refcounted)
             result.generic_origin = GenericSource(self, generic_arg)
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)

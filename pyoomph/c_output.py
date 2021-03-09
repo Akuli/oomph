@@ -36,7 +36,7 @@ class _FunctionEmitter:
         self.need_decref: List[ir.LocalVariable] = []
 
     def incref_var(self, var: ir.LocalVariable) -> str:
-        return self.file_emitter.emit_incref(self.variable_names[var], var.type) + ";"
+        return self.file_emitter.emit_incref(self.variable_names[var], var.type)
 
     def emit_call(
         self,
@@ -195,6 +195,8 @@ class _FunctionEmitter:
             if var.type.refcounted:
                 if isinstance(var.type, UnionType):
                     self.before_body += "= { .membernum = -1 }"
+                elif var.type.generic_origin is not None and var.type.generic_origin.generic is OPTIONAL:
+                    self.before_body += "= { .isnull = true }"
                 else:
                     self.before_body += "= NULL"
             self.before_body += ";\n"
@@ -266,6 +268,7 @@ _generic_c_codes = {
         "function_defs": """
         static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
         {
+            %(incref_val)s;
             return (struct class_%(type_cname)s) { false, val };
         }
 
@@ -464,6 +467,9 @@ class _FileEmitter:
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
             return f"incref(({c_expression}).val.item0)"
+        if the_type.generic_origin is not None and the_type.generic_origin.generic is OPTIONAL:
+            value_incref = self.emit_incref(f'({c_expression}).value', the_type.generic_origin.arg)
+            return f'(({c_expression}).isnull ? (void)0 : {value_incref})'
         if the_type.refcounted:
             return f"incref({c_expression})"
         return "(void)0"
@@ -471,6 +477,9 @@ class _FileEmitter:
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
             return f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
+        if the_type.generic_origin is not None and the_type.generic_origin.generic is OPTIONAL:
+            value_decref = self.emit_decref(f'({c_expression}).value', the_type.generic_origin.arg)
+            return f'(({c_expression}).isnull ? (void)0 : {value_decref})'
         if the_type.refcounted:
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         return "(void)0"
@@ -517,7 +526,8 @@ class _FileEmitter:
             return "double"
         if the_type is BOOL:
             return "bool"
-        if the_type.refcounted and not isinstance(the_type, UnionType):
+        if the_type.refcounted and not isinstance(the_type, UnionType) and (
+            the_type.generic_origin is None or the_type.generic_origin.generic is not OPTIONAL):
             return f"struct class_{self.get_type_c_name(the_type)} *"
         return f"struct class_{self.get_type_c_name(the_type)}"
 
