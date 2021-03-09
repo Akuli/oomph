@@ -112,6 +112,40 @@ class _FunctionEmitter:
                 {incr}
             }}
             """
+        if isinstance(ins, tast.InstantiateUnion):
+            assert isinstance(ins.result.type, tast.UnionType)
+            assert ins.result.type.type_members is not None
+            membernum = ins.result.type.type_members.index(ins.value.type)
+            return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };" % (
+                self.emit_local_var(ins.result),
+                self.file_emitter.emit_type(ins.result.type),
+                membernum,
+                self.emit_local_var(ins.value),
+                membernum,
+            )
+        if isinstance(ins, tast.Switch):
+            assert isinstance(ins.union.type, tast.UnionType)
+            assert ins.union.type.type_members is not None
+
+            body_code = ""
+            for specific_var, body in ins.cases.items():
+                membernum = ins.union.type.type_members.index(specific_var.type)
+                specific_var_string = self.emit_local_var(specific_var)
+                case_content = "\n\t\t".join(map(self.emit_instruction, body))
+                body_code += f"""
+                case {membernum}:
+                    {specific_var_string} = {self.emit_local_var(ins.union)}.val.item{membernum};
+                    {case_content}
+                    break;
+                """
+
+            return f"""
+            switch ({self.emit_local_var(ins.union)}.membernum) {{
+                {body_code}
+                default:
+                    assert(0);
+            }}
+            """
         raise NotImplementedError(ins)
 
     def add_local_var(
@@ -140,15 +174,6 @@ class _FunctionEmitter:
     #    def emit_expression(self, ast: tast.Expression) -> str:
     #        if isinstance(ast, tast.Null):
     #            return "((" + self.file_emitter.emit_type(ast.type) + "){.isnull=true})"
-    #        if isinstance(ast, tast.InstantiateUnion):
-    #            assert ast.type.type_members is not None
-    #            membernum = ast.type.type_members.index(ast.value.type)
-    #            return "((%s){ .val = { .item%d = %s }, .membernum = %d })" % (
-    #                self.file_emitter.emit_type(ast.type),
-    #                membernum,
-    #                self.emit_expression(ast.value),
-    #                membernum,
-    #            )
     #        raise NotImplementedError(ast)
     #
     #    def emit_statement(self, ast: tast.Statement) -> str:
@@ -169,36 +194,6 @@ class _FunctionEmitter:
     #
     #        if isinstance(ast, tast.Break):
     #            return "break;"
-    #
-    #        if isinstance(ast, tast.Switch):
-    #            assert isinstance(ast.union.type, UnionType)
-    #            assert ast.union.type.type_members is not None
-    #
-    #            union_var = self.create_local_var(ast.union.type)
-    #            body_code = ""
-    #            for membernum, the_type in enumerate(ast.union.type.type_members):
-    #                [(specific_var, body)] = [
-    #                    (var, body)
-    #                    for var, body in ast.cases.items()
-    #                    if var.type is the_type
-    #                ]
-    #                self.add_local_var(specific_var)
-    #                case_content = "".join(self.emit_statement(s) for s in body)
-    #                body_code += f"""
-    #                case {membernum}:
-    #                    {self.variable_names[specific_var]} = {self.variable_names[union_var]}.val.item{membernum};
-    #                    {case_content}
-    #                    break;
-    #                """
-    #
-    #            return f"""
-    #            {self.variable_names[union_var]} = {self.emit_expression(ast.union)};
-    #            switch ({self.variable_names[union_var]}.membernum) {{
-    #                {body_code}
-    #                default:
-    #                    assert(0);
-    #            }}
-    #            """
     #
     #        raise NotImplementedError(ast)
 
