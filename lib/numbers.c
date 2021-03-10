@@ -41,7 +41,7 @@ int64_t meth_Str_to_int(const struct class_Str *s)
 	errno = 0;
 	long long res = strtoll(s->str, &endptr, 10);
 	if (errno != 0 || endptr != s->str + strlen(s->str))
-		panic_printf("not a valid integer: %s", s->str);
+		panic_printf_errno("not a valid integer: %s", s->str);
 	return res;
 }
 
@@ -51,7 +51,7 @@ double meth_Str_to_float(const struct class_Str *s)
 	errno = 0;
 	double res = strtod(s->str, &endptr);
 	if (errno != 0 || endptr != s->str + strlen(s->str))
-		panic_printf("not a valid integer: %s", s->str);
+		panic_printf_errno("not a valid integer: %s", s->str);
 	return res;
 }
 

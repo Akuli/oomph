@@ -97,6 +97,11 @@ class _FunctionOrMethodConverter:
                 args = [self.do_expression(arg) for arg in call.args]
                 if func is ir.builtin_variables["assert"]:
                     assert call.func.lineno is not None
+                    # Why relative path:
+                    #   - less noise, still enough information
+                    #   - tests don't have to include paths like /home/akuli/oomph/...
+                    path = self.file_converter.path.relative_to(pathlib.Path.cwd())
+                    args.append(self.do_expression(ast.StringConstant(str(path))))
                     args.append(self.do_expression(ast.IntConstant(call.func.lineno)))
             self.code.append(ir.CallFunction(func, args, result_var))
         elif isinstance(call.func, ast.Constructor):

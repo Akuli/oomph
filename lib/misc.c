@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdnoreturn.h>
 
-noreturn void panic_printf(const char *fmt, ...)
+noreturn void panic_printf_errno(const char *fmt, ...)
 {
 	int er = errno;
 
@@ -21,10 +21,10 @@ noreturn void panic_printf(const char *fmt, ...)
 	abort();
 }
 
-void oomph_assert(bool cond, int64_t lineno)
+void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno)
 {
 	if (!cond)
-		panic_printf("assert() failed on line %d", (int)lineno);
+		panic_printf("assert() failed in \"%s\", line %d", path->str, (int)lineno);
 }
 
 static int global_argc = -1;

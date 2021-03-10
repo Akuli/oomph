@@ -68,7 +68,7 @@ builtin_variables = {
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
         BuiltinVariable("__string_find_internal", FunctionType([STRING, STRING], INT)),
         BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
-        BuiltinVariable("assert", FunctionType([BOOL, INT], None)),
+        BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("print", FunctionType([STRING], None)),
         BuiltinVariable("true", BOOL),

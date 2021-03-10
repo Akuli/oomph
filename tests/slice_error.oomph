@@ -1,0 +1,2 @@
+export func main():
+    "ö".slice(1, 2)

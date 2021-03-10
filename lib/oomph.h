@@ -2,6 +2,7 @@
 #define LIB_H
 
 #include <assert.h>
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -21,7 +22,9 @@ bool string_validate_utf8(const char *s);
 #define dtor_Str free
 struct class_List_Str;
 
-noreturn void panic_printf(const char *fmt, ...);
+// panic_printf_errno includes value of errno when nonzero
+noreturn void panic_printf_errno(const char *fmt, ...);
+#define panic_printf(...) (errno = 0, panic_printf_errno(__VA_ARGS__))
 
 // Currently it's not easy to return a list of strings from C function
 int64_t argv_count(void);
@@ -31,7 +34,7 @@ struct class_Str *io_read_file(const struct class_Str *path);
 void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
-void oomph_assert(bool cond, int64_t lineno);
+void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
 int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub);
 int64_t subprocess_run(void *args);
 

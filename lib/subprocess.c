@@ -26,10 +26,11 @@ int64_t subprocess_run(void *args)
 	pid_t pid = fork();
 	switch(pid) {
 		case -1:
-			panic_printf("fork() failed");
+			panic_printf_errno("fork() failed");
 		case 0:  // child
 			execvp(argarr[0], argarr);
-			panic_printf("execvp() failed");
+			// It shouldn't return, if it returns anyway then it failed
+			panic_printf_errno("execvp() failed");
 		default:  // parent
 			break;
 	}

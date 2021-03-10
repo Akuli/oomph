@@ -1,0 +1,5 @@
+import "<stdlib>/io.oomph" as io
+
+export func main():
+    io::mkdir("tests")   # exists already, that's fine but sets C errno
+    assert(false)        # should not include errno in error message
