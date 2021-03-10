@@ -1,0 +1,1 @@
+[FuncDef("main", [], null, [Call(union Expression(GetVar("print")), [union Expression(StringConstant("hello"))])])]

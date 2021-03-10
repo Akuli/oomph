@@ -79,8 +79,10 @@ class Generic:
             result.constructor_argtypes = []
             result.methods["get"] = FunctionType([result, INT], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
+            result.methods["pop"] = FunctionType([result], generic_arg)
             result.methods["push"] = FunctionType([result, generic_arg], None)
             result.methods["push_all"] = FunctionType([result, result], None)
+            result.methods["reversed"] = FunctionType([result], result)
             if generic_arg is STRING:
                 result.methods["join"] = FunctionType([result, STRING], STRING)
         else:

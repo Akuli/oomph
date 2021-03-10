@@ -1,0 +1,2 @@
+pop from empty list
+Program killed by signal 6 (SIGABRT)

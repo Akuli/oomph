@@ -32,6 +32,8 @@ Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features:
+- list methods: `first()`, `last()`
+- assigning to attributes
 - better error messaging
 - using func/meth before defining (not just Unions)
 - `>>>` prompt

@@ -20,3 +20,9 @@ export func main():
 
     b.push_all(b)   # funny special case, must not fail
     print(b)
+
+    print(b.reversed())
+    print(b)
+
+    print(b.pop())
+    print(b)

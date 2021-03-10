@@ -1,35 +1,21 @@
 import "tokenizer.oomph" as tokenizer
 import "ast.oomph" as ast
 
-# FIXME: allow assigning to attribute
-class IntContainer(List[int] value):
-    meth set(int value):
-        # TODO: no way to clear list
-        self.value.push(value)
-    meth get() -> int:
-        return self.value.get(self.value.length() - 1)
-    meth increment():
-        self.set(self.get() + 1)
-
-func make_container() -> IntContainer:
-    let value = new List[int]()
-    value.push(0)
-    return new IntContainer(value)
-
-class Parser(List[tokenizer::Token] tokens, IntContainer token_index):
+# tokens must be in reverse order
+class Parser(List[tokenizer::Token] tokens):
     meth peek() -> tokenizer::Token:
-        assert(self.token_index.get() < self.tokens.length())  # TODO: error
-        return self.tokens.get(self.token_index.get())
+        assert(self.tokens.length() != 0)  # TODO: error
+        return self.tokens.get(self.tokens.length() - 1)
 
     # Use when end of file might occur
     meth peek_carefully() -> optional[tokenizer::Token]:
-        if self.token_index.get() == self.tokens.length():
+        if self.tokens.length() == 0:
             return null[tokenizer::Token]
         return new optional[tokenizer::Token](self.peek())
 
     meth get_token_by_type(Str type) -> tokenizer::Token:
-        let token = self.peek()   # Error if end of file
-        self.token_index.increment()
+        self.peek()   # Error if end of file
+        let token = self.tokens.pop()
         assert(token.type == type)  # TODO: error
         return token
 
@@ -77,7 +63,7 @@ class Parser(List[tokenizer::Token] tokens, IntContainer token_index):
     meth parse_block_of_statements() -> List[ast::Call]:
         let result = new List[ast::Call]()
         self.get_token_by_type("begin_block")
-        while self.token_index.get() != self.tokens.length() and self.peek().type != "end_block":
+        while self.tokens.length() != 0 and self.peek().type != "end_block":
             result.push(self.parse_statement())
         self.get_token_by_type("end_block")
         return result
@@ -91,8 +77,8 @@ class Parser(List[tokenizer::Token] tokens, IntContainer token_index):
         return new ast::FuncDef(name, new List[ast::FuncDefArgument](), null[ast::Type], self.parse_block_of_statements())
 
 export func parse_file(Str code) -> List[ast::FuncDef]:
-    let parser = new Parser(tokenizer::tokenize(code), make_container())
+    let parser = new Parser(tokenizer::tokenize(code).reversed())
     let result = new List[ast::FuncDef]()
-    while parser.token_index.get() < parser.tokens.length():
+    while parser.tokens.length() != 0:
         result.push(parser.parse_function())
     return result
