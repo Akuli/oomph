@@ -48,7 +48,7 @@ Missing features:
 - automatic dedenting in multiline strings
 - `case Foo, Bar:`
 - `r` strings
-- `if cond then a else b`
+- better ternary than in python: `if cond then a else b`
 - named arguments
 - default values of arguments
 - do we want more implicit int to float conversion? `sleep(2)` where `sleep` takes a float
@@ -102,12 +102,14 @@ Deprecated features:
 - maybe traditional `for` loops? they seem more confusing than useful
 
 Design questions to (re)think:
+- `in` operator: `a in b` vs `b.contains(a)`
 - tempting to use `func` as variable name
 - `switch` syntax
 - name of `self`? maybe `instance` or `this`?
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.
 - requiring use of attributes (useful for going through data, avoid accidental ignoring)
+    - could be just `switch` syntax
 - should string lengths and indexing be done in unicode code points instead of
   utf-8 bytes?
     - Advantage: easier to understand

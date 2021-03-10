@@ -1,2 +1,3 @@
 # List of files that self-hosted compler can compile
 tests/hello.oomph
+tests/print1.oomph

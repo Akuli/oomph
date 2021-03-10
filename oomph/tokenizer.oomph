@@ -22,12 +22,14 @@ export class Token(Str type, Str value):
     meth matches(Str type, Str value) -> bool:
         return self.type == type and self.value == value
 
+func get_int(Str code) -> Str:
+    let len = 0
+    while len < code.length() and "0123456789".contains(code.slice(len, len+1)):
+        len = len+1
+    return code.slice(0, len)
+
 func raw_tokenize(Str code) -> List[Token]:
-    let ops = new List[Str]()
-    ops.push("(")
-    ops.push(")")
-    ops.push(":")
-    ops.push("\n")
+    let ops = "( ) : \n".split(" ")
 
     let result = new List[Token]()
     while code != "":
@@ -45,6 +47,14 @@ func raw_tokenize(Str code) -> List[Token]:
         if op != null[Str]:
             result.push(new Token("op", op.get()))
             code = code.slice(op.get().length(), code.length())
+            continue
+
+        let int_value = get_int(code)
+        if int_value != "":
+            # TODO: floats
+            code = code.slice(int_value.length(), code.length())
+            assert(int_value == "0" or not int_value.starts_with("0"))
+            result.push(new Token("int", int_value))
             continue
 
         if code.starts_with(" "):

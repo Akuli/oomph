@@ -1,8 +1,22 @@
 import "ir.oomph" as ir
 
-class FileInfo(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
+class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
+    meth get_type_c_name(ir::ObjectType type) -> Str:
+        if type == self.builtins.INT:
+            return type.name
+        return "struct class_{type.name}"
+
     meth emit_type(ir::ObjectType type) -> Str:
-        return "struct class_{type.name} *"
+        if type == self.builtins.INT:
+            return "int64_t"
+        if type.refcounted:
+            return self.get_type_c_name(type) + "*"
+        return self.get_type_c_name(type)
+
+    meth emit_declaration(ir::ObjectType type, Str varname) -> Str:
+        if type == self.builtins.INT:
+            return "int64_t {varname};"
+        return "{self.emit_type(type)} {varname} = NULL;"
 
     meth emit_string(Str value) -> Str:
         # TODO: replace with one of: list find method, enumerate, mapping
@@ -31,43 +45,58 @@ class FileInfo(ir::Builtins builtins, List[Str] declared_strings, Str string_def
         """
         return varname
 
-class FunctionEmitter(FileInfo file_info, List[ir::LocalVariable] declared_vars, Str before_body, Str body, Str after_body):
+class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str before_body, Str body, Str after_body):
     meth emit_var(ir::LocalVariable var) -> Str:
         # TODO: list contains method
         foreach declared_var of self.declared_vars:
             if declared_var == var:
                 return "var{var.id}"
 
-        self.before_body = self.before_body + """
-        {self.file_info.emit_type(var.type)} var{var.id} = NULL;
-        """
+        self.before_body = self.before_body + self.file.emit_declaration(var.type, "var{var.id}")
         self.declared_vars.push(var)
         return "var{var.id}"
 
+    meth emit_call(Str c_func, List[ir::LocalVariable] args, optional[ir::LocalVariable] result):
+        let arg_strings = new List[Str]()
+        foreach arg of args:
+            arg_strings.push(self.emit_var(arg))
+        if result == null[ir::LocalVariable]:
+            let assignment = ""
+        else:
+            assignment = "{self.emit_var(result.get())} ="
+
+        self.body = self.body + """
+        {assignment} {c_func}({arg_strings.join(",")});
+        """
+
     meth emit_instruction(ir::Instruction ins):
         switch ins:
+            case ir::FunctionCall:
+                assert(ins.function == self.file.builtins.PRINT)  # TODO
+                self.emit_call("io_print", ins.args, null[ir::LocalVariable])
+            case ir::MethodCall:
+                let args = new List[ir::LocalVariable]()
+                args.push(ins.obj)
+                args.push_all(ins.args)
+                self.emit_call("meth_{self.file.get_type_c_name(ins.obj.type)}_{ins.method_name}", args, ins.result)
+            case ir::IntConstant:
+                self.body = self.body + """
+                {self.emit_var(ins.var)} = {ins.value}LL;
+                """
             case ir::StringConstant:
                 self.body = self.body + """
-                {self.emit_var(ins.var)} = {self.file_info.emit_string(ins.value)};
-                """
-            case ir::FunctionCall:
-                let arg_strings = new List[Str]()
-                foreach arg of ins.args:
-                    arg_strings.push(self.emit_var(arg))
-                assert(ins.function == self.file_info.builtins.PRINT)  # TODO
-                self.body = self.body + """
-                io_print({arg_strings.join(",")});
+                {self.emit_var(ins.var)} = {self.file.emit_string(ins.value)};
                 """
 
 export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
-    let file_info = new FileInfo(builtins, new List[Str](), "")
+    let file = new File(builtins, new List[Str](), "")
 
     let code = ""
     foreach funcdef of ir:
         assert(funcdef.var.name == "main")
         assert(funcdef.argvars.length() == 0)
 
-        let emitter = new FunctionEmitter(file_info, new List[ir::LocalVariable](), "", "", "")
+        let emitter = new FunctionEmitter(file, new List[ir::LocalVariable](), "", "", "")
         foreach ins of funcdef.body:
             emitter.emit_instruction(ins)
         code = code + """
@@ -79,4 +108,4 @@ export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
         \}
         """
 
-    return "#include <lib/oomph.h>\n" + file_info.string_defs + code
+    return "#include <lib/oomph.h>\n" + file.string_defs + code

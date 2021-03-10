@@ -16,7 +16,10 @@ class Parser(List[tokenizer::Token] tokens):
     meth get_token_by_type(Str type) -> tokenizer::Token:
         self.peek()   # Error if end of file
         let token = self.tokens.pop()
-        assert(token.type == type)  # TODO: error
+        if token.type != type:
+            # TODO: error
+            print("Wrong token type: expected {type}, got {token.type}")
+            assert(token.type == type)  # TODO: error
         return token
 
     meth get_token(Str type, Str value) -> tokenizer::Token:
@@ -32,6 +35,8 @@ class Parser(List[tokenizer::Token] tokens):
             let result = new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
         elif self.peek().type == "id":
             result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
+        elif self.peek().type == "int":
+            result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
         else:
             print("Don't know what to do: {self.peek()}")
             assert(false)
@@ -58,6 +63,8 @@ class Parser(List[tokenizer::Token] tokens):
             case ast::GetVar:
                 assert(false)  # TODO: error
             case ast::StringConstant:
+                assert(false)  # TODO: error
+            case ast::IntConstant:
                 assert(false)  # TODO: error
 
     meth parse_block_of_statements() -> List[ast::Call]:

@@ -21,9 +21,19 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
                 let var = self.create_var(self.builtins.STR)
                 self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
                 return var
+            case ast::IntConstant:
+                var = self.create_var(self.builtins.INT)
+                self.code.push(new ir::Instruction(new ir::IntConstant(expr.value, var)))
             case ast::Call:
                 print("call {expr}")
                 assert(false)  # TODO
+
+        return var
+
+    meth stringify(ir::LocalVariable var) -> ir::LocalVariable:
+        let result = self.create_var(self.builtins.STR)
+        self.code.push(new ir::Instruction(new ir::MethodCall(var, "to_string", new List[ir::LocalVariable](), new optional[ir::LocalVariable](result))))
+        return result
 
     meth do_statement(ast::Call call):
         let f = call.function
@@ -31,14 +41,19 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
             # Currently, functions must be variables
             case ast::GetVar:
                 let func_var = self.find_function(f.varname)
-            case ast::StringConstant:
-                assert(false)  # TODO: error
             case ast::Call:
+                assert(false)  # TODO: error
+            case ast::IntConstant:
+                assert(false)  # TODO: error
+            case ast::StringConstant:
                 assert(false)  # TODO: error
 
         let argvars = new List[ir::LocalVariable]()
         foreach arg of call.args:
-            argvars.push(self.do_expression(arg))
+            let expr = self.do_expression(arg)
+            if func_var == self.builtins.PRINT and expr.type != self.builtins.STR:
+                expr = self.stringify(expr)
+            argvars.push(expr)
         self.code.push(new ir::Instruction(new ir::FunctionCall(func_var, argvars)))
 
     meth do_block(List[ast::Call] body) -> List[ir::Instruction]:
