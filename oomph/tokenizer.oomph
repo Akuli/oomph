@@ -48,7 +48,7 @@ func raw_tokenize(Str code) -> List[Token]:
             continue
 
         if code.starts_with(" "):
-            if result.get(result.length() - 1).matches("op", "\n"):
+            if result.last().matches("op", "\n"):
                 # Space after newline: indentation
                 assert(result.length() != 0)  # TODO: error
                 let indent_level = 0
@@ -77,7 +77,7 @@ func raw_tokenize(Str code) -> List[Token]:
     return result
 
 func skip_newlines(List[Token] tokens):
-    while tokens.length() != 0 and tokens.get(tokens.length() - 1).matches("op", "\n"):
+    while tokens.length() != 0 and tokens.last().matches("op", "\n"):
         print("Skip")
         tokens.pop()
 
@@ -115,10 +115,10 @@ func find_blocks(List[Token] tokens) -> List[Token]:
             tokens.pop()
             continue
 
-        result.push(head.get(0))
+        result.push(head.first())
         tokens.pop()
 
-        if head.get(0).matches("op", "\n"):
+        if head.first().matches("op", "\n"):
             if head.length() >= 2 and head.get(1).type == "indent":
                 let new_level = (head.get(1).value.length() / 4).round()
                 assert(head.get(1).value == " ".repeat(4*new_level))  # TODO: error

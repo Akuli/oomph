@@ -49,7 +49,7 @@ func the_actual_main():
 
     let args = process::get_args()
     assert(args.length() != 0)  # TODO: error
-    let source_path = args.get(0)
+    let source_path = args.first()
 
     io::write_file("{cache_dir}/out.c", """
     #include <stdio.h>
@@ -59,6 +59,7 @@ func the_actual_main():
 
     let run_command = new List[Str]()
     run_command.push("{cache_dir}/out")
+    # TODO: list slice method
     for let i = 1; i < args.length(); i = i+1:
         run_command.push(args.get(i))
     assert(process::run(run_command) == 0)

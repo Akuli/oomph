@@ -77,7 +77,9 @@ class Generic:
             result = Type(f"{self.name}[{generic_arg.name}]", True)
             result.generic_origin = GenericSource(self, generic_arg)
             result.constructor_argtypes = []
+            result.methods["first"] = FunctionType([result], generic_arg)
             result.methods["get"] = FunctionType([result, INT], generic_arg)
+            result.methods["last"] = FunctionType([result], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["pop"] = FunctionType([result], generic_arg)
             result.methods["push"] = FunctionType([result, generic_arg], None)

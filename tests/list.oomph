@@ -12,6 +12,10 @@ export func main():
         print(a.get(i))
     print(a)
 
+    print(a.first())
+    print(a.last())
+    print(a)
+
     let b = new List[int]()
     b.push(69)
     b.push(123)

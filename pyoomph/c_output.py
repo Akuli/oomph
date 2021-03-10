@@ -320,6 +320,8 @@ _generic_c_codes = {
         static void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
         static %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
+        static %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
+        static %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
         static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
         static struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
@@ -396,8 +398,30 @@ _generic_c_codes = {
 
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
         {
-            assert(0 <= i && i < self->len);
+            if (i < 0)
+                panic_printf("negative list index %%d", (long)i);
+            if (i >= self->len)
+                panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
+
             %(itemtype)s val = self->data[i];
+            %(incref_val)s;
+            return val;
+        }
+
+        static %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
+        {
+            if (self->len == 0)
+                panic_printf("can't get first item of empty list");
+            %(itemtype)s val = self->data[0];
+            %(incref_val)s;
+            return val;
+        }
+
+        static %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self)
+        {
+            if (self->len == 0)
+                panic_printf("can't get last item of empty list");
+            %(itemtype)s val = self->data[self->len - 1];
             %(incref_val)s;
             return val;
         }

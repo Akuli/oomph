@@ -5,7 +5,7 @@ import "ast.oomph" as ast
 class Parser(List[tokenizer::Token] tokens):
     meth peek() -> tokenizer::Token:
         assert(self.tokens.length() != 0)  # TODO: error
-        return self.tokens.get(self.tokens.length() - 1)
+        return self.tokens.last()
 
     # Use when end of file might occur
     meth peek_carefully() -> optional[tokenizer::Token]:

@@ -1,0 +1,2 @@
+can't get last item of empty list
+Program killed by signal 6 (SIGABRT)
