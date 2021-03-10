@@ -20,7 +20,6 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
             case ast::StringConstant:
                 let var = self.create_var(self.builtins.STR)
                 self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
-                return var
             case ast::IntConstant:
                 var = self.create_var(self.builtins.INT)
                 self.code.push(new ir::Instruction(new ir::IntConstant(expr.value, var)))
