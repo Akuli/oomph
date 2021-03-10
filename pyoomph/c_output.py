@@ -394,9 +394,7 @@ _generic_c_codes = {
         {
             if (self->len == 0)
                 panic_printf("pop from empty list");
-            %(itemtype)s val = self->data[--self->len];
-            %(incref_val)s;
-            return val;
+            return self->data[--self->len];
         }
 
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)

@@ -1,0 +1,6 @@
+class Token()
+
+export func main():
+    let foo = new List[Token]()
+    foo.push(new Token())
+    foo.pop()

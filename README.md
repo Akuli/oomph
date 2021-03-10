@@ -30,6 +30,7 @@ Docs:
 
 Known bugs:
 - ref cycles are not prevented or garbage collected
+- self-hosted compiler (very wip) doesn't add `\n` to end of code
 
 Missing features:
 - functions as first-class objects
