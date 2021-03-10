@@ -32,6 +32,7 @@ Known bugs:
 - ref cycles are not prevented or garbage collected
 
 Missing features:
+- functions as first-class objects
 - assigning to attributes
 - better error messaging
 - using func/meth before defining (not just Unions)

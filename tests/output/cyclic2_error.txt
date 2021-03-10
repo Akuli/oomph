@@ -1,0 +1,2 @@
+    + " --> ".join(d.source_path.name for d in decisions)
+RuntimeError: cyclic imports: cyclic2_error.oomph --> cyclic3_error.oomph --> cyclic2_error.oomph

@@ -7,7 +7,7 @@ import shlex
 import signal
 import subprocess
 import sys
-from typing import List, Set
+from typing import Dict, List
 
 from pyoomph import ast, ast2ir, c_output, parser
 
@@ -43,7 +43,6 @@ class CompilationUnit:
 
     def create_c_and_h_files(
         self,
-        used_c_paths: Set[pathlib.Path],
         compilation_dir: pathlib.Path,
         session: c_output.Session,
         headers: List[str],
@@ -95,30 +94,65 @@ def main() -> None:
         cache_dir = pathlib.Path.cwd() / ".oomph-cache"
         cache_dir.mkdir(exist_ok=True)
 
-    compilation_units: List[CompilationUnit] = []
-    todo_list = [project_root / "builtins.oomph", compiler_args.infile.absolute()]
+    all_compilation_units: List[CompilationUnit] = []
+    dependencies: Dict[pathlib.Path, List[pathlib.Path]] = {}
+    todo_list = [compiler_args.infile.absolute()]
     # TODO: figure out what import cycles do here, and disallow them
     while todo_list:
         source_path = todo_list.pop()
-        if source_path in (unit.source_path for unit in compilation_units):
+        if source_path in dependencies:
             continue
 
+        if compiler_args.verbose:
+            print("Parsing", source_path)
+
         unit = CompilationUnit(source_path, cache_dir)
-        compilation_units.append(unit)
+        all_compilation_units.append(unit)
         unit.create_untyped_ast()
 
-        for top_declaration in unit.ast:
-            if isinstance(top_declaration, ast.Import):
-                todo_list.append(top_declaration.path)
+        deps = [
+            top_declaration.path
+            for top_declaration in unit.ast
+            if isinstance(top_declaration, ast.Import)
+        ]
+        if source_path != project_root / "builtins.oomph":
+            deps.append(project_root / "builtins.oomph")
+        dependencies[unit.source_path] = deps
+        todo_list.extend(deps)
 
-    # Compile dependencies first
-    compilation_units.reverse()
+    # Dumbest toposort you have ever seen
+    compilation_order: List[CompilationUnit] = []
+    while len(compilation_order) < len(dependencies):
+        unit = [u for u in all_compilation_units if u not in compilation_order][0]
+        decisions = [unit]
+        while True:
+            need_first = [
+                u
+                for u in all_compilation_units
+                if u not in compilation_order
+                and u.source_path in dependencies[unit.source_path]
+            ]
+            if not need_first:
+                break
+            if compiler_args.verbose:
+                print(
+                    f"Noticed dependency: {unit.source_path} --> {need_first[0].source_path}"
+                )
+            unit = need_first[0]
+            decisions.append(unit)
+            if decisions.count(unit) >= 2:
+                raise RuntimeError(
+                    "cyclic imports: "
+                    + " --> ".join(d.source_path.name for d in decisions)
+                )
+        compilation_order.append(unit)
 
     session = c_output.Session()
-    for index, unit in enumerate(compilation_units):
-        already_compiled = compilation_units[:index]
+    for index, unit in enumerate(compilation_order):
+        if compiler_args.verbose:
+            print("Creating c and h files:", unit.source_path)
+        already_compiled = compilation_order[:index]
         unit.create_c_and_h_files(
-            {unit.c_path for unit in already_compiled},
             cache_dir,
             session,
             [unit.h_path.name for unit in already_compiled],
@@ -126,7 +160,7 @@ def main() -> None:
 
     exe_path = cache_dir / compiler_args.infile.stem
     command = get_c_compiler_command(
-        [unit.c_path for unit in compilation_units], exe_path
+        [unit.c_path for unit in all_compilation_units], exe_path
     )
 
     result = run(command, compiler_args.verbose)
