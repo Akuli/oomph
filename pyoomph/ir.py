@@ -122,6 +122,16 @@ class GetAttribute(Instruction):
         assert (self.result.type, self.attribute) in self.obj.type.members
 
 
+@dataclass(eq=False)
+class SetAttribute(Instruction):
+    obj: LocalVariable
+    attribute: str
+    value: LocalVariable
+
+    def __post_init__(self) -> None:
+        assert (self.value.type, self.attribute) in self.obj.type.members
+
+
 # Currently you can't use a function, method or ctor without immediately calling it
 @dataclass(eq=False)
 class CallMethod(Instruction):

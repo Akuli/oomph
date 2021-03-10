@@ -103,7 +103,9 @@ class _FunctionOrMethodConverter:
             the_class = self.file_converter.get_type(call.func.type)
             assert the_class.constructor_argtypes is not None
             args = [self.do_expression(arg) for arg in call.args]
-            assert [arg.type for arg in args] == the_class.constructor_argtypes, the_class.name
+            assert [
+                arg.type for arg in args
+            ] == the_class.constructor_argtypes, the_class.name
             result_var = self.create_var(the_class)
             self.code.append(ir.CallConstructor(result_var, args))
         else:
@@ -330,6 +332,7 @@ class _FunctionOrMethodConverter:
             [member_type] = matching_types
             result = self.create_var(member_type)
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
+            self.code.append(ir.IncRef(result))
             return result
 
         if isinstance(expr, ast.Null):
@@ -348,13 +351,24 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.Let):
             self.variables[stmt.varname] = self.do_expression(stmt.value)
 
-        elif isinstance(stmt, ast.Assign):
+        elif isinstance(stmt, ast.SetVar):
             var = self.variables[stmt.varname]
             assert isinstance(var, ir.LocalVariable)
             new_value_var = self.do_expression(stmt.value)
             self.code.append(ir.DecRef(var))
             self.code.append(ir.VarCpy(var, new_value_var))
             self.code.append(ir.IncRef(var))
+
+        elif isinstance(stmt, ast.SetAttribute):
+            obj = self.do_expression(stmt.obj)
+            new_value_var = self.do_expression(stmt.value)
+            assert (new_value_var.type, stmt.attribute) in obj.type.members
+
+            # Copy old value into local var, so that it will be decreffed
+            old_value_var = self.create_var(new_value_var.type)
+            self.code.append(ir.GetAttribute(obj, old_value_var, stmt.attribute))
+            self.code.append(ir.SetAttribute(obj, stmt.attribute, new_value_var))
+            self.code.append(ir.IncRef(new_value_var))
 
         elif isinstance(stmt, ast.Pass):
             pass

@@ -101,7 +101,10 @@ class _FunctionEmitter:
             return "goto out;"
 
         if isinstance(ins, ir.GetAttribute):
-            return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute}; {self.incref_var(ins.result)};"
+            return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute};"
+
+        if isinstance(ins, ir.SetAttribute):
+            return f"{self.emit_local_var(ins.obj)}->memb_{ins.attribute} = {self.emit_local_var(ins.value)};"
 
         if isinstance(ins, ir.PointersEqual):
             return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"

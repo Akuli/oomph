@@ -276,13 +276,17 @@ class _Parser:
             return ast.Break()
 
         expr = self.parse_expression()
-        if isinstance(expr, ast.GetVar) and self.token_iter.peek(None) == (
+        if self.token_iter.peek(None) == (
             "op",
             "=",
         ):
             self.get_token("op", "=")
             value = self.parse_expression()
-            return ast.Assign(expr.varname, value)
+            if isinstance(expr, ast.GetVar):
+                return ast.SetVar(expr.varname, value)
+            if isinstance(expr, ast.GetAttribute):
+                return ast.SetAttribute(expr.obj, expr.attribute, value)
+            raise RuntimeError(f"can't assign to {expr}")
 
         assert isinstance(expr, ast.Call), expr
         return expr
@@ -320,7 +324,7 @@ class _Parser:
                         [],
                     ),
                 ),
-                ast.Assign(
+                ast.SetVar(
                     index_var,
                     ast.BinaryOperator(ast.GetVar(index_var), "+", ast.IntConstant(1)),
                 ),

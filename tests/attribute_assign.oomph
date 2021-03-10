@@ -1,0 +1,12 @@
+class Foo(Str s)
+
+export func main():
+    # Slicing to create reference-counted strings (exposes bugs)
+    let foo = new Foo("lol".slice(0, 3))
+    print(foo)
+    foo.s = "wuttt".slice(0, 5)
+    print(foo)
+
+    for let i = 0; i < 10; i = i+1:
+        foo.s = "blah{i}"
+        print(foo)

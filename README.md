@@ -33,7 +33,6 @@ Known bugs:
 
 Missing features:
 - functions as first-class objects
-- assigning to attributes
 - better error messaging
 - using func/meth before defining (not just Unions)
 - `>>>` prompt

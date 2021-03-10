@@ -137,7 +137,9 @@ A one-line-ish statement can be:
 - Pass statement: the `pass` keyword.
 - Continue statement: the `continue` keyword.
 - Break statement: the `break` keyword.
-- An assignment statement: just like a let statement, but without the keyword `let`.
+- An assignment statement: an expression, then the `=` operator, then another expression.
+    The first expression must end with an attribute lookup or be an identifier token,
+    interpreted as a local variable.
 - A function call expression.
 
 An expression is a sequence of simple expressions or operators and keywords from the below precedence list:

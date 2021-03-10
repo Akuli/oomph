@@ -33,9 +33,22 @@ class GetVar(Expression):
 
 
 @dataclass(eq=False)
+class SetVar(Statement):
+    varname: str
+    value: Expression
+
+
+@dataclass(eq=False)
 class GetAttribute(Expression):
     obj: Expression
     attribute: str
+
+
+@dataclass(eq=False)
+class SetAttribute(Statement):
+    obj: Expression
+    attribute: str
+    value: Expression
 
 
 @dataclass(eq=False)
@@ -89,12 +102,6 @@ class Call(Expression, Statement):
 
 @dataclass(eq=False)
 class Let(Statement):
-    varname: str
-    value: Expression
-
-
-@dataclass(eq=False)
-class Assign(Statement):
     varname: str
     value: Expression
 
