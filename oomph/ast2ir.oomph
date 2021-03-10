@@ -1,12 +1,16 @@
 import "ast.oomph" as ast
 import "ir.oomph" as ir
 
-class Converter(ir::Builtins builtins, List[ir::Instruction] code):
+class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_counter):
     meth find_function(Str name) -> ir::BuiltinVariable:
         foreach var of self.builtins.get_variables():
             if var.name == name:
                 return var
         assert(false)  # TODO: error
+
+    meth create_var(ir::ObjectType type) -> ir::LocalVariable:
+        self.varname_counter = self.varname_counter + 1
+        return new ir::LocalVariable(type, self.varname_counter)
 
     meth do_expression(ast::Expression expr) -> ir::LocalVariable:
         switch expr:
@@ -14,7 +18,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code):
                 print("getvar {expr}")
                 assert(false)  # TODO
             case ast::StringConstant:
-                let var = new ir::LocalVariable(self.builtins.STR)
+                let var = self.create_var(self.builtins.STR)
                 self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
                 return var
             case ast::Call:
@@ -52,8 +56,8 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code):
         let body = self.do_block(funcdef.body)
         return new ir::FuncDef(func_var, new List[ir::LocalVariable](), body)
 
-export func convert_program(ir::Builtins builtins, List[ast::FuncDef] program):
+export func convert_program(ir::Builtins builtins, List[ast::FuncDef] program) -> List[ir::FuncDef]:
     let result = new List[ir::FuncDef]()
     foreach funcdef of program:
-        result.push(new Converter(builtins, new List[ir::Instruction]()).do_funcdef(funcdef))
-    print("conversion result: {result}")
+        result.push(new Converter(builtins, new List[ir::Instruction](), 0).do_funcdef(funcdef))
+    return result

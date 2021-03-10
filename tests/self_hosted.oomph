@@ -1,4 +1,0 @@
-import "<stdlib>/subprocess.oomph" as subproc
-
-export func main():
-    subproc::run("python3 -m pyoomph oomph/main.oomph".split(" "))

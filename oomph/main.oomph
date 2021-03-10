@@ -1,6 +1,7 @@
 import "<stdlib>/io.oomph" as io
 import "<stdlib>/subprocess.oomph" as process
 import "ast2ir.oomph" as ast2ir
+import "c_output.oomph" as c_output
 import "ir.oomph" as ir
 import "parser.oomph" as parser
 
@@ -44,7 +45,7 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
     result.push(project_root)
     return result
 
-func the_actual_main():
+export func main():
     let project_root = "."
     let cache_dir = "{project_root}/.oomph-cache"
     io::mkdir(cache_dir)
@@ -53,10 +54,12 @@ func the_actual_main():
     assert(args.length() != 0)  # TODO: error
     let source_path = args.first()
 
-    io::write_file("{cache_dir}/out.c", """
-    #include <stdio.h>
-    void oomph_main(void) \{ puts("Hello World!\\n"); \}
-    """)
+    let builtins = ir::create_builtins()
+    let code = io::read_file(source_path)
+    let ast = parser::parse_file(code)
+    let ir = ast2ir::convert_program(builtins, ast)
+    let c_code = c_output::create_code(builtins, ir)
+    io::write_file("{cache_dir}/out.c", c_code)
     assert(process::run(get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")) == 0)
 
     let run_command = new List[Str]()
@@ -65,8 +68,3 @@ func the_actual_main():
     for let i = 1; i < args.length(); i = i+1:
         run_command.push(args.get(i))
     assert(process::run(run_command) == 0)
-
-export func main():
-    let builtins = ir::create_builtins()
-    let ast = parser::parse_file(io::read_file("tests/hello.oomph"))
-    ast2ir::convert_program(builtins, ast)

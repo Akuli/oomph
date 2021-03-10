@@ -8,14 +8,6 @@ if [ "$1" == --keep-going ]; then
 else
     keep_going=no
 fi
-
-if [ "$1" != "" ] && [[ "$1" != -* ]]; then
-    oomphcommand="$1"
-    shift
-else
-    oomphcommand="python3 -m pyoomph"
-fi
-
 oomphopts="$@"
 
 make
@@ -23,19 +15,22 @@ make
 function check()
 {
     local file=$1
-    local out=test_out/$(basename $file | cut -d. -f1).txt
+    shift
+    local oomph="$@"
+
     if [[ $file == tests/*_error.oomph ]]; then
         local expect_fail=yes
-        local command="$oomphcommand $file"
+        local command="$oomph $file"
     else
         local expect_fail=no
-        local command="$oomphcommand $oomphopts $file"
+        local command="$oomph $oomphopts $file"
         if [ $file == tests/args.oomph ]; then
             command="$command hello world"
         fi
     fi
 
     local success
+    local out=test_out/$(basename $file | cut -d. -f1).txt
 
     echo "$command"
     if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > $out; then
@@ -71,10 +66,18 @@ function check()
     fi
 }
 
+function run {
+    if [ $(jobs | wc -l) -ge $(nproc) ]; then
+        wait -n
+    fi
+    "$@" &
+}
+
 mkdir -vp test_out
 rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
 
+trap wait EXIT
 for file in tests/*.oomph; do
     if [[ $file == tests/*_lib.oomph ]]; then
         # The file is meant to be imported
@@ -86,10 +89,10 @@ for file in tests/*.oomph; do
         break
     fi
 
-    if [ $(jobs | wc -l) -ge $(nproc) ]; then
-        wait -n
+    run check $file python3 -m pyoomph
+    if grep -q $file tests/self_hosted.txt; then
+        run check $file python3 -m pyoomph $oomphopts oomph/main.oomph
     fi
-    check $file &
 done
 wait
 

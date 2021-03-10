@@ -2,7 +2,7 @@ export class ObjectType(Str name, bool refcounted)
 export class FunctionType(List[ObjectType] argtypes)
 
 # TODO: add integer id to LocalVariable for debugging and C variable naming
-export class LocalVariable(ObjectType type)
+export class LocalVariable(ObjectType type, int id)
 export class BuiltinVariable(Str name, FunctionType type)
 export class ThisFileVariable(Str name, FunctionType type)
 
@@ -30,6 +30,6 @@ export union Instruction:
     StringConstant
 
 export class FunctionCall(BuiltinVariable function, List[LocalVariable] args)
-export class StringConstant(Str value, LocalVariable res)
+export class StringConstant(Str value, LocalVariable var)
 
 export class FuncDef(ThisFileVariable var, List[LocalVariable] argvars, List[Instruction] body)
