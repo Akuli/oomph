@@ -1,0 +1,29 @@
+import "ast.oomph" as ast
+import "ir.oomph" as ir
+import "types.oomph" as types
+
+class Converter(types::Builtins builtins):
+    meth do_block(List[ast::Call] body) -> List[ir::Instruction]:
+        print(body)
+        return new List[ir::Instruction]()
+
+    meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
+        assert(funcdef.args.length() == 0)
+        let functype = new types::FunctionType(new List[types::ObjectType]())
+        assert(funcdef.name == "main")
+
+        let func_var = new types::ThisFileVariable(funcdef.name, functype)
+        #let body = self.do_block(funcdef.body)
+        let body = new List[ir::Instruction]()
+
+        return new ir::FuncDef(func_var, new List[types::LocalVariable](), body)
+
+
+export func convert_program(types::Builtins builtins, List[ast::FuncDef] program):
+    # FIXME: can't push to result, it becomes list of ast::FuncDef
+    let result = new List[ir::FuncDef]()
+    foreach funcdef of program:
+        let converter = new Converter(builtins)
+        let ir_funcdef = converter.do_funcdef(funcdef)
+        print(ir_funcdef)
+        #result.push(body)

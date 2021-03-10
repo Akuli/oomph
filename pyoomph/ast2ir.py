@@ -317,7 +317,7 @@ class _FunctionOrMethodConverter:
             return self.do_binary_op(expr)
 
         if isinstance(expr, ast.Constructor):
-            raise NotImplementedError
+            raise NotImplementedError(f"constructor as object: {expr}")
 
         if isinstance(expr, ast.GetAttribute):
             obj = self.do_expression(expr.obj)
@@ -529,6 +529,7 @@ class _FileConverter:
                 mypy_sucks = ir.ThisFileVariable(funcdef.name, functype)
             self.add_var(mypy_sucks, mypy_sucks.name)
         else:
+            assert funcdef.name not in classtype.methods
             classtype.methods[funcdef.name] = functype
 
         local_vars = self.variables.copy()
@@ -546,8 +547,7 @@ class _FileConverter:
             assert argname not in local_vars
             local_vars[argname] = copied_var
 
-        converter = _FunctionOrMethodConverter(self, local_vars)
-        body.extend(converter.do_block(funcdef.body))
+        body.extend(_FunctionOrMethodConverter(self, local_vars).do_block(funcdef.body))
 
         if classtype is None:
             return ir.FuncDef(mypy_sucks, argvars, body)

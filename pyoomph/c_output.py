@@ -770,7 +770,7 @@ class _FileEmitter:
                         assert(0);
                 }}
 
-                struct class_Str *res = {self.emit_string("union " + top_declaration.type.name)};
+                struct class_Str *res = {self.emit_string(top_declaration.type.name)};
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
                 string_concat_inplace(&res, ")");

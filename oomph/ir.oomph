@@ -1,0 +1,10 @@
+import "types.oomph" as types
+
+export union Instruction:
+    # TODO
+    Str
+    FuncDef
+
+export class FuncDef(types::ThisFileVariable var, List[types::LocalVariable] argvars, List[Instruction] body):
+    meth to_string() -> Str:
+        return "ir::FuncDef({self.var}, {self.argvars}, {self.body})"

@@ -1,6 +1,6 @@
 Foo 69
-Without switch: union Thing(Foo(69))
+Without switch: Thing(Foo(69))
 Bar Bar()
-Without switch: union Thing(Bar())
+Without switch: Thing(Bar())
 Baz
-Without switch: union Thing(Baz())
+Without switch: Thing(Baz())
