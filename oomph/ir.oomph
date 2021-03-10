@@ -1,10 +1,35 @@
-import "types.oomph" as types
+export class ObjectType(Str name, bool refcounted)
+export class FunctionType(List[ObjectType] argtypes)
+
+# TODO: add integer id to LocalVariable for debugging and C variable naming
+export class LocalVariable(ObjectType type)
+export class BuiltinVariable(Str name, FunctionType type)
+export class ThisFileVariable(Str name, FunctionType type)
+
+# TODO: global (but const) variables
+export class Builtins(ObjectType STR, BuiltinVariable PRINT):
+    meth get_types() -> List[ObjectType]:
+        let result = new List[ObjectType]()
+        result.push(self.STR)
+        return result
+
+    meth get_variables() -> List[BuiltinVariable]:
+        let result = new List[BuiltinVariable]()
+        result.push(self.PRINT)
+        return result
+
+# TODO: custom constructors
+export func create_builtins() -> Builtins:
+    let STR = new ObjectType("Str", true)
+    let print_args = new List[ObjectType]()
+    print_args.push(STR)
+    return new Builtins(STR, new BuiltinVariable("print", new FunctionType(print_args)))
 
 export union Instruction:
     FunctionCall
     StringConstant
 
-export class FunctionCall(types::BuiltinVariable function, List[types::LocalVariable] args)
-export class StringConstant(Str value, types::LocalVariable res)
+export class FunctionCall(BuiltinVariable function, List[LocalVariable] args)
+export class StringConstant(Str value, LocalVariable res)
 
-export class FuncDef(types::ThisFileVariable var, List[types::LocalVariable] argvars, List[Instruction] body)
+export class FuncDef(ThisFileVariable var, List[LocalVariable] argvars, List[Instruction] body)

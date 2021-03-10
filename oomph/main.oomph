@@ -1,8 +1,8 @@
 import "<stdlib>/io.oomph" as io
 import "<stdlib>/subprocess.oomph" as process
 import "ast2ir.oomph" as ast2ir
+import "ir.oomph" as ir
 import "parser.oomph" as parser
-import "types.oomph" as types
 
 # TODO: respect quoting rules
 func split(Str s) -> List[Str]:
@@ -67,6 +67,6 @@ func the_actual_main():
     assert(process::run(run_command) == 0)
 
 export func main():
-    let builtins = types::create_builtins()
+    let builtins = ir::create_builtins()
     let ast = parser::parse_file(io::read_file("tests/hello.oomph"))
     ast2ir::convert_program(builtins, ast)
