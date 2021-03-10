@@ -33,7 +33,8 @@ class Type:
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, Type)
-            and self.name == other.name  # enough for non-generics
+            and self.name == other.name
+            and self.definition_path == other.definition_path
             and self.generic_origin == other.generic_origin
         )
 

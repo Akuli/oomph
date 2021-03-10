@@ -1,0 +1,6 @@
+import "a_lib.oomph" as a
+import "b_lib.oomph" as b
+
+export func main():
+    new List[a::Foo]().push(new a::Foo())
+    new List[b::Foo]().push(new b::Foo())
