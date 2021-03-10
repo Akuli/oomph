@@ -102,6 +102,8 @@ Deprecated features:
 - maybe traditional `for` loops? they seem more confusing than useful
 
 Design questions to (re)think:
+- tempting to use `func` as variable name
+- `switch` syntax
 - name of `self`? maybe `instance` or `this`?
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.

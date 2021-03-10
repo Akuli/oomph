@@ -1,6 +1,7 @@
 export class ObjectType(Str name, bool refcounted)
 export class FunctionType(List[ObjectType] argtypes)
 
+# TODO: add integer id for debugging and C variable naming
 export class LocalVariable(ObjectType type)
 export class BuiltinVariable(Str name, FunctionType type)
 export class ThisFileVariable(Str name, FunctionType type)

@@ -2,28 +2,59 @@ import "ast.oomph" as ast
 import "ir.oomph" as ir
 import "types.oomph" as types
 
-class Converter(types::Builtins builtins):
+class Converter(types::Builtins builtins, List[ir::Instruction] code):
+    meth find_function(Str name) -> types::BuiltinVariable:
+        foreach var of self.builtins.get_variables():
+            if var.name == name:
+                return var
+        assert(false)  # TODO: error
+
+    meth do_expression(ast::Expression expr) -> types::LocalVariable:
+        switch expr:
+            case ast::GetVar:
+                print("getvar {expr}")
+                assert(false)  # TODO
+            case ast::StringConstant:
+                let var = new types::LocalVariable(self.builtins.STR)
+                self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
+                return var
+            case ast::Call:
+                print("call {expr}")
+                assert(false)  # TODO
+
+    meth do_statement(ast::Call call):
+        let f = call.function
+        switch f:
+            # Currently, functions must be variables
+            case ast::GetVar:
+                let func_var = self.find_function(f.varname)
+            case ast::StringConstant:
+                assert(false)  # TODO: error
+            case ast::Call:
+                assert(false)  # TODO: error
+
+        let argvars = new List[types::LocalVariable]()
+        foreach arg of call.args:
+            argvars.push(self.do_expression(arg))
+        self.code.push(new ir::Instruction(new ir::FunctionCall(func_var, argvars)))
+
     meth do_block(List[ast::Call] body) -> List[ir::Instruction]:
-        print(body)
-        return new List[ir::Instruction]()
+        # TODO: separate class
+        assert(self.code.length() == 0)
+        foreach call of body:
+            self.do_statement(call)
+        return self.code
 
     meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
         assert(funcdef.args.length() == 0)
         let functype = new types::FunctionType(new List[types::ObjectType]())
         assert(funcdef.name == "main")
-
         let func_var = new types::ThisFileVariable(funcdef.name, functype)
-        #let body = self.do_block(funcdef.body)
-        let body = new List[ir::Instruction]()
-
+        let body = self.do_block(funcdef.body)
         return new ir::FuncDef(func_var, new List[types::LocalVariable](), body)
 
-
 export func convert_program(types::Builtins builtins, List[ast::FuncDef] program):
-    # FIXME: can't push to result, it becomes list of ast::FuncDef
     let result = new List[ir::FuncDef]()
     foreach funcdef of program:
-        let converter = new Converter(builtins)
-        let ir_funcdef = converter.do_funcdef(funcdef)
-        print(ir_funcdef)
-        #result.push(body)
+        result.push(new Converter(builtins, new List[ir::Instruction]()).do_funcdef(funcdef))
+    print("conversion result: {result}")

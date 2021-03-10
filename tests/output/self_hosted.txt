@@ -1,1 +1,1 @@
-ir::FuncDef(ThisFileVariable("main", FunctionType([])), [], [])
+conversion result: [FuncDef(ThisFileVariable("main", FunctionType([])), [], [Instruction(StringConstant("hello", LocalVariable(ObjectType("Str", true)))), Instruction(FunctionCall(BuiltinVariable("print", FunctionType([ObjectType("Str", true)])), [LocalVariable(ObjectType("Str", true))]))])]
