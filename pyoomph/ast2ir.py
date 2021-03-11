@@ -344,11 +344,10 @@ class _FunctionOrMethodConverter:
             return result
 
         if isinstance(expr, ast.Null):
-            null_var = self.create_var(
+            # Variables are nulled by default (see create_var)
+            return self.create_var(
                 OPTIONAL.get_type(self.file_converter.get_type(expr.type))
             )
-            self.code.append(ir.Null(null_var))
-            return null_var
 
         raise NotImplementedError(expr)
 

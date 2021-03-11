@@ -200,12 +200,6 @@ class FloatConstant(Instruction):
     value: str
 
 
-# TODO: replace entirely with SetToNull
-@dataclass(eq=False)
-class Null(Instruction):
-    result: LocalVariable
-
-
 # Can't be a function call because arguments can be many different types
 @dataclass(eq=False)
 class PointersEqual(Instruction):

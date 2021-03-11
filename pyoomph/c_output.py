@@ -150,9 +150,6 @@ class _FunctionEmitter:
                 membernum,
             )
 
-        if isinstance(ins, ir.Null):
-            return self.emit_var(ins.result) + ".isnull = true;\n"
-
         if isinstance(ins, ir.GetFromUnion):
             assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
@@ -181,8 +178,6 @@ class _FunctionEmitter:
             """
 
         if isinstance(ins, ir.SetToNull):
-            if not ins.var.type.refcounted:
-                return ""
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
             if (
@@ -191,6 +186,9 @@ class _FunctionEmitter:
             ):
                 c_type = self.file_emitter.emit_type(ins.var.type)
                 return f"{self.emit_var(ins.var)} = ({c_type}){{ .isnull = true }};\n"
+            if not ins.var.type.refcounted:
+                # Must not run for non-refcounted unions or optionals
+                return ""
             return f"{self.emit_var(ins.var)} = NULL;\n"
 
         raise NotImplementedError(ins)
