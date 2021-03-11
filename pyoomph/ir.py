@@ -295,11 +295,6 @@ class Switch(Instruction):
 
 
 @dataclass(eq=False)
-class Constructor(Instruction):
-    result: LocalVariable
-
-
-@dataclass(eq=False)
 class ToplevelDeclaration:
     pass
 
