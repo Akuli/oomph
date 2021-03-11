@@ -41,11 +41,11 @@ class Parser(List[tokenizer::Token] tokens):
             assert(string.starts_with("\""))
             assert(string.ends_with("\""))
             let result = new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
-        if self.peek().type == "id":
+        elif self.peek().type == "id":
             result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
-        if self.peek().type == "int":
+        elif self.peek().type == "int":
             result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
-        if self.peek().type == "float":
+        elif self.peek().type == "float":
             result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("float").value))
         else:
             print("Don't know what to do: {self.peek()}")
@@ -62,22 +62,44 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("op", ")")
             result = new ast::Expression(new ast::Call(result, args))
 
+        return result
+
     meth parse_expression() -> ast::Expression:
         let magic_list = new List[PrecedenceItem]()
+        print("Aaa")
+        print(self.tokens)
         magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
 
+        print("Aaa")
         while self.peek_carefully() != null[tokenizer::Token] and self.peek().matches("op", "+"):
+            print("Bbb")
             magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
+            print("Bbb")
             magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
+            print("Bbbbbbb")
 
         print("magic_list = {magic_list}")
         if magic_list.length() == 1:
             let result = magic_list.first()
             switch result:
-                case Str:
-                    assert(false)
                 case ast::Expression:
                     return result
+                case Str:
+                    assert(false)
+
+        while true:
+            for let i = 0; i < magic_list.length(); i = i+1:
+                # TODO: this isn't nice
+                let value = magic_list.get(i)
+                let plus = false
+                switch value:
+                    case Str:
+                        if value == "+":
+                            plus = true
+                    case ast::Expression:
+                        pass
+                if plus:
+                    print(i)
 
         # TODO
         print(magic_list)
