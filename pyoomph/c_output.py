@@ -498,7 +498,6 @@ class _FileEmitter:
         self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
 
-        self.union_decls = ""
         self.structs = ""
         self.function_decls = ""
         self.function_defs = ""
@@ -529,9 +528,10 @@ class _FileEmitter:
         self.varname_counter += 1
         return f"var{self.varname_counter}"
 
+    # May evaluate c_expression several times
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
-            return f"incref(({c_expression}).val.item0)"
+            return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
         if (
             the_type.generic_origin is not None
             and the_type.generic_origin.generic is OPTIONAL
@@ -539,14 +539,14 @@ class _FileEmitter:
             value_incref = self.emit_incref(
                 f"({c_expression}).value", the_type.generic_origin.arg
             )
-            return f"(({c_expression}).isnull ? (void)0 : {value_incref})"
+            return f"do{{ if(!({c_expression}).isnull) {value_incref}; }} while(0)"
         if the_type.refcounted:
             return f"incref({c_expression})"
         return "(void)0"
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
-            return f"decref_{self.get_type_c_name(the_type)}(({c_expression}))"
+            return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
         if (
             the_type.generic_origin is not None
             and the_type.generic_origin.generic is OPTIONAL
@@ -780,9 +780,17 @@ class _FileEmitter:
             }}
             """
 
-            # To decref unions, we need to know the value of membernum and
-            # decref the correct member of the union. This union-specific
-            # function handles that.
+            # To incref/decref unions, we need to know the value of membernum
+            # and incref/decref the correct member of the union. This
+            # union-specific function handles that.
+            incref_cases = "".join(
+                f"""
+                case {num}:
+                    {self.emit_incref(f"obj.val.item{num}", typ)};
+                    break;
+                """
+                for num, typ in enumerate(top_declaration.type.type_members)
+            )
             decref_cases = "".join(
                 f"""
                 case {num}:
@@ -791,8 +799,19 @@ class _FileEmitter:
                 """
                 for num, typ in enumerate(top_declaration.type.type_members)
             )
-            self.function_decls += f"void decref_{c_name}(struct class_{c_name} obj);"
+
+            self.function_decls += f"""
+            void incref_{c_name}(struct class_{c_name} obj);
+            void decref_{c_name}(struct class_{c_name} obj);
+            """
             self.function_defs += f"""
+            void incref_{c_name}(struct class_{c_name} obj) {{
+                switch(obj.membernum) {{
+                    {incref_cases}
+                    default:
+                        assert(0);
+                }}
+            }}
             void decref_{c_name}(struct class_{c_name} obj) {{
                 switch(obj.membernum) {{
                     case -1:   // variable not in use
@@ -829,7 +848,7 @@ class Session:
 
     def create_c_code(
         self,
-        ast: List[ir.ToplevelDeclaration],
+        top_decls: List[ir.ToplevelDeclaration],
         path: pathlib.Path,
         include_list: List[str],
     ) -> Tuple[str, str]:
@@ -838,7 +857,7 @@ class Session:
         )
 
         emitter = _FileEmitter(self, path)
-        for top_declaration in ast:
+        for top_declaration in top_decls:
             emitter.emit_toplevel_declaration(top_declaration)
 
         h_code = includes + emitter.structs + emitter.function_decls

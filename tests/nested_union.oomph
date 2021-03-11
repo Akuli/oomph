@@ -1,0 +1,16 @@
+class Foo()
+class Bar()
+class Baz()
+
+# FIXME: inner union must be first
+union Inner:
+    Bar
+    Baz
+
+union Outer:
+    Inner
+    Foo
+
+export func main():
+    let x = new Outer(new Inner(new Bar()))
+    print(x)
