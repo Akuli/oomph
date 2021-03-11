@@ -1,6 +1,36 @@
 import "tokenizer.oomph" as tokenizer
 import "ast.oomph" as ast
 
+union PrecedenceItem:
+    ast::Expression
+    Str
+
+# TODO: add a convenient way to do this without util funcs
+func get_expr(PrecedenceItem item) -> optional[ast::Expression]:
+    switch item:
+        case ast::Expression:
+            return new optional[ast::Expression](item)
+        case Str:
+            return null[ast::Expression]
+
+# TODO: more list methods
+func delete_slice_from_list(List[PrecedenceItem] list, int start, int end) -> List[PrecedenceItem]:
+    let stack = new List[PrecedenceItem]()
+    let result = new List[PrecedenceItem]()
+    while list.length() > end:
+        stack.push(list.pop())
+    while list.length() > start:
+        result.push(list.pop())
+    list.push_all(stack.reversed())
+    return result.reversed()
+
+func insert_to_list(List[PrecedenceItem] list, int index, PrecedenceItem item):
+    let stack = new List[PrecedenceItem]()
+    while list.length() > index:
+        stack.push(list.pop())
+    list.push(item)
+    list.push_all(stack.reversed())
+
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
     meth peek() -> tokenizer::Token:
@@ -8,6 +38,7 @@ class Parser(List[tokenizer::Token] tokens):
         return self.tokens.last()
 
     # Use when end of file might occur
+    # TODO: replace with self.tokens.length() != 0
     meth peek_carefully() -> optional[tokenizer::Token]:
         if self.tokens.length() == 0:
             return null[tokenizer::Token]
@@ -24,10 +55,13 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth get_token(Str type, Str value) -> tokenizer::Token:
         let token = self.get_token_by_type(type)
-        assert(token.value == value)  # TODO: error
+        if token.value != value:
+            # TODO: error
+            print("Expected '{value}', got '{token.value}'")
+            assert(false)
         return token
 
-    meth parse_expression() -> ast::Expression:
+    meth parse_simple_expression() -> ast::Expression:
         if self.peek().type == "string":
             let string = self.get_token_by_type("string").value
             assert(string.starts_with("\""))
@@ -56,12 +90,48 @@ class Parser(List[tokenizer::Token] tokens):
 
         return result
 
+    meth parse_expression() -> ast::Expression:
+        let magic_list = new List[PrecedenceItem]()
+        magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
+        while self.peek_carefully() != null[tokenizer::Token] and self.peek().matches("op", "+"):
+            magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
+            magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
+
+        while magic_list.length() > 1:
+            for let i = 0; i <= magic_list.length() - 3; i = i+1:
+                # TODO: this isn't nice
+                let value = magic_list.get(i+1)
+                let skip = false
+                switch value:
+                    case Str:
+                        skip = (value != "+")
+                    case ast::Expression:
+                        skip = true
+                if skip:
+                    continue  # keep going with for loop
+                # TODO: unpacking
+                let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
+                let lhs = get_expr(lhs_op_rhs.first()).get()
+                let rhs = get_expr(lhs_op_rhs.last()).get()
+                insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, "+", rhs))))
+                break  # keep going with while loop
+
+        assert(magic_list.length() == 1)
+        let result = magic_list.first()
+        switch result:
+            case ast::Expression:
+                return result
+            case Str:
+                assert(false)
+
     meth parse_statement() -> ast::Call:
         let expr = self.parse_expression()
         switch expr:
             case ast::Call:
                 self.get_token("op", "\n")
                 return expr
+            case ast::BinaryOperator:
+                assert(false)  # TODO: error
             case ast::FloatConstant:
                 assert(false)  # TODO: error
             case ast::GetVar:

@@ -1,12 +1,14 @@
 export class Type(Str name)
 
 export union Expression:
+    BinaryOperator
     Call
     FloatConstant
     GetVar
     IntConstant
     StringConstant
 
+export class BinaryOperator(Expression lhs, Str op, Expression rhs)
 export class Call(Expression function, List[Expression] args)
 export class FloatConstant(Str value)
 export class GetVar(Str varname)
