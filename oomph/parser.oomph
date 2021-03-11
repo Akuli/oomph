@@ -37,13 +37,6 @@ class Parser(List[tokenizer::Token] tokens):
         assert(self.tokens.length() != 0)  # TODO: error
         return self.tokens.last()
 
-    # Use when end of file might occur
-    # TODO: replace with self.tokens.length() != 0
-    meth peek_carefully() -> optional[tokenizer::Token]:
-        if self.tokens.length() == 0:
-            return null[tokenizer::Token]
-        return new optional[tokenizer::Token](self.peek())
-
     meth get_token_by_type(Str type) -> tokenizer::Token:
         self.peek()   # Error if end of file
         let token = self.tokens.pop()
@@ -77,7 +70,7 @@ class Parser(List[tokenizer::Token] tokens):
             print("Don't know what to do: {self.peek()}")
             assert(false)
 
-        while self.peek_carefully() != null[tokenizer::Token] and self.peek_carefully().get().matches("op", "("):
+        while self.tokens.length() != 0 and self.peek().matches("op", "("):
             self.get_token("op", "(")
             let args = new List[ast::Expression]()
             if not self.peek().matches("op", ")"):
@@ -92,7 +85,7 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_expression() -> ast::Expression:
         let magic_list = [new PrecedenceItem(self.parse_simple_expression())]
-        while self.peek_carefully() != null[tokenizer::Token] and self.peek().matches("op", "+"):
+        while self.tokens.length() != 0 and self.peek().matches("op", "+"):
             magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
             magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
 

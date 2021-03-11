@@ -192,7 +192,7 @@ class _Parser:
         assert not any(
             first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
             for first, second in zip(magic_list, magic_list[2:])
-        )
+        ), "chaining '==' and '!=' is not supported yet"
 
         # Disallow a--b and --a, require a-(-b) or -(-a)
         assert not any(
