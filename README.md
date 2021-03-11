@@ -22,7 +22,7 @@ python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 
 - Compiles to C, aims to be high-level but faster than Python
 - See example files in `tests` to get started
-- Some things are implemented in the language itself (see `stdlib.oomph`)
+- Some things are implemented in the language itself (see `builtins.oomph` and `stdlib`)
 - Refcounted types are named `LikeThis`, non-refcounted pass-by-value types `like_this`
 
 Docs:
@@ -44,9 +44,7 @@ Missing features:
 - `from "lib.oomph" import foo` syntax
 - trailing commas
 - newlines ignored inside parentheses
-- automaticly turn `x` into `new SomeUnion(x)` when needed
 - automatic dedenting in multiline strings
-- `case Foo, Bar:`
 - `r` strings
 - better ternary than in python: `if cond then a else b`
 - named arguments
@@ -65,6 +63,7 @@ Missing features:
 - `+=`
 - lists:
     - js-style methods (needs lambdas) or list comprehensions
+        - idea: `foo.map(.to_string())` would be same as `foo.map(item => item.to_string())`
     - `list + list`
     - `list.starts_with` and `ends_with`
     - `insert_item` and `insert_sublist` methods
@@ -76,6 +75,8 @@ Missing features:
     - mappings
         - `Str.replace(mapping)` (I wish python had this)
 - automatic types
+    - automaticly turn `x` into `new SomeUnion(x)` when needed
+        - can be difficult: what if unions are nested in a cyclic way?
     - `null[Str]` --> `null[auto]`
     - `null[auto]` --> `null`
     - `new List[Str]()` --> `[]`
@@ -98,19 +99,26 @@ Missing features:
     - `not (a and not b)` is more complicated than `(not a) or b`
     - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
 - warnings about unused things (unions, classes, functions, methods, variables)
+- `case Foo(Str x, int y):`
+    - combined with unused variable warnings, it is impossible to accidentally forget
+        to use some data, a feature that I wish Python had
 
-Deprecated features:
+Deprecated:
 - `is_null()` method (use `thing != null[type]`)
 - maybe traditional `for` loops? they seem more confusing than useful
+    - if they are removed, `range` would be useful to have
+        - if we want an efficient `range`, we need to have streams (python 2 vs 3)
+            - and streams won't be easy to implement
+                - so maybe it isn't deprecated after all
+                    - why is this list so deeply nested lol
+- `<stdlib>/hello.oomph`
 
 Design questions to (re)think:
 - `in` operator: `a in b` vs `b.contains(a)`
 - tempting to use `func` as variable name
-- name of `self`? maybe `instance` or `this`?
+- name of `self`? maybe `instance` or `this`? also considered `inst`, but that's too short
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.
-- requiring use of attributes (useful for going through data, avoid accidental ignoring)
-    - could be just more `switch` syntax
 - should string lengths and indexing be done in unicode code points instead of
   utf-8 bytes?
     - Advantage: easier to understand
@@ -136,3 +144,4 @@ Optimization ideas:
 - caching `strlen` result
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
 - streams, as an alternative to lists
+    - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
