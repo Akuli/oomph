@@ -128,7 +128,11 @@ A statement can be:
   then an expression, then `;` operator, then another one-line-ish statement, then a block of statements.
 - Foreach loop: the keyword `foreach` followed by a simple identifier, then `of`, then an expression, then a block of statements.
 - Switch statement: the keyword `switch`, followed by an expression with a union type, and then block of cases.
-  A case consists of the keyword `case` followed by a type and then a block of statements.
+  A case consists of the keyword `case` followed by
+  a type, then a simple identifier interpreted as a local variable name,
+  and then a block of statements.
+  The last `case` keyword may be instead followed by the `*` operator and a block,
+  in which case the block runs when no other cases match.
 - Any one-line-ish statement followed by a newline.
 
 A one-line-ish statement can be:

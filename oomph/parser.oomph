@@ -8,9 +8,9 @@ union PrecedenceItem:
 # TODO: add a convenient way to do this without util funcs
 func get_expr(PrecedenceItem item) -> optional[ast::Expression]:
     switch item:
-        case ast::Expression:
-            return new optional[ast::Expression](item)
-        case Str:
+        case ast::Expression expr:
+            return new optional[ast::Expression](expr)
+        case *:
             return null[ast::Expression]
 
 # TODO: more list methods
@@ -99,12 +99,11 @@ class Parser(List[tokenizer::Token] tokens):
 
         while magic_list.length() > 1:
             for let i = 0; i <= magic_list.length() - 3; i = i+1:
-                let value = magic_list.get(i+1)
-                switch value:
-                    case Str:
-                        if value != "+":
+                switch magic_list.get(i+1):
+                    case Str op:
+                        if op != "+":
                             continue
-                    case ast::Expression:
+                    case *:
                         continue
 
                 # TODO: unpacking
@@ -115,28 +114,18 @@ class Parser(List[tokenizer::Token] tokens):
                 break  # keep going with while loop (TODO: named continue?)
 
         assert(magic_list.length() == 1)
-        let result = magic_list.first()
-        switch result:
-            case ast::Expression:
-                return result
-            case Str:
+        switch magic_list.first():
+            case ast::Expression expr:
+                return expr
+            case *:
                 assert(false)
 
     meth parse_statement() -> ast::Call:
-        let expr = self.parse_expression()
-        switch expr:
-            case ast::Call:
+        switch self.parse_expression():
+            case ast::Call call:
                 self.get_token("op", "\n")
-                return expr
-            case ast::BinaryOperator:
-                assert(false)  # TODO: error
-            case ast::FloatConstant:
-                assert(false)  # TODO: error
-            case ast::GetVar:
-                assert(false)  # TODO: error
-            case ast::StringConstant:
-                assert(false)  # TODO: error
-            case ast::IntConstant:
+                return call
+            case *:
                 assert(false)  # TODO: error
 
     meth parse_block_of_statements() -> List[ast::Call]:

@@ -10,19 +10,17 @@ union FooBarBaz:
 export func main():
     let thing = new FooBarBaz(new Foo())
     for let i = 0; ; i = i + 1:
-        # TODO: fix switch syntax
-        let thingy = thing
-        switch thingy:
-            case Foo:
-                print("Foo {i}")
+        switch thing:
+            case Foo f:
+                print("Foo on iteration {i}: {f}")
                 thing = new FooBarBaz(new Bar())
                 continue
                 print("Should not happen")
-            case Bar:
-                print("Bar {i}")
+            case Bar b:
+                print("Bar on iteration {i}: {b}")
                 thing = new FooBarBaz(new Baz())
-            case Baz:
-                print("Baz {i}")
+            case Baz b:
+                print("Baz on iteration {i}: {b}")
                 break
                 print("Should not happen")
         print("Switch done")

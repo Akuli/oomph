@@ -11,10 +11,9 @@ export func main():
     print(b.optional_thing)
     b.lol()
 
-    let u = new hello::FooBar(b)
-    print(u)
-    switch u:
-        case hello::Foo:
-            print("Foo from switch: {u}")
-        case hello::Bar:
-            print("Bar from switch: {u}")
+    print(new hello::FooBar(b))
+    switch new hello::FooBar(b):
+        case hello::Foo f:
+            print("Foo from switch: {f}")
+        case hello::Bar b2:  # TODO: let it shadow?
+            print("Bar from switch: {b2}")

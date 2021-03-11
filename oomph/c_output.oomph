@@ -74,29 +74,29 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
 
     meth emit_instruction(ir::Instruction ins):
         switch ins:
-            case ir::FloatConstant:
+            case ir::FloatConstant floatconst:
                 self.body = self.body + """
-                {self.emit_var(ins.var)} = {ins.value};
+                {self.emit_var(floatconst.var)} = {floatconst.value};
                 """
-            case ir::FunctionCall:
-                if ins.function == self.file.builtins.PRINT:
-                    self.emit_call("io_print", ins.args, null[ir::LocalVariable])
-                elif ins.function == self.file.builtins.int_add:
-                    self.emit_call(ins.function.name, ins.args, ins.result_var)
+            case ir::FunctionCall call:
+                if call.function == self.file.builtins.PRINT:
+                    self.emit_call("io_print", call.args, null[ir::LocalVariable])
+                elif call.function == self.file.builtins.int_add:
+                    self.emit_call(call.function.name, call.args, call.result_var)
                 else:
                     assert(false)  # TODO
-            case ir::IntConstant:
+            case ir::IntConstant intconst:
                 self.body = self.body + """
-                {self.emit_var(ins.var)} = {ins.value}LL;
+                {self.emit_var(intconst.var)} = {intconst.value}LL;
                 """
-            case ir::MethodCall:
+            case ir::MethodCall call:
                 let args = new List[ir::LocalVariable]()
-                args.push(ins.obj)
-                args.push_all(ins.args)
-                self.emit_call("meth_{self.file.get_type_c_name(ins.obj.type)}_{ins.method_name}", args, ins.result)
-            case ir::StringConstant:
+                args.push(call.obj)
+                args.push_all(call.args)
+                self.emit_call("meth_{self.file.get_type_c_name(call.obj.type)}_{call.method_name}", args, call.result)
+            case ir::StringConstant strconst:
                 self.body = self.body + """
-                {self.emit_var(ins.var)} = {self.file.emit_string(ins.value)};
+                {self.emit_var(strconst.var)} = {self.file.emit_string(strconst.value)};
                 """
 
 export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:

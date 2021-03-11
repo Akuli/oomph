@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 @dataclass(eq=False)
@@ -143,9 +143,16 @@ class Loop(Statement):
 
 
 @dataclass(eq=False)
+class Case:
+    # None means 'case *'
+    type_and_varname: Optional[Tuple[Type, str]]
+    body: List[Statement]
+
+
+@dataclass(eq=False)
 class Switch(Statement):
-    varname: str
-    cases: Dict[Type, List[Statement]]
+    union_obj: Expression
+    cases: List[Case]
 
 
 @dataclass(eq=False)

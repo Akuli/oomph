@@ -14,10 +14,10 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
 
     meth do_expression(ast::Expression expr) -> ir::LocalVariable:
         switch expr:
-            case ast::BinaryOperator:
-                assert(expr.op == "+")
-                let lhs_var = self.do_expression(expr.lhs)
-                let rhs_var = self.do_expression(expr.rhs)
+            case ast::BinaryOperator bin_op:
+                assert(bin_op.op == "+")
+                let lhs_var = self.do_expression(bin_op.lhs)
+                let rhs_var = self.do_expression(bin_op.rhs)
                 assert(lhs_var.type == self.builtins.INT)
                 assert(rhs_var.type == self.builtins.INT)
                 let result_var = self.create_var(self.builtins.INT)
@@ -27,21 +27,21 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
                 args.push(rhs_var)
                 self.code.push(new ir::Instruction(new ir::FunctionCall(self.builtins.int_add, args, new optional[ir::LocalVariable](result_var))))
                 return result_var
-            case ast::Call:
-                print("call {expr}")
+            case ast::Call call:
+                print("call {call}")
                 assert(false)  # TODO
-            case ast::GetVar:
-                print("getvar {expr}")
+            case ast::GetVar getvar:
+                print("getvar {getvar}")
                 assert(false)  # TODO
-            case ast::FloatConstant:
+            case ast::FloatConstant floatconst:
                 let var = self.create_var(self.builtins.FLOAT)
-                self.code.push(new ir::Instruction(new ir::FloatConstant(expr.value, var)))
-            case ast::IntConstant:
+                self.code.push(new ir::Instruction(new ir::FloatConstant(floatconst.value, var)))
+            case ast::IntConstant intconst:
                 var = self.create_var(self.builtins.INT)
-                self.code.push(new ir::Instruction(new ir::IntConstant(expr.value, var)))
-            case ast::StringConstant:
+                self.code.push(new ir::Instruction(new ir::IntConstant(intconst.value, var)))
+            case ast::StringConstant strconst:
                 var = self.create_var(self.builtins.STR)
-                self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
+                self.code.push(new ir::Instruction(new ir::StringConstant(strconst.value, var)))
 
         return var
 
@@ -51,20 +51,11 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
         return result
 
     meth do_statement(ast::Call call):
-        let f = call.function
-        switch f:
+        switch call.function:
             # Currently, functions must be variables
-            case ast::GetVar:
-                let func_var = self.find_function(f.varname)
-            case ast::BinaryOperator:
-                assert(false)  # TODO: error
-            case ast::Call:
-                assert(false)  # TODO: error
-            case ast::FloatConstant:
-                assert(false)  # TODO: error
-            case ast::IntConstant:
-                assert(false)  # TODO: error
-            case ast::StringConstant:
+            case ast::GetVar getvar:
+                let func_var = self.find_function(getvar.varname)
+            case *:
                 assert(false)  # TODO: error
 
         let argvars = new List[ir::LocalVariable]()

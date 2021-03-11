@@ -1,6 +1,9 @@
 Foo 69
-Without switch: Thing(Foo(69))
+  it's a Foo
+After switch: Thing(Foo(69))
 Bar Bar()
-Without switch: Thing(Bar())
-Baz
-Without switch: Thing(Baz())
+  it's not a Foo
+After switch: Thing(Bar())
+Baz Baz()
+  it's not a Foo
+After switch: Thing(Baz())

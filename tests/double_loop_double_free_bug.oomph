@@ -11,7 +11,7 @@ export func main():
     for let j = 0; j < 10; j = j+1:
         foreach value of magic_list:
             switch value:
-                case Str:
+                case Str s:
                     pass
-                case IntConstant:
+                case IntConstant i:
                     pass

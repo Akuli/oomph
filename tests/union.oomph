@@ -10,13 +10,19 @@ class Baz()
 
 func print_thing(Thing thing):
     switch thing:
-        case Foo:
-            print("Foo {thing.foo_thing}")
-        case Bar:
-            print("Bar {thing}")
-        case Baz:
-            print("Baz")
-    print("Without switch: {thing}")
+        case Foo f:
+            print("Foo {f.foo_thing}")
+        case Bar b:
+            print("Bar {b}")
+        case Baz b:
+            print("Baz {b}")
+
+    switch thing:
+        case Foo f:
+            print("  it's a Foo")
+        case *:
+            print("  it's not a Foo")
+    print("After switch: {thing}")
 
 export func main():
     print_thing(new Thing(new Foo(69)))

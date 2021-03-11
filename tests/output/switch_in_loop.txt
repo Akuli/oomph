@@ -1,5 +1,5 @@
-Foo 0
-Bar 1
+Foo on iteration 0: Foo()
+Bar on iteration 1: Bar()
 Switch done
-Baz 2
+Baz on iteration 2: Baz()
 Loop done

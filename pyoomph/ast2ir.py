@@ -436,23 +436,35 @@ class _FunctionOrMethodConverter:
                 del self.variables[stmt.init.varname]
 
         elif isinstance(stmt, ast.Switch):
-            union_var = self.variables[stmt.varname]
-            assert isinstance(union_var, ir.LocalVariable)
+            union_var = self.do_expression(stmt.union_obj)
             assert isinstance(union_var.type, UnionType)
             types_to_do = self.file_converter.post_process_union(union_var.type).copy()
 
             cases: Dict[ir.Type, List[ir.Instruction]] = {}
-            for raw_type, raw_body in stmt.cases.items():
-                nice_type = self.file_converter.get_type(raw_type)
-                types_to_do.remove(nice_type)
-                var = self.create_var(nice_type)
-                self.variables[stmt.varname] = var
-                cases[nice_type] = [
-                    ir.GetFromUnion(var, union_var),
-                    ir.IncRef(var),
-                ] + self.do_block(raw_body)
+            for case in stmt.cases:
+                if case.type_and_varname is None:
+                    assert types_to_do
+                    nice_types = types_to_do.copy()
+                    types_to_do.clear()
+                else:
+                    ugly_type, varname = case.type_and_varname
+                    nice_type = self.file_converter.get_type(ugly_type)
+                    nice_types = [nice_type]
+                    types_to_do.remove(nice_type)
+                    case_var = self.create_var(nice_type)
+                    assert varname not in self.variables
+                    self.variables[varname] = case_var
 
-            self.variables[stmt.varname] = union_var
+                body = [
+                    ir.GetFromUnion(case_var, union_var),
+                    ir.IncRef(case_var),
+                ] + self.do_block(case.body)
+                for typ in nice_types:
+                    cases[typ] = body
+
+                if case.type_and_varname is not None:
+                    assert self.variables[varname] is case_var
+                    del self.variables[varname]
 
             assert not types_to_do, types_to_do
             self.code.append(ir.Switch(union_var, cases))

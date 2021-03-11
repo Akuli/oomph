@@ -291,11 +291,15 @@ class _Parser:
         assert isinstance(expr, ast.Call), expr
         return expr
 
-    def parse_case(self) -> Tuple[ast.Type, List[ast.Statement]]:
+    def parse_case(self) -> ast.Case:
         self.get_token("keyword", "case")
-        the_type = self.parse_type()
+        if self.token_iter.peek() == ("op", "*"):
+            self.get_token("op", "*")
+            type_and_varname = None
+        else:
+            type_and_varname = self.parse_funcdef_arg()
         body = self.parse_block_of_statements()
-        return (the_type, body)
+        return ast.Case(type_and_varname, body)
 
     def foreach_loop_to_for_loop(
         self, varname: str, the_list: ast.Expression, body: List[ast.Statement]
@@ -391,9 +395,9 @@ class _Parser:
 
         if self.token_iter.peek() == ("keyword", "switch"):
             self.get_token("keyword", "switch")
-            varname = self.get_token("identifier")[1]
+            union_obj = self.parse_expression()
             cases = self.parse_block(self.parse_case)
-            return [ast.Switch(varname, dict(cases))]
+            return [ast.Switch(union_obj, cases)]
 
         result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
