@@ -33,8 +33,11 @@ class _FunctionOrMethodConverter:
 
     def create_var(self, the_type: Type) -> ir.LocalVariable:
         # Newly created variables must be decreffed, in case we are in a loop.
+        # Also, after decreffing, make sure that another iteration of loop
+        # won't decref the same variable again.
         result = ir.LocalVariable(the_type)
         self.code.append(ir.DecRef(result))
+        self.code.append(ir.SetToNull(result))
         return result
 
     @contextlib.contextmanager
