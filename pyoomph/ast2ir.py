@@ -672,6 +672,7 @@ class _FileConverter:
 
         if isinstance(top_declaration, ast.UnionDef):
             union_type = self._types[top_declaration.name]
+            assert isinstance(union_type, UnionType)
             self.union_laziness[union_type] = top_declaration.type_members
             if top_declaration.export:
                 self.exports.append(
