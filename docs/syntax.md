@@ -30,7 +30,7 @@ If more than one of these rules match, then the first matching rule should be us
   it is converted to be a keyword token rather than an identifier token.
   This means that keywords can't be used as variable names, for example,
   because that requires an identifier token, not a keyword token.
-  See [tokenizer.py](../oomph/tokenizer.py) for a full list of keywords.
+  See [tokenizer.py](../pyoomph/tokenizer.py) for a full list of keywords.
 - Float tokens start with one or more digits 0-9,
   so that the first digit can't be zero unless it's the only digit,
   and then a dot, and finally one or more digits 0-9.
