@@ -94,7 +94,7 @@ class _FunctionEmitter:
         if isinstance(ins, ir.Return):
             if ins.value is not None:
                 return f"{self.incref_var(ins.value)}; retval = {self.emit_var(ins.value)}; goto out;\n"
-            return "goto out;"
+            return "goto out;\n"
 
         if isinstance(ins, ir.GetAttribute):
             return f"{self.emit_var(ins.result)} = {self.emit_var(ins.obj)}->memb_{ins.attribute};\n"
