@@ -1,13 +1,17 @@
 func countdown(int n):
     if n != 0:
         print(n)
-        countdown(n-1)
+        countdown2(n)
+func countdown2(int n):
+    countdown(n-1)
 
 class Count():
     meth down(int n):
         if n != 0:
             print(n)
-            self.down(n-1)
+            self.down2(n)
+    meth down2(int n):
+        self.down(n-1)
 
 export func main():
     countdown(10)

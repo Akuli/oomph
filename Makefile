@@ -25,5 +25,5 @@ obj/compile_info.txt: Makefile
 	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS) -Wno-unused-function" "$(LDFLAGS)" > $@
 
 clean:
-	rm -rvf obj test.out
+	rm -rvf obj test_out
 	find -name .oomph-cache -exec rm -rvf {} +

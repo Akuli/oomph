@@ -30,13 +30,13 @@ def _emit_label(name: str) -> str:
 class _FunctionEmitter:
     def __init__(self, file_emitter: _FileEmitter) -> None:
         self.file_emitter = file_emitter
-        self.variable_names = self.file_emitter.variable_names.copy()
+        self.local_variable_names: Dict[ir.LocalVariable, str] = {}
         self.before_body = ""
         self.after_body = ""
         self.need_decref: List[ir.LocalVariable] = []
 
     def incref_var(self, var: ir.LocalVariable) -> str:
-        return self.file_emitter.emit_incref(self.variable_names[var], var.type)
+        return self.file_emitter.emit_incref(self.emit_var(var), var.type)
 
     def emit_call(
         self,
@@ -44,42 +44,38 @@ class _FunctionEmitter:
         args: List[ir.LocalVariable],
         result_var: Optional[ir.LocalVariable],
     ) -> str:
-        args_string = ",".join(map(self.emit_local_var, args))
+        args_string = ",".join(map(self.emit_var, args))
         if result_var is None:
             return f"{func}({args_string});"
-        return f"{self.emit_local_var(result_var)} = {func}({args_string});"
+        return f"{self.emit_var(result_var)} = {func}({args_string});"
 
     def emit_body(self, body: List[ir.Instruction]) -> str:
         return "\n\t".join(map(self.emit_instruction, body))
 
     def emit_instruction(self, ins: ir.Instruction) -> str:
         if isinstance(ins, ir.StringConstant):
-            return f"{self.emit_local_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
+            return f"{self.emit_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
 
         if isinstance(ins, ir.IntConstant):
-            return f"{self.emit_local_var(ins.result)} = {ins.value}LL;"
+            return f"{self.emit_var(ins.result)} = {ins.value}LL;"
 
         if isinstance(ins, ir.FloatConstant):
-            return f"{self.emit_local_var(ins.result)} = {ins.value};"
+            return f"{self.emit_var(ins.result)} = {ins.value};"
 
         if isinstance(ins, ir.VarCpy):
-            return (
-                f"{self.emit_local_var(ins.dest)} = {self.variable_names[ins.source]};"
-            )
+            return f"{self.emit_var(ins.dest)} = {self.emit_var(ins.source)};"
 
         if isinstance(ins, ir.IncRef):
             return self.incref_var(ins.var) + ";"
 
         if isinstance(ins, ir.DecRef):
             return (
-                self.file_emitter.emit_decref(
-                    self.emit_local_var(ins.var), ins.var.type
-                )
+                self.file_emitter.emit_decref(self.emit_var(ins.var), ins.var.type)
                 + ";"
             )
 
         if isinstance(ins, ir.CallFunction):
-            return self.emit_call(self.variable_names[ins.func], ins.args, ins.result)
+            return self.emit_call(self.emit_var(ins.func), ins.args, ins.result)
 
         if isinstance(ins, ir.CallMethod):
             return self.emit_call(
@@ -97,23 +93,23 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.Return):
             if ins.value is not None:
-                return f"{self.incref_var(ins.value)}; retval = {self.emit_local_var(ins.value)}; goto out;"
+                return f"{self.incref_var(ins.value)}; retval = {self.emit_var(ins.value)}; goto out;"
             return "goto out;"
 
         if isinstance(ins, ir.GetAttribute):
-            return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.obj)}->memb_{ins.attribute};"
+            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.obj)}->memb_{ins.attribute};"
 
         if isinstance(ins, ir.SetAttribute):
-            return f"{self.emit_local_var(ins.obj)}->memb_{ins.attribute} = {self.emit_local_var(ins.value)};"
+            return f"{self.emit_var(ins.obj)}->memb_{ins.attribute} = {self.emit_var(ins.value)};"
 
         if isinstance(ins, ir.PointersEqual):
-            return f"{self.emit_local_var(ins.result)} = ({self.emit_local_var(ins.lhs)} == {self.emit_local_var(ins.rhs)});"
+            return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});"
 
         if isinstance(ins, ir.If):
             then = self.emit_body(ins.then)
             otherwise = self.emit_body(ins.otherwise)
             return f"""
-            if ({self.emit_local_var(ins.condition)}) {{
+            if ({self.emit_var(ins.condition)}) {{
                 {then}
             }} else {{
                 {otherwise}
@@ -127,7 +123,7 @@ class _FunctionEmitter:
             return f"""
             while(1) {{
                 {cond_code}
-                if (!{self.emit_local_var(ins.cond)})
+                if (!{self.emit_var(ins.cond)})
                     break;
                 {body}
                 {_emit_label(ins.loop_id)}  // oomph 'continue' jumps here
@@ -147,21 +143,21 @@ class _FunctionEmitter:
             assert ins.result.type.type_members is not None
             membernum = ins.result.type.type_members.index(ins.value.type)
             return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };" % (
-                self.emit_local_var(ins.result),
+                self.emit_var(ins.result),
                 self.file_emitter.emit_type(ins.result.type),
                 membernum,
-                self.emit_local_var(ins.value),
+                self.emit_var(ins.value),
                 membernum,
             )
 
         if isinstance(ins, ir.Null):
-            return self.emit_local_var(ins.result) + ".isnull = true;"
+            return self.emit_var(ins.result) + ".isnull = true;"
 
         if isinstance(ins, ir.GetFromUnion):
             assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
             membernum = ins.union.type.type_members.index(ins.result.type)
-            return f"{self.emit_local_var(ins.result)} = {self.emit_local_var(ins.union)}.val.item{membernum};"
+            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};"
 
         if isinstance(ins, ir.Switch):
             assert isinstance(ins.union.type, ir.UnionType)
@@ -177,7 +173,7 @@ class _FunctionEmitter:
                 """
 
             return f"""
-            switch ({self.emit_local_var(ins.union)}.membernum) {{
+            switch ({self.emit_var(ins.union)}.membernum) {{
                 {body_code}
                 default:
                     assert(0);
@@ -188,11 +184,11 @@ class _FunctionEmitter:
     def add_local_var(
         self, var: ir.LocalVariable, *, declare: bool = True, need_decref: bool = True
     ) -> None:
-        assert var not in self.variable_names
+        assert var not in self.local_variable_names
         # Ensure different functions don't share variable names.
         # This makes grepping the C code easier.
         name = self.file_emitter.get_var_name()
-        self.variable_names[var] = name
+        self.local_variable_names[var] = name
         if declare:
             self.before_body += f"{self.file_emitter.emit_type(var.type)} {name}"
             if var.type.refcounted:
@@ -209,12 +205,15 @@ class _FunctionEmitter:
         if need_decref:
             self.need_decref.append(var)
 
-    def emit_local_var(self, var: ir.LocalVariable) -> str:
+    def emit_var(self, var: ir.Variable) -> str:
+        if not isinstance(var, ir.LocalVariable):
+            return self.file_emitter.emit_var(var)
+
         try:
-            return self.variable_names[var]
+            return self.local_variable_names[var]
         except KeyError:
             self.add_local_var(var)
-            return self.variable_names[var]
+            return self.local_variable_names[var]
 
     def emit_funcdef(
         self,
@@ -226,7 +225,7 @@ class _FunctionEmitter:
 
         body_instructions = self.emit_body(funcdef.body)
         decrefs = "".join(
-            self.file_emitter.emit_decref(self.variable_names[var], var.type) + ";"
+            self.file_emitter.emit_decref(self.emit_var(var), var.type) + ";"
             for var in reversed(self.need_decref)
         )
 
@@ -242,7 +241,7 @@ class _FunctionEmitter:
             )
             self.after_body += "return retval;"
 
-        argnames = [self.variable_names[var] for var in funcdef.argvars]
+        argnames = [self.emit_var(var) for var in funcdef.argvars]
         self.file_emitter.define_function(
             c_name,
             functype,
@@ -630,17 +629,14 @@ class _FileEmitter:
             """
         return self.strings[value]
 
-    def emit_toplevel_declaration(
-        self, top_declaration: ir.ToplevelDeclaration
-    ) -> None:
-        if isinstance(top_declaration, ir.FuncDef):
-            assert top_declaration.var not in self.variable_names
-            if (
-                isinstance(top_declaration.var, ir.ExportVariable)
-                and top_declaration.var.name == "main"
-            ):
+    def emit_var(self, var: ir.Variable) -> str:
+        try:
+            return self.variable_names[var]
+        except KeyError:
+            assert isinstance(var.type, FunctionType)
+            if isinstance(var, ir.ExportVariable) and var.name == "main":
                 c_name = "oomph_main"
-            elif top_declaration.var.name in {
+            elif var.name in {
                 "__List_Str_join",
                 "__Str_center_pad",
                 "__Str_contains",
@@ -659,25 +655,23 @@ class _FileEmitter:
                 "__bool_to_string",
             }:
                 # Class implemented in C, method implemented in builtins.oomph
-                c_name = "meth_" + top_declaration.var.name.lstrip("_")
+                c_name = "meth_" + var.name.lstrip("_")
             else:
-                c_name = self._get_exportable_name(self.path, top_declaration.var.name)
+                c_name = self._get_exportable_name(self.path, var.name)
 
-            assert top_declaration.var not in self.variable_names
-            assert top_declaration.var not in self.session.export_c_names
-
-            self.variable_names[top_declaration.var] = c_name
-            if isinstance(top_declaration.var, ir.ExportVariable):
-                [export] = [
-                    exp
-                    for exp in self.session.exports
-                    if exp.value is top_declaration.var
-                ]
+            if isinstance(var, ir.ExportVariable):
+                [export] = [exp for exp in self.session.exports if exp.value is var]
                 self.session.export_c_names[export] = c_name
 
+            self.variable_names[var] = c_name
+            return c_name
+
+    def emit_toplevel_declaration(
+        self, top_declaration: ir.ToplevelDeclaration
+    ) -> None:
+        if isinstance(top_declaration, ir.FuncDef):
             _FunctionEmitter(self).emit_funcdef(
-                top_declaration,
-                self.variable_names[top_declaration.var],
+                top_declaration, self.emit_var(top_declaration.var)
             )
 
         elif isinstance(top_declaration, ir.ClassDef):

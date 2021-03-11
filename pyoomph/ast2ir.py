@@ -510,6 +510,7 @@ class _FileConverter:
         self.variables: Dict[str, ir.Variable] = ir.builtin_variables.copy()  # type: ignore
 
         # Union members don't need to exist when union is defined (allows nestedness)
+        # TODO: is this still necessary?
         self.union_laziness: Dict[UnionType, List[ast.Type]] = {}
 
     def add_var(self, var: ir.Variable, name: str) -> None:
@@ -523,17 +524,13 @@ class _FileConverter:
             self.get_type(raw_type.generic)
         )
 
-    def _do_func_or_method_def(
+    def _do_func_or_method_def_pass1(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
-    ) -> Union[ir.FuncDef, ir.MethodDef]:
-        if classtype is not None:
-            funcdef.args.insert(0, (ast.Type(classtype.name, None), "self"))
-
+    ) -> None:
         functype = FunctionType(
             [self.get_type(typ) for typ, nam in funcdef.args],
             None if funcdef.returntype is None else self.get_type(funcdef.returntype),
         )
-
         if classtype is None:
             assert funcdef.name not in self.variables, (
                 funcdef.name,
@@ -550,6 +547,16 @@ class _FileConverter:
         else:
             assert funcdef.name not in classtype.methods
             classtype.methods[funcdef.name] = functype
+
+    def _do_func_or_method_def_pass2(
+        self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
+    ) -> Union[ir.FuncDef, ir.MethodDef]:
+        if classtype is None:
+            funcvar = self.variables[funcdef.name]
+            functype = funcvar.type
+            assert isinstance(functype, ir.FunctionType)
+        else:
+            functype = classtype.methods[funcdef.name]
 
         local_vars = self.variables.copy()
         argvars = []
@@ -569,7 +576,8 @@ class _FileConverter:
         body.extend(_FunctionOrMethodConverter(self, local_vars).do_block(funcdef.body))
 
         if classtype is None:
-            return ir.FuncDef(mypy_sucks, argvars, body)
+            assert isinstance(funcvar, (ir.ThisFileVariable, ir.ExportVariable))
+            return ir.FuncDef(funcvar, argvars, body)
         else:
             assert not funcdef.export
             return ir.MethodDef(funcdef.name, functype, argvars, body)
@@ -589,10 +597,9 @@ class _FileConverter:
             ],
         )
 
-    def do_toplevel_declaration(
-        self,
-        top_declaration: ast.ToplevelDeclaration,
-    ) -> Optional[ir.ToplevelDeclaration]:
+    def do_toplevel_declaration_pass1(
+        self, top_declaration: ast.ToplevelDeclaration
+    ) -> None:
         if isinstance(top_declaration, ast.Import):
             for export in self.exports:
                 if export.path != top_declaration.path:
@@ -603,14 +610,11 @@ class _FileConverter:
                     self.add_var(export.value, name)
                 else:
                     self._types[name] = export.value
-            return None
 
-        if isinstance(top_declaration, ast.FuncOrMethodDef):
-            result = self._do_func_or_method_def(top_declaration, classtype=None)
-            assert isinstance(result, ir.FuncDef)
-            return result
+        elif isinstance(top_declaration, ast.FuncOrMethodDef):
+            self._do_func_or_method_def_pass1(top_declaration, classtype=None)
 
-        if isinstance(top_declaration, ast.ClassDef):
+        elif isinstance(top_declaration, ast.ClassDef):
             classtype = Type(top_declaration.name, True, self.path)
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
@@ -621,16 +625,42 @@ class _FileConverter:
 
             if "to_string" not in (method.name for method in top_declaration.body):
                 top_declaration.body.insert(0, _create_to_string_method(classtype))
+            if "equals" not in (method.name for method in top_declaration.body):
+                classtype.methods["equals"] = self._create_equals_method(classtype).type
+
+            for method_def in top_declaration.body:
+                method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
+                self._do_func_or_method_def_pass1(method_def, classtype)
+
+        elif isinstance(top_declaration, ast.UnionDef):
+            union_type = UnionType(top_declaration.name, self.path)
+            self._types[top_declaration.name] = union_type
+
+        else:
+            raise NotImplementedError(top_declaration)
+
+    def do_toplevel_declaration_pass2(
+        self,
+        top_declaration: ast.ToplevelDeclaration,
+    ) -> Optional[ir.ToplevelDeclaration]:
+        if isinstance(top_declaration, ast.Import):
+            return None
+
+        if isinstance(top_declaration, ast.FuncOrMethodDef):
+            result = self._do_func_or_method_def_pass2(top_declaration, classtype=None)
+            assert isinstance(result, ir.FuncDef)
+            return result
+
+        if isinstance(top_declaration, ast.ClassDef):
+            classtype = self._types[top_declaration.name]
 
             typed_method_defs = []
-
             if "equals" not in (method.name for method in top_declaration.body):
                 equals_def = self._create_equals_method(classtype)
                 typed_method_defs.append(equals_def)
-                classtype.methods["equals"] = equals_def.type
 
             for method_def in top_declaration.body:
-                typed_def = self._do_func_or_method_def(method_def, classtype)
+                typed_def = self._do_func_or_method_def_pass2(method_def, classtype)
                 assert isinstance(typed_def, ir.MethodDef)
                 typed_method_defs.append(typed_def)
 
@@ -641,8 +671,7 @@ class _FileConverter:
             return ir.ClassDef(classtype, typed_method_defs, top_declaration.export)
 
         if isinstance(top_declaration, ast.UnionDef):
-            union_type = UnionType(top_declaration.name, self.path)
-            self._types[top_declaration.name] = union_type
+            union_type = self._types[top_declaration.name]
             self.union_laziness[union_type] = top_declaration.type_members
             if top_declaration.export:
                 self.exports.append(
@@ -667,9 +696,11 @@ def convert_program(
     exports: List[ir.Export],
 ) -> List[ir.ToplevelDeclaration]:
     converter = _FileConverter(path, exports)
+    for top in program:
+        converter.do_toplevel_declaration_pass1(top)
     result = [
         top
-        for top in map(converter.do_toplevel_declaration, program)
+        for top in map(converter.do_toplevel_declaration_pass2, program)
         if top is not None
     ]
     for key in list(converter.union_laziness):

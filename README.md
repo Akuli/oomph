@@ -35,7 +35,6 @@ Known bugs:
 Missing features:
 - functions as first-class objects
 - better error messaging
-- using func/meth before defining (not just Unions)
 - `>>>` prompt
 - something like python's `__file__` (compile time and runtime)
 - attributes of classes that are not arguments

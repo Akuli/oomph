@@ -53,7 +53,9 @@ class CompilationUnit:
             c, h = session.create_c_code(ir, self.source_path, headers)
         except Exception:
             traceback.print_exc()
-            print(f"\nThis happened while compiling {self.source_path}")
+            print(
+                f"\nThis happened while compiling {self.source_path}", file=sys.stderr
+            )
             sys.exit(1)
 
         self.c_path.write_text(c, encoding="utf-8")
