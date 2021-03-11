@@ -79,8 +79,12 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 {self.emit_var(ins.var)} = {ins.value};
                 """
             case ir::FunctionCall:
-                assert(ins.function == self.file.builtins.PRINT)  # TODO
-                self.emit_call("io_print", ins.args, null[ir::LocalVariable])
+                if ins.function == self.file.builtins.PRINT:
+                    self.emit_call("io_print", ins.args, null[ir::LocalVariable])
+                elif ins.function == self.file.builtins.int_add:
+                    self.emit_call(ins.function.name, ins.args, ins.result_var)
+                else:
+                    assert(false)  # TODO
             case ir::IntConstant:
                 self.body = self.body + """
                 {self.emit_var(ins.var)} = {ins.value}LL;

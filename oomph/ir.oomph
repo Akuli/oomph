@@ -3,11 +3,11 @@ export class FunctionType(List[ObjectType] argtypes)
 
 # TODO: add integer id to LocalVariable for debugging and C variable naming
 export class LocalVariable(ObjectType type, int id)
-export class BuiltinVariable(Str name, FunctionType type)
+export class BuiltinVariable(Str name, FunctionType type, optional[ObjectType] returntype)
 export class ThisFileVariable(Str name, FunctionType type)
 
 # TODO: global (but const) variables
-export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT):
+export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, BuiltinVariable int_add):
     meth get_types() -> List[ObjectType]:
         let result = new List[ObjectType]()
         result.push(self.STR)
@@ -24,9 +24,17 @@ export func create_builtins() -> Builtins:
     let STR = new ObjectType("Str", true)
     let INT = new ObjectType("int", true)
     let FLOAT = new ObjectType("float", true)
-    let print_args = new List[ObjectType]()
-    print_args.push(STR)
-    return new Builtins(STR, INT, FLOAT, new BuiltinVariable("print", new FunctionType(print_args)))
+
+    let one_string = new List[ObjectType]()
+    one_string.push(STR)
+
+    let two_ints = new List[ObjectType]()
+    two_ints.push(INT)
+    two_ints.push(INT)
+
+    let prrrint = new BuiltinVariable("print", new FunctionType(one_string), null[ObjectType])
+    let int_add = new BuiltinVariable("int_add", new FunctionType(two_ints), new optional[ObjectType](STR))
+    return new Builtins(STR, INT, FLOAT, prrrint, int_add)
 
 export union Instruction:
     FloatConstant
@@ -36,7 +44,7 @@ export union Instruction:
     StringConstant
 
 export class FloatConstant(Str value, LocalVariable var)
-export class FunctionCall(BuiltinVariable function, List[LocalVariable] args)
+export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, optional[LocalVariable] result_var)
 export class IntConstant(int value, LocalVariable var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, optional[LocalVariable] result)
 export class StringConstant(Str value, LocalVariable var)
