@@ -24,7 +24,7 @@ _T = TypeVar("_T")
 
 def _emit_label(name: str) -> str:
     # It's invalid c syntax to end a block with a label, (void)0 fixes
-    return f"{name}: (void)0;"
+    return f"{name}: (void)0;\n"
 
 
 class _FunctionEmitter:
@@ -46,32 +46,32 @@ class _FunctionEmitter:
     ) -> str:
         args_string = ",".join(map(self.emit_var, args))
         if result_var is None:
-            return f"{func}({args_string});"
-        return f"{self.emit_var(result_var)} = {func}({args_string});"
+            return f"{func}({args_string});\n"
+        return f"{self.emit_var(result_var)} = {func}({args_string});\n"
 
     def emit_body(self, body: List[ir.Instruction]) -> str:
         return "\n\t".join(map(self.emit_instruction, body))
 
     def emit_instruction(self, ins: ir.Instruction) -> str:
         if isinstance(ins, ir.StringConstant):
-            return f"{self.emit_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};"
+            return f"{self.emit_var(ins.result)} = {self.file_emitter.emit_string(ins.value)}; {self.incref_var(ins.result)};\n"
 
         if isinstance(ins, ir.IntConstant):
-            return f"{self.emit_var(ins.result)} = {ins.value}LL;"
+            return f"{self.emit_var(ins.result)} = {ins.value}LL;\n"
 
         if isinstance(ins, ir.FloatConstant):
-            return f"{self.emit_var(ins.result)} = {ins.value};"
+            return f"{self.emit_var(ins.result)} = {ins.value};\n"
 
         if isinstance(ins, ir.VarCpy):
-            return f"{self.emit_var(ins.dest)} = {self.emit_var(ins.source)};"
+            return f"{self.emit_var(ins.dest)} = {self.emit_var(ins.source)};\n"
 
         if isinstance(ins, ir.IncRef):
-            return self.incref_var(ins.var) + ";"
+            return self.incref_var(ins.var) + ";\n"
 
         if isinstance(ins, ir.DecRef):
             return (
                 self.file_emitter.emit_decref(self.emit_var(ins.var), ins.var.type)
-                + ";"
+                + ";\n"
             )
 
         if isinstance(ins, ir.CallFunction):
@@ -93,17 +93,17 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.Return):
             if ins.value is not None:
-                return f"{self.incref_var(ins.value)}; retval = {self.emit_var(ins.value)}; goto out;"
-            return "goto out;"
+                return f"{self.incref_var(ins.value)}; retval = {self.emit_var(ins.value)}; goto out;\n"
+            return "goto out;\n"
 
         if isinstance(ins, ir.GetAttribute):
-            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.obj)}->memb_{ins.attribute};"
+            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.obj)}->memb_{ins.attribute};\n"
 
         if isinstance(ins, ir.SetAttribute):
-            return f"{self.emit_var(ins.obj)}->memb_{ins.attribute} = {self.emit_var(ins.value)};"
+            return f"{self.emit_var(ins.obj)}->memb_{ins.attribute} = {self.emit_var(ins.value)};\n"
 
         if isinstance(ins, ir.PointersEqual):
-            return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});"
+            return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});\n"
 
         if isinstance(ins, ir.If):
             then = self.emit_body(ins.then)
@@ -133,25 +133,22 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.Continue):
             # Can't use C's continue because continue must emit_funcdef condition
-            return f"goto {ins.loop_id};"
+            return f"goto {ins.loop_id};\n"
 
         if isinstance(ins, ir.Break):
-            return "break;"
+            return "break;\n"
 
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
             assert ins.result.type.type_members is not None
             membernum = ins.result.type.type_members.index(ins.value.type)
-            return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };" % (
+            return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };\n" % (
                 self.emit_var(ins.result),
                 self.file_emitter.emit_type(ins.result.type),
                 membernum,
                 self.emit_var(ins.value),
                 membernum,
             )
-
-        if isinstance(ins, ir.Null):
-            return self.emit_var(ins.result) + ".isnull = true;"
 
         if isinstance(ins, ir.GetFromUnion):
             assert isinstance(ins.union.type, ir.UnionType)
@@ -179,6 +176,21 @@ class _FunctionEmitter:
                     assert(0);
             }}
             """
+
+        if isinstance(ins, ir.SetToNull):
+            if isinstance(ins.var.type, UnionType):
+                return f"{self.emit_var(ins.var)}.membernum = -1;\n"
+            if (
+                ins.var.type.generic_origin is not None
+                and ins.var.type.generic_origin.generic is OPTIONAL
+            ):
+                c_type = self.file_emitter.emit_type(ins.var.type)
+                return f"{self.emit_var(ins.var)} = ({c_type}){{ .isnull = true }};\n"
+            if not ins.var.type.refcounted:
+                # Must not run for non-refcounted unions or optionals
+                return ""
+            return f"{self.emit_var(ins.var)} = NULL;\n"
+
         raise NotImplementedError(ins)
 
     def add_local_var(
@@ -190,18 +202,9 @@ class _FunctionEmitter:
         name = self.file_emitter.get_var_name()
         self.local_variable_names[var] = name
         if declare:
-            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name}"
-            if var.type.refcounted:
-                if isinstance(var.type, UnionType):
-                    self.before_body += "= { .membernum = -1 }"
-                elif (
-                    var.type.generic_origin is not None
-                    and var.type.generic_origin.generic is OPTIONAL
-                ):
-                    self.before_body += "= { .isnull = true }"
-                else:
-                    self.before_body += "= NULL"
-            self.before_body += ";\n"
+            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name};\n"
+            # TODO: add these in ast2ir?
+            self.before_body += self.emit_instruction(ir.SetToNull(var))
         if need_decref:
             self.need_decref.append(var)
 
@@ -225,7 +228,7 @@ class _FunctionEmitter:
 
         body_instructions = self.emit_body(funcdef.body)
         decrefs = "".join(
-            self.file_emitter.emit_decref(self.emit_var(var), var.type) + ";"
+            self.file_emitter.emit_decref(self.emit_var(var), var.type) + ";\n"
             for var in reversed(self.need_decref)
         )
 
@@ -237,9 +240,9 @@ class _FunctionEmitter:
 
         if functype.returntype is not None:
             self.before_body += (
-                f"{self.file_emitter.emit_type(functype.returntype)} retval;"
+                f"{self.file_emitter.emit_type(functype.returntype)} retval;\n"
             )
-            self.after_body += "return retval;"
+            self.after_body += "return retval;\n"
 
         argnames = [self.emit_var(var) for var in funcdef.argvars]
         self.file_emitter.define_function(
@@ -520,7 +523,7 @@ class _FileEmitter:
             function_name,
             (", ".join(arg_decls) or "void"),
         )
-        self.function_decls += declaration + ";"
+        self.function_decls += declaration + ";\n"
         self.function_defs += declaration + "{" + body + "}"
 
     def get_var_name(self) -> str:
@@ -630,6 +633,7 @@ class _FileEmitter:
         return self.strings[value]
 
     def emit_var(self, var: ir.Variable) -> str:
+        assert not isinstance(var, ir.LocalVariable)
         try:
             return self.variable_names[var]
         except KeyError:
@@ -676,7 +680,7 @@ class _FileEmitter:
 
         elif isinstance(top_declaration, ir.ClassDef):
             struct_members = "".join(
-                f"{self.emit_type(the_type)} memb_{name};\n\t"
+                f"{self.emit_type(the_type)} memb_{name};\n"
                 for the_type, name in top_declaration.type.members
             )
             constructor_args = ",".join(
