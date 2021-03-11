@@ -30,7 +30,7 @@ function check()
     fi
 
     local success
-    local out=test_out/$(echo $command | sed 's/[^a-z]/-/g').txt
+    local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
     echo "$command"
     if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > $out; then
