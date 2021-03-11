@@ -221,7 +221,9 @@ class InstantiateUnion(Instruction):
     def __post_init__(self) -> None:
         assert isinstance(self.result.type, UnionType)
         assert self.result.type.type_members is not None
-        assert self.value.type in self.result.type.type_members, f"wrong types in union instantiation: {self.value}"
+        assert (
+            self.value.type in self.result.type.type_members
+        ), f"wrong types in union instantiation: {self.value}"
 
 
 # IncRef and DecRef don't do anything if variable is set to null
