@@ -1,17 +1,21 @@
 export class ObjectType(Str name, bool refcounted)
-export class FunctionType(List[ObjectType] argtypes)  # FIXME: return type
+export class FunctionType(List[ObjectType] argtypes, optional[ObjectType] returntype)
 
 export class LocalVariable(ObjectType type, int id)
-export class BuiltinVariable(Str name, FunctionType type, optional[ObjectType] returntype)
+export class BuiltinVariable(Str name, FunctionType type)
 export class ThisFileVariable(Str name, FunctionType type)
 
 # TODO: global (but const) variables
-export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, BuiltinVariable int_add, BuiltinVariable int_mul):
+export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, BuiltinVariable int_add, BuiltinVariable int_sub, BuiltinVariable int_mul):
     meth get_types() -> List[ObjectType]:
         return [self.STR, self.INT]
 
     meth get_variables() -> List[BuiltinVariable]:
         return [self.PRINT]
+
+    # These variables are not exposed in oomph
+    meth get_hidden_variables() -> List[BuiltinVariable]:
+        return [self.int_add, self.int_sub, self.int_mul]
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
@@ -19,10 +23,11 @@ export func create_builtins() -> Builtins:
     let INT = new ObjectType("int", true)
     let FLOAT = new ObjectType("float", true)
 
-    let prrrint = new BuiltinVariable("print", new FunctionType([STR]), null[ObjectType])
-    let int_add = new BuiltinVariable("int_add", new FunctionType([INT, INT]), new optional[ObjectType](STR))
-    let int_mul = new BuiltinVariable("int_mul", new FunctionType([INT, INT]), new optional[ObjectType](STR))
-    return new Builtins(STR, INT, FLOAT, prrrint, int_add, int_mul)
+    let prrrint = new BuiltinVariable("print", new FunctionType([STR], null[ObjectType]))
+    let int_add = new BuiltinVariable("int_add", new FunctionType([INT, INT], new optional[ObjectType](INT)))
+    let int_sub = new BuiltinVariable("int_sub", new FunctionType([INT, INT], new optional[ObjectType](INT)))
+    let int_mul = new BuiltinVariable("int_mul", new FunctionType([INT, INT], new optional[ObjectType](INT)))
+    return new Builtins(STR, INT, FLOAT, prrrint, int_add, int_sub, int_mul)
 
 export union Instruction:
     FloatConstant

@@ -12,6 +12,12 @@ func get_expr(PrecedenceItem item) -> ast::Expression:
             return expr
         case *:
             assert(false)
+func get_op(PrecedenceItem item) -> Str:
+    switch item:
+        case Str op:
+            return op
+        case *:
+            assert(false)
 
 # TODO: more list methods
 func delete_slice_from_list(List[PrecedenceItem] list, int start, int end) -> List[PrecedenceItem]:
@@ -72,6 +78,10 @@ class Parser(List[tokenizer::Token] tokens):
             result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
         elif self.peek().type == "float":
             result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("float").value))
+        elif self.peek().matches("op", "("):
+            self.get_token("op", "(")
+            result = self.parse_expression()
+            self.get_token("op", ")")
         else:
             print("Don't know what to do: {self.peek()}")
             assert(false)
@@ -90,7 +100,7 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     # TODO: this should not be as difficult as it is
-    meth find_operator(List[PrecedenceItem] magic_list, Str operator) -> optional[int]:
+    meth find_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> optional[int]:
         for let i = 0; i <= magic_list.length() - 3; i = i+1:
             switch magic_list.get(i):
                 case ast::Expression expr:
@@ -99,7 +109,7 @@ class Parser(List[tokenizer::Token] tokens):
                     continue
             switch magic_list.get(i+1):
                 case Str s:
-                    if s != operator:
+                    if not list_contains(operators, s):
                         continue
                 case *:
                     continue
@@ -111,28 +121,29 @@ class Parser(List[tokenizer::Token] tokens):
             return new optional[int](i)
         return null[int]
 
-    meth eliminate_operator(List[PrecedenceItem] magic_list, Str operator):
+    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] operators):
         while true:
-            let i_or_null = self.find_operator(magic_list, operator)
+            let i_or_null = self.find_operator(magic_list, operators)
             if i_or_null == null[int]:
                 break
             let i = i_or_null.get()
 
             let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
             let lhs = get_expr(lhs_op_rhs.first())
+            let op = get_op(lhs_op_rhs.get(1))
             let rhs = get_expr(lhs_op_rhs.last())
-            insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, operator, rhs))))
+            insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, op, rhs))))
 
     meth parse_expression() -> ast::Expression:
-        let ops = ["+", "*"]
+        let ops = ["+", "-", "*"]
 
         let magic_list = [new PrecedenceItem(self.parse_simple_expression())]
         while self.tokens.length() != 0 and self.peek().type == "op" and list_contains(ops, self.peek().value):
             magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
             magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
 
-        self.eliminate_operator(magic_list, "*")
-        self.eliminate_operator(magic_list, "+")
+        self.eliminate_operators(magic_list, ["*"])
+        self.eliminate_operators(magic_list, ["+", "-"])
 
         assert(magic_list.length() == 1)
         switch magic_list.first():

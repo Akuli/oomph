@@ -17,18 +17,18 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
             case ast::BinaryOperator bin_op:
                 let lhs_var = self.do_expression(bin_op.lhs)
                 let rhs_var = self.do_expression(bin_op.rhs)
-                assert(lhs_var.type == self.builtins.INT)
-                assert(rhs_var.type == self.builtins.INT)
 
-                if bin_op.op == "+":
+                if lhs_var.type == self.builtins.INT and bin_op.op == "+" and rhs_var.type == self.builtins.INT:
                     let function = self.builtins.int_add
-                elif bin_op.op == "*":
+                elif lhs_var.type == self.builtins.INT and bin_op.op == "-" and rhs_var.type == self.builtins.INT:
+                    function = self.builtins.int_sub
+                elif lhs_var.type == self.builtins.INT and bin_op.op == "*" and rhs_var.type == self.builtins.INT:
                     function = self.builtins.int_mul
                 else:
-                    print("bad bin op: {bin_op}")
+                    print("bad bin op: {lhs_var.type.name} {bin_op.op} {rhs_var.type.name}")
                     assert(false)
 
-                let result_var = self.create_var(self.builtins.INT)
+                let result_var = self.create_var(function.type.returntype.get())
                 self.code.push(new ir::Instruction(new ir::FunctionCall(function, [lhs_var, rhs_var], new optional[ir::LocalVariable](result_var))))
                 return result_var
             case ast::Call call:
@@ -79,7 +79,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
 
     meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
         assert(funcdef.args.length() == 0)
-        let functype = new ir::FunctionType(new List[ir::ObjectType]())
+        let functype = new ir::FunctionType(new List[ir::ObjectType](), null[ir::ObjectType])
         assert(funcdef.name == "main")
         let func_var = new ir::ThisFileVariable(funcdef.name, functype)
         let body = self.do_block(funcdef.body)
