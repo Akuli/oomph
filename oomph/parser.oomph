@@ -40,16 +40,27 @@ class Parser(List[tokenizer::Token] tokens):
             let string = self.get_token_by_type("string").value
             assert(string.starts_with("\""))
             assert(string.ends_with("\""))
-            return new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
+            let result = new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
         if self.peek().type == "id":
-            return new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
+            result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
         if self.peek().type == "int":
-            return new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
+            result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
         if self.peek().type == "float":
-            return new ast::Expression(new ast::FloatConstant(self.get_token_by_type("float").value))
+            result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("float").value))
+        else:
+            print("Don't know what to do: {self.peek()}")
+            assert(false)
 
-        print("Don't know what to do: {self.peek()}")
-        assert(false)
+        while self.peek_carefully() != null[tokenizer::Token] and self.peek_carefully().get().matches("op", "("):
+            self.get_token("op", "(")
+            let args = new List[ast::Expression]()
+            if not self.peek().matches("op", ")"):
+                args.push(self.parse_expression())
+                while self.peek().matches("op", ","):
+                    self.get_token("op", ",")
+                    args.push(self.parse_expression())
+            self.get_token("op", ")")
+            result = new ast::Expression(new ast::Call(result, args))
 
     meth parse_expression() -> ast::Expression:
         let magic_list = new List[PrecedenceItem]()
@@ -59,6 +70,7 @@ class Parser(List[tokenizer::Token] tokens):
             magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
             magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
 
+        print("magic_list = {magic_list}")
         if magic_list.length() == 1:
             let result = magic_list.first()
             switch result:
@@ -71,17 +83,6 @@ class Parser(List[tokenizer::Token] tokens):
         print(magic_list)
         assert(false)
         let result = self.parse_simple_expression()
-
-        while self.peek_carefully() != null[tokenizer::Token] and self.peek_carefully().get().matches("op", "("):
-            self.get_token("op", "(")
-            let args = new List[ast::Expression]()
-            if not self.peek().matches("op", ")"):
-                args.push(self.parse_expression())
-                while self.peek().matches("op", ","):
-                    self.get_token("op", ",")
-                    args.push(self.parse_expression())
-            self.get_token("op", ")")
-            result = new ast::Expression(new ast::Call(result, args))
 
         return result
 
