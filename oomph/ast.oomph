@@ -2,11 +2,13 @@ export class Type(Str name)
 
 export union Expression:
     Call
+    FloatConstant
     GetVar
     IntConstant
     StringConstant
 
 export class Call(Expression function, List[Expression] args)
+export class FloatConstant(Str value)
 export class GetVar(Str varname)
 export class IntConstant(int value)
 export class StringConstant(Str value)

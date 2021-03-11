@@ -37,6 +37,8 @@ class Parser(List[tokenizer::Token] tokens):
             result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
         elif self.peek().type == "int":
             result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
+        elif self.peek().type == "float":
+            result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("float").value))
         else:
             print("Don't know what to do: {self.peek()}")
             assert(false)
@@ -60,6 +62,8 @@ class Parser(List[tokenizer::Token] tokens):
             case ast::Call:
                 self.get_token("op", "\n")
                 return expr
+            case ast::FloatConstant:
+                assert(false)  # TODO: error
             case ast::GetVar:
                 assert(false)  # TODO: error
             case ast::StringConstant:

@@ -2,20 +2,23 @@ import "ir.oomph" as ir
 
 class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
     meth get_type_c_name(ir::ObjectType type) -> Str:
-        if type == self.builtins.INT:
+        # TODO: simplify this with C typedefs
+        if type == self.builtins.INT or type == self.builtins.FLOAT:
             return type.name
         return "struct class_{type.name}"
 
     meth emit_type(ir::ObjectType type) -> Str:
         if type == self.builtins.INT:
             return "int64_t"
+        if type == self.builtins.FLOAT:
+            return "double"
         if type.refcounted:
             return self.get_type_c_name(type) + "*"
         return self.get_type_c_name(type)
 
     meth emit_declaration(ir::ObjectType type, Str varname) -> Str:
-        if type == self.builtins.INT:
-            return "int64_t {varname};"
+        if type == self.builtins.INT or type == self.builtins.FLOAT:
+            return "{self.emit_type(type)} {varname};"
         return "{self.emit_type(type)} {varname} = NULL;"
 
     meth emit_string(Str value) -> Str:
@@ -71,18 +74,22 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
 
     meth emit_instruction(ir::Instruction ins):
         switch ins:
+            case ir::FloatConstant:
+                self.body = self.body + """
+                {self.emit_var(ins.var)} = {ins.value};
+                """
             case ir::FunctionCall:
                 assert(ins.function == self.file.builtins.PRINT)  # TODO
                 self.emit_call("io_print", ins.args, null[ir::LocalVariable])
+            case ir::IntConstant:
+                self.body = self.body + """
+                {self.emit_var(ins.var)} = {ins.value}LL;
+                """
             case ir::MethodCall:
                 let args = new List[ir::LocalVariable]()
                 args.push(ins.obj)
                 args.push_all(ins.args)
                 self.emit_call("meth_{self.file.get_type_c_name(ins.obj.type)}_{ins.method_name}", args, ins.result)
-            case ir::IntConstant:
-                self.body = self.body + """
-                {self.emit_var(ins.var)} = {ins.value}LL;
-                """
             case ir::StringConstant:
                 self.body = self.body + """
                 {self.emit_var(ins.var)} = {self.file.emit_string(ins.value)};

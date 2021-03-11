@@ -30,7 +30,7 @@ function check()
     fi
 
     local success
-    local out=test_out/$(basename $file | cut -d. -f1).txt
+    local out=test_out/$(echo $command | sed 's/[^a-z]/-/g').txt
 
     echo "$command"
     if [ $expect_fail == yes ] && $command 2>&1 | tail -2 > $out; then
@@ -60,9 +60,9 @@ function check()
     fi
 
     if [ $success == yes ]; then
-        echo "success" >> test_out/status
+        echo "success: $command" >> test_out/status
     else
-        echo "fail" >> test_out/status
+        echo "fail: $command" >> test_out/status
     fi
 }
 
@@ -96,8 +96,8 @@ for file in tests/*.oomph; do
 done
 wait
 
-successes=$(grep -c success test_out/status || true)
-fails=$(grep -c fail test_out/status || true)
+successes=$(grep -c '^success:' test_out/status || true)
+fails=$(grep -c '^fail:' test_out/status || true)
 
 if [ $fails == 0 ]; then
     failmsg="0 failed"

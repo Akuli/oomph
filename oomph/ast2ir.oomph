@@ -14,18 +14,21 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
 
     meth do_expression(ast::Expression expr) -> ir::LocalVariable:
         switch expr:
-            case ast::GetVar:
-                print("getvar {expr}")
-                assert(false)  # TODO
-            case ast::StringConstant:
-                let var = self.create_var(self.builtins.STR)
-                self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
-            case ast::IntConstant:
-                var = self.create_var(self.builtins.INT)
-                self.code.push(new ir::Instruction(new ir::IntConstant(expr.value, var)))
             case ast::Call:
                 print("call {expr}")
                 assert(false)  # TODO
+            case ast::GetVar:
+                print("getvar {expr}")
+                assert(false)  # TODO
+            case ast::FloatConstant:
+                let var = self.create_var(self.builtins.FLOAT)
+                self.code.push(new ir::Instruction(new ir::FloatConstant(expr.value, var)))
+            case ast::IntConstant:
+                var = self.create_var(self.builtins.INT)
+                self.code.push(new ir::Instruction(new ir::IntConstant(expr.value, var)))
+            case ast::StringConstant:
+                var = self.create_var(self.builtins.STR)
+                self.code.push(new ir::Instruction(new ir::StringConstant(expr.value, var)))
 
         return var
 
@@ -41,6 +44,8 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
             case ast::GetVar:
                 let func_var = self.find_function(f.varname)
             case ast::Call:
+                assert(false)  # TODO: error
+            case ast::FloatConstant:
                 assert(false)  # TODO: error
             case ast::IntConstant:
                 assert(false)  # TODO: error

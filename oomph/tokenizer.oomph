@@ -34,61 +34,55 @@ func raw_tokenize(Str code) -> List[Token]:
     let result = new List[Token]()
     while code != "":
         let id = get_simple_identifier(code)
+        let op = starts_with_any(code, ops)
+        let int_value = get_int(code)
+
         if id != null[Str]:
             if id.get() == "export" or id.get() == "func":
-                result.push(new Token("keyword", id.get()))
+                let token = new Token("keyword", id.get())
             else:
-                result.push(new Token("id", id.get()))
-
-            code = code.slice(id.get().length(), code.length())
-            continue
-
-        let op = starts_with_any(code, ops)
-        if op != null[Str]:
-            result.push(new Token("op", op.get()))
-            code = code.slice(op.get().length(), code.length())
-            continue
-
-        let int_value = get_int(code)
-        if int_value != "":
-            # TODO: floats
-            code = code.slice(int_value.length(), code.length())
-            assert(int_value == "0" or not int_value.starts_with("0"))
-            result.push(new Token("int", int_value))
-            continue
-
-        if code.starts_with(" "):
-            if result.last().matches("op", "\n"):
+                token = new Token("id", id.get())
+        elif op != null[Str]:
+            token = new Token("op", op.get())
+        elif int_value != "":
+            if starts_with_any(code.slice(int_value.length(), code.length()), ".0 .1 .2 .3 .4 .5 .6 .7 .8 .9".split(" ")) != null[Str]:
+                # TODO: remove_prefix method
+                let float_value = int_value + "." + get_int(code.slice((int_value + ".").length(), code.length()))
+                token = new Token("float", float_value)
+            else:
+                assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
+                token = new Token("int", int_value)
+        elif code.starts_with(" "):
+            if result.length() != 0 and result.last().matches("op", "\n"):
                 # Space after newline: indentation
-                assert(result.length() != 0)  # TODO: error
                 let indent_level = 0
                 while code.slice(indent_level, indent_level + 1) == " ":
                     indent_level = indent_level + 1
-                result.push(new Token("indent", code.slice(0, indent_level)))
-                code = code.slice(indent_level, code.length())
+                token = new Token("indent", code.slice(0, indent_level))
             else:
                 # Space to be ignored
+                # TODO: don't ignore indents in beginning of file
                 code = code.slice(1, code.length())
-            continue
-
-        if code.starts_with("\""):
+                continue
+        elif code.starts_with("\""):
             # TODO: escapes
             # TODO: error handling
             let content_length = code.slice(1, code.length()).find_first("\"").get()
             let token_length = content_length + 2
-            result.push(new Token("string", code.slice(0, token_length)))
-            code = code.slice(token_length, code.length())
-            continue
+            token = new Token("string", code.slice(0, token_length))
+        else:
+            print(result)
+            print("Invalid syntax: {code}")
+            assert(false)  # TODO: error
 
-        print(result)
-        print("Invalid syntax: {code}")
-        assert(false)  # TODO: error
+        assert(code.starts_with(token.value))
+        code = code.slice(token.value.length(), code.length())
+        result.push(token)
 
     return result
 
 func skip_newlines(List[Token] tokens):
     while tokens.length() != 0 and tokens.last().matches("op", "\n"):
-        print("Skip")
         tokens.pop()
 
 func clean_newlines(List[Token] tokens) -> List[Token]:

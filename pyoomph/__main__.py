@@ -7,6 +7,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import traceback
 from typing import Dict, List
 
 from pyoomph import ast, ast2ir, c_output, parser
@@ -47,8 +48,13 @@ class CompilationUnit:
         session: c_output.Session,
         headers: List[str],
     ) -> None:
-        ir = ast2ir.convert_program(self.ast, self.source_path, session.exports)
-        c, h = session.create_c_code(ir, self.source_path, headers)
+        try:
+            ir = ast2ir.convert_program(self.ast, self.source_path, session.exports)
+            c, h = session.create_c_code(ir, self.source_path, headers)
+        except Exception:
+            traceback.print_exc()
+            print(f"\nThis happened while compiling {self.source_path}")
+            sys.exit(1)
 
         self.c_path.write_text(c, encoding="utf-8")
         self.h_path.write_text(h, encoding="utf-8")

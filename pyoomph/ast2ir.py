@@ -396,7 +396,7 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.If):
             untyped_condition, untyped_body = stmt.ifs_and_elifs[0]
             condition = self.do_expression(untyped_condition)
-            assert condition.type is BOOL
+            assert condition.type is BOOL, condition
             body = self.do_block(untyped_body)
 
             if len(stmt.ifs_and_elifs) >= 2:
