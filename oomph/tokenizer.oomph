@@ -29,7 +29,7 @@ func get_int(Str code) -> Str:
     return code.slice(0, len)
 
 func raw_tokenize(Str code) -> List[Token]:
-    let ops = "( ) : \n + - * /".split(" ")
+    let ops = "( ) : \n + - * /".split(" ")  # TODO: only int+int works
 
     let result = new List[Token]()
     while code != "":
