@@ -125,11 +125,6 @@ class _FunctionOrMethodConverter:
     def _not(self, obj: ir.LocalVariable) -> ir.LocalVariable:
         return self.create_special_call("bool_not", [obj])
 
-    def _is_null(self, obj: ir.LocalVariable) -> ir.LocalVariable:
-        result_var = self.create_var(BOOL)
-        self.code.append(ir.CallMethod(obj, "is_null", [], result_var))
-        return result_var
-
     def _get_value_of_optional(self, obj: ir.LocalVariable) -> ir.LocalVariable:
         assert (
             obj.type.generic_origin is not None
@@ -169,13 +164,18 @@ class _FunctionOrMethodConverter:
                 equal_value = self._do_binary_op_typed(lhs_value, "==", rhs_value)
                 self.code.append(ir.VarCpy(result_var, equal_value))
 
+            lhs_null = self.create_var(BOOL)
+            rhs_null = self.create_var(BOOL)
+            self.code.append(ir.IsNull(lhs, lhs_null))
+            self.code.append(ir.IsNull(rhs, rhs_null))
+
             self.code.append(
                 ir.If(
-                    self._is_null(lhs),
-                    [ir.VarCpy(result_var, self._is_null(rhs))],
+                    lhs_null,
+                    [ir.VarCpy(result_var, rhs_null)],
                     [
                         ir.If(
-                            self._is_null(rhs),
+                            rhs_null,
                             [ir.VarCpy(result_var, ir.builtin_variables["false"])],
                             neither_null_code,
                         )

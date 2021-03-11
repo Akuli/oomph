@@ -4,7 +4,17 @@ import pathlib
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
 
-from pyoomph.types import BOOL, FLOAT, INT, LIST, STRING, FunctionType, Type, UnionType
+from pyoomph.types import (
+    BOOL,
+    FLOAT,
+    INT,
+    LIST,
+    OPTIONAL,
+    STRING,
+    FunctionType,
+    Type,
+    UnionType,
+)
 
 
 @dataclass(eq=False)
@@ -240,6 +250,19 @@ class DecRef(Instruction):
 @dataclass(eq=False)
 class SetToNull(Instruction):
     var: LocalVariable
+
+
+# Can't be a function call because argument can be many different types
+# For optionals only
+@dataclass(eq=False)
+class IsNull(Instruction):
+    var: LocalVariable
+    result: LocalVariable
+
+    def __post_init__(self) -> None:
+        assert self.result.type == BOOL
+        assert self.var.type.generic_origin is not None
+        assert self.var.type.generic_origin.generic is OPTIONAL
 
 
 @dataclass(eq=False)

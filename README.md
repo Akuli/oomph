@@ -104,14 +104,12 @@ Missing features:
         to use some data, a feature that I wish Python had
 
 Deprecated:
-- `is_null()` method (use `thing != null[type]`)
 - maybe traditional `for` loops? they seem more confusing than useful
     - if they are removed, `range` would be useful to have
         - if we want an efficient `range`, we need to have streams (python 2 vs 3)
             - and streams won't be easy to implement
                 - so maybe it isn't deprecated after all
                     - why is this list so deeply nested lol
-- `<stdlib>/hello.oomph`
 
 Design questions to (re)think:
 - `in` operator: `a in b` vs `b.contains(a)`

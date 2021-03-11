@@ -1,9 +1,9 @@
 func show(optional[Str] x):
-    print("show: {x} {x.is_null()}")
+    print("show: {x} {x == null[Str]}")
 
 export func main():
     let x = new optional[Str]("lol" + "wat")
-    print("main: {x} {x.is_null()}")
+    print("main: {x} {x == null[Str]}")
     show(x)
     show(null[Str])
 

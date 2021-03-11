@@ -72,7 +72,6 @@ class Generic:
             result.generic_origin = GenericSource(self, generic_arg)
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
-            result.methods["is_null"] = FunctionType([result], BOOL)
             result.methods["equals"] = FunctionType([result, result], BOOL)
         elif self is LIST:
             result = Type(f"{self.name}[{generic_arg.name}]", True)

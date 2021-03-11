@@ -1,5 +1,4 @@
 hello
-Hello from stdlib
 Bar(123, optional[Str]("lol"))
 123
 optional[Str]("lol")

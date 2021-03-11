@@ -1,2 +1,0 @@
-export func print_hello():
-    print("Hello from stdlib")

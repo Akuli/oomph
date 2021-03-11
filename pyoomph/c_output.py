@@ -177,6 +177,9 @@ class _FunctionEmitter:
             }}
             """
 
+        if isinstance(ins, ir.IsNull):
+            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.var)}.isnull;\n"
+
         if isinstance(ins, ir.SetToNull):
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
@@ -270,7 +273,6 @@ _generic_c_codes = {
         "function_decls": """
         static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
         static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
-        static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt);
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
         """,
         "function_defs": """
@@ -286,11 +288,6 @@ _generic_c_codes = {
             %(itemtype)s val = opt.value;
             %(incref_val)s;
             return val;
-        }
-
-        static bool meth_%(type_cname)s_is_null(struct class_%(type_cname)s opt)
-        {
-            return opt.isnull;
         }
 
         static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
