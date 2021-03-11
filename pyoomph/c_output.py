@@ -635,6 +635,7 @@ class _FileEmitter:
         return self.strings[value]
 
     def emit_var(self, var: ir.Variable) -> str:
+        assert not isinstance(var, ir.LocalVariable)
         try:
             return self.variable_names[var]
         except KeyError:
