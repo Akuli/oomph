@@ -150,9 +150,6 @@ class _FunctionEmitter:
                 membernum,
             )
 
-        if isinstance(ins, ir.Null):
-            return self.emit_var(ins.result) + ".isnull = true;\n"
-
         if isinstance(ins, ir.GetFromUnion):
             assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
@@ -179,6 +176,21 @@ class _FunctionEmitter:
                     assert(0);
             }}
             """
+
+        if isinstance(ins, ir.SetToNull):
+            if isinstance(ins.var.type, UnionType):
+                return f"{self.emit_var(ins.var)}.membernum = -1;\n"
+            if (
+                ins.var.type.generic_origin is not None
+                and ins.var.type.generic_origin.generic is OPTIONAL
+            ):
+                c_type = self.file_emitter.emit_type(ins.var.type)
+                return f"{self.emit_var(ins.var)} = ({c_type}){{ .isnull = true }};\n"
+            if not ins.var.type.refcounted:
+                # Must not run for non-refcounted unions or optionals
+                return ""
+            return f"{self.emit_var(ins.var)} = NULL;\n"
+
         raise NotImplementedError(ins)
 
     def add_local_var(
@@ -190,18 +202,9 @@ class _FunctionEmitter:
         name = self.file_emitter.get_var_name()
         self.local_variable_names[var] = name
         if declare:
-            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name}"
-            if var.type.refcounted:
-                if isinstance(var.type, UnionType):
-                    self.before_body += "= { .membernum = -1 }"
-                elif (
-                    var.type.generic_origin is not None
-                    and var.type.generic_origin.generic is OPTIONAL
-                ):
-                    self.before_body += "= { .isnull = true }"
-                else:
-                    self.before_body += "= NULL"
-            self.before_body += ";\n"
+            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name};\n"
+            # TODO: add these in ast2ir?
+            self.before_body += self.emit_instruction(ir.SetToNull(var))
         if need_decref:
             self.need_decref.append(var)
 

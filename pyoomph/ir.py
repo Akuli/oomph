@@ -200,11 +200,6 @@ class FloatConstant(Instruction):
     value: str
 
 
-@dataclass(eq=False)
-class Null(Instruction):
-    result: LocalVariable
-
-
 # Can't be a function call because arguments can be many different types
 @dataclass(eq=False)
 class PointersEqual(Instruction):
@@ -229,7 +224,7 @@ class InstantiateUnion(Instruction):
         assert self.value.type in self.result.type.type_members
 
 
-# IncRef and DecRef don't do anything if variable is unset
+# IncRef and DecRef don't do anything if variable is set to null
 @dataclass(eq=False)
 class IncRef(Instruction):
     var: LocalVariable
@@ -237,6 +232,11 @@ class IncRef(Instruction):
 
 @dataclass(eq=False)
 class DecRef(Instruction):
+    var: LocalVariable
+
+
+@dataclass(eq=False)
+class SetToNull(Instruction):
     var: LocalVariable
 
 

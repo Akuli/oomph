@@ -1,0 +1,17 @@
+class IntConstant()
+
+union PrecedenceItem:
+    IntConstant
+    Str
+
+export func main():
+    let magic_list = new List[PrecedenceItem]()
+    magic_list.push(new PrecedenceItem(new IntConstant()))
+    magic_list.push(new PrecedenceItem("+"))
+    for let j = 0; j < 10; j = j+1:
+        foreach value of magic_list:
+            switch value:
+                case Str:
+                    pass
+                case IntConstant:
+                    pass

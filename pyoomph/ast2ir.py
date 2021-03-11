@@ -33,8 +33,11 @@ class _FunctionOrMethodConverter:
 
     def create_var(self, the_type: Type) -> ir.LocalVariable:
         # Newly created variables must be decreffed, in case we are in a loop.
+        # Also, after decreffing, make sure that another iteration of loop
+        # won't decref the same variable again.
         result = ir.LocalVariable(the_type)
         self.code.append(ir.DecRef(result))
+        self.code.append(ir.SetToNull(result))
         return result
 
     @contextlib.contextmanager
@@ -341,11 +344,10 @@ class _FunctionOrMethodConverter:
             return result
 
         if isinstance(expr, ast.Null):
-            null_var = self.create_var(
+            # Variables are nulled by default (see create_var)
+            return self.create_var(
                 OPTIONAL.get_type(self.file_converter.get_type(expr.type))
             )
-            self.code.append(ir.Null(null_var))
-            return null_var
 
         raise NotImplementedError(expr)
 
