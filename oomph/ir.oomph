@@ -6,7 +6,7 @@ export class BuiltinVariable(Str name, FunctionType type)
 export class ThisFileVariable(Str name, FunctionType type)
 
 # TODO: global (but const) variables
-export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, BuiltinVariable int_add, BuiltinVariable int_sub, BuiltinVariable int_mul):
+export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, List[BuiltinVariable] hidden_vars):
     meth get_types() -> List[ObjectType]:
         return [self.STR, self.INT]
 
@@ -14,8 +14,12 @@ export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinV
         return [self.PRINT]
 
     # These variables are not exposed in oomph
-    meth get_hidden_variables() -> List[BuiltinVariable]:
-        return [self.int_add, self.int_sub, self.int_mul]
+    meth get_hidden_var(Str name) -> BuiltinVariable:
+        foreach var of self.hidden_vars:
+            if var.name == name:
+                return var
+        print("hidden var {name} not found")
+        assert(false)
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
@@ -24,21 +28,31 @@ export func create_builtins() -> Builtins:
     let FLOAT = new ObjectType("float", true)
 
     let prrrint = new BuiltinVariable("print", new FunctionType([STR], null[ObjectType]))
-    let int_add = new BuiltinVariable("int_add", new FunctionType([INT, INT], new optional[ObjectType](INT)))
-    let int_sub = new BuiltinVariable("int_sub", new FunctionType([INT, INT], new optional[ObjectType](INT)))
-    let int_mul = new BuiltinVariable("int_mul", new FunctionType([INT, INT], new optional[ObjectType](INT)))
-    return new Builtins(STR, INT, FLOAT, prrrint, int_add, int_sub, int_mul)
+
+    # TODO: multiline literals
+    let hidden_vars = new List[BuiltinVariable]()
+    hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], new optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], new optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], new optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
+
+    return new Builtins(STR, INT, FLOAT, prrrint, hidden_vars)
 
 export union Instruction:
     FloatConstant
     FunctionCall
     IntConstant
+    IntToFloat
     MethodCall
     StringConstant
 
 export class FloatConstant(Str value, LocalVariable var)
 export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, optional[LocalVariable] result_var)
 export class IntConstant(int value, LocalVariable var)
+export class IntToFloat(LocalVariable int_var, LocalVariable float_var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, optional[LocalVariable] result)
 export class StringConstant(Str value, LocalVariable var)
 

@@ -12,6 +12,16 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
         self.varname_counter = self.varname_counter + 1
         return new ir::LocalVariable(type, self.varname_counter)
 
+    meth do_bin_op(ir::LocalVariable lhs_var, ir::LocalVariable rhs_var, ir::BuiltinVariable function) -> ir::LocalVariable:
+        let result_var = self.create_var(function.type.returntype.get())
+        self.code.push(new ir::Instruction(new ir::FunctionCall(function, [lhs_var, rhs_var], new optional[ir::LocalVariable](result_var))))
+        return result_var
+
+    meth int_to_float(ir::LocalVariable int_var) -> ir::LocalVariable:
+        let float_var = self.create_var(self.builtins.FLOAT)
+        self.code.push(new ir::Instruction(new ir::IntToFloat(int_var, float_var)))
+        return float_var
+
     meth do_expression(ast::Expression expr) -> ir::LocalVariable:
         switch expr:
             case ast::BinaryOperator bin_op:
@@ -19,18 +29,29 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
                 let rhs_var = self.do_expression(bin_op.rhs)
 
                 if lhs_var.type == self.builtins.INT and bin_op.op == "+" and rhs_var.type == self.builtins.INT:
-                    let function = self.builtins.int_add
-                elif lhs_var.type == self.builtins.INT and bin_op.op == "-" and rhs_var.type == self.builtins.INT:
-                    function = self.builtins.int_sub
-                elif lhs_var.type == self.builtins.INT and bin_op.op == "*" and rhs_var.type == self.builtins.INT:
-                    function = self.builtins.int_mul
-                else:
-                    print("bad bin op: {lhs_var.type.name} {bin_op.op} {rhs_var.type.name}")
-                    assert(false)
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("int_add"))
+                if lhs_var.type == self.builtins.INT and bin_op.op == "-" and rhs_var.type == self.builtins.INT:
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("int_sub"))
+                if lhs_var.type == self.builtins.INT and bin_op.op == "*" and rhs_var.type == self.builtins.INT:
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("int_mul"))
 
-                let result_var = self.create_var(function.type.returntype.get())
-                self.code.push(new ir::Instruction(new ir::FunctionCall(function, [lhs_var, rhs_var], new optional[ir::LocalVariable](result_var))))
-                return result_var
+                if lhs_var.type == self.builtins.INT:
+                    lhs_var = self.int_to_float(lhs_var)
+                if rhs_var.type == self.builtins.INT:
+                    rhs_var = self.int_to_float(rhs_var)
+
+                if lhs_var.type == self.builtins.FLOAT and bin_op.op == "+" and rhs_var.type == self.builtins.FLOAT:
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("float_add"))
+                if lhs_var.type == self.builtins.FLOAT and bin_op.op == "-" and rhs_var.type == self.builtins.FLOAT:
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("float_sub"))
+                if lhs_var.type == self.builtins.FLOAT and bin_op.op == "*" and rhs_var.type == self.builtins.FLOAT:
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("float_mul"))
+                if lhs_var.type == self.builtins.FLOAT and bin_op.op == "/" and rhs_var.type == self.builtins.FLOAT:
+                    return self.do_bin_op(lhs_var, rhs_var, self.builtins.get_hidden_var("float_div"))
+
+                print("bad bin op: {lhs_var.type.name} {bin_op.op} {rhs_var.type.name}")
+                assert(false)
+
             case ast::Call call:
                 print("call {call}")
                 assert(false)  # TODO

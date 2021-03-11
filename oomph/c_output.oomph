@@ -81,15 +81,15 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
             case ir::FunctionCall call:
                 if call.function == self.file.builtins.PRINT:
                     self.emit_call("io_print", call.args, null[ir::LocalVariable])
-                    return
-                foreach function_var of self.file.builtins.get_hidden_variables():
-                    if call.function == function_var:
-                        self.emit_call(call.function.name, call.args, call.result_var)
-                        return
-                assert(false)  # TODO
+                else:
+                    self.emit_call(call.function.name, call.args, call.result_var)
             case ir::IntConstant intconst:
                 self.body = self.body + """
                 {self.emit_var(intconst.var)} = {intconst.value}LL;
+                """
+            case ir::IntToFloat cast:
+                self.body = self.body + """
+                {self.emit_var(cast.float_var)} = (double){self.emit_var(cast.int_var)};
                 """
             case ir::MethodCall call:
                 let args = [call.obj]
