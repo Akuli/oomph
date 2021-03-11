@@ -189,8 +189,8 @@ class _FunctionEmitter:
                 ins.var.type.generic_origin is not None
                 and ins.var.type.generic_origin.generic is OPTIONAL
             ):
-                the_type = self.file_emitter.emit_type(ins.var.type)
-                return f"{self.emit_var(ins.var)} = ({the_type}){{ .isnull = true }};\n"
+                c_type = self.file_emitter.emit_type(ins.var.type)
+                return f"{self.emit_var(ins.var)} = ({c_type}){{ .isnull = true }};\n"
             return f"{self.emit_var(ins.var)} = NULL;\n"
 
         raise NotImplementedError(ins)
