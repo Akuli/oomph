@@ -33,6 +33,7 @@ Known bugs:
 - self-hosted compiler (very wip) doesn't add `\n` to end of code
 
 Missing features:
+- `==` for unions
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - functions as first-class objects
 - better error messaging
@@ -112,6 +113,7 @@ Deprecated:
                     - why is this list so deeply nested lol
 
 Design questions to (re)think:
+- rename `switch` to `match`? note that `match` is a beautiful variable name
 - `in` operator: `a in b` vs `b.contains(a)`
 - tempting to use `func` as variable name
 - name of `self`? maybe `instance` or `this`? also considered `inst`, but that's too short

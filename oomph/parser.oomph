@@ -6,12 +6,12 @@ union PrecedenceItem:
     Str
 
 # TODO: add a convenient way to do this without util funcs
-func get_expr(PrecedenceItem item) -> optional[ast::Expression]:
+func get_expr(PrecedenceItem item) -> ast::Expression:
     switch item:
         case ast::Expression expr:
-            return new optional[ast::Expression](expr)
+            return expr
         case *:
-            return null[ast::Expression]
+            assert(false)
 
 # TODO: more list methods
 func delete_slice_from_list(List[PrecedenceItem] list, int start, int end) -> List[PrecedenceItem]:
@@ -30,6 +30,12 @@ func insert_to_list(List[PrecedenceItem] list, int index, PrecedenceItem item):
         stack.push(list.pop())
     list.push(item)
     list.push_all(stack.reversed())
+
+func list_contains(List[Str] list, Str item) -> bool:
+    foreach actual_item of list:
+        if actual_item == item:
+            return true
+    return false
 
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
@@ -83,27 +89,50 @@ class Parser(List[tokenizer::Token] tokens):
 
         return result
 
+    # TODO: this should not be as difficult as it is
+    meth find_operator(List[PrecedenceItem] magic_list, Str operator) -> optional[int]:
+        for let i = 0; i <= magic_list.length() - 3; i = i+1:
+            switch magic_list.get(i):
+                case ast::Expression expr:
+                    pass
+                case *:
+                    continue
+            switch magic_list.get(i+1):
+                case Str s:
+                    if s != operator:
+                        continue
+                case *:
+                    continue
+            switch magic_list.get(i+2):
+                case ast::Expression expr:
+                    pass
+                case *:
+                    continue
+            return new optional[int](i)
+        return null[int]
+
+    meth eliminate_operator(List[PrecedenceItem] magic_list, Str operator):
+        while true:
+            let i_or_null = self.find_operator(magic_list, operator)
+            if i_or_null == null[int]:
+                break
+            let i = i_or_null.get()
+
+            let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
+            let lhs = get_expr(lhs_op_rhs.first())
+            let rhs = get_expr(lhs_op_rhs.last())
+            insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, operator, rhs))))
+
     meth parse_expression() -> ast::Expression:
+        let ops = ["+", "*"]
+
         let magic_list = [new PrecedenceItem(self.parse_simple_expression())]
-        while self.tokens.length() != 0 and self.peek().matches("op", "+"):
+        while self.tokens.length() != 0 and self.peek().type == "op" and list_contains(ops, self.peek().value):
             magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
             magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
 
-        while magic_list.length() > 1:
-            for let i = 0; i <= magic_list.length() - 3; i = i+1:
-                switch magic_list.get(i+1):
-                    case Str op:
-                        if op != "+":
-                            continue
-                    case *:
-                        continue
-
-                # TODO: unpacking
-                let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
-                let lhs = get_expr(lhs_op_rhs.first()).get()
-                let rhs = get_expr(lhs_op_rhs.last()).get()
-                insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, "+", rhs))))
-                break  # keep going with while loop (TODO: named continue?)
+        self.eliminate_operator(magic_list, "*")
+        self.eliminate_operator(magic_list, "+")
 
         assert(magic_list.length() == 1)
         switch magic_list.first():

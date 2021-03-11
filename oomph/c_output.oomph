@@ -81,7 +81,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
             case ir::FunctionCall call:
                 if call.function == self.file.builtins.PRINT:
                     self.emit_call("io_print", call.args, null[ir::LocalVariable])
-                elif call.function == self.file.builtins.int_add:
+                elif call.function == self.file.builtins.int_add or call.function == self.file.builtins.int_mul:
                     self.emit_call(call.function.name, call.args, call.result_var)
                 else:
                     assert(false)  # TODO
