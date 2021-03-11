@@ -33,6 +33,8 @@ Known bugs:
 - self-hosted compiler (very wip) doesn't add `\n` to end of code
 
 Missing features:
+- `continue` and `break` inside switch, when the switch is inside a loop
+- nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - functions as first-class objects
 - better error messaging
 - `>>>` prompt
@@ -62,9 +64,14 @@ Missing features:
 - chained equalities `a == b == c`
 - `x++`
 - `+=`
-- arrays:
+- lists:
     - `[a, b, c]` syntax
     - js-style methods (needs lambdas) or list comprehensions
+    - `list + list`
+    - `list.starts_with` and `ends_with`
+    - `insert_item` and `insert_sublist` methods
+        - do we need both?
+    - `delete_slice`
 - generics
     - defining generic classes or functions
     - tuples
@@ -87,8 +94,6 @@ Missing features:
       in code reviews as possible bug
 - defining non-ref-counted pass-by-value classes
 - `starts_with` + `slice` string method
-- `list + list`
-- `list.starts_with` and `ends_with`
 - exceptions (easiest to implement similar to union?)
 - compilation errors or warnings for bad/unconventional/complicated style
     - `string.length() == 0` is more complicated than `string == ""`
