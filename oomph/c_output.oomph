@@ -90,8 +90,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 {self.emit_var(intconst.var)} = {intconst.value}LL;
                 """
             case ir::MethodCall call:
-                let args = new List[ir::LocalVariable]()
-                args.push(call.obj)
+                let args = [call.obj]
                 args.push_all(call.args)
                 self.emit_call("meth_{self.file.get_type_c_name(call.obj.type)}_{call.method_name}", args, call.result)
             case ir::StringConstant strconst:

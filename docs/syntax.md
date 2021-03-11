@@ -171,6 +171,8 @@ A simple expression can be:
   or an error if the type does not have a constructor.
 - The keyword `null`, followed by a `[]`-parenthesized type.
 - A parenthesized expression.
+- A `[]`-parenthesized comma-separated list of expressions, to create a list.
+
 Any simple expression can include zero or more of the following at the end:
 - Call: comma-separated parenthesized list of expressions.
 - Attribute lookup: `.` operator token followed by a simple identifier token.

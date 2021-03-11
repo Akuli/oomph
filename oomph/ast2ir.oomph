@@ -20,12 +20,9 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, int varname_c
                 let rhs_var = self.do_expression(bin_op.rhs)
                 assert(lhs_var.type == self.builtins.INT)
                 assert(rhs_var.type == self.builtins.INT)
-                let result_var = self.create_var(self.builtins.INT)
 
-                let args = new List[ir::LocalVariable]()
-                args.push(lhs_var)
-                args.push(rhs_var)
-                self.code.push(new ir::Instruction(new ir::FunctionCall(self.builtins.int_add, args, new optional[ir::LocalVariable](result_var))))
+                let result_var = self.create_var(self.builtins.INT)
+                self.code.push(new ir::Instruction(new ir::FunctionCall(self.builtins.int_add, [lhs_var, rhs_var], new optional[ir::LocalVariable](result_var))))
                 return result_var
             case ast::Call call:
                 print("call {call}")

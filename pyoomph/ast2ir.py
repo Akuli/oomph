@@ -9,6 +9,7 @@ from pyoomph.types import (
     BOOL,
     FLOAT,
     INT,
+    LIST,
     OPTIONAL,
     STRING,
     FunctionType,
@@ -278,6 +279,15 @@ class _FunctionOrMethodConverter:
             var = self.create_var(STRING)
             self.code.append(ir.StringConstant(var, expr.value))
             return var
+
+        if isinstance(expr, ast.ListLiteral):
+            content = [self.do_expression(item) for item in expr.content]
+            [content_type] = {var.type for var in content}
+            list_var = self.create_var(LIST.get_type(content_type))
+            self.code.append(ir.CallConstructor(list_var, []))
+            for item_var in content:
+                self.code.append(ir.CallMethod(list_var, "push", [item_var], None))
+            return list_var
 
         if isinstance(expr, ast.StringFormatJoin):
             assert len(expr.parts) >= 2

@@ -1,5 +1,5 @@
 export class ObjectType(Str name, bool refcounted)
-export class FunctionType(List[ObjectType] argtypes)
+export class FunctionType(List[ObjectType] argtypes)  # FIXME: return type
 
 export class LocalVariable(ObjectType type, int id)
 export class BuiltinVariable(Str name, FunctionType type, optional[ObjectType] returntype)
@@ -8,15 +8,10 @@ export class ThisFileVariable(Str name, FunctionType type)
 # TODO: global (but const) variables
 export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, BuiltinVariable int_add):
     meth get_types() -> List[ObjectType]:
-        let result = new List[ObjectType]()
-        result.push(self.STR)
-        result.push(self.INT)
-        return result
+        return [self.STR, self.INT]
 
     meth get_variables() -> List[BuiltinVariable]:
-        let result = new List[BuiltinVariable]()
-        result.push(self.PRINT)
-        return result
+        return [self.PRINT]
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
@@ -24,15 +19,8 @@ export func create_builtins() -> Builtins:
     let INT = new ObjectType("int", true)
     let FLOAT = new ObjectType("float", true)
 
-    let one_string = new List[ObjectType]()
-    one_string.push(STR)
-
-    let two_ints = new List[ObjectType]()
-    two_ints.push(INT)
-    two_ints.push(INT)
-
-    let prrrint = new BuiltinVariable("print", new FunctionType(one_string), null[ObjectType])
-    let int_add = new BuiltinVariable("int_add", new FunctionType(two_ints), new optional[ObjectType](STR))
+    let prrrint = new BuiltinVariable("print", new FunctionType([STR]), null[ObjectType])
+    let int_add = new BuiltinVariable("int_add", new FunctionType([INT, INT]), new optional[ObjectType](STR))
     return new Builtins(STR, INT, FLOAT, prrrint, int_add)
 
 export union Instruction:

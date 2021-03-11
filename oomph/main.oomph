@@ -32,8 +32,7 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
         else:
             assert(false)   # TODO: error
 
-    let result = new List[Str]()
-    result.push(cc)
+    let result = [cc]
     result.push_all(split(cflags))
     # FIXME: hard-coded list
     result.push_all("obj/io.o obj/misc.o obj/numbers.o obj/ref.o obj/string.o obj/subprocess.o".split(" "))
@@ -62,8 +61,7 @@ export func main():
     io::write_file("{cache_dir}/out.c", c_code)
     assert(process::run(get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")) == 0)
 
-    let run_command = new List[Str]()
-    run_command.push("{cache_dir}/out")
+    let run_command = ["{cache_dir}/out"]
     # TODO: list slice method
     for let i = 1; i < args.length(); i = i+1:
         run_command.push(args.get(i))

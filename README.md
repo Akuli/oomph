@@ -64,7 +64,6 @@ Missing features:
 - `x++`
 - `+=`
 - lists:
-    - `[a, b, c]` syntax
     - js-style methods (needs lambdas) or list comprehensions
     - `list + list`
     - `list.starts_with` and `ends_with`

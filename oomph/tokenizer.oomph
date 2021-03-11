@@ -29,12 +29,10 @@ func get_int(Str code) -> Str:
     return code.slice(0, len)
 
 func raw_tokenize(Str code) -> List[Token]:
-    let ops = "( ) : \n + - * /".split(" ")  # TODO: only int+int works
-
     let result = new List[Token]()
     while code != "":
         let id = get_simple_identifier(code)
-        let op = starts_with_any(code, ops)
+        let op = starts_with_any(code, ["(", ")", ":", "\n", "+", "-", "*", "/"])
         let int_value = get_int(code)
 
         if id != null[Str]:
@@ -45,9 +43,10 @@ func raw_tokenize(Str code) -> List[Token]:
         elif op != null[Str]:
             token = new Token("op", op.get())
         elif int_value != "":
-            if starts_with_any(code.slice(int_value.length(), code.length()), ".0 .1 .2 .3 .4 .5 .6 .7 .8 .9".split(" ")) != null[Str]:
+            let remaining = code.slice(int_value.length(), code.length())
+            if remaining.starts_with(".") and remaining != "." and "0123456789".contains(remaining.slice(1, 2)):
                 # TODO: remove_prefix method
-                let float_value = int_value + "." + get_int(code.slice((int_value + ".").length(), code.length()))
+                let float_value = int_value + "." + get_int(remaining.slice(1, remaining.length()))
                 token = new Token("float", float_value)
             else:
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error

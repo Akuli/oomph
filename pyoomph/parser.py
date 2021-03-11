@@ -52,15 +52,18 @@ class _Parser:
             path = path_of_this_file.parent / string.strip('"')
         return ast.Import(path, name)
 
-    def parse_commasep_in_parens(self, content_callback: Callable[[], _T]) -> List[_T]:
-        self.get_token("op", "(")
+    def parse_commasep_in_parens(
+        self, content_callback: Callable[[], _T], *, parens: str = "()"
+    ) -> List[_T]:
+        left, right = list(parens)
+        self.get_token("op", left)
         result = []
-        if self.token_iter.peek() != ("op", ")"):
+        if self.token_iter.peek() != ("op", right):
             result.append(content_callback())
             while self.token_iter.peek() == ("op", ","):
                 self.get_token("op", ",")
                 result.append(content_callback())
-        self.get_token("op", ")")
+        self.get_token("op", right)
         return result
 
     def tokenize_and_parse_expression(self, code: str) -> ast.Expression:
@@ -131,6 +134,10 @@ class _Parser:
             self.get_token("op", "(")
             result = self.parse_expression()
             self.get_token("op", ")")
+        elif self.token_iter.peek() == ("op", "["):
+            result = ast.ListLiteral(
+                self.parse_commasep_in_parens(self.parse_expression, parens="[]")
+            )
         else:
             raise NotImplementedError(self.token_iter.peek())
 

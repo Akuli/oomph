@@ -1,0 +1,5 @@
+export func main():
+    let foo = ["lol", "wat"]
+    print(foo)
+    print(foo.first())
+    print(foo.last())

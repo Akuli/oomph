@@ -91,8 +91,7 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     meth parse_expression() -> ast::Expression:
-        let magic_list = new List[PrecedenceItem]()
-        magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
+        let magic_list = [new PrecedenceItem(self.parse_simple_expression())]
         while self.peek_carefully() != null[tokenizer::Token] and self.peek().matches("op", "+"):
             magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
             magic_list.push(new PrecedenceItem(self.parse_simple_expression()))

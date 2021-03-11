@@ -77,6 +77,11 @@ class FloatConstant(Expression):
 
 
 @dataclass(eq=False)
+class ListLiteral(Expression):
+    content: List[Expression]
+
+
+@dataclass(eq=False)
 class UnaryOperator(Expression):
     op: str
     obj: Expression
