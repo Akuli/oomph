@@ -99,22 +99,20 @@ class Parser(List[tokenizer::Token] tokens):
 
         while magic_list.length() > 1:
             for let i = 0; i <= magic_list.length() - 3; i = i+1:
-                # TODO: this isn't nice
                 let value = magic_list.get(i+1)
-                let skip = false
                 switch value:
                     case Str:
-                        skip = (value != "+")
+                        if value != "+":
+                            continue
                     case ast::Expression:
-                        skip = true
-                if skip:
-                    continue  # keep going with for loop
+                        continue
+
                 # TODO: unpacking
                 let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
                 let lhs = get_expr(lhs_op_rhs.first()).get()
                 let rhs = get_expr(lhs_op_rhs.last()).get()
                 insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, "+", rhs))))
-                break  # keep going with while loop
+                break  # keep going with while loop (TODO: named continue?)
 
         assert(magic_list.length() == 1)
         let result = magic_list.first()

@@ -33,7 +33,6 @@ Known bugs:
 - self-hosted compiler (very wip) doesn't add `\n` to end of code
 
 Missing features:
-- `continue` and `break` inside switch, when the switch is inside a loop
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - functions as first-class objects
 - better error messaging

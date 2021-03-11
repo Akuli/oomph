@@ -1,0 +1,5 @@
+Foo 0
+Bar 1
+Switch done
+Baz 2
+Loop done

@@ -126,17 +126,17 @@ class _FunctionEmitter:
                 if (!{self.emit_var(ins.cond)})
                     break;
                 {body}
-                {_emit_label(ins.loop_id)}  // oomph 'continue' jumps here
+                {_emit_label(ins.loop_id + "_continue")}
                 {incr}
             }}
+            {_emit_label(ins.loop_id + "_break")}
             """
 
         if isinstance(ins, ir.Continue):
-            # Can't use C's continue because continue must emit_funcdef condition
-            return f"goto {ins.loop_id};\n"
+            return f"goto {ins.loop_id}_continue;\n"
 
         if isinstance(ins, ir.Break):
-            return "break;\n"
+            return f"goto {ins.loop_id}_break;\n"
 
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)

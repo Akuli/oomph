@@ -1,0 +1,29 @@
+class Foo()
+class Bar()
+class Baz()
+
+union FooBarBaz:
+    Foo
+    Bar
+    Baz
+
+export func main():
+    let thing = new FooBarBaz(new Foo())
+    for let i = 0; ; i = i + 1:
+        # TODO: fix switch syntax
+        let thingy = thing
+        switch thingy:
+            case Foo:
+                print("Foo {i}")
+                thing = new FooBarBaz(new Bar())
+                continue
+                print("Should not happen")
+            case Bar:
+                print("Bar {i}")
+                thing = new FooBarBaz(new Baz())
+            case Baz:
+                print("Baz {i}")
+                break
+                print("Should not happen")
+        print("Switch done")
+    print("Loop done")

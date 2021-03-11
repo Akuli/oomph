@@ -27,7 +27,7 @@ class _FunctionOrMethodConverter:
     ):
         self.file_converter = file_converter
         self.variables = variables
-        self.loop_stack: List[Optional[str]] = []  # None means a switch
+        self.loop_stack: List[str] = []
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
 
@@ -381,11 +381,9 @@ class _FunctionOrMethodConverter:
             pass
 
         elif isinstance(stmt, ast.Continue):
-            assert self.loop_stack[-1] is not None, "can't continue in switch"
             self.code.append(ir.Continue(self.loop_stack[-1]))
 
         elif isinstance(stmt, ast.Break):
-            assert self.loop_stack[-1] is not None, "can't break in switch"
             self.code.append(ir.Break(self.loop_stack[-1]))
 
         elif isinstance(stmt, ast.Return):
@@ -442,7 +440,6 @@ class _FunctionOrMethodConverter:
             assert isinstance(union_var, ir.LocalVariable)
             assert isinstance(union_var.type, UnionType)
             types_to_do = self.file_converter.post_process_union(union_var.type).copy()
-            self.loop_stack.append(None)
 
             cases: Dict[ir.Type, List[ir.Instruction]] = {}
             for raw_type, raw_body in stmt.cases.items():
@@ -458,8 +455,6 @@ class _FunctionOrMethodConverter:
             self.variables[stmt.varname] = union_var
 
             assert not types_to_do, types_to_do
-            popped = self.loop_stack.pop()
-            assert popped is None
             self.code.append(ir.Switch(union_var, cases))
 
         else:
