@@ -13,13 +13,6 @@ func get_expr(PrecedenceItem item) -> optional[ast::Expression]:
         case Str:
             return null[ast::Expression]
 
-#func get_string(PrecedenceItem item) -> optional[Str]:
-#    switch item:
-#        case Str:
-#            return new optional[Str](item)
-#        case ast::Expression:
-#            return null[Str]
-
 # TODO: more list methods
 func delete_slice_from_list(List[PrecedenceItem] list, int start, int end) -> List[PrecedenceItem]:
     let stack = new List[PrecedenceItem]()
