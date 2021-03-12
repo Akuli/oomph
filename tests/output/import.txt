@@ -1,7 +1,7 @@
 hello
-Bar(123, optional[Str]("lol"))
+Bar(123, Optional[Str]("lol"))
 123
-optional[Str]("lol")
-Lol 123 optional[Str]("lol")
-FooBar(Bar(123, optional[Str]("lol")))
-Bar from switch: Bar(123, optional[Str]("lol"))
+Optional[Str]("lol")
+Lol 123 Optional[Str]("lol")
+FooBar(Bar(123, Optional[Str]("lol")))
+Bar from switch: Bar(123, Optional[Str]("lol"))

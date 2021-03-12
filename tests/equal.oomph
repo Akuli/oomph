@@ -1,6 +1,6 @@
 class Foo()
 
-func bar(Str s) -> int:
+func bar(Str s) -> Int:
     print(s)
     return 123
 

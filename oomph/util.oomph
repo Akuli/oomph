@@ -1,6 +1,6 @@
 # TODO: util files shouldn't be needed in oomph projects
 
-export func list_contains(List[Str] list, Str item) -> bool:
+export func list_contains(List[Str] list, Str item) -> Bool:
     foreach actual_item of list:
         if actual_item == item:
             return true

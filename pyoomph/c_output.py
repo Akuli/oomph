@@ -653,7 +653,7 @@ class _FileEmitter:
                 "__Str_split",
                 "__Str_starts_with",
                 "__Str_trim",
-                "__bool_to_string",
+                "__Bool_to_string",
             }:
                 # Class implemented in C, method implemented in builtins.oomph
                 c_name = "meth_" + var.name.lstrip("_")

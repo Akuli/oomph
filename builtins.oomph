@@ -1,41 +1,41 @@
-func __bool_to_string(bool self) -> Str:
+func __Bool_to_string(Bool self) -> Str:
     if self:
         return "true"
     return "false"
 
-func __Str_find_first(Str self, Str substring) -> optional[int]:
+func __Str_find_first(Str self, Str substring) -> Optional[Int]:
     let result = __string_find_internal(self, substring)
     if result == -1:   # Currently it's difficult to have optionals in C code
-        return null[int]
-    return new optional[int](result)
+        return null[Int]
+    return new Optional[Int](result)
 
-func __Str_repeat(Str self, int n) -> Str:
+func __Str_repeat(Str self, Int n) -> Str:
     let result = self
     while result.length() < n*self.length():
         result = result + result
     return result.slice(0, n*self.length())
 
-func __Str_starts_with(Str self, Str prefix) -> bool:
+func __Str_starts_with(Str self, Str prefix) -> Bool:
     return self.slice(0, prefix.length()) == prefix
 
-func __Str_ends_with(Str self, Str suffix) -> bool:
+func __Str_ends_with(Str self, Str suffix) -> Bool:
     return self.slice(self.length() - suffix.length(), self.length()) == suffix
 
-func __Str_contains(Str self, Str substring) -> bool:
-    return self.find_first(substring) != null[int]
+func __Str_contains(Str self, Str substring) -> Bool:
+    return self.find_first(substring) != null[Int]
 
 # No need to use a third party library for this, lol
-func __Str_left_pad(Str self, int len, Str pad_char) -> Str:
+func __Str_left_pad(Str self, Int len, Str pad_char) -> Str:
     return pad_char.repeat(len - self.length()) + self
 
-func __Str_right_pad(Str self, int len, Str pad_char) -> Str:
+func __Str_right_pad(Str self, Int len, Str pad_char) -> Str:
     return self + pad_char.repeat(len - self.length())
 
-func __Str_center_pad(Str self, int len, Str pad_char) -> Str:
+func __Str_center_pad(Str self, Int len, Str pad_char) -> Str:
     let average = ((self.length() + len)/2).floor()
     return self.left_pad(average, pad_char).right_pad(len, pad_char)
 
-func __Str_count(Str self, Str substring) -> int:
+func __Str_count(Str self, Str substring) -> Int:
 
     if substring == "":
         # Same as what Python does
@@ -44,11 +44,11 @@ func __Str_count(Str self, Str substring) -> int:
     # TODO: this loop isn't elegant, ideally condition could be 'i := self.find_first(...)'
     for let count = 0; ; count = count + 1:
         let i = self.find_first(substring)
-        if i == null[int]:
+        if i == null[Int]:
             return count
         self = self.slice(i.get() + substring.length(), self.length())
 
-func starts_with_space(Str s) -> bool:
+func starts_with_space(Str s) -> Bool:
     # TODO: all ascii whitespace
     return s.starts_with(" ") or s.starts_with("\n")
 
@@ -75,7 +75,7 @@ func __Str_replace(Str self, Str old, Str neuw) -> Str:
 
     while true:
         let index = remaining.find_first(old)
-        if index == null[int]:
+        if index == null[Int]:
             return result + remaining
         result = result + remaining.slice(0, index.get()) + neuw
         remaining = remaining.slice(index.get() + old.length(), remaining.length())
@@ -88,7 +88,7 @@ func __Str_split(Str self, Str sep) -> List[Str]:
 
     while true:
         let i = self.find_first(sep)
-        if i == null[int]:
+        if i == null[Int]:
             result.push(self)
             return result
 

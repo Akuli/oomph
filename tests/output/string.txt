@@ -51,9 +51,9 @@ abc**
 *abc*
 *abc**
 Find first:
-optional[int](3)
+Optional[Int](3)
 null
-optional[int](0)
+Optional[Int](0)
 Count:
 2
 2

@@ -1,4 +1,4 @@
-class Foo(int x):
+class Foo(Int x):
     meth show():
         print(self.x)
 

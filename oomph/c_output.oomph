@@ -59,7 +59,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
         self.declared_vars.push(var)
         return "var{var.id}"
 
-    meth emit_call(Str c_func, List[ir::LocalVariable] args, optional[ir::LocalVariable] result):
+    meth emit_call(Str c_func, List[ir::LocalVariable] args, Optional[ir::LocalVariable] result):
         let arg_strings = new List[Str]()
         foreach arg of args:
             arg_strings.push(self.emit_var(arg))

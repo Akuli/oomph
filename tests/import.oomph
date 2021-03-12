@@ -3,7 +3,7 @@ import "hello_lib.oomph" as hello
 export func main():
     hello::print_hello()
 
-    let b = new hello::Bar(123, new optional[Str]("lol"))
+    let b = new hello::Bar(123, new Optional[Str]("lol"))
     print(b)
     print(b.thing)
     print(b.optional_thing)

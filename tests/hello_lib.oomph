@@ -6,6 +6,6 @@ export union FooBar:
     Bar
 
 export class Foo()
-export class Bar(int thing, optional[Str] optional_thing):
+export class Bar(Int thing, Optional[Str] optional_thing):
     meth lol():
         print("Lol {self.thing} {self.optional_thing}")

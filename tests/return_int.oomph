@@ -1,4 +1,4 @@
-func foo() -> int:
+func foo() -> Int:
     return 123
 
 export func main():

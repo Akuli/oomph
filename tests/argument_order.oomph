@@ -1,8 +1,8 @@
-func do_thing(int x) -> int:
+func do_thing(Int x) -> Int:
     print(x)
     return x
 
-func ignore_all_args(int x, int y, int z):
+func ignore_all_args(Int x, Int y, Int z):
     pass
 
 export func main():

@@ -1,5 +1,5 @@
 export func main():
-    let a = new List[int]()
+    let a = new List[Int]()
     print(a)
     print(a.length())
 
@@ -16,7 +16,7 @@ export func main():
     print(a.last())
     print(a)
 
-    let b = new List[int]()
+    let b = new List[Int]()
     b.push(69)
     b.push(123)
     a.push_all(b)

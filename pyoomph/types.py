@@ -95,7 +95,7 @@ class Generic:
 
 
 LIST = Generic("List")
-OPTIONAL = Generic("optional")
+OPTIONAL = Generic("Optional")
 
 
 @dataclass(eq=False)
@@ -120,9 +120,9 @@ class FunctionType(Type):
         return hash(tuple(self.argtypes)) ^ hash(self.returntype)
 
 
-BOOL = Type("bool", False)
-FLOAT = Type("float", False)
-INT = Type("int", False)
+BOOL = Type("Bool", False)
+FLOAT = Type("Float", False)
+INT = Type("Int", False)
 STRING = Type("Str", True)
 
 BOOL.methods["equals"] = FunctionType([BOOL, BOOL], BOOL)

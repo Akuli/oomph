@@ -1,12 +1,12 @@
 import "util.oomph" as util
 
-func starts_with_any(Str s, List[Str] prefixes) -> optional[Str]:
+func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
     foreach prefix of prefixes:
         if s.starts_with(prefix):
-            return new optional[Str](prefix)
+            return new Optional[Str](prefix)
     return null[Str]
 
-func get_simple_identifier(Str code) -> optional[Str]:
+func get_simple_identifier(Str code) -> Optional[Str]:
     assert(code != "")
     let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
     if not first_chars.contains(code.slice(0, 1)):
@@ -16,12 +16,12 @@ func get_simple_identifier(Str code) -> optional[Str]:
     let i = 1
     while i < code.length() and continue_chars.contains(code.slice(i, i+1)):
         i = i + 1
-    return new optional[Str](code.slice(0, i))
+    return new Optional[Str](code.slice(0, i))
 
 # TODO: enums
 # TODO: keep track of line numbers
 export class Token(Str type, Str value):
-    meth matches(Str type, Str value) -> bool:
+    meth matches(Str type, Str value) -> Bool:
         return self.type == type and self.value == value
 
 func get_int(Str code) -> Str:
@@ -49,10 +49,10 @@ func raw_tokenize(Str code) -> List[Token]:
             if remaining.starts_with(".") and remaining != "." and "0123456789".contains(remaining.slice(1, 2)):
                 # TODO: remove_prefix method
                 let float_value = int_value + "." + get_int(remaining.slice(1, remaining.length()))
-                token = new Token("float", float_value)
+                token = new Token("Float", float_value)
             else:
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
-                token = new Token("int", int_value)
+                token = new Token("Int", int_value)
         elif code.starts_with(" "):
             if result.length() != 0 and result.last().matches("op", "\n"):
                 # Space after newline: indentation

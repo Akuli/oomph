@@ -1,7 +1,7 @@
-export class ObjectType(Str name, bool refcounted)
-export class FunctionType(List[ObjectType] argtypes, optional[ObjectType] returntype)
+export class ObjectType(Str name, Bool refcounted)
+export class FunctionType(List[ObjectType] argtypes, Optional[ObjectType] returntype)
 
-export class LocalVariable(ObjectType type, int id)
+export class LocalVariable(ObjectType type, Int id)
 export class BuiltinVariable(Str name, FunctionType type)
 export class ThisFileVariable(Str name, FunctionType type)
 
@@ -24,22 +24,22 @@ export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinV
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     let STR = new ObjectType("Str", true)
-    let INT = new ObjectType("int", true)
-    let FLOAT = new ObjectType("float", true)
+    let INT = new ObjectType("Int", true)
+    let FLOAT = new ObjectType("Float", true)
 
     let prrrint = new BuiltinVariable("print", new FunctionType([STR], null[ObjectType]))
 
     # TODO: multiline literals
     let hidden_vars = new List[BuiltinVariable]()
-    hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], new optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], new optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], new optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], new optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], new optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], new Optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], new Optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], new Optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], new Optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], new Optional[ObjectType](FLOAT))))
 
     return new Builtins(STR, INT, FLOAT, prrrint, hidden_vars)
 
@@ -52,10 +52,10 @@ export union Instruction:
     StringConstant
 
 export class FloatConstant(Str value, LocalVariable var)
-export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, optional[LocalVariable] result_var)
-export class IntConstant(int value, LocalVariable var)
+export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, Optional[LocalVariable] result_var)
+export class IntConstant(Int value, LocalVariable var)
 export class IntToFloat(LocalVariable int_var, LocalVariable float_var)
-export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, optional[LocalVariable] result)
+export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, Optional[LocalVariable] result)
 export class StringConstant(Str value, LocalVariable var)
 
 export class FuncDef(ThisFileVariable var, List[LocalVariable] argvars, List[Instruction] body)

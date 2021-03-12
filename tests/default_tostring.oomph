@@ -1,7 +1,7 @@
 class Foo0()
-class Foo1(int x)
-class Foo2(int x, Str y)
-class Foo3(int x, Str y, bool z)
+class Foo1(Int x)
+class Foo2(Int x, Str y)
+class Foo3(Int x, Str y, Bool z)
 
 export func main():
     print(new Foo0())

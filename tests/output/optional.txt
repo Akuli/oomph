@@ -1,5 +1,5 @@
-main: optional[Str]("lolwat") false
-show: optional[Str]("lolwat") false
+main: Optional[Str]("lolwat") false
+show: Optional[Str]("lolwat") false
 show: null true
 true
 false

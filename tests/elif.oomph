@@ -1,4 +1,4 @@
-func foo(int x):
+func foo(Int x):
     if x == 1:
         print(111)
     elif x == 2:

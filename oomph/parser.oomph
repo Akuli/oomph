@@ -21,7 +21,7 @@ func get_op(PrecedenceItem item) -> Str:
             assert(false)
 
 # TODO: more list methods
-func delete_slice_from_list(List[PrecedenceItem] list, int start, int end) -> List[PrecedenceItem]:
+func delete_slice_from_list(List[PrecedenceItem] list, Int start, Int end) -> List[PrecedenceItem]:
     let stack = new List[PrecedenceItem]()
     let result = new List[PrecedenceItem]()
     while list.length() > end:
@@ -31,7 +31,7 @@ func delete_slice_from_list(List[PrecedenceItem] list, int start, int end) -> Li
     list.push_all(stack.reversed())
     return result.reversed()
 
-func insert_to_list(List[PrecedenceItem] list, int index, PrecedenceItem item):
+func insert_to_list(List[PrecedenceItem] list, Int index, PrecedenceItem item):
     let stack = new List[PrecedenceItem]()
     while list.length() > index:
         stack.push(list.pop())
@@ -69,10 +69,10 @@ class Parser(List[tokenizer::Token] tokens):
             let result = new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
         elif self.peek().type == "id":
             result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
-        elif self.peek().type == "int":
-            result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("int").value.to_int()))
-        elif self.peek().type == "float":
-            result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("float").value))
+        elif self.peek().type == "Int":
+            result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("Int").value.to_int()))
+        elif self.peek().type == "Float":
+            result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("Float").value))
         elif self.peek().matches("op", "("):
             self.get_token("op", "(")
             result = self.parse_expression()
@@ -95,7 +95,7 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     # TODO: this should not be as difficult as it is
-    meth find_binary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> optional[int]:
+    meth find_binary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
         for let i = 0; i <= magic_list.length() - 3; i = i+1:
             switch magic_list.get(i):
                 case ast::Expression expr:
@@ -113,8 +113,8 @@ class Parser(List[tokenizer::Token] tokens):
                     pass
                 case *:
                     continue
-            return new optional[int](i)
-        return null[int]
+            return new Optional[Int](i)
+        return null[Int]
 
     meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] operators):
         while magic_list.length() >= 2:
@@ -130,7 +130,7 @@ class Parser(List[tokenizer::Token] tokens):
                     pass
 
             let i_or_null = self.find_binary_operator(magic_list, operators)
-            if i_or_null != null[int]:
+            if i_or_null != null[Int]:
                 let i = i_or_null.get()
                 let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
                 let lhs = get_expr(lhs_op_rhs.first())

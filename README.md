@@ -23,7 +23,6 @@ python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 - Compiles to C, aims to be high-level but faster than Python
 - See example files in `tests` to get started
 - Some things are implemented in the language itself (see `builtins.oomph` and `stdlib`)
-- Refcounted types are named `LikeThis`, non-refcounted pass-by-value types `like_this`
 
 Docs:
 - [Syntax](docs/syntax.md)
@@ -86,11 +85,11 @@ Missing features:
 - some nice way to check if an object is null (for at least `if` and `while`)
     - Idea: `x := y` returns false if `x` is null, and when isn't, sets `y` to true
         - Leads to `while x := y`, `if x := y` and `assert x := y`
-    - Idea 2: optional interpreted as boolean tells whether it's null, and 
-      when it isn't, variables magically change type to get rid of `optional`
+    - Idea 2: Optional interpreted as boolean tells whether it's null, and
+      when it isn't, variables magically change type to get rid of `Optional`
         - Leads to `while x`, `if x` and `assert x` (or `assert(x)`)
         - Or without optional as boolean interpreting: explicit `while x != null` etc
-    - rename `optional.get()` to `.get_not_null_value()` to make it stand out
+    - rename `Optional.get()` to `.get_not_null_value()` to make it stand out
       in code reviews as possible bug
 - defining non-ref-counted pass-by-value classes
 - `starts_with` + `slice` string method
@@ -100,7 +99,7 @@ Missing features:
     - `not (a and not b)` is more complicated than `(not a) or b`
     - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
 - warnings about unused things (unions, classes, functions, methods, variables)
-- `case Foo(Str x, int y):`
+- `case Foo(Str x, Int y):`
     - combined with unused variable warnings, it is impossible to accidentally forget
         to use some data, a feature that I wish Python had
 
@@ -127,8 +126,6 @@ Design questions to (re)think:
     - Disadvantage: slightly slower in programs that input and output utf-8 strings
         - Maybe store strings as utf-8, but somehow hopefully-not-shittily make
           indexing work with unicode code points?
-- Should classes be named more consistently? Having `int` and `Str` feels weird
-  (and too much like Java), even though there is a reason for doing it.
 - More agressively prevent variables from leaking: if variable defined inside
   `if`, not visible outside by default? Or at least can be overwritten with
   another `let`?
@@ -140,7 +137,7 @@ Optimization ideas:
 - avoiding allocations when an object isn't passed around and no reference
   counting is actually needed
 - concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
-    - `List[str].join` and various other functions
+    - `List[Str].join` and various other functions
 - caching `strlen` result
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
 - streams, as an alternative to lists

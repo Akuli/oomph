@@ -39,21 +39,21 @@ int64_t string_find_internal(const struct class_Str *s, const struct class_Str *
 int64_t subprocess_run(void *args);
 
 #define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
-#define meth_bool_equals(a, b) ((a)==(b))
-#define meth_float_equals(a, b) ((a)==(b))
-#define meth_int_equals(a, b) ((a)==(b))
+#define meth_Bool_equals(a, b) ((a)==(b))
+#define meth_Float_equals(a, b) ((a)==(b))
+#define meth_Int_equals(a, b) ((a)==(b))
 double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Str_length(const struct class_Str *s);
 int64_t meth_Str_to_int(const struct class_Str *s);
 int64_t meth_Str_unicode_length(const struct class_Str *s);
-int64_t meth_float_ceil(double d);
-int64_t meth_float_floor(double d);
-int64_t meth_float_round(double d);
-int64_t meth_float_truncate(double d);
+int64_t meth_Float_ceil(double d);
+int64_t meth_Float_floor(double d);
+int64_t meth_Float_round(double d);
+int64_t meth_Float_truncate(double d);
 struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end);
 struct class_Str *meth_Str_to_string(struct class_Str *s);
-struct class_Str *meth_float_to_string(double d);
-struct class_Str *meth_int_to_string(int64_t n);
+struct class_Str *meth_Float_to_string(double d);
+struct class_Str *meth_Int_to_string(int64_t n);
 
 /*
 Can't be macros because of assumptions that compiler makes:

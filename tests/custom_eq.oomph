@@ -1,5 +1,5 @@
 class Foo():
-    meth equals(Foo other) -> bool:
+    meth equals(Foo other) -> Bool:
         return true
 
 export func main():

@@ -1,4 +1,4 @@
-export func run(List[Str] command) -> int:
+export func run(List[Str] command) -> Int:
     return __subprocess_run(command)
 
 # TODO: this is in a weird place, maybe rename this file to process.oomph?

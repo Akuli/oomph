@@ -4,7 +4,7 @@ union Thing:
     Baz
 
 # Can be defined after the union
-class Foo(int foo_thing)
+class Foo(Int foo_thing)
 class Bar()
 class Baz()
 
