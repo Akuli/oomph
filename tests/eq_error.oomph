@@ -1,0 +1,10 @@
+class Foo()
+class Bar()
+
+# The existence of this should not affect anything
+union FooBar:
+    Foo
+    Bar
+
+export func main():
+    print(new Foo() == new Bar())

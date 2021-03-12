@@ -50,7 +50,6 @@ Missing features:
 - better ternary than in python: `if cond then a else b`
 - named arguments
 - default values of arguments
-- do we want more implicit int to float conversion? `sleep(2)` where `sleep` takes a float
 - string methods
     - reverse
     - find occurrence of substring

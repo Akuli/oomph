@@ -68,13 +68,17 @@ class _FunctionOrMethodConverter:
         self.code.append(ir.CallFunction(func, args, result_var))
         return result_var
 
-    def convert_implicitly(
+    def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
         if var.type == target_type:
             return var
 
-        assert isinstance(target_type, UnionType)
+        if target_type is FLOAT and var.type is INT:
+            return self.create_special_call("int2float", [var])
+
+        if not isinstance(target_type, UnionType):
+            raise TypeError("can't implicitly convert {var.type.name} to {target_type.name}")
 
         # FIXME: cyclicly nested unions
         result_path: Optional[List[UnionType]] = None
@@ -84,14 +88,15 @@ class _FunctionOrMethodConverter:
             assert path[-1].type_members is not None
             for member in path[-1].type_members:
                 if member == var.type:
-                    assert result_path is None, "ambiguous implicit conversion"
+                    if result_path is not None:
+                        raise TypeError("ambiguous implicit conversion")
                     result_path = path
                 elif isinstance(member, UnionType):
                     todo_paths.append(path + [member])
 
-        assert (
-            result_path is not None
-        ), f"can't implicitly convert from {var.type.name} to {target_type.name}"
+        if result_path is None:
+            raise TypeError("can't implicitly convert from {var.type.name} to {target_type.name}")
+
         for union in reversed(result_path):
             new_var = self.create_var(union)
             self.code.append(ir.InstantiateUnion(new_var, var))
@@ -104,7 +109,7 @@ class _FunctionOrMethodConverter:
     ) -> List[ir.LocalVariable]:
         assert len(args) == len(target_types)
         return [
-            self.convert_implicitly(self.do_expression(expr), typ)
+            self.implicit_conversion(self.do_expression(expr), typ)
             for expr, typ in zip(args, target_types)
         ]
 
@@ -180,6 +185,28 @@ class _FunctionOrMethodConverter:
     def _do_binary_op_typed(
         self, lhs: ir.LocalVariable, op: str, rhs: ir.LocalVariable
     ) -> ir.LocalVariable:
+        # See docs/implicit-conversions.md
+        if lhs.type != rhs.type:
+            try:
+                new_lhs = self.implicit_conversion(lhs, rhs.type)
+            except TypeError:
+                new_lhs = None
+
+            try:
+                new_rhs = self.implicit_conversion(rhs, lhs.type)
+            except TypeError:
+                new_rhs = None
+
+            if new_lhs is None and new_rhs is not None:
+                rhs = new_rhs
+            elif new_lhs is not None and new_rhs is None:
+                lhs = new_lhs
+            else:
+                raise RuntimeError(f"{lhs.type.name} {op} {rhs.type.name}")
+
+        assert lhs.type == rhs.type
+        the_type = lhs.type
+
         if op == "!=":
             return self._not(self._do_binary_op_typed(lhs, "==", rhs))
 
@@ -191,14 +218,12 @@ class _FunctionOrMethodConverter:
         if op == ">=":
             return self._not(self._do_binary_op_typed(lhs, "<", rhs))
 
-        if lhs.type is STRING and op == "+" and rhs.type is STRING:
+        if the_type == STRING and op == "+":
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
         if (
-            lhs.type.generic_origin is not None
-            and rhs.type.generic_origin is not None
-            and lhs.type.generic_origin.generic is OPTIONAL
-            and rhs.type.generic_origin.generic is OPTIONAL
+            the_type.generic_origin is not None
+        and the_type.generic_origin.generic is OPTIONAL
         ):
             result_var = self.create_var(BOOL)
             with self.code_to_separate_list() as neither_null_code:
@@ -227,7 +252,7 @@ class _FunctionOrMethodConverter:
             )
             return result_var
 
-        if lhs.type is INT and op in {"+", "-", "*", "mod", ">"} and rhs.type is INT:
+        if the_type == INT and op in {"+", "-", "*", "mod", ">"}:
             return self.create_special_call(
                 {
                     "+": "int_add",
@@ -239,18 +264,14 @@ class _FunctionOrMethodConverter:
                 [lhs, rhs],
             )
 
-        if lhs.type is INT and op == "/" and rhs.type is INT:
+        if the_type == INT and op == "/":
             lhs = self.create_special_call("int2float", [lhs])
             rhs = self.create_special_call("int2float", [rhs])
-        if lhs.type is INT and rhs.type is FLOAT:
-            lhs = self.create_special_call("int2float", [lhs])
-        if lhs.type is FLOAT and rhs.type is INT:
-            rhs = self.create_special_call("int2float", [rhs])
+            the_type = FLOAT
 
         if (
-            lhs.type is FLOAT
+            the_type == FLOAT
             and op in {"+", "-", "*", "/", "mod", ">"}
-            and rhs.type is FLOAT
         ):
             return self.create_special_call(
                 {
@@ -264,12 +285,12 @@ class _FunctionOrMethodConverter:
                 [lhs, rhs],
             )
 
-        if lhs.type == rhs.type and op == "==":
+        if op == "==":
             result_var = self.create_var(BOOL)
             self.code.append(ir.CallMethod(lhs, "equals", [rhs], result_var))
             return result_var
 
-        raise NotImplementedError(f"{lhs.type} {op} {rhs.type}")
+        raise TypeError(f"{the_type.name} {op} {the_type.name}")
 
     def do_binary_op(self, op_ast: ast.BinaryOperator) -> ir.LocalVariable:
         # Avoid evaluating right side when not needed

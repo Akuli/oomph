@@ -1,0 +1,2 @@
+RuntimeError: Foo == Bar
+

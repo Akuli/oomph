@@ -1,0 +1,5 @@
+func foo(Float x):
+    print(x)
+
+export func main():
+    foo(123)
