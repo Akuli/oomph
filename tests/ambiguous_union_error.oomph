@@ -1,0 +1,16 @@
+class Foo()
+class Bar()
+
+union Inner:
+    Foo
+    Bar
+
+union Outer:
+    Foo
+    Inner
+
+func blah(Outer o):
+    pass
+
+export func main():
+    blah(new Foo())

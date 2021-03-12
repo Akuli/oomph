@@ -22,9 +22,13 @@ func print_thing(Thing thing):
             print("  it's a Foo")
         case *:
             print("  it's not a Foo")
-    print("After switch: {thing}")
 
 export func main():
     print_thing(new Thing(new Foo(69)))
     print_thing(new Thing(new Bar()))
     print_thing(new Thing(new Baz()))
+
+    print("\nWith implicit conversions:\n")
+    print_thing(new Foo(69))
+    print_thing(new Bar())
+    print_thing(new Baz())

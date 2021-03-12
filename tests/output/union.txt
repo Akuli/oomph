@@ -1,9 +1,15 @@
 Foo 69
   it's a Foo
-After switch: Thing(Foo(69))
 Bar Bar()
   it's not a Foo
-After switch: Thing(Bar())
 Baz Baz()
   it's not a Foo
-After switch: Thing(Baz())
+
+With implicit conversions:
+
+Foo 69
+  it's a Foo
+Bar Bar()
+  it's not a Foo
+Baz Baz()
+  it's not a Foo

@@ -68,20 +68,61 @@ class _FunctionOrMethodConverter:
         self.code.append(ir.CallFunction(func, args, result_var))
         return result_var
 
+    def convert_implicitly(
+        self, var: ir.LocalVariable, target_type: Type
+    ) -> ir.LocalVariable:
+        if var.type == target_type:
+            return var
+
+        assert isinstance(target_type, UnionType)
+
+        # FIXME: cyclicly nested unions
+        result_path: Optional[List[UnionType]] = None
+        todo_paths = [[target_type]]
+        while todo_paths:
+            path = todo_paths.pop()
+            assert path[-1].type_members is not None
+            for member in path[-1].type_members:
+                if member == var.type:
+                    assert result_path is None, "ambiguous implicit conversion"
+                    result_path = path
+                elif isinstance(member, UnionType):
+                    todo_paths.append(path + [member])
+
+        assert (
+            result_path is not None
+        ), f"can't implicitly convert from {var.type.name} to {target_type.name}"
+        for union in reversed(result_path):
+            new_var = self.create_var(union)
+            self.code.append(ir.InstantiateUnion(new_var, var))
+            self.code.append(ir.IncRef(var))
+            var = new_var
+        return var
+
+    def do_args(
+        self, args: List[ast.Expression], target_types: List[Type]
+    ) -> List[ir.LocalVariable]:
+        assert len(args) == len(target_types)
+        return [
+            self.convert_implicitly(self.do_expression(expr), typ)
+            for expr, typ in zip(args, target_types)
+        ]
+
     def do_call(self, call: ast.Call) -> Optional[ir.LocalVariable]:
         if isinstance(call.func, ast.GetAttribute):
             self_arg = self.do_expression(call.func.obj)
             try:
-                result_type = self_arg.type.methods[call.func.attribute].returntype
+                functype = self_arg.type.methods[call.func.attribute]
             except KeyError:
                 raise RuntimeError(
                     f"{self_arg.type.name} has no method {call.func.attribute}()"
                 )
-            if result_type is None:
+            assert self_arg.type == functype.argtypes[0]
+            if functype.returntype is None:
                 result_var = None
             else:
-                result_var = self.create_var(result_type)
-            args = [self.do_expression(arg) for arg in call.args]
+                result_var = self.create_var(functype.returntype)
+            args = self.do_args(call.args, functype.argtypes[1:])
             self.code.append(
                 ir.CallMethod(self_arg, call.func.attribute, args, result_var)
             )
@@ -97,16 +138,18 @@ class _FunctionOrMethodConverter:
 
             if func is ir.builtin_variables["print"]:
                 args = [self.stringify(self.do_expression(arg)) for arg in call.args]
+                assert len(args) == 1
             else:
-                args = [self.do_expression(arg) for arg in call.args]
+                raw_args = call.args.copy()
                 if func is ir.builtin_variables["assert"]:
                     assert call.func.lineno is not None
                     # Why relative path:
                     #   - less noise, still enough information
                     #   - tests don't have to include paths like /home/akuli/oomph/...
                     path = self.file_converter.path.relative_to(pathlib.Path.cwd())
-                    args.append(self.do_expression(ast.StringConstant(str(path))))
-                    args.append(self.do_expression(ast.IntConstant(call.func.lineno)))
+                    raw_args.append(ast.StringConstant(str(path)))
+                    raw_args.append(ast.IntConstant(call.func.lineno))
+                args = self.do_args(raw_args, func.type.argtypes)
             self.code.append(ir.CallFunction(func, args, result_var))
         elif isinstance(call.func, ast.Constructor):
             the_class = self.file_converter.get_type(call.func.type)
@@ -304,7 +347,6 @@ class _FunctionOrMethodConverter:
                 union_type = self.file_converter.get_type(expr.func.type)
                 if isinstance(union_type, UnionType):
                     var = self.create_var(union_type)
-                    self.file_converter.post_process_union(union_type)
                     assert len(expr.args) == 1
                     obj = self.do_expression(expr.args[0])
                     self.code.append(ir.IncRef(obj))
@@ -448,7 +490,8 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
             assert isinstance(union_var.type, UnionType)
-            types_to_do = self.file_converter.post_process_union(union_var.type).copy()
+            assert union_var.type.type_members is not None
+            types_to_do = union_var.type.type_members.copy()
 
             cases: Dict[ir.Type, List[ir.Instruction]] = {}
             for case in stmt.cases:
@@ -653,6 +696,7 @@ class _FileConverter:
         elif isinstance(top_declaration, ast.UnionDef):
             union_type = UnionType(top_declaration.name, self.path)
             self._types[top_declaration.name] = union_type
+            self.union_laziness[union_type] = top_declaration.type_members
 
         else:
             raise NotImplementedError(top_declaration)
@@ -691,7 +735,6 @@ class _FileConverter:
         if isinstance(top_declaration, ast.UnionDef):
             union_type = self._types[top_declaration.name]
             assert isinstance(union_type, UnionType)
-            self.union_laziness[union_type] = top_declaration.type_members
             if top_declaration.export:
                 self.exports.append(
                     ir.Export(self.path, top_declaration.name, union_type)
@@ -700,13 +743,10 @@ class _FileConverter:
 
         raise NotImplementedError(top_declaration)
 
-    def post_process_union(self, union: UnionType) -> List[Type]:
+    def post_process_union(self, union: UnionType) -> None:
         if union.type_members is None:
             types = self.union_laziness.pop(union)
             union.set_type_members([self.get_type(t) for t in types])
-
-        assert union.type_members is not None
-        return union.type_members
 
 
 def convert_program(
@@ -717,11 +757,11 @@ def convert_program(
     converter = _FileConverter(path, exports)
     for top in program:
         converter.do_toplevel_declaration_pass1(top)
+    for key in list(converter.union_laziness):
+        converter.post_process_union(key)
     result = [
         top
         for top in map(converter.do_toplevel_declaration_pass2, program)
         if top is not None
     ]
-    for key in list(converter.union_laziness):
-        converter.post_process_union(key)
     return result
