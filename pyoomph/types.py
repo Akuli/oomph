@@ -48,6 +48,7 @@ class UnionType(Type):
     def __init__(self, name: str, definition_path: Optional[pathlib.Path] = None):
         super().__init__(name, True, definition_path)
         self.type_members = None  # to be set later
+        self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
 
     def __repr__(self) -> str:

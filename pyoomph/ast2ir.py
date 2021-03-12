@@ -676,10 +676,51 @@ class _FileConverter:
             "equals",
             classtype.methods["equals"],
             [self_var, other_var],
-            [
-                ir.PointersEqual(self_var, other_var, result_var),
-                ir.Return(result_var),
-            ],
+            [ir.PointersEqual(self_var, other_var, result_var), ir.Return(result_var)],
+        )
+
+    def _create_union_equals_method(self, union_type: UnionType) -> ir.MethodDef:
+        assert union_type.type_members
+        functype = FunctionType(argtypes=[union_type, union_type], returntype=BOOL)
+        self_var = ir.LocalVariable(union_type)
+        other_var = ir.LocalVariable(union_type)
+
+        self_switch_cases: Dict[Type, List[ir.Instruction]] = {}
+        for self_type in union_type.type_members:
+            specific_self_var = ir.LocalVariable(self_type)
+
+            other_switch_cases = {}
+            for other_type in union_type.type_members:
+                specific_other_var = ir.LocalVariable(other_type)
+                result_var = ir.LocalVariable(BOOL)
+                other_switch_cases[other_type] = (
+                    [
+                        ir.GetFromUnion(specific_self_var, self_var),
+                        ir.GetFromUnion(specific_other_var, other_var),
+                        ir.IncRef(specific_self_var),
+                        ir.IncRef(specific_other_var),
+                        ir.CallMethod(
+                            specific_self_var,
+                            "equals",
+                            [specific_other_var],
+                            result_var,
+                        ),
+                        ir.Return(result_var),
+                    ]
+                    if self_type == other_type
+                    else [
+                        ir.VarCpy(result_var, self.variables["false"]),
+                        ir.Return(result_var),
+                    ]
+                )
+
+            self_switch_cases[self_type] = [ir.Switch(other_var, other_switch_cases)]
+
+        return ir.MethodDef(
+            "equals",
+            functype,
+            [self_var, other_var],
+            [ir.Switch(self_var, self_switch_cases)],
         )
 
     def do_toplevel_declaration_pass1(
@@ -764,7 +805,9 @@ class _FileConverter:
                 self.exports.append(
                     ir.Export(self.path, top_declaration.name, union_type)
                 )
-            return [ir.TypeDef(union_type)]
+
+            equals = self._create_union_equals_method(union_type)
+            return [ir.TypeDef(union_type), equals]
 
         raise NotImplementedError(top_declaration)
 

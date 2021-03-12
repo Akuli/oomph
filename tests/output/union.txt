@@ -13,3 +13,10 @@ Bar Bar()
   it's not a Foo
 Baz Baz()
   it's not a Foo
+true
+false
+true
+false
+true
+false
+false

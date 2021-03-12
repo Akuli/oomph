@@ -35,10 +35,10 @@ export func main():
 
     let f1 = new Foo(1)
     let f2 = new Foo(1)
-    # TODO: implement equality for union types
-    #print(new Thing(f1) == new Thing(f1))
-    #print(new Thing(f1) == new Thing(f2))
-    #print(new Thing(f1) == f1)
-    #print(new Thing(f1) == f2)
-    #print(f1 == new Thing(f1))
-    #print(f1 == new Thing(f2))
+    print(new Thing(f1) == new Thing(f1))
+    print(new Thing(f1) == new Thing(f2))
+    print(new Thing(f1) == f1)
+    print(new Thing(f1) == f2)
+    print(f1 == new Thing(f1))
+    print(f1 == new Thing(f2))
+    print(f1 == new Thing(new Bar()))
