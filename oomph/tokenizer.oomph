@@ -1,3 +1,5 @@
+import "util.oomph" as util
+
 func starts_with_any(Str s, List[Str] prefixes) -> optional[Str]:
     foreach prefix of prefixes:
         if s.starts_with(prefix):
@@ -57,12 +59,21 @@ func raw_tokenize(Str code) -> List[Token]:
                 let indent_level = 0
                 while code.slice(indent_level, indent_level + 1) == " ":
                     indent_level = indent_level + 1
+
+                if util::list_contains(["#", "\n"], code.slice(indent_level, indent_level + 1)):
+                    # This line doesn't actually contain any code, ignore the indent
+                    code = code.slice(indent_level, code.length())
+                    continue
+
                 token = new Token("indent", code.slice(0, indent_level))
             else:
                 # Space to be ignored
                 # TODO: don't ignore indents in beginning of file
                 code = code.slice(1, code.length())
                 continue
+        elif code.starts_with("#"):
+            code = code.slice(code.find_first("\n").get(), code.length())
+            continue
         elif code.starts_with("\""):
             # TODO: escapes
             # TODO: error handling
