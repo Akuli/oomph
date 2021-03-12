@@ -330,22 +330,17 @@ class FuncDef(ToplevelDeclaration):
 
 
 @dataclass(eq=False)
-class MethodDef:
+class MethodDef(ToplevelDeclaration):
     name: str
     type: FunctionType
     argvars: List[LocalVariable]
     body: List[Instruction]
 
 
+# Class or union
 @dataclass(eq=False)
-class ClassDef(ToplevelDeclaration):
+class TypeDef(ToplevelDeclaration):
     type: Type
-    body: List[MethodDef]
-
-
-@dataclass(eq=False)
-class UnionDef(ToplevelDeclaration):
-    type: UnionType
 
 
 @dataclass(eq=False)

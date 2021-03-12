@@ -78,7 +78,9 @@ class _FunctionOrMethodConverter:
             return self.create_special_call("int2float", [var])
 
         if not isinstance(target_type, UnionType):
-            raise TypeError("can't implicitly convert {var.type.name} to {target_type.name}")
+            raise TypeError(
+                "can't implicitly convert {var.type.name} to {target_type.name}"
+            )
 
         # FIXME: cyclicly nested unions
         result_path: Optional[List[UnionType]] = None
@@ -95,7 +97,9 @@ class _FunctionOrMethodConverter:
                     todo_paths.append(path + [member])
 
         if result_path is None:
-            raise TypeError("can't implicitly convert from {var.type.name} to {target_type.name}")
+            raise TypeError(
+                "can't implicitly convert from {var.type.name} to {target_type.name}"
+            )
 
         for union in reversed(result_path):
             new_var = self.create_var(union)
@@ -187,6 +191,8 @@ class _FunctionOrMethodConverter:
     ) -> ir.LocalVariable:
         # See docs/implicit-conversions.md
         if lhs.type != rhs.type:
+            new_lhs: Optional[ir.LocalVariable]
+            new_rhs: Optional[ir.LocalVariable]
             try:
                 new_lhs = self.implicit_conversion(lhs, rhs.type)
             except TypeError:
@@ -223,7 +229,7 @@ class _FunctionOrMethodConverter:
             return self.create_special_call("string_concat", [lhs, rhs])
         if (
             the_type.generic_origin is not None
-        and the_type.generic_origin.generic is OPTIONAL
+            and the_type.generic_origin.generic is OPTIONAL
         ):
             result_var = self.create_var(BOOL)
             with self.code_to_separate_list() as neither_null_code:
@@ -269,10 +275,7 @@ class _FunctionOrMethodConverter:
             rhs = self.create_special_call("int2float", [rhs])
             the_type = FLOAT
 
-        if (
-            the_type == FLOAT
-            and op in {"+", "-", "*", "/", "mod", ">"}
-        ):
+        if the_type == FLOAT and op in {"+", "-", "*", "/", "mod", ">"}:
             return self.create_special_call(
                 {
                     "+": "float_add",
@@ -725,19 +728,19 @@ class _FileConverter:
     def do_toplevel_declaration_pass2(
         self,
         top_declaration: ast.ToplevelDeclaration,
-    ) -> Optional[ir.ToplevelDeclaration]:
+    ) -> List[ir.ToplevelDeclaration]:
         if isinstance(top_declaration, ast.Import):
-            return None
+            return []
 
         if isinstance(top_declaration, ast.FuncOrMethodDef):
             result = self._do_func_or_method_def_pass2(top_declaration, classtype=None)
             assert isinstance(result, ir.FuncDef)
-            return result
+            return [result]
 
         if isinstance(top_declaration, ast.ClassDef):
             classtype = self._types[top_declaration.name]
 
-            typed_method_defs = []
+            typed_method_defs: List[ir.ToplevelDeclaration] = []
             if "equals" not in (method.name for method in top_declaration.body):
                 equals_def = self._create_pointers_equal_method(classtype)
                 typed_method_defs.append(equals_def)
@@ -751,7 +754,8 @@ class _FileConverter:
                 self.exports.append(
                     ir.Export(self.path, top_declaration.name, classtype)
                 )
-            return ir.ClassDef(classtype, typed_method_defs)
+            mypy_sucks: ir.ToplevelDeclaration = ir.TypeDef(classtype)
+            return [mypy_sucks] + typed_method_defs
 
         if isinstance(top_declaration, ast.UnionDef):
             union_type = self._types[top_declaration.name]
@@ -760,7 +764,7 @@ class _FileConverter:
                 self.exports.append(
                     ir.Export(self.path, top_declaration.name, union_type)
                 )
-            return ir.UnionDef(union_type)
+            return [ir.TypeDef(union_type)]
 
         raise NotImplementedError(top_declaration)
 
@@ -780,9 +784,8 @@ def convert_program(
         converter.do_toplevel_declaration_pass1(top)
     for key in list(converter.union_laziness):
         converter.post_process_union(key)
-    result = [
-        top
-        for top in map(converter.do_toplevel_declaration_pass2, program)
-        if top is not None
-    ]
+
+    result = []
+    for top in program:
+        result.extend(converter.do_toplevel_declaration_pass2(top))
     return result

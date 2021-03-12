@@ -675,158 +675,158 @@ class _FileEmitter:
                 top_declaration, self.emit_var(top_declaration.var)
             )
 
-        elif isinstance(top_declaration, ir.ClassDef):
-            struct_members = "".join(
-                f"{self.emit_type(the_type)} memb_{name};\n"
-                for the_type, name in top_declaration.type.members
-            )
-            constructor_args = ",".join(
-                f"{self.emit_type(the_type)} arg_{name}"
-                for the_type, name in top_declaration.type.members
-            )
-            member_assignments = "".join(
-                f"obj->memb_{name} = arg_{name};\n"
-                for the_type, name in top_declaration.type.members
-            )
-            member_increfs = "".join(
-                self.emit_incref(f"arg_{name}", the_type) + ";\n"
-                for the_type, name in top_declaration.type.members
-            )
-            member_decrefs = "".join(
-                self.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
-                for typ, nam in top_declaration.type.members
-            )
-            for method in top_declaration.body:
-                _FunctionEmitter(self).emit_funcdef(
-                    method,
-                    f"meth_{self.get_type_c_name(top_declaration.type)}_{method.name}",
+        elif isinstance(top_declaration, ir.TypeDef):
+            if isinstance(top_declaration.type, UnionType):
+                assert top_declaration.type.type_members is not None
+                c_name = self.get_type_c_name(top_declaration.type)
+
+                # to_string method
+                to_string_cases = "".join(
+                    f"""
+                    case {num}:
+                        valstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});
+                        break;
+                    """
+                    for num, typ in enumerate(top_declaration.type.type_members)
+                )
+                self.function_decls += f"struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj);"
+                self.function_defs += f"""
+                struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj)
+                {{
+                    struct class_Str *valstr;
+                    switch(obj.membernum) {{
+                        {to_string_cases}
+                        default:
+                            assert(0);
+                    }}
+
+                    struct class_Str *res = {self.emit_string(top_declaration.type.name)};
+                    string_concat_inplace(&res, "(");
+                    string_concat_inplace(&res, valstr->str);
+                    string_concat_inplace(&res, ")");
+                    decref(valstr, dtor_Str);
+                    return res;
+                }}
+                """
+
+                # To incref/decref unions, we need to know the value of membernum
+                # and incref/decref the correct member of the union. This
+                # union-specific function handles that.
+                incref_cases = "".join(
+                    f"""
+                    case {num}:
+                        {self.emit_incref(f"obj.val.item{num}", typ)};
+                        break;
+                    """
+                    for num, typ in enumerate(top_declaration.type.type_members)
+                )
+                decref_cases = "".join(
+                    f"""
+                    case {num}:
+                        {self.emit_decref(f"obj.val.item{num}", typ)};
+                        break;
+                    """
+                    for num, typ in enumerate(top_declaration.type.type_members)
                 )
 
-            c_name = self.get_type_c_name(top_declaration.type)
-            for export in self.session.exports:
-                if export.value is top_declaration.type:
-                    self.session.export_c_names[export] = c_name
-                    break
-
-            self.structs += f"""
-            struct class_{c_name} {{
-                REFCOUNT_HEADER
-                {struct_members}
-            }};
-            """
-            self.function_decls += f"""
-            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args});
-            void dtor_{c_name}(void *ptr);
-            """
-            self.function_defs += f"""
-            {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args})
-            {{
-                {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
-                assert(obj);
-                obj->refcount = 1;
-                {member_assignments}
-                {member_increfs}
-                return obj;
-            }}
-
-            void dtor_{c_name}(void *ptr)
-            {{
-                struct class_{c_name} *obj = ptr;
-                {member_decrefs}
-                free(obj);
-            }}
-            """
-
-        elif isinstance(top_declaration, ir.UnionDef):
-            assert top_declaration.type.type_members is not None
-            c_name = self.get_type_c_name(top_declaration.type)
-
-            # to_string method
-            to_string_cases = "".join(
-                f"""
-                case {num}:
-                    valstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});
-                    break;
+                self.function_decls += f"""
+                void incref_{c_name}(struct class_{c_name} obj);
+                void decref_{c_name}(struct class_{c_name} obj);
                 """
-                for num, typ in enumerate(top_declaration.type.type_members)
-            )
-            self.function_decls += (
-                f"struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj);"
-            )
-            self.function_defs += f"""
-            struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj)
-            {{
-                struct class_Str *valstr;
-                switch(obj.membernum) {{
-                    {to_string_cases}
-                    default:
-                        assert(0);
+                self.function_defs += f"""
+                void incref_{c_name}(struct class_{c_name} obj) {{
+                    switch(obj.membernum) {{
+                        {incref_cases}
+                        default:
+                            assert(0);
+                    }}
+                }}
+                void decref_{c_name}(struct class_{c_name} obj) {{
+                    switch(obj.membernum) {{
+                        case -1:   // variable not in use
+                            break;
+                        {decref_cases}
+                        default:
+                            assert(0);
+                    }}
+                }}
+                """
+
+                union_members = "".join(
+                    f"\t{self.emit_type(the_type)} item{index};\n"
+                    for index, the_type in enumerate(top_declaration.type.type_members)
+                )
+                self.structs += f"""
+                struct class_{c_name} {{
+                    union {{
+                        {union_members}
+                    }} val;
+                    short membernum;
+                }};
+                """
+            else:
+                struct_members = "".join(
+                    f"{self.emit_type(the_type)} memb_{name};\n"
+                    for the_type, name in top_declaration.type.members
+                )
+                constructor_args = ",".join(
+                    f"{self.emit_type(the_type)} arg_{name}"
+                    for the_type, name in top_declaration.type.members
+                )
+                member_assignments = "".join(
+                    f"obj->memb_{name} = arg_{name};\n"
+                    for the_type, name in top_declaration.type.members
+                )
+                member_increfs = "".join(
+                    self.emit_incref(f"arg_{name}", the_type) + ";\n"
+                    for the_type, name in top_declaration.type.members
+                )
+                member_decrefs = "".join(
+                    self.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
+                    for typ, nam in top_declaration.type.members
+                )
+
+                c_name = self.get_type_c_name(top_declaration.type)
+                for export in self.session.exports:
+                    if export.value is top_declaration.type:
+                        self.session.export_c_names[export] = c_name
+                        break
+
+                self.structs += f"""
+                struct class_{c_name} {{
+                    REFCOUNT_HEADER
+                    {struct_members}
+                }};
+                """
+                self.function_decls += f"""
+                {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args});
+                void dtor_{c_name}(void *ptr);
+                """
+                self.function_defs += f"""
+                {self.emit_type(top_declaration.type)} ctor_{c_name}({constructor_args})
+                {{
+                    {self.emit_type(top_declaration.type)} obj = malloc(sizeof(*obj));
+                    assert(obj);
+                    obj->refcount = 1;
+                    {member_assignments}
+                    {member_increfs}
+                    return obj;
                 }}
 
-                struct class_Str *res = {self.emit_string(top_declaration.type.name)};
-                string_concat_inplace(&res, "(");
-                string_concat_inplace(&res, valstr->str);
-                string_concat_inplace(&res, ")");
-                decref(valstr, dtor_Str);
-                return res;
-            }}
-            """
-
-            # To incref/decref unions, we need to know the value of membernum
-            # and incref/decref the correct member of the union. This
-            # union-specific function handles that.
-            incref_cases = "".join(
-                f"""
-                case {num}:
-                    {self.emit_incref(f"obj.val.item{num}", typ)};
-                    break;
-                """
-                for num, typ in enumerate(top_declaration.type.type_members)
-            )
-            decref_cases = "".join(
-                f"""
-                case {num}:
-                    {self.emit_decref(f"obj.val.item{num}", typ)};
-                    break;
-                """
-                for num, typ in enumerate(top_declaration.type.type_members)
-            )
-
-            self.function_decls += f"""
-            void incref_{c_name}(struct class_{c_name} obj);
-            void decref_{c_name}(struct class_{c_name} obj);
-            """
-            self.function_defs += f"""
-            void incref_{c_name}(struct class_{c_name} obj) {{
-                switch(obj.membernum) {{
-                    {incref_cases}
-                    default:
-                        assert(0);
+                void dtor_{c_name}(void *ptr)
+                {{
+                    struct class_{c_name} *obj = ptr;
+                    {member_decrefs}
+                    free(obj);
                 }}
-            }}
-            void decref_{c_name}(struct class_{c_name} obj) {{
-                switch(obj.membernum) {{
-                    case -1:   // variable not in use
-                        break;
-                    {decref_cases}
-                    default:
-                        assert(0);
-                }}
-            }}
-            """
+                """
 
-            union_members = "".join(
-                f"\t{self.emit_type(the_type)} item{index};\n"
-                for index, the_type in enumerate(top_declaration.type.type_members)
+        elif isinstance(top_declaration, ir.MethodDef):
+            clASS = top_declaration.type.argtypes[0]
+            _FunctionEmitter(self).emit_funcdef(
+                top_declaration,
+                f"meth_{self.get_type_c_name(clASS)}_{top_declaration.name}",
             )
-            self.structs += f"""
-            struct class_{c_name} {{
-                union {{
-                    {union_members}
-                }} val;
-                short membernum;
-            }};
-            """
 
         else:
             raise NotImplementedError(top_declaration)
