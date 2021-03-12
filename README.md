@@ -112,6 +112,8 @@ Deprecated:
                     - why is this list so deeply nested lol
 
 Design questions to (re)think:
+- `union` syntax: should it be one-line `Union(Foo, Bar)`
+    instead of `Foo` and `Bar` on separate lines?
 - rename `switch` to `match`? note that `match` is a beautiful variable name
 - `in` operator: `a in b` vs `b.contains(a)`
 - tempting to use `func` as variable name

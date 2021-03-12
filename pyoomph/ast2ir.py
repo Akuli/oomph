@@ -601,14 +601,13 @@ class _FileConverter:
             assert not funcdef.export
             return ir.MethodDef(funcdef.name, functype, argvars, body)
 
-    def _create_equals_method(self, classtype: Type) -> ir.MethodDef:
-        functype = FunctionType([classtype, classtype], BOOL)
+    def _create_pointers_equal_method(self, classtype: Type) -> ir.MethodDef:
         self_var = ir.LocalVariable(classtype)
         other_var = ir.LocalVariable(classtype)
         result_var = ir.LocalVariable(BOOL)
         return ir.MethodDef(
             "equals",
-            functype,
+            classtype.methods["equals"],
             [self_var, other_var],
             [
                 ir.PointersEqual(self_var, other_var, result_var),
@@ -645,7 +644,7 @@ class _FileConverter:
             if "to_string" not in (method.name for method in top_declaration.body):
                 top_declaration.body.insert(0, _create_to_string_method(classtype))
             if "equals" not in (method.name for method in top_declaration.body):
-                classtype.methods["equals"] = self._create_equals_method(classtype).type
+                classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
 
             for method_def in top_declaration.body:
                 method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
@@ -675,7 +674,7 @@ class _FileConverter:
 
             typed_method_defs = []
             if "equals" not in (method.name for method in top_declaration.body):
-                equals_def = self._create_equals_method(classtype)
+                equals_def = self._create_pointers_equal_method(classtype)
                 typed_method_defs.append(equals_def)
 
             for method_def in top_declaration.body:
@@ -687,7 +686,7 @@ class _FileConverter:
                 self.exports.append(
                     ir.Export(self.path, top_declaration.name, classtype)
                 )
-            return ir.ClassDef(classtype, typed_method_defs, top_declaration.export)
+            return ir.ClassDef(classtype, typed_method_defs)
 
         if isinstance(top_declaration, ast.UnionDef):
             union_type = self._types[top_declaration.name]

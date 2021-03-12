@@ -341,7 +341,6 @@ class MethodDef:
 class ClassDef(ToplevelDeclaration):
     type: Type
     body: List[MethodDef]
-    export: bool
 
 
 @dataclass(eq=False)

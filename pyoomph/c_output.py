@@ -703,13 +703,10 @@ class _FileEmitter:
                 )
 
             c_name = self.get_type_c_name(top_declaration.type)
-            if top_declaration.export:
-                [export] = [
-                    exp
-                    for exp in self.session.exports
-                    if exp.value is top_declaration.type
-                ]
-                self.session.export_c_names[export] = c_name
+            for export in self.session.exports:
+                if export.value is top_declaration.type:
+                    self.session.export_c_names[export] = c_name
+                    break
 
             self.structs += f"""
             struct class_{c_name} {{
