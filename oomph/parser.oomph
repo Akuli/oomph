@@ -38,6 +38,10 @@ func insert_to_list(List[PrecedenceItem] list, Int index, PrecedenceItem item):
     list.push(item)
     list.push_all(stack.reversed())
 
+# TODO: more implicit conversions to avoid this
+func cast(ast::Expression arg) -> ast::Expression:
+    return arg
+
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
     meth peek() -> tokenizer::Token:
@@ -66,13 +70,13 @@ class Parser(List[tokenizer::Token] tokens):
             let string = self.get_token_by_type("string").value
             assert(string.starts_with("\""))
             assert(string.ends_with("\""))
-            let result = new ast::Expression(new ast::StringConstant(string.slice(1, string.length() - 1)))
+            let result = cast(new ast::StringConstant(string.slice(1, string.length() - 1)))
         elif self.peek().type == "id":
-            result = new ast::Expression(new ast::GetVar(self.get_token_by_type("id").value))
+            result = cast(new ast::GetVar(self.get_token_by_type("id").value))
         elif self.peek().type == "Int":
-            result = new ast::Expression(new ast::IntConstant(self.get_token_by_type("Int").value.to_int()))
+            result = cast(new ast::IntConstant(self.get_token_by_type("Int").value.to_int()))
         elif self.peek().type == "Float":
-            result = new ast::Expression(new ast::FloatConstant(self.get_token_by_type("Float").value))
+            result = cast(new ast::FloatConstant(self.get_token_by_type("Float").value))
         elif self.peek().matches("op", "("):
             self.get_token("op", "(")
             result = self.parse_expression()
@@ -90,7 +94,7 @@ class Parser(List[tokenizer::Token] tokens):
                     self.get_token("op", ",")
                     args.push(self.parse_expression())
             self.get_token("op", ")")
-            result = new ast::Expression(new ast::Call(result, args))
+            result = cast(new ast::Call(result, args))
 
         return result
 
@@ -124,7 +128,7 @@ class Parser(List[tokenizer::Token] tokens):
                         # Unary operation
                         let expr = get_expr(magic_list.get(1))
                         delete_slice_from_list(magic_list, 0, 2)
-                        insert_to_list(magic_list, 0, new PrecedenceItem(new ast::Expression(new ast::UnaryOperator(op, expr))))
+                        insert_to_list(magic_list, 0, new ast::UnaryOperator(op, expr))
                         continue
                 case *:
                     pass
@@ -136,7 +140,7 @@ class Parser(List[tokenizer::Token] tokens):
                 let lhs = get_expr(lhs_op_rhs.first())
                 let op = get_op(lhs_op_rhs.get(1))
                 let rhs = get_expr(lhs_op_rhs.last())
-                insert_to_list(magic_list, i, new PrecedenceItem(new ast::Expression(new ast::BinaryOperator(lhs, op, rhs))))
+                insert_to_list(magic_list, i, new ast::BinaryOperator(lhs, op, rhs))
                 continue
 
             break
@@ -146,11 +150,11 @@ class Parser(List[tokenizer::Token] tokens):
 
         let magic_list = new List[PrecedenceItem]()
         if self.peek().type == "op" and util::list_contains(ops, self.peek().value):
-            magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
-        magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
+            magic_list.push(self.get_token_by_type("op").value)
+        magic_list.push(self.parse_simple_expression())
         while self.peek().type == "op" and util::list_contains(ops, self.peek().value):
-            magic_list.push(new PrecedenceItem(self.get_token_by_type("op").value))
-            magic_list.push(new PrecedenceItem(self.parse_simple_expression()))
+            magic_list.push(self.get_token_by_type("op").value)
+            magic_list.push(self.parse_simple_expression())
 
         self.eliminate_operators(magic_list, ["*", "/"])
         self.eliminate_operators(magic_list, ["+", "-"])
