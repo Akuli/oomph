@@ -1,0 +1,2 @@
+export func main():
+    print(3*+2)

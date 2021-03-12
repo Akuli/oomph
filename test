@@ -90,7 +90,7 @@ for file in tests/*.oomph; do
     fi
 
     run check $file python3 -m pyoomph
-    if grep -q $file tests/self_hosted.txt; then
+    if grep -q "^$file" tests/self_hosted.txt; then
         run check $file python3 -m pyoomph $oomphopts oomph/main.oomph
     fi
 done

@@ -34,10 +34,12 @@ export func create_builtins() -> Builtins:
     hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], new optional[ObjectType](INT))))
     hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], new optional[ObjectType](INT))))
     hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], new optional[ObjectType](INT))))
+    hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], new optional[ObjectType](INT))))
     hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
     hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
     hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
     hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], new optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], new optional[ObjectType](FLOAT))))
 
     return new Builtins(STR, INT, FLOAT, prrrint, hidden_vars)
 
