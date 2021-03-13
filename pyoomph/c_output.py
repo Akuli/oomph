@@ -831,8 +831,7 @@ class Session:
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self._type_to_file_pair:
-            identifying = the_type.get_id_string()
-            pair = _FilePair(self, _create_id(the_type.name, identifying))
+            pair = _FilePair(self, _create_id(the_type.name, the_type.get_id_string()))
             self._type_to_file_pair[the_type] = pair
             pair.define_type(the_type)
         return self._type_to_file_pair[the_type]
@@ -907,10 +906,8 @@ class Session:
                 c_includes += f'#include "{builtins_pair.id}.h"\n'
                 h_includes += f'#include "{builtins_pair.id}.h"\n'
 
-            for pair in file_pair.c_includes:
-                c_includes += f'#include "{pair.id}.h"\n'
-            for pair in file_pair.h_includes:
-                h_includes += f'#include "{pair.id}.h"\n'
+            c_includes += "".join(f'#include "{pair.id}.h"\n' for pair in file_pair.c_includes)
+            h_includes += "".join(f'#include "{pair.id}.h"\n' for pair in file_pair.h_includes)
 
             h_code = (
                 h_includes
@@ -928,8 +925,7 @@ class Session:
                 #define {header_guard}
                 {h_code}
                 #endif
-                """
-                + "\n",
+                \n""",
                 encoding="utf-8",
             )
 
