@@ -169,7 +169,6 @@ A simple expression can be:
 - The keyword `new`, followed by a type.
   This evaluates to a function that constructs an instance of the type,
   or an error if the type does not have a constructor.
-- The keyword `null`, followed by a `[]`-parenthesized type.
 - A parenthesized expression.
 - A `[]`-parenthesized comma-separated list of expressions, to create a list.
 
