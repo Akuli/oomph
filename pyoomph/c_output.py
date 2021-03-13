@@ -815,14 +815,6 @@ class Session:
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
             return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_incref = self.emit_incref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"do{{ if (!IS_NULL({c_expression})) {value_incref}; }} while(0)"
         if the_type.refcounted:
             return f"incref({c_expression})"
         return "(void)0"
