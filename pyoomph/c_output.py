@@ -925,8 +925,7 @@ class Session:
                 #define {header_guard}
                 {h_code}
                 #endif
-                """
-                + "\n",
+                \n""",
                 encoding="utf-8",
             )
 
