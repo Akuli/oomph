@@ -472,8 +472,7 @@ _generic_c_codes = {
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class _FilePair:
-    def __init__(self, session: Session, source_path: pathlib.Path, pair_id: str):
-        self.source_path = source_path
+    def __init__(self, session: Session, pair_id: str):
         self.id = pair_id  # used in file names and type names
         self.session = session
         self.variable_names: Dict[ir.Variable, str] = {
@@ -496,6 +495,9 @@ class _FilePair:
         self.function_decls = ""
         self.function_defs = ""
         self.includes: List[_FilePair] = []
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} {self.id}>"
 
     def emit_type(self, the_type: Optional[Type]) -> str:
         if the_type is None:
@@ -591,7 +593,7 @@ class _FilePair:
                 "__Bool_to_string",
             }:
                 # Class implemented in C, method implemented in builtins.oomph
-                # TODO: check self.source_path
+                # TODO: check if this file is builtins.oomph
                 c_name = "meth_" + var.name.lstrip("_")
             else:
                 c_name = self.id + "_" + var.name
@@ -614,98 +616,98 @@ class _FilePair:
                 "incref_val": self.session.emit_incref("val", itemtype),
                 "decref_val": self.session.emit_decref("val", itemtype),
             }
+            assert not self.struct
             self.struct = code_dict["struct"] % string_formatting
             self.function_decls += code_dict["function_decls"] % string_formatting
             self.function_defs += code_dict["function_defs"] % string_formatting
 
         elif isinstance(the_type, UnionType):
-            raise NotImplementedError
-        #            assert the_type.type_members is not None
-        #
-        #            to_string_cases = "".join(
-        #                f"""
-        #                case {num}:
-        #                    valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
-        #                    break;
-        #                """
-        #                for num, typ in enumerate(the_type.type_members)
-        #            )
-        #            self.function_decls += f"struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);"
-        #            self.function_defs += f"""
-        #            struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj)
-        #            {{
-        #                struct class_Str *valstr;
-        #                switch(obj.membernum) {{
-        #                    {to_string_cases}
-        #                    default:
-        #                        assert(0);
-        #                }}
-        #
-        #                struct class_Str *res = {self.emit_string(the_type.name)};
-        #                string_concat_inplace(&res, "(");
-        #                string_concat_inplace(&res, valstr->str);
-        #                string_concat_inplace(&res, ")");
-        #                decref(valstr, dtor_Str);
-        #                return res;
-        #            }}
-        #            """
-        #
-        #            # To incref/decref unions, we need to know the value of membernum
-        #            # and incref/decref the correct member of the union. This
-        #            # union-specific function handles that.
-        #            incref_cases = "".join(
-        #                f"""
-        #                case {num}:
-        #                    {self.emit_incref(f"obj.val.item{num}", typ)};
-        #                    break;
-        #                """
-        #                for num, typ in enumerate(the_type.type_members)
-        #            )
-        #            decref_cases = "".join(
-        #                f"""
-        #                case {num}:
-        #                    {self.emit_decref(f"obj.val.item{num}", typ)};
-        #                    break;
-        #                """
-        #                for num, typ in enumerate(the_type.type_members)
-        #            )
-        #
-        #            self.function_decls += f"""
-        #            void incref_{self.id}(struct class_{self.id} obj);
-        #            void decref_{self.id}(struct class_{self.id} obj);
-        #            """
-        #            self.function_defs += f"""
-        #            void incref_{self.id}(struct class_{self.id} obj) {{
-        #                switch(obj.membernum) {{
-        #                    {incref_cases}
-        #                    default:
-        #                        assert(0);
-        #                }}
-        #            }}
-        #            void decref_{self.id}(struct class_{self.id} obj) {{
-        #                switch(obj.membernum) {{
-        #                    case -1:   // variable not in use
-        #                        break;
-        #                    {decref_cases}
-        #                    default:
-        #                        assert(0);
-        #                }}
-        #            }}
-        #            """
-        #
-        #            union_members = "".join(
-        #                f"\t{self.emit_type(the_type)} item{index};\n"
-        #                for index, the_type in enumerate(the_type.type_members)
-        #            )
-        #            assert not self.struct
-        #            self.struct = f"""
-        #            struct class_{self.id} {{
-        #                union {{
-        #                    {union_members}
-        #                }} val;
-        #                short membernum;
-        #            }};
-        #            """
+            assert the_type.type_members is not None
+
+            to_string_cases = "".join(
+                f"""
+                case {num}:
+                    valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
+                    break;
+                """
+                for num, typ in enumerate(the_type.type_members)
+            )
+            self.function_decls += f"struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);"
+            self.function_defs += f"""
+            struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj)
+            {{
+                struct class_Str *valstr;
+                switch(obj.membernum) {{
+                    {to_string_cases}
+                    default:
+                        assert(0);
+                }}
+
+                struct class_Str *res = {self.emit_string(the_type.name)};
+                string_concat_inplace(&res, "(");
+                string_concat_inplace(&res, valstr->str);
+                string_concat_inplace(&res, ")");
+                decref(valstr, dtor_Str);
+                return res;
+            }}
+            """
+
+            # To incref/decref unions, we need to know the value of membernum
+            # and incref/decref the correct member of the union. This
+            # union-specific function handles that.
+            incref_cases = "".join(
+                f"""
+                case {num}:
+                    {self.session.emit_incref(f"obj.val.item{num}", typ)};
+                    break;
+                """
+                for num, typ in enumerate(the_type.type_members)
+            )
+            decref_cases = "".join(
+                f"""
+                case {num}:
+                    {self.session.emit_decref(f"obj.val.item{num}", typ)};
+                    break;
+                """
+                for num, typ in enumerate(the_type.type_members)
+            )
+
+            self.function_decls += f"""
+            void incref_{self.id}(struct class_{self.id} obj);
+            void decref_{self.id}(struct class_{self.id} obj);
+            """
+            self.function_defs += f"""
+            void incref_{self.id}(struct class_{self.id} obj) {{
+                switch(obj.membernum) {{
+                    {incref_cases}
+                    default:
+                        assert(0);
+                }}
+            }}
+            void decref_{self.id}(struct class_{self.id} obj) {{
+                switch(obj.membernum) {{
+                    case -1:   // variable not in use
+                        break;
+                    {decref_cases}
+                    default:
+                        assert(0);
+                }}
+            }}
+            """
+
+            union_members = "".join(
+                f"\t{self.emit_type(the_type)} item{index};\n"
+                for index, the_type in enumerate(the_type.type_members)
+            )
+            assert not self.struct
+            self.struct = f"""
+            struct class_{self.id} {{
+                union {{
+                    {union_members}
+                }} val;
+                short membernum;
+            }};
+            """
         else:
             struct_members = "".join(
                 f"{self.emit_type(the_type)} memb_{name};\n"
@@ -767,13 +769,13 @@ class _FilePair:
             )
 
         elif isinstance(top_declaration, ir.TypeDef):
-            new_pair = _FilePair(
-                self.session,
-                self.source_path,
-                self.id + "_" + top_declaration.type.name,
-            )
-            self.session.type_to_file_pair[top_declaration.type] = new_pair
-            new_pair.define_type(top_declaration.type)
+            if top_declaration.type not in self.session.type_to_file_pair:
+                new_pair = _FilePair(
+                    self.session,
+                    self.id + "_" + top_declaration.type.name,
+                )
+                self.session.type_to_file_pair[top_declaration.type] = new_pair
+                new_pair.define_type(top_declaration.type)
 
         elif isinstance(top_declaration, ir.MethodDef):
             clASS = top_declaration.type.argtypes[0]
@@ -799,6 +801,7 @@ class Session:
         self.type_to_file_pair: Dict[Type, _FilePair] = {}
         self.source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
 
+    # TODO: combine with write_everything() ?
     def get_c_paths(self) -> List[pathlib.Path]:
         return [
             self.compilation_dir / (pair.id + ".c")
@@ -808,8 +811,8 @@ class Session:
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self.type_to_file_pair:
-            assert the_type.definition_path is None
-            pair = _FilePair(self, None, _create_id(the_type.name, the_type.name))
+            # FIXME: the_type.name is not identifying enough when two files have class Foo and we ma
+            pair = _FilePair(self, _create_id(the_type.name, the_type.name))
             self.type_to_file_pair[the_type] = pair
             pair.define_type(the_type)
         return self.type_to_file_pair[the_type]
@@ -817,7 +820,7 @@ class Session:
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type in builtin_types.values():
             return the_type.name
-        return self.type_to_file_pair[the_type].id
+        return self.get_file_pair_for_type(the_type).id
 
     # May evaluate c_expression several times
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
@@ -855,7 +858,6 @@ class Session:
     ) -> None:
         pair = _FilePair(
             self,
-            source_path,
             _create_id(
                 source_path.stem,
                 os.path.relpath(source_path, self.compilation_dir.parent),
@@ -866,16 +868,20 @@ class Session:
             pair.emit_toplevel_declaration(top_declaration)
 
     # TODO: don't keep stuff in memory so much
-    def write_everything(self) -> None:
+    def write_everything(self, builtins_path: pathlib.Path) -> None:
+        builtins_pair = self.source_path_to_file_pair[builtins_path]
+
         for file_pair in list(self.type_to_file_pair.values()) + list(
             self.source_path_to_file_pair.values()
         ):
             c_path = self.compilation_dir / (file_pair.id + ".c")
             h_path = self.compilation_dir / (file_pair.id + ".h")
 
-            includes = "#include <lib/oomph.h>\n" + "".join(
-                f'#include "{pair.id}.h"\n' for pair in file_pair.includes
-            )
+            includes = "#include <lib/oomph.h>\n"
+            if file_pair != builtins_pair:
+                includes += f'#include "{builtins_pair.id}.h"\n'
+            for pair in file_pair.includes:
+                includes += f'#include "{pair.id}.h"\n'
             h_code = includes + file_pair.struct + file_pair.function_decls
             c_code = (
                 f'#include "{file_pair.id}.h"\n'
@@ -887,7 +893,6 @@ class Session:
             c_path.write_text(c_code + "\n", encoding="utf-8")
             h_path.write_text(
                 f"""
-                // Source path: {file_pair.source_path}
                 #ifndef {header_guard}
                 #define {header_guard}
                 {h_code}
