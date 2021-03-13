@@ -311,10 +311,8 @@ _generic_c_codes = {
         void dtor_%(type_cname)s (void *ptr)
         {
             struct class_%(type_cname)s *self = ptr;
-            for (int64_t i = 0; i < self->len; i++) {
-                %(itemtype)s val = self->data[i];
-                %(decref_val)s;
-            }
+            for (int64_t i = 0; i < self->len; i++)
+                DECREF_ITEM(self->data[i]);
             if (self->data != self->smalldata)
                 free(self->data);
             free(self);
@@ -343,17 +341,15 @@ _generic_c_codes = {
         {
             class_%(type_cname)s_ensure_alloc(self, self->len + 1);
             self->data[self->len++] = val;
-            %(incref_val)s;
+            INCREF_ITEM(val);
         }
 
         void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src)
         {
             class_%(type_cname)s_ensure_alloc(self, self->len + src->len);
             memcpy(self->data + self->len, src->data, sizeof(src->data[0]) * src->len);
-            for (int64_t i = 0; i < src->len; i++) {
-                %(itemtype)s val = src->data[i];
-                %(incref_val)s;
-            }
+            for (int64_t i = 0; i < src->len; i++)
+                INCREF_ITEM(src->data[i]);
             self->len += src->len;
         }
 
@@ -371,27 +367,24 @@ _generic_c_codes = {
             if (i >= self->len)
                 panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
 
-            %(itemtype)s val = self->data[i];
-            %(incref_val)s;
-            return val;
+            INCREF_ITEM(self->data[i]);
+            return self->data[i];
         }
 
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
         {
             if (self->len == 0)
                 panic_printf("can't get first item of empty list");
-            %(itemtype)s val = self->data[0];
-            %(incref_val)s;
-            return val;
+            INCREF_ITEM(self->data[0]);
+            return self->data[0];
         }
 
         %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self)
         {
             if (self->len == 0)
                 panic_printf("can't get last item of empty list");
-            %(itemtype)s val = self->data[self->len - 1];
-            %(incref_val)s;
-            return val;
+            INCREF_ITEM(self->data[self->len - 1]);
+            return self->data[self->len - 1];
         }
 
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
@@ -422,9 +415,8 @@ _generic_c_codes = {
             struct class_%(type_cname)s *res = ctor_%(type_cname)s();
             class_%(type_cname)s_ensure_alloc(res, self->len);
             for (int64_t i = 0; i < self->len; i++) {
-                %(itemtype)s val = self->data[self->len - 1 - i];
-                res->data[i] = val;
-                %(incref_val)s;
+                res->data[i] = self->data[self->len - 1 - i];
+                INCREF_ITEM(res->data[i]);
             }
             res->len = self->len;
             return res;
@@ -704,13 +696,16 @@ class _FilePair:
                 "itemtype": self.emit_type(itemtype, can_fwd_declare_in_header=False),
                 "itemtype_cname": self.session.get_type_c_name(itemtype),
                 "itemtype_is_string": int(itemtype == STRING),
-                # TODO: replace with macros
-                "incref_val": self.session.emit_incref("val", itemtype),
-                "decref_val": self.session.emit_decref("val", itemtype),
             }
             self.struct = code_dict["struct"] % string_formatting
             self.function_decls += code_dict["function_decls"] % string_formatting
-            self.function_defs += code_dict["function_defs"] % string_formatting
+            self.function_defs += f"""
+            #define INCREF_ITEM(val) {self.session.emit_incref("(val)", itemtype)}
+            #define DECREF_ITEM(val) {self.session.emit_decref("(val)", itemtype)}
+            {code_dict["function_defs"] % string_formatting}
+            #undef INCREF_ITEM
+            #undef DECREF_ITEM
+            """
 
         else:
             struct_members = "".join(
