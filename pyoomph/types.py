@@ -27,7 +27,7 @@ class Type:
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
 
-    def get_id_string(self):
+    def get_id_string(self) -> str:
         result = self.name + str(self.definition_path)
         if self.generic_origin is not None:
             result += self.generic_origin.generic.name

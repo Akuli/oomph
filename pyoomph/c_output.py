@@ -501,12 +501,18 @@ class _FilePair:
         self.string_defs = ""
         self.function_decls = ""
         self.function_defs = ""
-        self.includes: Set[_FilePair] = set()
+
+        # When a _FilePair is in h_includes, the corresponding h_fwd_decls are unnecessary
+        self.c_includes: Set[_FilePair] = set()
+        self.h_includes: Set[_FilePair] = set()
+        self.h_fwd_decls = ""
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.id}>"
 
-    def emit_type(self, the_type: Optional[Type]) -> str:
+    def emit_type(
+        self, the_type: Optional[Type], *, can_fwd_declare_in_header: bool = True
+    ) -> str:
         if the_type is None:
             return "void"
         if the_type is INT:
@@ -518,12 +524,13 @@ class _FilePair:
 
         if the_type in builtin_types.values():
             type_id = the_type.name
+            need_include = False
         else:
             defining_file_pair = self.session.get_file_pair_for_type(the_type)
-            if defining_file_pair is not self:
-                self.includes.add(defining_file_pair)
             type_id = defining_file_pair.id
+            need_include = defining_file_pair is not self
 
+        result = f"struct class_{type_id}"
         if (
             the_type.refcounted
             and not isinstance(the_type, UnionType)
@@ -532,8 +539,60 @@ class _FilePair:
                 and the_type.generic_origin.generic is OPTIONAL
             )
         ):
-            return f"struct class_{type_id} *"
-        return f"struct class_{type_id}"
+            result += "*"
+        else:
+            can_fwd_declare_in_header = False
+
+        if need_include:
+            self.c_includes.add(defining_file_pair)
+            if can_fwd_declare_in_header and defining_file_pair not in self.h_includes:
+                self.h_fwd_decls += f"struct class_{type_id};\n"
+            else:
+                self.h_includes.add(defining_file_pair)
+        return result
+
+    def emit_var(self, var: ir.Variable) -> str:
+        assert not isinstance(var, ir.LocalVariable)
+
+        for export in self.session.exports:
+            if export.value == var:
+                pair = self.session.source_path_to_file_pair[export.path]
+                if pair is not self:
+                    self.c_includes.add(pair)
+                    self.h_includes.add(pair)
+                    return pair.emit_var(var)
+        try:
+            return self.variable_names[var]
+        except KeyError:
+            assert isinstance(var.type, FunctionType)
+            if isinstance(var, ir.ExportVariable) and var.name == "main":
+                c_name = "oomph_main"
+            elif var.name in {
+                "__List_Str_join",
+                "__Str_center_pad",
+                "__Str_contains",
+                "__Str_count",
+                "__Str_ends_with",
+                "__Str_find_first",
+                "__Str_left_pad",
+                "__Str_left_trim",
+                "__Str_repeat",
+                "__Str_replace",
+                "__Str_right_pad",
+                "__Str_right_trim",
+                "__Str_split",
+                "__Str_starts_with",
+                "__Str_trim",
+                "__Bool_to_string",
+            }:
+                # Class implemented in C, method implemented in builtins.oomph
+                # TODO: check if this file is builtins.oomph
+                c_name = "meth_" + var.name.lstrip("_")
+            else:
+                c_name = self.id + "_" + var.name
+
+            self.variable_names[var] = c_name
+            return c_name
 
     def emit_method(self, the_type: Type, method_name: str) -> str:
         if the_type in builtin_types.values():
@@ -577,48 +636,6 @@ class _FilePair:
             """
         return self.strings[value]
 
-    def emit_var(self, var: ir.Variable) -> str:
-        assert not isinstance(var, ir.LocalVariable)
-
-        for export in self.session.exports:
-            if export.value == var:
-                pair = self.session.source_path_to_file_pair[export.path]
-                if pair is not self:
-                    self.includes.add(pair)
-                    return pair.emit_var(var)
-        try:
-            return self.variable_names[var]
-        except KeyError:
-            assert isinstance(var.type, FunctionType)
-            if isinstance(var, ir.ExportVariable) and var.name == "main":
-                c_name = "oomph_main"
-            elif var.name in {
-                "__List_Str_join",
-                "__Str_center_pad",
-                "__Str_contains",
-                "__Str_count",
-                "__Str_ends_with",
-                "__Str_find_first",
-                "__Str_left_pad",
-                "__Str_left_trim",
-                "__Str_repeat",
-                "__Str_replace",
-                "__Str_right_pad",
-                "__Str_right_trim",
-                "__Str_split",
-                "__Str_starts_with",
-                "__Str_trim",
-                "__Bool_to_string",
-            }:
-                # Class implemented in C, method implemented in builtins.oomph
-                # TODO: check if this file is builtins.oomph
-                c_name = "meth_" + var.name.lstrip("_")
-            else:
-                c_name = self.id + "_" + var.name
-
-            self.variable_names[var] = c_name
-            return c_name
-
     # Must not be called multiple times for the same _FilePair
     def define_type(self, the_type: Type) -> None:
         if the_type.generic_origin is not None:
@@ -628,7 +645,7 @@ class _FilePair:
             string_formatting = {
                 "type_cname": self.session.get_type_c_name(the_type),
                 "type_string": self.emit_string(the_type.name),
-                "itemtype": self.emit_type(itemtype),
+                "itemtype": self.emit_type(itemtype, can_fwd_declare_in_header=False),
                 "itemtype_cname": self.session.get_type_c_name(itemtype),
                 "itemtype_is_string": int(itemtype == STRING),
                 # TODO: replace with macros
@@ -883,17 +900,25 @@ class Session:
             h_path = self.compilation_dir / (file_pair.id + ".h")
             c_paths.append(c_path)
 
-            includes = "#include <lib/oomph.h>\n"
+            c_includes = f'#include <lib/oomph.h>\n#include "{file_pair.id}.h"\n'
+            h_includes = "#include <lib/oomph.h>\n"
+
             if file_pair != builtins_pair:
-                includes += f'#include "{builtins_pair.id}.h"\n'
-            for pair in file_pair.includes:
-                includes += f'#include "{pair.id}.h"\n'
-            h_code = includes + file_pair.struct + file_pair.function_decls
-            c_code = (
-                f'#include "{file_pair.id}.h"\n'
-                + file_pair.string_defs
-                + file_pair.function_defs
+                c_includes += f'#include "{builtins_pair.id}.h"\n'
+                h_includes += f'#include "{builtins_pair.id}.h"\n'
+
+            for pair in file_pair.c_includes:
+                c_includes += f'#include "{pair.id}.h"\n'
+            for pair in file_pair.h_includes:
+                h_includes += f'#include "{pair.id}.h"\n'
+
+            h_code = (
+                h_includes
+                + file_pair.h_fwd_decls
+                + file_pair.struct
+                + file_pair.function_decls
             )
+            c_code = c_includes + file_pair.string_defs + file_pair.function_defs
 
             header_guard = "HEADER_GUARD_" + file_pair.id
             c_path.write_text(c_code + "\n", encoding="utf-8")
