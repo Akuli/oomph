@@ -298,7 +298,8 @@ _generic_c_codes = {
             if (opt.isnull)
                 return cstr_to_string("null");
 
-            struct class_Str *res = cstr_to_string("%(itemtype_string)s(");  // TODO: escaping?
+            struct class_Str *res = %(type_string)s;
+            string_concat_inplace(&res, "(");
             struct class_Str *s = meth_%(itemtype_cname)s_to_string(opt.value);
             string_concat_inplace(&res, s->str);
             decref(s, dtor_Str);
@@ -609,8 +610,8 @@ class _FilePair:
             code_dict = _generic_c_codes[the_type.generic_origin.generic]
             string_formatting = {
                 "type_cname": self.session.get_type_c_name(the_type),
+                "type_string": self.emit_string(the_type.name),
                 "itemtype": self.emit_type(itemtype),
-                "itemtype_string": self.emit_string(itemtype.name),
                 "itemtype_cname": self.session.get_type_c_name(itemtype),
                 # TODO: replace with macros
                 "incref_val": self.session.emit_incref("val", itemtype),
@@ -768,18 +769,10 @@ class _FilePair:
                 top_declaration, self.emit_var(top_declaration.var)
             )
 
-        elif isinstance(top_declaration, ir.TypeDef):
-            if top_declaration.type not in self.session.type_to_file_pair:
-                new_pair = _FilePair(
-                    self.session,
-                    self.id + "_" + top_declaration.type.name,
-                )
-                self.session.type_to_file_pair[top_declaration.type] = new_pair
-                new_pair.define_type(top_declaration.type)
-
         elif isinstance(top_declaration, ir.MethodDef):
             clASS = top_declaration.type.argtypes[0]
-            _FunctionEmitter(self.session.type_to_file_pair[clASS]).emit_funcdef(
+            file_pair = self.session.get_file_pair_for_type(clASS)
+            _FunctionEmitter(file_pair).emit_funcdef(
                 top_declaration,
                 f"meth_{self.session.get_type_c_name(clASS)}_{top_declaration.name}",
             )
@@ -789,7 +782,6 @@ class _FilePair:
 
 
 def _create_id(readable_part: str, identifying_part: str) -> str:
-    # TODO: avoid long file names
     md5 = hashlib.md5(identifying_part.encode("utf-8")).hexdigest()
     return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
 
@@ -798,24 +790,17 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
 class Session:
     def __init__(self, compilation_dir: pathlib.Path) -> None:
         self.compilation_dir = compilation_dir
-        self.type_to_file_pair: Dict[Type, _FilePair] = {}
-        self.source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
-
-    # TODO: combine with write_everything() ?
-    def get_c_paths(self) -> List[pathlib.Path]:
-        return [
-            self.compilation_dir / (pair.id + ".c")
-            for pair in list(self.type_to_file_pair.values())
-            + list(self.source_path_to_file_pair.values())
-        ]
+        self._type_to_file_pair: Dict[Type, _FilePair] = {}
+        self._source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
-        if the_type not in self.type_to_file_pair:
-            # FIXME: the_type.name is not identifying enough when two files have class Foo and we ma
-            pair = _FilePair(self, _create_id(the_type.name, the_type.name))
-            self.type_to_file_pair[the_type] = pair
+        if the_type not in self._type_to_file_pair:
+            # FIXME: Optional[Foo] when two files define different Foo classes
+            identifying = str(the_type.definition_path) + the_type.name
+            pair = _FilePair(self, _create_id(the_type.name, identifying))
+            self._type_to_file_pair[the_type] = pair
             pair.define_type(the_type)
-        return self.type_to_file_pair[the_type]
+        return self._type_to_file_pair[the_type]
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type in builtin_types.values():
@@ -863,19 +848,22 @@ class Session:
                 os.path.relpath(source_path, self.compilation_dir.parent),
             ),
         )
-        self.source_path_to_file_pair[source_path] = pair
+        assert source_path not in self._source_path_to_file_pair
+        self._source_path_to_file_pair[source_path] = pair
         for top_declaration in top_decls:
             pair.emit_toplevel_declaration(top_declaration)
 
     # TODO: don't keep stuff in memory so much
-    def write_everything(self, builtins_path: pathlib.Path) -> None:
-        builtins_pair = self.source_path_to_file_pair[builtins_path]
+    def write_everything(self, builtins_path: pathlib.Path) -> List[pathlib.Path]:
+        builtins_pair = self._source_path_to_file_pair[builtins_path]
 
-        for file_pair in list(self.type_to_file_pair.values()) + list(
-            self.source_path_to_file_pair.values()
+        c_paths: List[pathlib.Path] = []
+        for file_pair in list(self._type_to_file_pair.values()) + list(
+            self._source_path_to_file_pair.values()
         ):
             c_path = self.compilation_dir / (file_pair.id + ".c")
             h_path = self.compilation_dir / (file_pair.id + ".h")
+            c_paths.append(c_path)
 
             includes = "#include <lib/oomph.h>\n"
             if file_pair != builtins_pair:
@@ -901,3 +889,5 @@ class Session:
                 + "\n",
                 encoding="utf-8",
             )
+
+        return c_paths

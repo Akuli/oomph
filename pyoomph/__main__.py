@@ -140,9 +140,9 @@ def main() -> None:
         if compiler_args.verbose:
             print("Creating C code:", unit.source_path)
         unit.create_c_code()
-    session.write_everything(project_root / "builtins.oomph")
 
-    command = get_c_compiler_command(session.get_c_paths(), exe_path)
+    c_paths = session.write_everything(project_root / "builtins.oomph")
+    command = get_c_compiler_command(c_paths, exe_path)
 
     result = run(command, compiler_args.verbose)
     if result != 0:

@@ -783,8 +783,7 @@ class _FileConverter:
 
             typed_method_defs: List[ir.ToplevelDeclaration] = []
             if "equals" not in (method.name for method in top_declaration.body):
-                equals_def = self._create_pointers_equal_method(classtype)
-                typed_method_defs.append(equals_def)
+                typed_method_defs.append(self._create_pointers_equal_method(classtype))
 
             for method_def in top_declaration.body:
                 typed_def = self._do_func_or_method_def_pass2(method_def, classtype)
@@ -795,8 +794,7 @@ class _FileConverter:
                 self.exports.append(
                     ir.Export(self.path, top_declaration.name, classtype)
                 )
-            mypy_sucks: ir.ToplevelDeclaration = ir.TypeDef(classtype)
-            return [mypy_sucks] + typed_method_defs
+            return typed_method_defs
 
         if isinstance(top_declaration, ast.UnionDef):
             union_type = self._types[top_declaration.name]
@@ -807,7 +805,7 @@ class _FileConverter:
                 )
 
             equals = self._create_union_equals_method(union_type)
-            return [ir.TypeDef(union_type), equals]
+            return [equals]
 
         raise NotImplementedError(top_declaration)
 

@@ -337,12 +337,6 @@ class MethodDef(ToplevelDeclaration):
     body: List[Instruction]
 
 
-# Class or union
-@dataclass(eq=False)
-class TypeDef(ToplevelDeclaration):
-    type: Type
-
-
 @dataclass(eq=False)
 class Export:
     path: pathlib.Path
