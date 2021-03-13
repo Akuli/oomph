@@ -906,10 +906,8 @@ class Session:
                 c_includes += f'#include "{builtins_pair.id}.h"\n'
                 h_includes += f'#include "{builtins_pair.id}.h"\n'
 
-            for pair in file_pair.c_includes:
-                c_includes += f'#include "{pair.id}.h"\n'
-            for pair in file_pair.h_includes:
-                h_includes += f'#include "{pair.id}.h"\n'
+            c_includes += "".join(f'#include "{pair.id}.h"\n' for pair in file_pair.c_includes)
+            h_includes += "".join(f'#include "{pair.id}.h"\n' for pair in file_pair.h_includes)
 
             h_code = (
                 h_includes
