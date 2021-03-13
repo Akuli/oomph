@@ -241,7 +241,7 @@ class DecRef(Instruction):
 
 
 @dataclass(eq=False)
-class SetToNull(Instruction):
+class UnSet(Instruction):
     var: LocalVariable
 
 

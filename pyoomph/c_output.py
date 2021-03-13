@@ -188,14 +188,8 @@ class _FunctionEmitter:
         if isinstance(ins, ir.IsNull):
             return f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.var)});\n"
 
-        if isinstance(ins, ir.SetToNull):
+        if isinstance(ins, ir.UnSet):
             if isinstance(ins.var.type, UnionType):
-                if (
-                    ins.var.type.generic_origin is not None
-                    and ins.var.type.generic_origin.generic is OPTIONAL
-                ):
-                    c_type = self.file_pair.emit_type(ins.var.type)
-                    return f"{self.emit_var(ins.var)} = ({c_type}){{0}};\n"
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
             if not ins.var.type.refcounted:
                 # Must not run for non-refcounted unions or optionals
@@ -215,7 +209,7 @@ class _FunctionEmitter:
         if declare:
             self.before_body += f"{self.file_pair.emit_type(var.type)} {name};\n"
             # TODO: add these in ast2ir?
-            self.before_body += self.emit_instruction(ir.SetToNull(var))
+            self.before_body += self.emit_instruction(ir.UnSet(var))
 
         if need_decref:
             assert var not in self.need_decref

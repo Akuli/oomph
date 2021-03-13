@@ -38,7 +38,7 @@ class _FunctionOrMethodConverter:
         # won't decref the same variable again.
         result = ir.LocalVariable(the_type)
         self.code.append(ir.DecRef(result))
-        self.code.append(ir.SetToNull(result))
+        self.code.append(ir.UnSet(result))
         return result
 
     @contextlib.contextmanager
