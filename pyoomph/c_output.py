@@ -642,7 +642,9 @@ class _FileEmitter:
             if the_type.definition_path is None:
                 raise NotImplementedError("generic auto-created type")
             else:
-                return self._get_exportable_name(the_type.definition_path, the_type.name)
+                return self._get_exportable_name(
+                    the_type.definition_path, the_type.name
+                )
 
         try:
             return self.generic_type_names[the_type]
@@ -687,7 +689,9 @@ class _FileEmitter:
                 """
                 for num, typ in enumerate(the_type.type_members)
             )
-            self.function_decls += f"struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj);"
+            self.function_decls += (
+                f"struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj);"
+            )
             self.function_defs += f"""
             struct class_Str *meth_{c_name}_to_string(struct class_{c_name} obj)
             {{
@@ -842,10 +846,11 @@ class _FileEmitter:
 
 
 class Session:
-    def __init__(self) -> None:
+    def __init__(self, compilation_dir: pathlib.Path) -> None:
         # This state is shared between different files
         self.exports: List[ir.Export] = []
         self.export_c_names: Dict[ir.Export, str] = {}
+        self.compilation_dir = compilation_dir
 
     def create_c_code(
         self,

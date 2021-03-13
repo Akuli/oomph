@@ -30,11 +30,12 @@ def _get_compiled_file_name(
 class CompilationUnit:
     ast: List[ast.ToplevelDeclaration]
 
-    def __init__(self, source_path: pathlib.Path, compilation_dir: pathlib.Path):
-        name = _get_compiled_file_name(source_path, compilation_dir)
+    def __init__(self, source_path: pathlib.Path, session: c_output.Session):
+        self.session = session
+        name = _get_compiled_file_name(source_path, session.compilation_dir)
         self.source_path = source_path
-        self.c_path = compilation_dir / (name + ".c")
-        self.h_path = compilation_dir / (name + ".h")
+        self.c_path = session.compilation_dir / (name + ".c")
+        self.h_path = session.compilation_dir / (name + ".h")
 
     def create_untyped_ast(self) -> None:
         source_code = self.source_path.read_text(encoding="utf-8")
@@ -44,13 +45,13 @@ class CompilationUnit:
 
     def create_c_and_h_files(
         self,
-        compilation_dir: pathlib.Path,
-        session: c_output.Session,
         headers: List[str],
     ) -> None:
         try:
-            ir = ast2ir.convert_program(self.ast, self.source_path, session.exports)
-            c, h = session.create_c_code(ir, self.source_path, headers)
+            ir = ast2ir.convert_program(
+                self.ast, self.source_path, self.session.exports
+            )
+            c, h = self.session.create_c_code(ir, self.source_path, headers)
         except Exception:
             traceback.print_exc()
             print(
@@ -102,10 +103,13 @@ def main() -> None:
         cache_dir = pathlib.Path.cwd() / ".oomph-cache"
         cache_dir.mkdir(exist_ok=True)
 
+    exe_path = cache_dir / compiler_args.infile.stem
+    session = c_output.Session(cache_dir / (exe_path.stem + "_compilation"))
+    session.compilation_dir.mkdir(exist_ok=True)
+
     all_compilation_units: List[CompilationUnit] = []
     dependencies: Dict[pathlib.Path, List[pathlib.Path]] = {}
     todo_list = [compiler_args.infile.absolute()]
-    # TODO: figure out what import cycles do here, and disallow them
     while todo_list:
         source_path = todo_list.pop()
         if source_path in dependencies:
@@ -114,7 +118,7 @@ def main() -> None:
         if compiler_args.verbose:
             print("Parsing", source_path)
 
-        unit = CompilationUnit(source_path, cache_dir)
+        unit = CompilationUnit(source_path, session)
         all_compilation_units.append(unit)
         unit.create_untyped_ast()
 
@@ -155,18 +159,12 @@ def main() -> None:
                 )
         compilation_order.append(unit)
 
-    session = c_output.Session()
     for index, unit in enumerate(compilation_order):
         if compiler_args.verbose:
             print("Creating c and h files:", unit.source_path)
         already_compiled = compilation_order[:index]
-        unit.create_c_and_h_files(
-            cache_dir,
-            session,
-            [unit.h_path.name for unit in already_compiled],
-        )
+        unit.create_c_and_h_files([unit.h_path.name for unit in already_compiled])
 
-    exe_path = cache_dir / compiler_args.infile.stem
     command = get_c_compiler_command(
         [unit.c_path for unit in all_compilation_units], exe_path
     )
