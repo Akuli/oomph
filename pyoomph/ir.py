@@ -36,9 +36,6 @@ class LocalVariable:
         return "<LocalVariable %#x: %s>" % (id(self), self.type.name)
 
 
-# Currently these are always functions. These would be called "global
-# variables" in Python, but that's confusing, because they are less global
-# than ExportVariables.
 @dataclass(eq=False)
 class FileVariable:
     name: str
