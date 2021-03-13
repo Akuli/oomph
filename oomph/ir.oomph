@@ -31,15 +31,15 @@ export func create_builtins() -> Builtins:
 
     # TODO: multiline literals
     let hidden_vars = new List[BuiltinVariable]()
-    hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], new Optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], new Optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], new Optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], new Optional[ObjectType](INT))))
-    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], new Optional[ObjectType](FLOAT))))
-    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], new Optional[ObjectType](FLOAT))))
+    hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)))
+    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
+    hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)))
+    hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], INT)))
+    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], FLOAT)))
 
     return new Builtins(STR, INT, FLOAT, prrrint, hidden_vars)
 

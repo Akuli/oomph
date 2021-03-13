@@ -117,8 +117,8 @@ class Parser(List[tokenizer::Token] tokens):
                     pass
                 case *:
                     continue
-            return new Optional[Int](i)
-        return new Optional[Int](null)
+            return i
+        return null
 
     meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] operators):
         while magic_list.length() >= 2:

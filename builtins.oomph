@@ -6,8 +6,8 @@ func __Bool_to_string(Bool self) -> Str:
 func __Str_find_first(Str self, Str substring) -> Optional[Int]:
     let result = __string_find_internal(self, substring)
     if result == -1:   # Currently it's difficult to have optionals in C code
-        return new Optional[Int](null)
-    return new Optional[Int](result)
+        return null
+    return result
 
 func __Str_repeat(Str self, Int n) -> Str:
     let result = self

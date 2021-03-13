@@ -35,7 +35,6 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
-- implicit conversions of return values
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - functions as first-class objects
 - better error messaging
