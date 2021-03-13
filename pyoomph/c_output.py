@@ -39,7 +39,7 @@ class _FunctionEmitter:
         self.varname_counter = 0
 
     def incref_var(self, var: ir.LocalVariable) -> str:
-        return self.emit_incref(self.emit_var(var), var.type)
+        return self.session.emit_incref(self.emit_var(var), var.type)
 
     def emit_call(
         self,
@@ -54,37 +54,6 @@ class _FunctionEmitter:
 
     def emit_body(self, body: List[ir.Instruction]) -> str:
         return "\n\t".join(map(self.emit_instruction, body))
-
-    # May evaluate c_expression several times
-    def emit_incref(self, c_expression: str, the_type: Type) -> str:
-        if isinstance(the_type, UnionType):
-            return f"incref_{self.session.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_incref = self.emit_incref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"do{{ if(!({c_expression}).isnull) {value_incref}; }} while(0)"
-        if the_type.refcounted:
-            return f"incref({c_expression})"
-        return "(void)0"
-
-    def emit_decref(self, c_expression: str, the_type: Type) -> str:
-        if isinstance(the_type, UnionType):
-            return f"decref_{self.session.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_decref = self.emit_decref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"(({c_expression}).isnull ? (void)0 : {value_decref})"
-        if the_type.refcounted:
-            return f"decref(({c_expression}), dtor_{self.session.get_type_c_name(the_type)})"
-        return "(void)0"
 
     def emit_instruction(self, ins: ir.Instruction) -> str:
         if isinstance(ins, ir.StringConstant):
@@ -103,7 +72,7 @@ class _FunctionEmitter:
             return self.incref_var(ins.var) + ";\n"
 
         if isinstance(ins, ir.DecRef):
-            return self.emit_decref(self.emit_var(ins.var), ins.var.type) + ";\n"
+            return self.session.emit_decref(self.emit_var(ins.var), ins.var.type) + ";\n"
 
         if isinstance(ins, ir.CallFunction):
             return self.emit_call(self.emit_var(ins.func), ins.args, ins.result)
@@ -263,7 +232,7 @@ class _FunctionEmitter:
 
         body_instructions = self.emit_body(funcdef.body)
         decrefs = "".join(
-            self.emit_decref(self.emit_var(var), var.type) + ";\n"
+            self.session.emit_decref(self.emit_var(var), var.type) + ";\n"
             for var in reversed(self.need_decref)
         )
 
@@ -296,7 +265,7 @@ class _FunctionEmitter:
 
 _generic_c_codes = {
     OPTIONAL: {
-        "structs": """
+        "struct": """
         struct class_%(type_cname)s {
             bool isnull;
             %(itemtype)s value;
@@ -338,7 +307,7 @@ _generic_c_codes = {
     },
     LIST: {
         # TODO: have this struct on stack when possible, same with strings
-        "structs": """
+        "struct": """
         struct class_%(type_cname)s {
             REFCOUNT_HEADER
             int64_t len;
@@ -630,9 +599,23 @@ class _FilePair:
 
     # Must not be called multiple times for the same _FilePair
     def define_type(self, the_type: Type) -> None:
-        assert the_type.generic_origin is None
+        if the_type.generic_origin is not None:
+            assert not self.struct
+            itemtype = the_type.generic_origin.arg
+            code_dict = _generic_c_codes[the_type.generic_origin.generic]
+            string_formatting = {
+                'type_cname': self.session.get_type_c_name(the_type),
+                'itemtype': self.emit_type(itemtype),
+                'itemtype_cname': self.session.get_type_c_name(itemtype),
+                # TODO: replace with macros
+                'incref_val': self.session.emit_incref('val', itemtype),
+                'decref_val': self.session.emit_decref('val', itemtype),
+            }
+            self.struct = code_dict['struct'] % string_formatting
+            self.function_decls += code_dict['function_decls'] % string_formatting
+            self.function_defs += code_dict['function_defs'] % string_formatting
 
-        if isinstance(the_type, UnionType):
+        elif isinstance(the_type, UnionType):
             raise NotImplementedError
         #            assert the_type.type_members is not None
         #
@@ -734,11 +717,11 @@ class _FilePair:
                 for the_type, name in the_type.members
             )
             member_increfs = "".join(
-                self.emit_incref(f"arg_{name}", the_type) + ";\n"
+                self.session.emit_incref(f"arg_{name}", the_type) + ";\n"
                 for the_type, name in the_type.members
             )
             member_decrefs = "".join(
-                self.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
+                self.session.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
                 for typ, nam in the_type.members
             )
 
@@ -834,14 +817,49 @@ class Session:
             + list(self.source_path_to_file_pair.values())
         ]
 
-    # TODO: this needed?
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
+        if the_type not in self.type_to_file_pair:
+            assert the_type.definition_path is None
+            pair = _FilePair(self, None, re.sub(r'[^A-Za-z0-9]', '_', the_type.name))
+            self.type_to_file_pair[the_type] = pair
+            pair.define_type(the_type)
         return self.type_to_file_pair[the_type]
 
     def get_type_c_name(self, the_type: Type) -> str:
         if the_type in builtin_types.values():
             return the_type.name
         return self.type_to_file_pair[the_type].id
+
+    # May evaluate c_expression several times
+    def emit_incref(self, c_expression: str, the_type: Type) -> str:
+        if isinstance(the_type, UnionType):
+            return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
+        if (
+            the_type.generic_origin is not None
+            and the_type.generic_origin.generic is OPTIONAL
+        ):
+            value_incref = self.emit_incref(
+                f"({c_expression}).value", the_type.generic_origin.arg
+            )
+            return f"do{{ if(!({c_expression}).isnull) {value_incref}; }} while(0)"
+        if the_type.refcounted:
+            return f"incref({c_expression})"
+        return "(void)0"
+
+    def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        if isinstance(the_type, UnionType):
+            return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
+        if (
+            the_type.generic_origin is not None
+            and the_type.generic_origin.generic is OPTIONAL
+        ):
+            value_decref = self.session.emit_decref(
+                f"({c_expression}).value", the_type.generic_origin.arg
+            )
+            return f"(({c_expression}).isnull ? (void)0 : {value_decref})"
+        if the_type.refcounted:
+            return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
+        return "(void)0"
 
     def create_c_code(
         self, top_decls: List[ir.ToplevelDeclaration], source_path: pathlib.Path
@@ -862,7 +880,7 @@ class Session:
             h_path = self.compilation_dir / (file_pair.id + ".h")
 
             includes = "#include <lib/oomph.h>\n" + "".join(
-                f'include "{pair.id}.h"\n' for pair in file_pair.includes
+                f'#include "{pair.id}.h"\n' for pair in file_pair.includes
             )
             h_code = includes + file_pair.struct + file_pair.function_decls
             c_code = (
