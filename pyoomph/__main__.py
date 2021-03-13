@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import os
 import pathlib
 import shlex
 import signal
@@ -10,32 +9,18 @@ import sys
 import traceback
 from typing import Dict, List
 
-from pyoomph import ast, ast2ir, c_output, parser
+from pyoomph import ast, ast2ir, c_output, ir, parser
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
-
-
-def _get_compiled_file_name(
-    source_path: pathlib.Path, compilation_dir: pathlib.Path
-) -> str:
-    # TODO: avoid long file names
-    return (
-        os.path.relpath(source_path, compilation_dir.parent)
-        .replace(".", "_dot_")
-        .replace(os.sep, "_slash_")
-    )
 
 
 class CompilationUnit:
     ast: List[ast.ToplevelDeclaration]
 
     def __init__(self, source_path: pathlib.Path, session: c_output.Session):
-        self.session = session
-        name = _get_compiled_file_name(source_path, session.compilation_dir)
         self.source_path = source_path
-        self.c_path = session.compilation_dir / (name + ".c")
-        self.h_path = session.compilation_dir / (name + ".h")
+        self.session = session
 
     def create_untyped_ast(self) -> None:
         source_code = self.source_path.read_text(encoding="utf-8")
@@ -43,24 +28,16 @@ class CompilationUnit:
             source_code, self.source_path, project_root / "stdlib"
         )
 
-    def create_c_and_h_files(
-        self,
-        headers: List[str],
-    ) -> None:
+    def create_c_code(self, exports: List[ir.Symbol]) -> None:
         try:
-            ir = ast2ir.convert_program(
-                self.ast, self.source_path, self.session.exports
-            )
-            c, h = self.session.create_c_code(ir, self.source_path, headers)
+            ir = ast2ir.convert_program(self.ast, self.source_path, exports)
+            self.session.create_c_code(ir, self.source_path)
         except Exception:
             traceback.print_exc()
             print(
                 f"\nThis happened while compiling {self.source_path}", file=sys.stderr
             )
             sys.exit(1)
-
-        self.c_path.write_text(c, encoding="utf-8")
-        self.h_path.write_text(h, encoding="utf-8")
 
 
 def get_c_compiler_command(
@@ -159,15 +136,13 @@ def main() -> None:
                 )
         compilation_order.append(unit)
 
-    for index, unit in enumerate(compilation_order):
+    for unit in compilation_order:
         if compiler_args.verbose:
-            print("Creating c and h files:", unit.source_path)
-        already_compiled = compilation_order[:index]
-        unit.create_c_and_h_files([unit.h_path.name for unit in already_compiled])
+            print("Creating C code:", unit.source_path)
+        unit.create_c_code(session.symbols)
 
-    command = get_c_compiler_command(
-        [unit.c_path for unit in all_compilation_units], exe_path
-    )
+    c_paths = session.write_everything(project_root / "builtins.oomph")
+    command = get_c_compiler_command(c_paths, exe_path)
 
     result = run(command, compiler_args.verbose)
     if result != 0:

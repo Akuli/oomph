@@ -36,21 +36,14 @@ class LocalVariable:
         return "<LocalVariable %#x: %s>" % (id(self), self.type.name)
 
 
-# Currently these are always functions. These would be called "global
-# variables" in Python, but that's confusing, because they are less global
-# than ExportVariables.
 @dataclass(eq=False)
-class ThisFileVariable:
+class FileVariable:
     name: str
     type: Type
+    source_path: pathlib.Path
 
 
-@dataclass(eq=False)
-class ExportVariable:
-    name: str
-    type: Type
-
-
+# TODO: combine BuiltinVariable and SpecialVariable?
 @dataclass(eq=False)
 class BuiltinVariable:
     name: str
@@ -63,9 +56,7 @@ class SpecialVariable:
     type: Type
 
 
-Variable = Union[
-    LocalVariable, ThisFileVariable, ExportVariable, BuiltinVariable, SpecialVariable
-]
+Variable = Union[LocalVariable, FileVariable, BuiltinVariable, SpecialVariable]
 
 
 builtin_variables = {
@@ -324,7 +315,7 @@ class ToplevelDeclaration:
 
 @dataclass(eq=False)
 class FuncDef(ToplevelDeclaration):
-    var: Union[ThisFileVariable, ExportVariable]
+    var: FileVariable
     argvars: List[LocalVariable]
     body: List[Instruction]
 
@@ -337,14 +328,9 @@ class MethodDef(ToplevelDeclaration):
     body: List[Instruction]
 
 
-# Class or union
+# Anything that might need to be shared between different .c files
 @dataclass(eq=False)
-class TypeDef(ToplevelDeclaration):
-    type: Type
-
-
-@dataclass(eq=False)
-class Export:
+class Symbol:
     path: pathlib.Path
     name: str
-    value: Union[ExportVariable, Type]  # Type includes UnionType
+    value: Union[FileVariable, Type]  # Type includes UnionType

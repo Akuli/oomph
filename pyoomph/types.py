@@ -27,6 +27,13 @@ class Type:
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
 
+    def get_id_string(self) -> str:
+        result = self.name + str(self.definition_path)
+        if self.generic_origin is not None:
+            result += self.generic_origin.generic.name
+            result += self.generic_origin.arg.get_id_string()
+        return result
+
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
 
@@ -57,7 +64,7 @@ class UnionType(Type):
     def set_type_members(self, type_members: List[Type]) -> None:
         assert len(type_members) >= 2
         assert len(type_members) == len(set(type_members))  # no duplicates
-        assert all(t.refcounted for t in type_members)  # TODO
+        assert all(t.refcounted for t in type_members)  # TODO: get rid of this assert
         assert self.type_members is None
         self.type_members = type_members
 
