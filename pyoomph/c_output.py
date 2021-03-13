@@ -31,7 +31,7 @@ def _emit_label(name: str) -> str:
 class _FunctionEmitter:
     def __init__(self, file_pair: _FilePair) -> None:
         self.file_pair = file_pair
-        self.session = file_pair.session  # TODO: get rid of this
+        self.session = file_pair.session
         self.local_variable_names: Dict[ir.LocalVariable, str] = {}
         self.before_body = ""
         self.after_body = ""
