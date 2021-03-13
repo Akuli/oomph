@@ -696,9 +696,8 @@ class _FilePair:
                     if (IS_NULL(obj))
                         panic_printf("Error: null.get() was called");
 
-                    {itemtype_code} res = obj.val.item0;
-                    {self.session.emit_incref('res', itemtype)};
-                    return res;
+                    {self.session.emit_incref('obj.val.item0', itemtype)};
+                    return obj.val.item0;
                 }}
                 """
 
