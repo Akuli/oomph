@@ -43,24 +43,18 @@ class CompilationUnit:
             source_code, self.source_path, project_root / "stdlib"
         )
 
-    def create_c_and_h_files(
-        self,
-        headers: List[str],
-    ) -> None:
+    def create_c_and_h_files(self) -> None:
         try:
             ir = ast2ir.convert_program(
                 self.ast, self.source_path, self.session.exports
             )
-            c, h = self.session.create_c_code(ir, self.source_path, headers)
+            self.session.create_c_code(ir, self.source_path, self.c_path, self.h_path)
         except Exception:
             traceback.print_exc()
             print(
                 f"\nThis happened while compiling {self.source_path}", file=sys.stderr
             )
             sys.exit(1)
-
-        self.c_path.write_text(c, encoding="utf-8")
-        self.h_path.write_text(h, encoding="utf-8")
 
 
 def get_c_compiler_command(
@@ -162,11 +156,9 @@ def main() -> None:
     for index, unit in enumerate(compilation_order):
         if compiler_args.verbose:
             print("Creating c and h files:", unit.source_path)
-        already_compiled = compilation_order[:index]
-        unit.create_c_and_h_files([unit.h_path.name for unit in already_compiled])
+        unit.create_c_and_h_files()
 
-    command = get_c_compiler_command(
-        [unit.c_path for unit in all_compilation_units], exe_path
+    command = get_c_compiler_command(session.c_paths, exe_path
     )
 
     result = run(command, compiler_args.verbose)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import pathlib
 import re
-from typing import Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Dict, List, Optional, TypeVar, Union
 
 from pyoomph import ir
 from pyoomph.types import (
@@ -30,13 +30,14 @@ def _emit_label(name: str) -> str:
 class _FunctionEmitter:
     def __init__(self, file_emitter: _FileEmitter) -> None:
         self.file_emitter = file_emitter
+        self.session = file_emitter.session
         self.local_variable_names: Dict[ir.LocalVariable, str] = {}
         self.before_body = ""
         self.after_body = ""
         self.need_decref: List[ir.LocalVariable] = []
 
     def incref_var(self, var: ir.LocalVariable) -> str:
-        return self.file_emitter.emit_incref(self.emit_var(var), var.type)
+        return self.session.emit_incref(self.emit_var(var), var.type)
 
     def emit_call(
         self,
@@ -70,8 +71,7 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.DecRef):
             return (
-                self.file_emitter.emit_decref(self.emit_var(ins.var), ins.var.type)
-                + ";\n"
+                self.session.emit_decref(self.emit_var(ins.var), ins.var.type) + ";\n"
             )
 
         if isinstance(ins, ir.CallFunction):
@@ -79,14 +79,14 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.CallMethod):
             return self.emit_call(
-                f"meth_{self.file_emitter.get_type_c_name(ins.obj.type)}_{ins.method_name}",
+                f"meth_{self.session.get_type_c_name(ins.obj.type)}_{ins.method_name}",
                 [ins.obj] + ins.args,
                 ins.result,
             )
 
         if isinstance(ins, ir.CallConstructor):
             return self.emit_call(
-                "ctor_" + self.file_emitter.get_type_c_name(ins.result.type),
+                "ctor_" + self.session.get_type_c_name(ins.result.type),
                 ins.args,
                 ins.result,
             )
@@ -144,7 +144,7 @@ class _FunctionEmitter:
             membernum = ins.result.type.type_members.index(ins.value.type)
             return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };\n" % (
                 self.emit_var(ins.result),
-                self.file_emitter.emit_type(ins.result.type),
+                self.session.emit_type(ins.result.type),
                 membernum,
                 self.emit_var(ins.value),
                 membernum,
@@ -187,7 +187,7 @@ class _FunctionEmitter:
                 ins.var.type.generic_origin is not None
                 and ins.var.type.generic_origin.generic is OPTIONAL
             ):
-                c_type = self.file_emitter.emit_type(ins.var.type)
+                c_type = self.session.emit_type(ins.var.type)
                 return f"{self.emit_var(ins.var)} = ({c_type}){{ .isnull = true }};\n"
             if not ins.var.type.refcounted:
                 # Must not run for non-refcounted unions or optionals
@@ -205,7 +205,7 @@ class _FunctionEmitter:
         name = self.file_emitter.get_var_name()
         self.local_variable_names[var] = name
         if declare:
-            self.before_body += f"{self.file_emitter.emit_type(var.type)} {name};\n"
+            self.before_body += f"{self.session.emit_type(var.type)} {name};\n"
             # TODO: add these in ast2ir?
             self.before_body += self.emit_instruction(ir.SetToNull(var))
         if need_decref:
@@ -231,7 +231,7 @@ class _FunctionEmitter:
 
         body_instructions = self.emit_body(funcdef.body)
         decrefs = "".join(
-            self.file_emitter.emit_decref(self.emit_var(var), var.type) + ";\n"
+            self.session.emit_decref(self.emit_var(var), var.type) + ";\n"
             for var in reversed(self.need_decref)
         )
 
@@ -243,7 +243,7 @@ class _FunctionEmitter:
 
         if functype.returntype is not None:
             self.before_body += (
-                f"{self.file_emitter.emit_type(functype.returntype)} retval;\n"
+                f"{self.session.emit_type(functype.returntype)} retval;\n"
             )
             self.after_body += "return retval;\n"
 
@@ -271,18 +271,18 @@ _generic_c_codes = {
         };
         """,
         "function_decls": """
-        static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
-        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
-        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
+        struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
+        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
+        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
         """,
         "function_defs": """
-        static struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
+        struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
         {
             %(incref_val)s;
             return (struct class_%(type_cname)s) { false, val };
         }
 
-        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
+        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
         {
             assert(!opt.isnull);
             %(itemtype)s val = opt.value;
@@ -290,7 +290,7 @@ _generic_c_codes = {
             return val;
         }
 
-        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
+        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
         {
             if (opt.isnull)
                 return cstr_to_string("null");
@@ -316,20 +316,20 @@ _generic_c_codes = {
         };
         """,
         "function_decls": """
-        static struct class_%(type_cname)s *ctor_%(type_cname)s(void);
-        static void dtor_%(type_cname)s (void *ptr);
-        static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
-        static void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
-        static %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
-        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
-        static %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
-        static %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
-        static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
-        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
-        static struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
+        struct class_%(type_cname)s *ctor_%(type_cname)s(void);
+        void dtor_%(type_cname)s (void *ptr);
+        void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
+        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
+        %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
+        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
+        %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
+        %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
+        int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
+        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
+        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
         """,
         "function_defs": """
-        static struct class_%(type_cname)s *ctor_%(type_cname)s(void)
+        struct class_%(type_cname)s *ctor_%(type_cname)s(void)
         {
             struct class_%(type_cname)s *res = malloc(sizeof(*res));
             assert(res);
@@ -340,7 +340,7 @@ _generic_c_codes = {
             return res;
         }
 
-        static void dtor_%(type_cname)s (void *ptr)
+        void dtor_%(type_cname)s (void *ptr)
         {
             struct class_%(type_cname)s *self = ptr;
             for (int64_t i = 0; i < self->len; i++) {
@@ -352,7 +352,7 @@ _generic_c_codes = {
             free(self);
         }
 
-        static void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
+        void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
         {
             assert(n >= 0);
             if (self->alloc >= n)
@@ -371,14 +371,14 @@ _generic_c_codes = {
             }
         }
 
-        static void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
+        void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
         {
             class_%(type_cname)s_ensure_alloc(self, self->len + 1);
             self->data[self->len++] = val;
             %(incref_val)s;
         }
 
-        static void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src)
+        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src)
         {
             class_%(type_cname)s_ensure_alloc(self, self->len + src->len);
             memcpy(self->data + self->len, src->data, sizeof(src->data[0]) * src->len);
@@ -389,14 +389,14 @@ _generic_c_codes = {
             self->len += src->len;
         }
 
-        static %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self)
+        %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self)
         {
             if (self->len == 0)
                 panic_printf("pop from empty list");
             return self->data[--self->len];
         }
 
-        static %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
+        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
         {
             if (i < 0)
                 panic_printf("negative list index %%d", (long)i);
@@ -408,7 +408,7 @@ _generic_c_codes = {
             return val;
         }
 
-        static %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
+        %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
         {
             if (self->len == 0)
                 panic_printf("can't get first item of empty list");
@@ -417,7 +417,7 @@ _generic_c_codes = {
             return val;
         }
 
-        static %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self)
+        %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self)
         {
             if (self->len == 0)
                 panic_printf("can't get last item of empty list");
@@ -426,13 +426,13 @@ _generic_c_codes = {
             return val;
         }
 
-        static int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
+        int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
         {
             return self->len;
         }
 
         // TODO: rewrite better in the language itself
-        static struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
+        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
         {
             struct class_Str *res = cstr_to_string("[");
 
@@ -449,7 +449,7 @@ _generic_c_codes = {
             return res;
         }
 
-        static struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self)
+        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self)
         {
             struct class_%(type_cname)s *res = ctor_%(type_cname)s();
             class_%(type_cname)s_ensure_alloc(res, self->len);
@@ -494,7 +494,6 @@ class _FileEmitter:
             },
             **{var: name for name, var in ir.special_variables.items()},
         }
-        self.generic_type_names: Dict[Type, str] = {}
         self.strings: Dict[str, str] = {}
 
         self.structs = ""
@@ -502,21 +501,17 @@ class _FileEmitter:
         self.function_defs = ""
         self.string_defs = ""
 
-    def _get_exportable_name(self, namespace: pathlib.Path, name: str) -> str:
-        # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
-        return "oomph_" + re.sub(r"[^A-Za-z_]", "", namespace.stem) + "_" + name
-
     def define_function(
         self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
     ) -> None:
         assert len(the_type.argtypes) == len(argnames)
         arg_decls = [
-            self.emit_type(argtype) + " " + name
+            self.session.emit_type(argtype) + " " + name
             for argtype, name in zip(the_type.argtypes, argnames)
         ]
 
         declaration = "%s %s(%s)" % (
-            self.emit_type(the_type.returntype),
+            self.session.emit_type(the_type.returntype),
             function_name,
             (", ".join(arg_decls) or "void"),
         )
@@ -526,37 +521,6 @@ class _FileEmitter:
     def get_var_name(self) -> str:
         self.varname_counter += 1
         return f"var{self.varname_counter}"
-
-    # May evaluate c_expression several times
-    def emit_incref(self, c_expression: str, the_type: Type) -> str:
-        if isinstance(the_type, UnionType):
-            return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_incref = self.emit_incref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"do{{ if(!({c_expression}).isnull) {value_incref}; }} while(0)"
-        if the_type.refcounted:
-            return f"incref({c_expression})"
-        return "(void)0"
-
-    def emit_decref(self, c_expression: str, the_type: Type) -> str:
-        if isinstance(the_type, UnionType):
-            return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_decref = self.emit_decref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"(({c_expression}).isnull ? (void)0 : {value_decref})"
-        if the_type.refcounted:
-            return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
-        return "(void)0"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
@@ -571,7 +535,7 @@ class _FileEmitter:
 
             array_content = ", ".join(r"'\x%02x'" % byte for byte in struct_bytes)
             self.string_defs += f"""
-            static {self.emit_type(STRING)} {self.strings[value]}
+            static {self.session.emit_type(STRING)} {self.strings[value]}
             = (void*)(unsigned char[]){{ {array_content} }};
             """
         return self.strings[value]
@@ -605,7 +569,7 @@ class _FileEmitter:
                 # Class implemented in C, method implemented in builtins.oomph
                 c_name = "meth_" + var.name.lstrip("_")
             else:
-                c_name = self._get_exportable_name(self.path, var.name)
+                c_name = self.session.get_exportable_name(self.path, var.name)
 
             if isinstance(var, ir.ExportVariable):
                 [export] = [exp for exp in self.session.exports if exp.value is var]
@@ -614,77 +578,18 @@ class _FileEmitter:
             self.variable_names[var] = c_name
             return c_name
 
-    def emit_type(self, the_type: Optional[Type]) -> str:
-        if the_type is None:
-            return "void"
-        if the_type is INT:
-            return "int64_t"
-        if the_type is FLOAT:
-            return "double"
-        if the_type is BOOL:
-            return "bool"
-        if (
-            the_type.refcounted
-            and not isinstance(the_type, UnionType)
-            and (
-                the_type.generic_origin is None
-                or the_type.generic_origin.generic is not OPTIONAL
-            )
-        ):
-            return f"struct class_{self.get_type_c_name(the_type)} *"
-        return f"struct class_{self.get_type_c_name(the_type)}"
-
-    def get_type_c_name(self, the_type: Type) -> str:
-        if the_type in builtin_types.values():
-            return the_type.name
-
-        if the_type.generic_origin is None:
-            if the_type.definition_path is None:
-                raise NotImplementedError("generic auto-created type")
-            else:
-                return self._get_exportable_name(
-                    the_type.definition_path, the_type.name
-                )
-
-        try:
-            return self.generic_type_names[the_type]
-        except KeyError:
-            self.define_type(the_type)
-            return self.generic_type_names[the_type]
-
     def define_type(self, the_type: Type) -> None:
-        if the_type.generic_origin is not None:
-            itemtype = the_type.generic_origin.arg
-            type_cname = f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
-            self.generic_type_names[the_type] = type_cname
+        assert the_type.generic_origin is None
 
-            code_dict = _generic_c_codes[the_type.generic_origin.generic]
-            substitutions = {
-                "type_cname": type_cname,
-                "itemtype": self.emit_type(itemtype),
-                "itemtype_cname": self.get_type_c_name(itemtype),
-                "itemtype_string": the_type.name,
-                "incref_val": self.emit_incref("val", itemtype),
-                "decref_val": self.emit_decref("val", itemtype),
-            }
-            self.structs += f"""
-            #ifndef {type_cname}_DEFINED
-            #define {type_cname}_DEFINED
-            {code_dict["structs"] % substitutions}
-            #endif
-            """
-            self.function_decls += code_dict["function_decls"] % substitutions
-            self.function_defs += code_dict["function_defs"] % substitutions
-
-        elif isinstance(the_type, UnionType):
+        if isinstance(the_type, UnionType):
             assert the_type.type_members is not None
-            c_name = self.get_type_c_name(the_type)
+            c_name = self.session.get_type_c_name(the_type)
 
             # to_string method
             to_string_cases = "".join(
                 f"""
                 case {num}:
-                    valstr = meth_{self.get_type_c_name(typ)}_to_string(obj.val.item{num});
+                    valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
                     break;
                 """
                 for num, typ in enumerate(the_type.type_members)
@@ -717,7 +622,7 @@ class _FileEmitter:
             incref_cases = "".join(
                 f"""
                 case {num}:
-                    {self.emit_incref(f"obj.val.item{num}", typ)};
+                    {self.session.emit_incref(f"obj.val.item{num}", typ)};
                     break;
                 """
                 for num, typ in enumerate(the_type.type_members)
@@ -725,7 +630,7 @@ class _FileEmitter:
             decref_cases = "".join(
                 f"""
                 case {num}:
-                    {self.emit_decref(f"obj.val.item{num}", typ)};
+                    {self.session.emit_decref(f"obj.val.item{num}", typ)};
                     break;
                 """
                 for num, typ in enumerate(the_type.type_members)
@@ -755,7 +660,7 @@ class _FileEmitter:
             """
 
             union_members = "".join(
-                f"\t{self.emit_type(the_type)} item{index};\n"
+                f"\t{self.session.emit_type(the_type)} item{index};\n"
                 for index, the_type in enumerate(the_type.type_members)
             )
             self.structs += f"""
@@ -768,11 +673,11 @@ class _FileEmitter:
             """
         else:
             struct_members = "".join(
-                f"{self.emit_type(the_type)} memb_{name};\n"
+                f"{self.session.emit_type(the_type)} memb_{name};\n"
                 for the_type, name in the_type.members
             )
             constructor_args = ",".join(
-                f"{self.emit_type(the_type)} arg_{name}"
+                f"{self.session.emit_type(the_type)} arg_{name}"
                 for the_type, name in the_type.members
             )
             member_assignments = "".join(
@@ -780,15 +685,15 @@ class _FileEmitter:
                 for the_type, name in the_type.members
             )
             member_increfs = "".join(
-                self.emit_incref(f"arg_{name}", the_type) + ";\n"
+                self.session.emit_incref(f"arg_{name}", the_type) + ";\n"
                 for the_type, name in the_type.members
             )
             member_decrefs = "".join(
-                self.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
+                self.session.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
                 for typ, nam in the_type.members
             )
 
-            c_name = self.get_type_c_name(the_type)
+            c_name = self.session.get_type_c_name(the_type)
             for export in self.session.exports:
                 if export.value is the_type:
                     self.session.export_c_names[export] = c_name
@@ -801,13 +706,13 @@ class _FileEmitter:
             }};
             """
             self.function_decls += f"""
-            {self.emit_type(the_type)} ctor_{c_name}({constructor_args});
+            {self.session.emit_type(the_type)} ctor_{c_name}({constructor_args});
             void dtor_{c_name}(void *ptr);
             """
             self.function_defs += f"""
-            {self.emit_type(the_type)} ctor_{c_name}({constructor_args})
+            {self.session.emit_type(the_type)} ctor_{c_name}({constructor_args})
             {{
-                {self.emit_type(the_type)} obj = malloc(sizeof(*obj));
+                {self.session.emit_type(the_type)} obj = malloc(sizeof(*obj));
                 assert(obj);
                 obj->refcount = 1;
                 {member_assignments}
@@ -838,7 +743,7 @@ class _FileEmitter:
             clASS = top_declaration.type.argtypes[0]
             _FunctionEmitter(self).emit_funcdef(
                 top_declaration,
-                f"meth_{self.get_type_c_name(clASS)}_{top_declaration.name}",
+                f"meth_{self.session.get_type_c_name(clASS)}_{top_declaration.name}",
             )
 
         else:
@@ -851,29 +756,147 @@ class Session:
         self.exports: List[ir.Export] = []
         self.export_c_names: Dict[ir.Export, str] = {}
         self.compilation_dir = compilation_dir
+        self.generic_type_names: Dict[Type, str] = {}
+        self.c_paths = []
+        self.includes = "#include <lib/oomph.h>\n"
+
+    def get_exportable_name(self, namespace: pathlib.Path, name: str) -> str:
+        # FIXME: this may collide if there is foo/lol.oomph and bar/lol.oomph
+        return "oomph_" + re.sub(r"[^A-Za-z_]", "", namespace.stem) + "_" + name
+
+    def get_type_c_name(self, the_type: Type) -> str:
+        if the_type in builtin_types.values():
+            return the_type.name
+
+        if the_type.generic_origin is None:
+            if the_type.definition_path is None:
+                raise NotImplementedError("generic auto-created type")
+            else:
+                return self.get_exportable_name(the_type.definition_path, the_type.name)
+
+        try:
+            return self.generic_type_names[the_type]
+        except KeyError:
+            self.define_generic(the_type)
+            return self.generic_type_names[the_type]
+
+    def emit_type(self, the_type: Optional[Type]) -> str:
+        if the_type is None:
+            return "void"
+        if the_type is INT:
+            return "int64_t"
+        if the_type is FLOAT:
+            return "double"
+        if the_type is BOOL:
+            return "bool"
+        if (
+            the_type.refcounted
+            and not isinstance(the_type, UnionType)
+            and (
+                the_type.generic_origin is None
+                or the_type.generic_origin.generic is not OPTIONAL
+            )
+        ):
+            return f"struct class_{self.get_type_c_name(the_type)} *"
+        return f"struct class_{self.get_type_c_name(the_type)}"
+
+    # May evaluate c_expression several times
+    def emit_incref(self, c_expression: str, the_type: Type) -> str:
+        if isinstance(the_type, UnionType):
+            return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
+        if (
+            the_type.generic_origin is not None
+            and the_type.generic_origin.generic is OPTIONAL
+        ):
+            value_incref = self.emit_incref(
+                f"({c_expression}).value", the_type.generic_origin.arg
+            )
+            return f"do{{ if(!({c_expression}).isnull) {value_incref}; }} while(0)"
+        if the_type.refcounted:
+            return f"incref({c_expression})"
+        return "(void)0"
+
+    def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        if isinstance(the_type, UnionType):
+            return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
+        if (
+            the_type.generic_origin is not None
+            and the_type.generic_origin.generic is OPTIONAL
+        ):
+            value_decref = self.emit_decref(
+                f"({c_expression}).value", the_type.generic_origin.arg
+            )
+            return f"(({c_expression}).isnull ? (void)0 : {value_decref})"
+        if the_type.refcounted:
+            return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
+        return "(void)0"
+
+    def define_generic(self, the_type: Type) -> None:
+        assert the_type.generic_origin is not None
+        itemtype = the_type.generic_origin.arg
+        type_cname = (
+            f"{the_type.generic_origin.generic.name}_{self.get_type_c_name(itemtype)}"
+        )
+        self.generic_type_names[the_type] = type_cname
+
+        code_dict = _generic_c_codes[the_type.generic_origin.generic]
+        substitutions = {
+            "type_cname": type_cname,
+            "itemtype": self.emit_type(itemtype),
+            "itemtype_cname": self.get_type_c_name(itemtype),
+            "itemtype_string": the_type.name,
+            "incref_val": self.emit_incref("val", itemtype),
+            "decref_val": self.emit_decref("val", itemtype),
+        }
+        (self.compilation_dir / (type_cname + ".h")).write_text(
+            f"""
+            #ifndef {type_cname}_DEFINED
+            #define {type_cname}_DEFINED
+            {self.includes}
+            {code_dict["structs"] % substitutions}
+            {code_dict["function_decls"] % substitutions}
+            #endif
+            """,
+            encoding="utf-8",
+        )
+        (self.compilation_dir / (type_cname + ".c")).write_text(
+            f"""
+            #include "{type_cname}.h"
+            {code_dict["function_defs"] % substitutions}
+            """,
+            encoding="utf-8",
+        )
+
+        self.c_paths.append(self.compilation_dir / (type_cname + ".c"))
+        self.includes += f'#include "{type_cname}.h"\n'
 
     def create_c_code(
         self,
         top_decls: List[ir.ToplevelDeclaration],
-        path: pathlib.Path,
-        include_list: List[str],
-    ) -> Tuple[str, str]:
-        includes = "#include <lib/oomph.h>\n" + "".join(
-            f'#include "{header}"\n' for header in include_list
-        )
-
-        emitter = _FileEmitter(self, path)
+        source_path: pathlib.Path,
+        c_path: pathlib.Path,
+        h_path: pathlib.Path,
+    ) -> None:
+        emitter = _FileEmitter(self, source_path)
         for top_declaration in top_decls:
             emitter.emit_toplevel_declaration(top_declaration)
 
-        h_code = includes + emitter.structs + emitter.function_decls
-        c_code = h_code + emitter.string_defs + emitter.function_defs
+        h_code = self.includes + emitter.structs + emitter.function_decls
+        c_code = (
+            f'#include "{h_path.name}"\n' + emitter.string_defs + emitter.function_defs
+        )
+
         header_guard = "HEADER_" + hashlib.md5(c_code.encode("utf-8")).hexdigest()
-        return (
-            c_code,
+        c_path.write_text(c_code, encoding="utf-8")
+        h_path.write_text(
             f"""
             #ifndef {header_guard}
             #define {header_guard}
             {h_code}
-            #endif""",
+            #endif
+            """,
+            encoding="utf-8",
         )
+
+        self.c_paths.append(c_path)
+        self.includes += f'#include "{h_path.name}"\n'
