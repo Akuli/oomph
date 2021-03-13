@@ -504,7 +504,7 @@ class _FilePair:
         self.id = pair_id  # used in file names and type names
         self.session = session
         self.strings: Dict[str, str] = {}
-        self.struct = ""
+        self.struct: Optional[str] = None
         self.string_defs = ""
         self.function_decls = ""
         self.function_defs = ""
@@ -626,7 +626,9 @@ class _FilePair:
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
-            self.strings[value] = _create_id(f"string{len(self.strings)}_" + value, value)
+            self.strings[value] = _create_id(
+                f"string{len(self.strings)}_" + value, value
+            )
 
             # String constants consist of int64_t refcount set to -1,
             # followed by utf8, followed by zero byte
@@ -642,8 +644,9 @@ class _FilePair:
 
     # Must not be called multiple times for the same _FilePair
     def define_type(self, the_type: Type) -> None:
+        assert self.struct is None
+
         if the_type.generic_origin is not None:
-            assert not self.struct
             itemtype = the_type.generic_origin.arg
             code_dict = _generic_c_codes[the_type.generic_origin.generic]
             string_formatting = {
@@ -656,7 +659,6 @@ class _FilePair:
                 "incref_val": self.session.emit_incref("val", itemtype),
                 "decref_val": self.session.emit_decref("val", itemtype),
             }
-            assert not self.struct
             self.struct = code_dict["struct"] % string_formatting
             self.function_decls += code_dict["function_decls"] % string_formatting
             self.function_defs += code_dict["function_defs"] % string_formatting
@@ -739,7 +741,6 @@ class _FilePair:
                 f"\t{self.emit_type(the_type)} item{index};\n"
                 for index, the_type in enumerate(the_type.type_members)
             )
-            assert not self.struct
             self.struct = f"""
             struct class_{self.id} {{
                 union {{
@@ -770,7 +771,6 @@ class _FilePair:
                 for typ, nam in the_type.members
             )
 
-            assert not self.struct
             self.struct = f"""
             struct class_{self.id} {{
                 REFCOUNT_HEADER
@@ -905,13 +905,17 @@ class Session:
                 c_includes += f'#include "{builtins_pair.id}.h"\n'
                 h_includes += f'#include "{builtins_pair.id}.h"\n'
 
-            c_includes += "".join(f'#include "{pair.id}.h"\n' for pair in file_pair.c_includes)
-            h_includes += "".join(f'#include "{pair.id}.h"\n' for pair in file_pair.h_includes)
+            c_includes += "".join(
+                f'#include "{pair.id}.h"\n' for pair in file_pair.c_includes
+            )
+            h_includes += "".join(
+                f'#include "{pair.id}.h"\n' for pair in file_pair.h_includes
+            )
 
             h_code = (
                 h_includes
                 + file_pair.h_fwd_decls
-                + file_pair.struct
+                + (file_pair.struct or "")
                 + file_pair.function_decls
             )
             c_code = c_includes + file_pair.string_defs + file_pair.function_defs
