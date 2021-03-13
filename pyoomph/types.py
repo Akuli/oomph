@@ -64,7 +64,6 @@ class UnionType(Type):
     def set_type_members(self, type_members: List[Type]) -> None:
         assert len(type_members) >= 2
         assert len(type_members) == len(set(type_members))  # no duplicates
-        assert all(t.refcounted for t in type_members)  # TODO: get rid of this assert
         assert self.type_members is None
         self.type_members = type_members
 
@@ -75,15 +74,16 @@ class Generic:
     name: str
 
     def get_type(self, generic_arg: Type) -> Type:
+        result: Type
         if self is OPTIONAL:
-            result = Type(f"{self.name}[{generic_arg.name}]", generic_arg.refcounted)
-            result.generic_origin = GenericSource(self, generic_arg)
+            mypy_sucks = UnionType(f"{self.name}[{generic_arg.name}]")
+            mypy_sucks.set_type_members([generic_arg, NULL_TYPE])
+            result = mypy_sucks
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
             result.methods["equals"] = FunctionType([result, result], BOOL)
         elif self is LIST:
             result = Type(f"{self.name}[{generic_arg.name}]", True)
-            result.generic_origin = GenericSource(self, generic_arg)
             result.constructor_argtypes = []
             result.methods["first"] = FunctionType([result], generic_arg)
             result.methods["get"] = FunctionType([result, INT], generic_arg)
@@ -93,12 +93,13 @@ class Generic:
             result.methods["push"] = FunctionType([result, generic_arg], None)
             result.methods["push_all"] = FunctionType([result, result], None)
             result.methods["reversed"] = FunctionType([result], result)
+            result.methods["to_string"] = FunctionType([result], STRING)
             if generic_arg is STRING:
                 result.methods["join"] = FunctionType([result, STRING], STRING)
         else:
             raise NotImplementedError
 
-        result.methods["to_string"] = FunctionType([result], STRING)
+        result.generic_origin = GenericSource(self, generic_arg)
         return result
 
 
@@ -131,6 +132,7 @@ class FunctionType(Type):
 BOOL = Type("Bool", False)
 FLOAT = Type("Float", False)
 INT = Type("Int", False)
+NULL_TYPE = Type("<type of null>", False)
 STRING = Type("Str", True)
 
 BOOL.methods["equals"] = FunctionType([BOOL, BOOL], BOOL)
@@ -145,6 +147,8 @@ FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 
 INT.methods["equals"] = FunctionType([INT, INT], BOOL)
 INT.methods["to_string"] = FunctionType([INT], STRING)
+
+NULL_TYPE.methods["to_string"] = FunctionType([NULL_TYPE], STRING)
 
 STRING.methods["center_pad"] = FunctionType([STRING, INT, STRING], STRING)
 STRING.methods["contains"] = FunctionType([STRING, STRING], BOOL)

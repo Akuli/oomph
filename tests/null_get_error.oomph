@@ -1,0 +1,2 @@
+export func main():
+    new Optional[Str](null).get()

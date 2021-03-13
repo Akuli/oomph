@@ -163,10 +163,7 @@ class _FunctionOrMethodConverter:
         elif isinstance(call.func, ast.Constructor):
             the_class = self.file_converter.get_type(call.func.type)
             assert the_class.constructor_argtypes is not None
-            args = [self.do_expression(arg) for arg in call.args]
-            assert [
-                arg.type for arg in args
-            ] == the_class.constructor_argtypes, the_class.name
+            args = self.do_args(call.args, the_class.constructor_argtypes)
             result_var = self.create_var(the_class)
             self.code.append(ir.CallConstructor(result_var, args))
         else:

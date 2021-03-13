@@ -1,12 +1,14 @@
 func show(Optional[Str] x):
-    print("show: {x} {x == null[Str]}")
+    print("show: {x} {x == null}")
 
 export func main():
     let x = new Optional[Str]("lol" + "wat")
-    print("main: {x} {x == null[Str]}")
+    print("main: {x} {x == null}")
     show(x)
-    show(null[Str])
+    show(null)
 
-    print(null[Str] == null[Str])
-    print(x == null[Str])
-    print(x == new Optional[Str]("lolwat"))
+    print(new Optional[Str](null) == new Optional[Str](null))
+    print(new Optional[Str](null) == null)
+    print(null == new Optional[Str](null))
+    print(x == null)
+    print(x == "lolwat")

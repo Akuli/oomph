@@ -63,7 +63,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
         let arg_strings = new List[Str]()
         foreach arg of args:
             arg_strings.push(self.emit_var(arg))
-        if result == null[ir::LocalVariable]:
+        if result == null:
             let assignment = ""
         else:
             assignment = "{self.emit_var(result.get())} ="
@@ -80,7 +80,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 """
             case ir::FunctionCall call:
                 if call.function == self.file.builtins.PRINT:
-                    self.emit_call("io_print", call.args, null[ir::LocalVariable])
+                    self.emit_call("io_print", call.args, null)
                 else:
                     self.emit_call(call.function.name, call.args, call.result_var)
             case ir::IntConstant intconst:

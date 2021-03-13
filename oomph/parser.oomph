@@ -118,7 +118,7 @@ class Parser(List[tokenizer::Token] tokens):
                 case *:
                     continue
             return new Optional[Int](i)
-        return null[Int]
+        return new Optional[Int](null)
 
     meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] operators):
         while magic_list.length() >= 2:
@@ -134,7 +134,7 @@ class Parser(List[tokenizer::Token] tokens):
                     pass
 
             let i_or_null = self.find_binary_operator(magic_list, operators)
-            if i_or_null != null[Int]:
+            if i_or_null != null:
                 let i = i_or_null.get()
                 let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
                 let lhs = get_expr(lhs_op_rhs.first())
@@ -188,7 +188,7 @@ class Parser(List[tokenizer::Token] tokens):
         let name = self.get_token_by_type("id").value
         self.get_token("op", "(")
         self.get_token("op", ")")
-        return new ast::FuncDef(name, new List[ast::FuncDefArgument](), null[ast::Type], self.parse_block_of_statements())
+        return new ast::FuncDef(name, new List[ast::FuncDefArgument](), null, self.parse_block_of_statements())
 
 export func parse_file(Str code) -> List[ast::FuncDef]:
     let parser = new Parser(tokenizer::tokenize(code).reversed())

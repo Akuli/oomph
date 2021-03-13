@@ -27,7 +27,7 @@ export func create_builtins() -> Builtins:
     let INT = new ObjectType("Int", true)
     let FLOAT = new ObjectType("Float", true)
 
-    let prrrint = new BuiltinVariable("print", new FunctionType([STR], null[ObjectType]))
+    let prrrint = new BuiltinVariable("print", new FunctionType([STR], null))
 
     # TODO: multiline literals
     let hidden_vars = new List[BuiltinVariable]()
