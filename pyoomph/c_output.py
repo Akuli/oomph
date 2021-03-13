@@ -519,7 +519,14 @@ class _FilePair:
                 self.includes.add(defining_file_pair)
             type_id = defining_file_pair.id
 
-        if the_type.refcounted and not isinstance(the_type, UnionType):
+        if (
+            the_type.refcounted
+            and not isinstance(the_type, UnionType)
+            and not (
+                the_type.generic_origin is not None
+                and the_type.generic_origin.generic is OPTIONAL
+            )
+        ):
             return f"struct class_{type_id} *"
         return f"struct class_{type_id}"
 
