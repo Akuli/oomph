@@ -27,6 +27,13 @@ class Type:
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
 
+    def get_id_string(self):
+        result = self.name + str(self.definition_path)
+        if self.generic_origin is not None:
+            result += self.generic_origin.generic.name
+            result += self.generic_origin.arg.get_id_string()
+        return result
+
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
 

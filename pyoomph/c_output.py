@@ -814,8 +814,7 @@ class Session:
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self._type_to_file_pair:
-            # FIXME: Optional[Foo] when two files define different Foo classes
-            identifying = str(the_type.definition_path) + the_type.name
+            identifying = the_type.get_id_string()
             pair = _FilePair(self, _create_id(the_type.name, identifying))
             self._type_to_file_pair[the_type] = pair
             pair.define_type(the_type)
