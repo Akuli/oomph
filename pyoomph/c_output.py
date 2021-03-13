@@ -545,7 +545,7 @@ class _FilePair:
 
         if need_include:
             self.c_includes.add(defining_file_pair)
-            if can_fwd_declare_in_header and defining_file_pair not in self.h_includes:
+            if can_fwd_declare_in_header:
                 self.h_fwd_decls += f"struct class_{type_id};\n"
             else:
                 self.h_includes.add(defining_file_pair)
