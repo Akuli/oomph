@@ -481,26 +481,28 @@ _generic_c_codes = {
 }
 
 
+_specially_emitted_variables: Dict[ir.Variable, str] = {
+    ir.builtin_variables["__argv_count"]: "argv_count",
+    ir.builtin_variables["__argv_get"]: "argv_get",
+    ir.builtin_variables["__io_mkdir"]: "io_mkdir",
+    ir.builtin_variables["__io_read_file"]: "io_read_file",
+    ir.builtin_variables["__io_write_file"]: "io_write_file",
+    ir.builtin_variables["__string_find_internal"]: "string_find_internal",
+    ir.builtin_variables["__subprocess_run"]: "subprocess_run",
+    ir.builtin_variables["assert"]: "oomph_assert",
+    ir.builtin_variables["false"]: "false",
+    ir.builtin_variables["print"]: "io_print",
+    ir.builtin_variables["true"]: "true",
+    **{var: name for name, var in ir.special_variables.items()},
+}
+
+
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class _FilePair:
     def __init__(self, session: Session, pair_id: str):
         self.id = pair_id  # used in file names and type names
         self.session = session
-        self.variable_names: Dict[ir.Variable, str] = {
-            ir.builtin_variables["__argv_count"]: "argv_count",
-            ir.builtin_variables["__argv_get"]: "argv_get",
-            ir.builtin_variables["__io_mkdir"]: "io_mkdir",
-            ir.builtin_variables["__io_read_file"]: "io_read_file",
-            ir.builtin_variables["__io_write_file"]: "io_write_file",
-            ir.builtin_variables["__string_find_internal"]: "string_find_internal",
-            ir.builtin_variables["__subprocess_run"]: "subprocess_run",
-            ir.builtin_variables["assert"]: "oomph_assert",
-            ir.builtin_variables["false"]: "false",
-            ir.builtin_variables["print"]: "io_print",
-            ir.builtin_variables["true"]: "true",
-            **{var: name for name, var in ir.special_variables.items()},
-        }
         self.strings: Dict[str, str] = {}
         self.struct = ""
         self.string_defs = ""
@@ -566,38 +568,37 @@ class _FilePair:
                     self.c_includes.add(pair)
                     self.h_includes.add(pair)
                     return pair.emit_var(var)
-        try:
-            return self.variable_names[var]
-        except KeyError:
-            assert isinstance(var.type, FunctionType)
-            if isinstance(var, ir.FileVariable) and var.name == "main":
-                c_name = "oomph_main"
-            elif var.name in {
-                "__List_Str_join",
-                "__Str_center_pad",
-                "__Str_contains",
-                "__Str_count",
-                "__Str_ends_with",
-                "__Str_find_first",
-                "__Str_left_pad",
-                "__Str_left_trim",
-                "__Str_repeat",
-                "__Str_replace",
-                "__Str_right_pad",
-                "__Str_right_trim",
-                "__Str_split",
-                "__Str_starts_with",
-                "__Str_trim",
-                "__Bool_to_string",
-            }:
-                # Class implemented in C, method implemented in builtins.oomph
-                # TODO: check if this file is builtins.oomph
-                c_name = "meth_" + var.name.lstrip("_")
-            else:
-                c_name = self.id + "_" + var.name
 
-            self.variable_names[var] = c_name
-            return c_name
+        if var in _specially_emitted_variables:
+            return _specially_emitted_variables[var]
+
+        assert isinstance(var.type, FunctionType)
+        if isinstance(var, ir.FileVariable) and var.name == "main":
+            c_name = "oomph_main"
+        elif var.name in {
+            "__List_Str_join",
+            "__Str_center_pad",
+            "__Str_contains",
+            "__Str_count",
+            "__Str_ends_with",
+            "__Str_find_first",
+            "__Str_left_pad",
+            "__Str_left_trim",
+            "__Str_repeat",
+            "__Str_replace",
+            "__Str_right_pad",
+            "__Str_right_trim",
+            "__Str_split",
+            "__Str_starts_with",
+            "__Str_trim",
+            "__Bool_to_string",
+        }:
+            # Class implemented in C, method implemented in builtins.oomph
+            # TODO: check if this file is builtins.oomph
+            c_name = "meth_" + var.name.lstrip("_")
+        else:
+            c_name = self.id + "_" + var.name
+        return c_name
 
     def emit_method(self, the_type: Type, method_name: str) -> str:
         if the_type in builtin_types.values():
