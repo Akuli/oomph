@@ -332,6 +332,11 @@ _generic_c_codes = {
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
         struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
+
+        // Kind of a weird hack
+        #if %(itemtype_is_string)s
+        #define meth_%(type_cname)s_join meth_List_Str_join
+        #endif
         """,
         "function_defs": """
         struct class_%(type_cname)s *ctor_%(type_cname)s(void)
@@ -625,6 +630,7 @@ class _FilePair:
                 "type_string": self.emit_string(the_type.name),
                 "itemtype": self.emit_type(itemtype),
                 "itemtype_cname": self.session.get_type_c_name(itemtype),
+                "itemtype_is_string": int(itemtype == STRING),
                 # TODO: replace with macros
                 "incref_val": self.session.emit_incref("val", itemtype),
                 "decref_val": self.session.emit_decref("val", itemtype),
