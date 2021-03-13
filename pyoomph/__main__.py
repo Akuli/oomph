@@ -104,8 +104,8 @@ def main() -> None:
             for top_declaration in unit.ast
             if isinstance(top_declaration, ast.Import)
         ]
-        #        if source_path != project_root / "builtins.oomph":
-        #            deps.append(project_root / "builtins.oomph")
+        if source_path != project_root / "builtins.oomph":
+            deps.append(project_root / "builtins.oomph")
         dependencies[unit.source_path] = deps
         todo_list.extend(deps)
 

@@ -72,7 +72,9 @@ class _FunctionEmitter:
             return self.incref_var(ins.var) + ";\n"
 
         if isinstance(ins, ir.DecRef):
-            return self.session.emit_decref(self.emit_var(ins.var), ins.var.type) + ";\n"
+            return (
+                self.session.emit_decref(self.emit_var(ins.var), ins.var.type) + ";\n"
+            )
 
         if isinstance(ins, ir.CallFunction):
             return self.emit_call(self.emit_var(ins.func), ins.args, ins.result)
@@ -604,16 +606,17 @@ class _FilePair:
             itemtype = the_type.generic_origin.arg
             code_dict = _generic_c_codes[the_type.generic_origin.generic]
             string_formatting = {
-                'type_cname': self.session.get_type_c_name(the_type),
-                'itemtype': self.emit_type(itemtype),
-                'itemtype_cname': self.session.get_type_c_name(itemtype),
+                "type_cname": self.session.get_type_c_name(the_type),
+                "itemtype": self.emit_type(itemtype),
+                "itemtype_string": self.emit_string(itemtype.name),
+                "itemtype_cname": self.session.get_type_c_name(itemtype),
                 # TODO: replace with macros
-                'incref_val': self.session.emit_incref('val', itemtype),
-                'decref_val': self.session.emit_decref('val', itemtype),
+                "incref_val": self.session.emit_incref("val", itemtype),
+                "decref_val": self.session.emit_decref("val", itemtype),
             }
-            self.struct = code_dict['struct'] % string_formatting
-            self.function_decls += code_dict['function_decls'] % string_formatting
-            self.function_defs += code_dict['function_defs'] % string_formatting
+            self.struct = code_dict["struct"] % string_formatting
+            self.function_decls += code_dict["function_decls"] % string_formatting
+            self.function_defs += code_dict["function_defs"] % string_formatting
 
         elif isinstance(the_type, UnionType):
             raise NotImplementedError
@@ -783,24 +786,10 @@ class _FilePair:
             raise NotImplementedError(top_declaration)
 
 
-_TRUNCATED_LEN = 30
-_HASH_LEN = 10
-
-
-def _create_id(source_path: pathlib.Path, compilation_dir: pathlib.Path) -> str:
+def _create_id(readable_part: str, identifying_part: str) -> str:
     # TODO: avoid long file names
-    result = (
-        os.path.relpath(source_path, compilation_dir.parent)
-        .replace(".", "_dot_")
-        .replace(os.sep, "_slash_")
-    )
-    if len(result) > _TRUNCATED_LEN + _HASH_LEN:
-        return (
-            result[:_TRUNCATED_LEN]
-            + "_"
-            + hashlib.md5(result.encode("utf-8")).hexdigest()[:_HASH_LEN]
-        )
-    return result
+    md5 = hashlib.md5(identifying_part.encode("utf-8")).hexdigest()
+    return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
 
 
 # This state is shared between different files
@@ -820,7 +809,7 @@ class Session:
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self.type_to_file_pair:
             assert the_type.definition_path is None
-            pair = _FilePair(self, None, re.sub(r'[^A-Za-z0-9]', '_', the_type.name))
+            pair = _FilePair(self, None, _create_id(the_type.name, the_type.name))
             self.type_to_file_pair[the_type] = pair
             pair.define_type(the_type)
         return self.type_to_file_pair[the_type]
@@ -853,7 +842,7 @@ class Session:
             the_type.generic_origin is not None
             and the_type.generic_origin.generic is OPTIONAL
         ):
-            value_decref = self.session.emit_decref(
+            value_decref = self.emit_decref(
                 f"({c_expression}).value", the_type.generic_origin.arg
             )
             return f"(({c_expression}).isnull ? (void)0 : {value_decref})"
@@ -865,7 +854,12 @@ class Session:
         self, top_decls: List[ir.ToplevelDeclaration], source_path: pathlib.Path
     ) -> None:
         pair = _FilePair(
-            self, source_path, _create_id(source_path, self.compilation_dir)
+            self,
+            source_path,
+            _create_id(
+                source_path.stem,
+                os.path.relpath(source_path, self.compilation_dir.parent),
+            ),
         )
         self.source_path_to_file_pair[source_path] = pair
         for top_declaration in top_decls:
@@ -893,6 +887,7 @@ class Session:
             c_path.write_text(c_code + "\n", encoding="utf-8")
             h_path.write_text(
                 f"""
+                // Source path: {file_pair.source_path}
                 #ifndef {header_guard}
                 #define {header_guard}
                 {h_code}
