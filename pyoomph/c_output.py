@@ -28,6 +28,11 @@ def _emit_label(name: str) -> str:
     return f"{name}: (void)0;\n"
 
 
+def _create_id(readable_part: str, identifying_part: str) -> str:
+    md5 = hashlib.md5(identifying_part.encode("utf-8")).hexdigest()
+    return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
+
+
 class _FunctionEmitter:
     def __init__(self, file_pair: _FilePair) -> None:
         self.file_pair = file_pair
@@ -620,9 +625,7 @@ class _FilePair:
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
-            self.strings[value] = (
-                f"string{len(self.strings)}_" + re.sub(r"[^A-Za-z0-9]", "", value)[:30]
-            )
+            self.strings[value] = _create_id(f"string{len(self.strings)}_" + value, value)
 
             # String constants consist of int64_t refcount set to -1,
             # followed by utf8, followed by zero byte
@@ -814,11 +817,6 @@ class _FilePair:
 
         else:
             raise NotImplementedError(top_declaration)
-
-
-def _create_id(readable_part: str, identifying_part: str) -> str:
-    md5 = hashlib.md5(identifying_part.encode("utf-8")).hexdigest()
-    return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
 
 
 # This state is shared between different files
