@@ -1,8 +1,8 @@
 # Implicit Type Conversions
 
 Implicit conversion rules are applied in these situations (and more is planned):
-- Arguments of all calls, including functions, methods, `new`, and so on,
-    are implicitly converted to the correct types.
+- Arguments of all calls, including functions, methods, `new`, and so on.
+- The value of a `return` statement.
 - The operators `==`, `!=`, `<`, `>`, `<=`, `>=`, `+`, `-`, `*` and `/`
     attempt converting their left side to have the type of the right side,
     and the right side to have the type of the left side.
@@ -24,6 +24,10 @@ Implicitly converting an object to a type follows these rules:
     type itself is a union type, then its members are ignored.
 - Otherwise, the implicit conversion fails.
 
+These rules are intentionally weak. For example, unlike in many other programming
+languages, `1 == "2"` is an error: even though the `==` operator does implicit
+conversions, nothing can implicitly convert between `Int` and `Str`.
+
 To understand what "when they are not ambiguous" means, consider the following example:
 
 ```python
@@ -43,8 +47,6 @@ Now an instance of `Foo` cannot be implicitly converted to type `Outer`,
 as it could mean `Outer(foo)` or `Outer(Inner(foo))`.
 However, an instance of `Bar` can be implicitly converted to type `Outer`,
 and that means `Outer(Inner(bar))`.
-
-These rules are intentionally weak. For example, `1 == "2"` is an error.
 
 There are some special cases:
 - If the argument of the built-in `print` function is not a string, its `.to_string()`

@@ -25,9 +25,11 @@ class _FunctionOrMethodConverter:
         self,
         file_converter: _FileConverter,
         variables: Dict[str, ir.Variable],
+        return_type: Optional[Type],
     ):
         self.file_converter = file_converter
         self.variables = variables
+        self.return_type = return_type
         self.loop_stack: List[str] = []
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
@@ -460,11 +462,19 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.Break(self.loop_stack[-1]))
 
         elif isinstance(stmt, ast.Return):
-            # TODO: check return type
-            if stmt.value is None:
+            if self.return_type is None:
+                assert stmt.value is None, "unexpected return value"
                 self.code.append(ir.Return(None))
             else:
-                self.code.append(ir.Return(self.do_expression(stmt.value)))
+                # TODO: return statements not in every possible branch
+                assert stmt.value is not None, "missing return value"
+                self.code.append(
+                    ir.Return(
+                        self.implicit_conversion(
+                            self.do_expression(stmt.value), self.return_type
+                        )
+                    )
+                )
 
         elif isinstance(stmt, ast.If):
             untyped_condition, untyped_body = stmt.ifs_and_elifs[0]
@@ -653,7 +663,8 @@ class _FileConverter:
             assert argname not in local_vars
             local_vars[argname] = copied_var
 
-        body.extend(_FunctionOrMethodConverter(self, local_vars).do_block(funcdef.body))
+        converter = _FunctionOrMethodConverter(self, local_vars, functype.returntype)
+        body.extend(converter.do_block(funcdef.body))
 
         if classtype is None:
             assert isinstance(funcvar, ir.FileVariable)

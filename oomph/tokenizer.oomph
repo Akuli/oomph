@@ -3,20 +3,20 @@ import "util.oomph" as util
 func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
     foreach prefix of prefixes:
         if s.starts_with(prefix):
-            return new Optional[Str](prefix)
-    return new Optional[Str](null)
+            return prefix
+    return null
 
 func get_simple_identifier(Str code) -> Optional[Str]:
     assert(code != "")
     let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
     if not first_chars.contains(code.slice(0, 1)):
-        return new Optional[Str](null)
+        return null
 
     let continue_chars = "{first_chars}1234567890"
     let i = 1
     while i < code.length() and continue_chars.contains(code.slice(i, i+1)):
         i = i + 1
-    return new Optional[Str](code.slice(0, i))
+    return code.slice(0, i)
 
 # TODO: enums
 # TODO: keep track of line numbers

@@ -14,7 +14,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
 
     meth builtin_call(ir::BuiltinVariable function, List[ir::LocalVariable] args) -> ir::LocalVariable:
         let result_var = self.create_var(function.type.returntype.get())
-        self.code.push(new ir::FunctionCall(function, args, new Optional[ir::LocalVariable](result_var)))
+        self.code.push(new ir::FunctionCall(function, args, result_var))
         return result_var
 
     meth int_to_float(ir::LocalVariable int_var) -> ir::LocalVariable:
@@ -86,7 +86,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
 
     meth stringify(ir::LocalVariable var) -> ir::LocalVariable:
         let result = self.create_var(self.builtins.STR)
-        self.code.push(new ir::MethodCall(var, "to_string", new List[ir::LocalVariable](), new Optional[ir::LocalVariable](result)))
+        self.code.push(new ir::MethodCall(var, "to_string", new List[ir::LocalVariable](), result))
         return result
 
     meth do_statement(ast::Call call):
