@@ -831,8 +831,7 @@ class Session:
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self._type_to_file_pair:
-            identifying = the_type.get_id_string()
-            pair = _FilePair(self, _create_id(the_type.name, identifying))
+            pair = _FilePair(self, _create_id(the_type.name, the_type.get_id_string()))
             self._type_to_file_pair[the_type] = pair
             pair.define_type(the_type)
         return self._type_to_file_pair[the_type]
