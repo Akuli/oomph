@@ -6,7 +6,7 @@ func __Bool_to_string(Bool self) -> Str:
 func __Str_find_first(Str self, Str substring) -> Optional[Int]:
     let result = __string_find_internal(self, substring)
     if result == -1:   # Currently it's difficult to have optionals in C code
-        return null[Int]
+        return new Optional[Int](null)
     return new Optional[Int](result)
 
 func __Str_repeat(Str self, Int n) -> Str:
@@ -22,7 +22,7 @@ func __Str_ends_with(Str self, Str suffix) -> Bool:
     return self.slice(self.length() - suffix.length(), self.length()) == suffix
 
 func __Str_contains(Str self, Str substring) -> Bool:
-    return self.find_first(substring) != null[Int]
+    return self.find_first(substring) != null
 
 # No need to use a third party library for this, lol
 func __Str_left_pad(Str self, Int len, Str pad_char) -> Str:
@@ -44,7 +44,7 @@ func __Str_count(Str self, Str substring) -> Int:
     # TODO: this loop isn't elegant, ideally condition could be 'i := self.find_first(...)'
     for let count = 0; ; count = count + 1:
         let i = self.find_first(substring)
-        if i == null[Int]:
+        if i == null:
             return count
         self = self.slice(i.get() + substring.length(), self.length())
 
@@ -75,7 +75,7 @@ func __Str_replace(Str self, Str old, Str neuw) -> Str:
 
     while true:
         let index = remaining.find_first(old)
-        if index == null[Int]:
+        if index == null:
             return result + remaining
         result = result + remaining.slice(0, index.get()) + neuw
         remaining = remaining.slice(index.get() + old.length(), remaining.length())
@@ -88,7 +88,7 @@ func __Str_split(Str self, Str sep) -> List[Str]:
 
     while true:
         let i = self.find_first(sep)
-        if i == null[Int]:
+        if i == null:
             result.push(self)
             return result
 

@@ -12,6 +12,7 @@ from pyoomph.types import (
     FLOAT,
     INT,
     LIST,
+    NULL_TYPE,
     OPTIONAL,
     STRING,
     FunctionType,
@@ -161,7 +162,7 @@ class _FunctionEmitter:
             assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
             membernum = ins.union.type.type_members.index(ins.result.type)
-            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};"
+            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};\n"
 
         if isinstance(ins, ir.Switch):
             assert isinstance(ins.union.type, ir.UnionType)
@@ -185,17 +186,11 @@ class _FunctionEmitter:
             """
 
         if isinstance(ins, ir.IsNull):
-            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.var)}.isnull;\n"
+            return f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.var)});\n"
 
-        if isinstance(ins, ir.SetToNull):
+        if isinstance(ins, ir.UnSet):
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
-            if (
-                ins.var.type.generic_origin is not None
-                and ins.var.type.generic_origin.generic is OPTIONAL
-            ):
-                c_type = self.file_pair.emit_type(ins.var.type)
-                return f"{self.emit_var(ins.var)} = ({c_type}){{ .isnull = true }};\n"
             if not ins.var.type.refcounted:
                 # Must not run for non-refcounted unions or optionals
                 return ""
@@ -214,7 +209,7 @@ class _FunctionEmitter:
         if declare:
             self.before_body += f"{self.file_pair.emit_type(var.type)} {name};\n"
             # TODO: add these in ast2ir?
-            self.before_body += self.emit_instruction(ir.SetToNull(var))
+            self.before_body += self.emit_instruction(ir.UnSet(var))
 
         if need_decref:
             assert var not in self.need_decref
@@ -272,48 +267,6 @@ class _FunctionEmitter:
 
 
 _generic_c_codes = {
-    OPTIONAL: {
-        "struct": """
-        struct class_%(type_cname)s {
-            bool isnull;
-            %(itemtype)s value;
-        };
-        """,
-        "function_decls": """
-        struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val);
-        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt);
-        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt);
-        """,
-        "function_defs": """
-        struct class_%(type_cname)s ctor_%(type_cname)s(%(itemtype)s val)
-        {
-            %(incref_val)s;
-            return (struct class_%(type_cname)s) { false, val };
-        }
-
-        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s opt)
-        {
-            assert(!opt.isnull);
-            %(itemtype)s val = opt.value;
-            %(incref_val)s;
-            return val;
-        }
-
-        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s opt)
-        {
-            if (opt.isnull)
-                return cstr_to_string("null");
-
-            struct class_Str *res = %(type_string)s;
-            string_concat_inplace(&res, "(");
-            struct class_Str *s = meth_%(itemtype_cname)s_to_string(opt.value);
-            string_concat_inplace(&res, s->str);
-            decref(s, dtor_Str);
-            string_concat_inplace(&res, ")");
-            return res;
-        }
-        """,
-    },
     LIST: {
         # TODO: have this struct on stack when possible, same with strings
         "struct": """
@@ -491,6 +444,7 @@ _specially_emitted_variables: Dict[ir.Variable, str] = {
     ir.builtin_variables["__subprocess_run"]: "subprocess_run",
     ir.builtin_variables["assert"]: "oomph_assert",
     ir.builtin_variables["false"]: "false",
+    ir.builtin_variables["null"]: "0",
     ir.builtin_variables["print"]: "io_print",
     ir.builtin_variables["true"]: "true",
     **{var: name for name, var in ir.special_variables.items()},
@@ -528,6 +482,8 @@ class _FilePair:
             return "double"
         if the_type is BOOL:
             return "bool"
+        if the_type is NULL_TYPE:
+            return "char"  # always zero
 
         if the_type in builtin_types.values():
             type_id = the_type.name
@@ -538,14 +494,7 @@ class _FilePair:
             need_include = defining_file_pair is not self
 
         result = f"struct class_{type_id}"
-        if (
-            the_type.refcounted
-            and not isinstance(the_type, UnionType)
-            and not (
-                the_type.generic_origin is not None
-                and the_type.generic_origin.generic is OPTIONAL
-            )
-        ):
+        if the_type.refcounted and not isinstance(the_type, UnionType):
             result += "*"
         else:
             can_fwd_declare_in_header = False
@@ -639,24 +588,7 @@ class _FilePair:
     def define_type(self, the_type: Type) -> None:
         assert self.struct is None
 
-        if the_type.generic_origin is not None:
-            itemtype = the_type.generic_origin.arg
-            code_dict = _generic_c_codes[the_type.generic_origin.generic]
-            string_formatting = {
-                "type_cname": self.session.get_type_c_name(the_type),
-                "type_string": self.emit_string(the_type.name),
-                "itemtype": self.emit_type(itemtype, can_fwd_declare_in_header=False),
-                "itemtype_cname": self.session.get_type_c_name(itemtype),
-                "itemtype_is_string": int(itemtype == STRING),
-                # TODO: replace with macros
-                "incref_val": self.session.emit_incref("val", itemtype),
-                "decref_val": self.session.emit_decref("val", itemtype),
-            }
-            self.struct = code_dict["struct"] % string_formatting
-            self.function_decls += code_dict["function_decls"] % string_formatting
-            self.function_defs += code_dict["function_defs"] % string_formatting
-
-        elif isinstance(the_type, UnionType):
+        if isinstance(the_type, UnionType):
             assert the_type.type_members is not None
 
             to_string_cases = "".join(
@@ -742,6 +674,44 @@ class _FilePair:
                 short membernum;
             }};
             """
+
+            if (
+                the_type.generic_origin is not None
+                and the_type.generic_origin.generic is OPTIONAL
+            ):
+                itemtype = the_type.generic_origin.arg
+                itemtype_code = self.emit_type(the_type.generic_origin.arg)
+                self.function_decls += (
+                    f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
+                )
+                self.function_defs += f"""
+                {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
+                {{
+                    if (IS_NULL(obj))
+                        panic_printf("Error: null.get() was called");
+
+                    {self.session.emit_incref('obj.val.item0', itemtype)};
+                    return obj.val.item0;
+                }}
+                """
+
+        elif the_type.generic_origin is not None:
+            itemtype = the_type.generic_origin.arg
+            code_dict = _generic_c_codes[the_type.generic_origin.generic]
+            string_formatting = {
+                "type_cname": self.session.get_type_c_name(the_type),
+                "type_string": self.emit_string(the_type.name),
+                "itemtype": self.emit_type(itemtype, can_fwd_declare_in_header=False),
+                "itemtype_cname": self.session.get_type_c_name(itemtype),
+                "itemtype_is_string": int(itemtype == STRING),
+                # TODO: replace with macros
+                "incref_val": self.session.emit_incref("val", itemtype),
+                "decref_val": self.session.emit_decref("val", itemtype),
+            }
+            self.struct = code_dict["struct"] % string_formatting
+            self.function_decls += code_dict["function_decls"] % string_formatting
+            self.function_defs += code_dict["function_defs"] % string_formatting
+
         else:
             struct_members = "".join(
                 f"{self.emit_type(the_type)} memb_{name};\n"
@@ -829,6 +799,8 @@ class Session:
         return self._type_to_file_pair[the_type]
 
     def get_type_c_name(self, the_type: Type) -> str:
+        if the_type is NULL_TYPE:
+            return "null"
         if the_type in builtin_types.values():
             return the_type.name
         return self.get_file_pair_for_type(the_type).id
@@ -837,14 +809,6 @@ class Session:
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
             return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_incref = self.emit_incref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"do{{ if(!({c_expression}).isnull) {value_incref}; }} while(0)"
         if the_type.refcounted:
             return f"incref({c_expression})"
         return "(void)0"
@@ -859,7 +823,7 @@ class Session:
             value_decref = self.emit_decref(
                 f"({c_expression}).value", the_type.generic_origin.arg
             )
-            return f"(({c_expression}).isnull ? (void)0 : {value_decref})"
+            return f"(IS_NULL({c_expression}) ? (void)0 : {value_decref})"
         if the_type.refcounted:
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         return "(void)0"

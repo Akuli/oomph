@@ -9,6 +9,7 @@ from pyoomph.types import (
     FLOAT,
     INT,
     LIST,
+    NULL_TYPE,
     OPTIONAL,
     STRING,
     FunctionType,
@@ -71,6 +72,7 @@ builtin_variables = {
         BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
+        BuiltinVariable("null", NULL_TYPE),
         BuiltinVariable("print", FunctionType([STRING], None)),
         BuiltinVariable("true", BOOL),
     ]
@@ -239,7 +241,7 @@ class DecRef(Instruction):
 
 
 @dataclass(eq=False)
-class SetToNull(Instruction):
+class UnSet(Instruction):
     var: LocalVariable
 
 

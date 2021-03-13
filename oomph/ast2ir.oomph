@@ -103,7 +103,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
             if func_var == self.builtins.PRINT and expr.type != self.builtins.STR:
                 expr = self.stringify(expr)
             argvars.push(expr)
-        self.code.push(new ir::FunctionCall(func_var, argvars, null[ir::LocalVariable]))
+        self.code.push(new ir::FunctionCall(func_var, argvars, null))
 
     meth do_block(List[ast::Call] body) -> List[ir::Instruction]:
         # TODO: separate class
@@ -114,7 +114,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
 
     meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
         assert(funcdef.args.length() == 0)
-        let functype = new ir::FunctionType(new List[ir::ObjectType](), null[ir::ObjectType])
+        let functype = new ir::FunctionType(new List[ir::ObjectType](), null)
         assert(funcdef.name == "main")
         let func_var = new ir::ThisFileVariable(funcdef.name, functype)
         let body = self.do_block(funcdef.body)

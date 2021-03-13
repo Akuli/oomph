@@ -4,13 +4,13 @@ func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
     foreach prefix of prefixes:
         if s.starts_with(prefix):
             return new Optional[Str](prefix)
-    return null[Str]
+    return new Optional[Str](null)
 
 func get_simple_identifier(Str code) -> Optional[Str]:
     assert(code != "")
     let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
     if not first_chars.contains(code.slice(0, 1)):
-        return null[Str]
+        return new Optional[Str](null)
 
     let continue_chars = "{first_chars}1234567890"
     let i = 1
@@ -37,12 +37,12 @@ func raw_tokenize(Str code) -> List[Token]:
         let op = starts_with_any(code, ["(", ")", ":", "\n", "+", "-", "*", "/"])
         let int_value = get_int(code)
 
-        if id != null[Str]:
+        if id != null:
             if id.get() == "export" or id.get() == "func":
                 let token = new Token("keyword", id.get())
             else:
                 token = new Token("id", id.get())
-        elif op != null[Str]:
+        elif op != null:
             token = new Token("op", op.get())
         elif int_value != "":
             let remaining = code.slice(int_value.length(), code.length())

@@ -52,7 +52,7 @@ abc**
 *abc**
 Find first:
 Optional[Int](3)
-null
+Optional[Int](null)
 Optional[Int](0)
 Count:
 2

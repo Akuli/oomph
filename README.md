@@ -35,7 +35,7 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
-- `==` for unions
+- implicit conversions of return values
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - functions as first-class objects
 - better error messaging
@@ -77,8 +77,6 @@ Missing features:
     - mappings
         - `Str.replace(mapping)` (I wish python had this)
 - automatic types
-    - automaticly turn `x` into `new SomeUnion(x)` when needed
-        - can be difficult: what if unions are nested in a cyclic way?
     - `null[Str]` --> `null[auto]`
     - `null[auto]` --> `null`
     - `new List[Str]()` --> `[]`
@@ -119,6 +117,8 @@ Design questions to (re)think:
 - rename `switch` to `match`? note that `match` is a beautiful variable name
 - `in` operator: `a in b` vs `b.contains(a)`
 - tempting to use `func` as variable name
+- should union types show up as such when printed, like they do? or should
+    `print(new Optional[int](null))` just print `null`?
 - name of `self`? maybe `instance` or `this`? also considered `inst`, but that's too short
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.

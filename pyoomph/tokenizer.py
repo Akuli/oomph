@@ -18,7 +18,6 @@ _TOKEN_REGEX = r'''
         | case
         | generic
         | new
-        | null
         | return
         | pass
         | mod

@@ -38,22 +38,23 @@ void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
 int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub);
 int64_t subprocess_run(void *args);
 
-#define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
 #define meth_Bool_equals(a, b) ((a)==(b))
 #define meth_Float_equals(a, b) ((a)==(b))
 #define meth_Int_equals(a, b) ((a)==(b))
+#define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
+#define meth_null_to_string(n) cstr_to_string("null")
 double meth_Str_to_float(const struct class_Str *s);
-int64_t meth_Str_length(const struct class_Str *s);
-int64_t meth_Str_to_int(const struct class_Str *s);
-int64_t meth_Str_unicode_length(const struct class_Str *s);
 int64_t meth_Float_ceil(double d);
 int64_t meth_Float_floor(double d);
 int64_t meth_Float_round(double d);
 int64_t meth_Float_truncate(double d);
-struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end);
-struct class_Str *meth_Str_to_string(struct class_Str *s);
+int64_t meth_Str_length(const struct class_Str *s);
+int64_t meth_Str_to_int(const struct class_Str *s);
+int64_t meth_Str_unicode_length(const struct class_Str *s);
 struct class_Str *meth_Float_to_string(double d);
 struct class_Str *meth_Int_to_string(int64_t n);
+struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end);
+struct class_Str *meth_Str_to_string(struct class_Str *s);
 
 /*
 Can't be macros because of assumptions that compiler makes:
@@ -80,5 +81,9 @@ void decref(void *ptr, void (*destructor)(void *ptr));
 double float_mod(double a, double b);
 int64_t int_mod(int64_t a, int64_t b);
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
+
+// Optional[T] is actually Union[NULL_TYPE, T]
+// To set variable to null, do:  var = (the_type){0};
+#define IS_NULL(unionvar) ((unionvar).membernum == 1)
 
 #endif   // LIB_H
