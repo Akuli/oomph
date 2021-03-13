@@ -600,13 +600,6 @@ class _FilePair:
             c_name = self.id + "_" + var.name
         return c_name
 
-    def emit_method(self, the_type: Type, method_name: str) -> str:
-        if the_type in builtin_types.values():
-            return f"meth_{the_type.name}_{method_name}"
-
-        defining_file_pair = self.session.get_file_pair_for_type(the_type)
-        return f"meth_{defining_file_pair.id}_{method_name}"
-
     def define_function(
         self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
     ) -> None:
