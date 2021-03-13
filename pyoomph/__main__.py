@@ -28,7 +28,7 @@ class CompilationUnit:
             source_code, self.source_path, project_root / "stdlib"
         )
 
-    def create_c_code(self, exports: List[ir.Export]) -> None:
+    def create_c_code(self, exports: List[ir.Symbol]) -> None:
         try:
             ir = ast2ir.convert_program(self.ast, self.source_path, exports)
             self.session.create_c_code(ir, self.source_path)
@@ -139,7 +139,7 @@ def main() -> None:
     for unit in compilation_order:
         if compiler_args.verbose:
             print("Creating C code:", unit.source_path)
-        unit.create_c_code(session.exports)
+        unit.create_c_code(session.symbols)
 
     c_paths = session.write_everything(project_root / "builtins.oomph")
     command = get_c_compiler_command(c_paths, exe_path)

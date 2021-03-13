@@ -587,9 +587,9 @@ def _create_to_string_method(class_type: ir.Type) -> ast.FuncOrMethodDef:
 
 
 class _FileConverter:
-    def __init__(self, path: pathlib.Path, exports: List[ir.Export]) -> None:
+    def __init__(self, path: pathlib.Path, symbols: List[ir.Symbol]) -> None:
         self.path = path
-        self.exports = exports
+        self.symbols = symbols
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         # https://github.com/python/typeshed/issues/5089
@@ -623,13 +623,10 @@ class _FileConverter:
                 self.variables.keys(),
             )
 
-            if funcdef.export:
-                func_var = ir.ExportVariable(funcdef.name, functype)
-                self.exports.append(ir.Export(self.path, funcdef.name, func_var))
-                mypy_sucks: Union[ir.ExportVariable, ir.ThisFileVariable] = func_var
-            else:
-                mypy_sucks = ir.ThisFileVariable(funcdef.name, functype)
-            self.add_var(mypy_sucks, mypy_sucks.name)
+            # TODO: use funcdef.export
+            func_var = ir.FileVariable(funcdef.name, functype, self.path)
+            self.symbols.append(ir.Symbol(self.path, funcdef.name, func_var))
+            self.add_var(func_var, funcdef.name)
         else:
             assert funcdef.name not in classtype.methods
             classtype.methods[funcdef.name] = functype
@@ -662,7 +659,7 @@ class _FileConverter:
         body.extend(_FunctionOrMethodConverter(self, local_vars).do_block(funcdef.body))
 
         if classtype is None:
-            assert isinstance(funcvar, (ir.ThisFileVariable, ir.ExportVariable))
+            assert isinstance(funcvar, ir.FileVariable)
             return ir.FuncDef(funcvar, argvars, body)
         else:
             assert not funcdef.export
@@ -727,15 +724,15 @@ class _FileConverter:
         self, top_declaration: ast.ToplevelDeclaration
     ) -> None:
         if isinstance(top_declaration, ast.Import):
-            for export in self.exports:
-                if export.path != top_declaration.path:
+            for symbol in self.symbols:
+                if symbol.path != top_declaration.path:
                     continue
 
-                name = top_declaration.name + "::" + export.name
-                if isinstance(export.value, ir.ExportVariable):
-                    self.add_var(export.value, name)
+                name = top_declaration.name + "::" + symbol.name
+                if isinstance(symbol.value, ir.FileVariable):
+                    self.add_var(symbol.value, name)
                 else:
-                    self._types[name] = export.value
+                    self._types[name] = symbol.value
 
         elif isinstance(top_declaration, ast.FuncOrMethodDef):
             self._do_func_or_method_def_pass1(top_declaration, classtype=None)
@@ -790,18 +787,16 @@ class _FileConverter:
                 assert isinstance(typed_def, ir.MethodDef)
                 typed_method_defs.append(typed_def)
 
-            if top_declaration.export:
-                self.exports.append(
-                    ir.Export(self.path, top_declaration.name, classtype)
-                )
+            # TODO: use top_declaration.export
+            self.symbols.append(ir.Symbol(self.path, top_declaration.name, classtype))
             return typed_method_defs
 
         if isinstance(top_declaration, ast.UnionDef):
             union_type = self._types[top_declaration.name]
             assert isinstance(union_type, UnionType)
             if top_declaration.export:
-                self.exports.append(
-                    ir.Export(self.path, top_declaration.name, union_type)
+                self.symbols.append(
+                    ir.Symbol(self.path, top_declaration.name, union_type)
                 )
 
             equals = self._create_union_equals_method(union_type)
@@ -816,11 +811,9 @@ class _FileConverter:
 
 
 def convert_program(
-    program: List[ast.ToplevelDeclaration],
-    path: pathlib.Path,
-    exports: List[ir.Export],
+    program: List[ast.ToplevelDeclaration], path: pathlib.Path, symbols: List[ir.Symbol]
 ) -> List[ir.ToplevelDeclaration]:
-    converter = _FileConverter(path, exports)
+    converter = _FileConverter(path, symbols)
     for top in program:
         converter.do_toplevel_declaration_pass1(top)
     for key in list(converter.union_laziness):

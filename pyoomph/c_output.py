@@ -554,9 +554,9 @@ class _FilePair:
     def emit_var(self, var: ir.Variable) -> str:
         assert not isinstance(var, ir.LocalVariable)
 
-        for export in self.session.exports:
-            if export.value == var:
-                pair = self.session.source_path_to_file_pair[export.path]
+        for symbol in self.session.symbols:
+            if symbol.value == var:
+                pair = self.session.source_path_to_file_pair[symbol.path]
                 if pair is not self:
                     self.c_includes.add(pair)
                     self.h_includes.add(pair)
@@ -565,7 +565,7 @@ class _FilePair:
             return self.variable_names[var]
         except KeyError:
             assert isinstance(var.type, FunctionType)
-            if isinstance(var, ir.ExportVariable) and var.name == "main":
+            if isinstance(var, ir.FileVariable) and var.name == "main":
                 c_name = "oomph_main"
             elif var.name in {
                 "__List_Str_join",
@@ -825,7 +825,7 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
 class Session:
     def __init__(self, compilation_dir: pathlib.Path) -> None:
         self.compilation_dir = compilation_dir
-        self.exports: List[ir.Export] = []
+        self.symbols: List[ir.Symbol] = []
         self._type_to_file_pair: Dict[Type, _FilePair] = {}
         self.source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
 
