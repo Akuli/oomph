@@ -9,7 +9,7 @@ import sys
 import traceback
 from typing import Dict, List
 
-from pyoomph import ast, ast2ir, c_output, parser
+from pyoomph import ast, ast2ir, c_output, ir, parser
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
@@ -28,9 +28,9 @@ class CompilationUnit:
             source_code, self.source_path, project_root / "stdlib"
         )
 
-    def create_c_code(self) -> None:
+    def create_c_code(self, exports: List[ir.Export]) -> None:
         try:
-            ir = ast2ir.convert_program(self.ast, self.source_path, [])
+            ir = ast2ir.convert_program(self.ast, self.source_path, exports)
             self.session.create_c_code(ir, self.source_path)
         except Exception:
             traceback.print_exc()
@@ -139,7 +139,7 @@ def main() -> None:
     for unit in compilation_order:
         if compiler_args.verbose:
             print("Creating C code:", unit.source_path)
-        unit.create_c_code()
+        unit.create_c_code(session.exports)
 
     c_paths = session.write_everything(project_root / "builtins.oomph")
     command = get_c_compiler_command(c_paths, exe_path)

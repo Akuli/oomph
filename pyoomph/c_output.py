@@ -4,7 +4,7 @@ import hashlib
 import os
 import pathlib
 import re
-from typing import Dict, List, Optional, TypeVar, Union
+from typing import Dict, List, Optional, Set, TypeVar, Union
 
 from pyoomph import ir
 from pyoomph.types import (
@@ -201,17 +201,18 @@ class _FunctionEmitter:
     def add_local_var(
         self, var: ir.LocalVariable, *, declare: bool = True, need_decref: bool = True
     ) -> None:
-        assert var not in self.local_variable_names
-        # Ensure different functions don't share variable names.
-        # This makes grepping the C code easier.
         self.varname_counter += 1
         name = f"var{self.varname_counter}"
+        assert var not in self.local_variable_names
         self.local_variable_names[var] = name
+
         if declare:
             self.before_body += f"{self.file_pair.emit_type(var.type)} {name};\n"
             # TODO: add these in ast2ir?
             self.before_body += self.emit_instruction(ir.SetToNull(var))
+
         if need_decref:
+            assert var not in self.need_decref
             self.need_decref.append(var)
 
     def emit_var(self, var: ir.Variable) -> str:
@@ -495,7 +496,7 @@ class _FilePair:
         self.string_defs = ""
         self.function_decls = ""
         self.function_defs = ""
-        self.includes: List[_FilePair] = []
+        self.includes: Set[_FilePair] = set()
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.id}>"
@@ -514,11 +515,8 @@ class _FilePair:
             type_id = the_type.name
         else:
             defining_file_pair = self.session.get_file_pair_for_type(the_type)
-            if (
-                defining_file_pair is not self
-                and defining_file_pair not in self.includes
-            ):
-                self.includes.append(defining_file_pair)
+            if defining_file_pair is not self:
+                self.includes.add(defining_file_pair)
             type_id = defining_file_pair.id
 
         if the_type.refcounted and not isinstance(the_type, UnionType):
@@ -568,7 +566,14 @@ class _FilePair:
         return self.strings[value]
 
     def emit_var(self, var: ir.Variable) -> str:
-        assert not isinstance(var, ir.LocalVariable)  # TODO: is this correct?
+        assert not isinstance(var, ir.LocalVariable)
+
+        for export in self.session.exports:
+            if export.value == var:
+                pair = self.session.source_path_to_file_pair[export.path]
+                if pair is not self:
+                    self.includes.add(pair)
+                    return pair.emit_var(var)
         try:
             return self.variable_names[var]
         except KeyError:
@@ -790,8 +795,9 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
 class Session:
     def __init__(self, compilation_dir: pathlib.Path) -> None:
         self.compilation_dir = compilation_dir
+        self.exports: List[ir.Export] = []
         self._type_to_file_pair: Dict[Type, _FilePair] = {}
-        self._source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
+        self.source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self._type_to_file_pair:
@@ -848,18 +854,18 @@ class Session:
                 os.path.relpath(source_path, self.compilation_dir.parent),
             ),
         )
-        assert source_path not in self._source_path_to_file_pair
-        self._source_path_to_file_pair[source_path] = pair
+        assert source_path not in self.source_path_to_file_pair
+        self.source_path_to_file_pair[source_path] = pair
         for top_declaration in top_decls:
             pair.emit_toplevel_declaration(top_declaration)
 
     # TODO: don't keep stuff in memory so much
     def write_everything(self, builtins_path: pathlib.Path) -> List[pathlib.Path]:
-        builtins_pair = self._source_path_to_file_pair[builtins_path]
+        builtins_pair = self.source_path_to_file_pair[builtins_path]
 
         c_paths: List[pathlib.Path] = []
         for file_pair in list(self._type_to_file_pair.values()) + list(
-            self._source_path_to_file_pair.values()
+            self.source_path_to_file_pair.values()
         ):
             c_path = self.compilation_dir / (file_pair.id + ".c")
             h_path = self.compilation_dir / (file_pair.id + ".h")
