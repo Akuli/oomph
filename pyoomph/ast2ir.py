@@ -81,7 +81,7 @@ class _FunctionOrMethodConverter:
 
         if not isinstance(target_type, UnionType):
             raise TypeError(
-                "can't implicitly convert {var.type.name} to {target_type.name}"
+                f"can't implicitly convert {var.type.name} to {target_type.name}"
             )
 
         # FIXME: cyclicly nested unions
@@ -100,7 +100,7 @@ class _FunctionOrMethodConverter:
 
         if result_path is None:
             raise TypeError(
-                "can't implicitly convert from {var.type.name} to {target_type.name}"
+                f"can't implicitly convert from {var.type.name} to {target_type.name}"
             )
 
         for union in reversed(result_path):
