@@ -21,8 +21,7 @@ obj/%.o: lib/%.c $(HEADERS) Makefile
 	mkdir -p $(@D) && $(CC) -c -o $@ $< $(CFLAGS)
 
 obj/compile_info.txt: Makefile
-	# The compiler emits unused functions. It's fine.
-	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS) -Wno-unused-function" "$(LDFLAGS)" > $@
+	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" > $@
 
 clean:
 	rm -rvf obj test_out

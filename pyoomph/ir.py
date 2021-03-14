@@ -18,11 +18,6 @@ from pyoomph.types import (
 )
 
 
-@dataclass(eq=False)
-class Instruction:
-    pass
-
-
 # There can be different local variables with same name, even in the same
 # function. They are represented as different instances of this class.
 #
@@ -103,6 +98,11 @@ special_variables = {
         SpecialVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
     ]
 }
+
+
+@dataclass(eq=False)
+class Instruction:
+    pass
 
 
 @dataclass(eq=False)
