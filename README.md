@@ -26,6 +26,7 @@ python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 
 Docs:
 - [Syntax](docs/syntax.md)
+- [Automatic Types](docs/auto.md)
 - [Implicit conversions](docs/implicit-conversions.md)
 
 Known bugs:
