@@ -86,7 +86,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
 
     meth stringify(ir::LocalVariable var) -> ir::LocalVariable:
         let result = self.create_var(self.builtins.STR)
-        self.code.push(new ir::MethodCall(var, "to_string", new List[ir::LocalVariable](), result))
+        self.code.push(new ir::MethodCall(var, "to_string", [], result))
         return result
 
     meth do_statement(ast::Call call):
@@ -97,7 +97,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
             case *:
                 assert(false)  # TODO: error
 
-        let argvars = new List[ir::LocalVariable]()
+        let argvars = []
         foreach arg of call.args:
             let expr = self.do_expression(arg)
             if func_var == self.builtins.PRINT and expr.type != self.builtins.STR:
@@ -114,14 +114,14 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
 
     meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
         assert(funcdef.args.length() == 0)
-        let functype = new ir::FunctionType(new List[ir::ObjectType](), null)
+        let functype = new ir::FunctionType([], null)
         assert(funcdef.name == "main")
         let func_var = new ir::ThisFileVariable(funcdef.name, functype)
         let body = self.do_block(funcdef.body)
-        return new ir::FuncDef(func_var, new List[ir::LocalVariable](), body)
+        return new ir::FuncDef(func_var, [], body)
 
 export func convert_program(ir::Builtins builtins, List[ast::FuncDef] program) -> List[ir::FuncDef]:
-    let result = new List[ir::FuncDef]()
+    let result = []
     foreach funcdef of program:
-        result.push(new Converter(builtins, new List[ir::Instruction](), 0).do_funcdef(funcdef))
+        result.push(new Converter(builtins, [], 0).do_funcdef(funcdef))
     return result

@@ -30,7 +30,7 @@ class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
         let varname = "string{self.declared_strings.length()}"
         self.declared_strings.push(value)
 
-        let content_chars = new List[Str]()
+        let content_chars = new List[Str]()  # FIXME: using [] creates weird pyoomph error
         for let i = 0; i < value.length(); i = i+1:
             # FIXME: escaping
             # FIXME: non-ascii chars
@@ -60,7 +60,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
         return "var{var.id}"
 
     meth emit_call(Str c_func, List[ir::LocalVariable] args, Optional[ir::LocalVariable] result):
-        let arg_strings = new List[Str]()
+        let arg_strings = new List[Str]()  # FIXME: using [] creates weird pyoomph error
         foreach arg of args:
             arg_strings.push(self.emit_var(arg))
         if result == null:
@@ -101,14 +101,14 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 """
 
 export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
-    let file = new File(builtins, new List[Str](), "")
+    let file = new File(builtins, [], "")
 
     let code = ""
     foreach funcdef of ir:
         assert(funcdef.var.name == "main")
         assert(funcdef.argvars.length() == 0)
 
-        let emitter = new FunctionEmitter(file, new List[ir::LocalVariable](), "", "", "")
+        let emitter = new FunctionEmitter(file, [], "", "", "")
         foreach ins of funcdef.body:
             emitter.emit_instruction(ins)
         code = code + """

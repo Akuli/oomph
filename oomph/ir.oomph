@@ -30,7 +30,7 @@ export func create_builtins() -> Builtins:
     let prrrint = new BuiltinVariable("print", new FunctionType([STR], null))
 
     # TODO: multiline literals
-    let hidden_vars = new List[BuiltinVariable]()
+    let hidden_vars = []
     hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)))

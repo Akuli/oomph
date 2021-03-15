@@ -34,7 +34,7 @@ class _FunctionOrMethodConverter:
         self.loop_stack: List[str] = []
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
-        self.unresolved_autotypes: List[AutoType] = []
+        self.unresolved_autotypes: List[AutoType] = []  # TODO: is this needed?
         self.resolved_autotypes: Dict[AutoType, Type] = {}
         self.matching_autotypes: Set[Tuple[AutoType, AutoType]] = set()
 
@@ -84,7 +84,11 @@ class _FunctionOrMethodConverter:
 
     def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
         assert not isinstance(actual, AutoType)
-        self.unresolved_autotypes.remove(auto)
+        try:
+            self.unresolved_autotypes.remove(auto)
+        except ValueError:
+            # TODO: should update self.resolved_autotypes better?
+            assert any(auto in pair for pair in self.matching_autotypes)
         self.resolved_autotypes[auto] = actual
 
     def implicit_conversion(
@@ -97,6 +101,12 @@ class _FunctionOrMethodConverter:
                 assert isinstance(target_type, AutoType)  # fuck you mypy
                 self._resolve_autotype(target_type, var.type)
                 target_type = var.type
+        elif isinstance(var.type, AutoType):
+            try:
+                var.type = self.resolved_autotypes[var.type]
+            except KeyError:
+                self._resolve_autotype(var.type, target_type)
+                var.type = target_type
 
         # Handle List[Str] matching List[auto]
         if (
