@@ -603,6 +603,8 @@ class _FilePair:
                 }}
 
                 struct class_Str *res = {self.emit_string(the_type.name)};
+                // TODO: missing incref, although doesn't matter since these
+                //       strings are not reference counted
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
                 string_concat_inplace(&res, ")");
