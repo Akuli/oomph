@@ -97,7 +97,7 @@ Missing features:
     - `string.length() == 0` is more complicated than `string == ""`
     - `not (a and not b)` is more complicated than `(not a) or b`
     - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
-- warnings about unused things (unions, classes, functions, methods, variables)
+- warnings about unused things (unions, classes, functions, methods, variables, arguments)
 - `case Foo(Str x, Int y):`
     - combined with unused variable warnings, it is impossible to accidentally forget
         to use some data, a feature that I wish Python had
