@@ -21,36 +21,6 @@ from pyoomph.types import (
 )
 
 
-def _get_flat_code(
-    body: List[ir.Instruction],
-) -> Iterator[ir.Instruction]:
-    for ins in body:
-        # TODO: switch to gotos?
-        yield ins
-        if isinstance(ins, ir.If):
-            yield from _get_flat_code(ins.then)
-            yield from _get_flat_code(ins.otherwise)
-        elif isinstance(
-            ins,
-            (
-                ir.Conversion,
-                ir.VarCpy,
-                ir.IncRef,
-                ir.DecRef,
-                ir.UnSet,
-                ir.IntConstant,
-                ir.FloatConstant,
-                ir.StringConstant,
-                ir.CallMethod,
-                ir.CallFunction,
-                ir.CallConstructor,
-            ),
-        ):
-            pass
-        else:
-            raise NotImplementedError(ins)
-
-
 class _FunctionOrMethodConverter:
     def __init__(
         self,
@@ -70,7 +40,7 @@ class _FunctionOrMethodConverter:
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
         if raw_type.name == "auto":
-            assert raw_type.generic is None, "auto type is not generic"
+            assert raw_type.generic is None, "auto types can't be generic"
             result = AutoType()
             self.unresolved_autotypes.append(result)
             return result
@@ -113,6 +83,7 @@ class _FunctionOrMethodConverter:
         return result_var
 
     def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
+        assert not isinstance(actual, AutoType)
         self.unresolved_autotypes.remove(auto)
         self.resolved_autotypes[auto] = actual
 
@@ -195,7 +166,7 @@ class _FunctionOrMethodConverter:
         self,
         args: List[ast.Expression],
         target_types: List[Type],
-        self_var: Optional[ir.LocalVariable] = None,
+        self_var: Optional[ir.LocalVariable],
     ) -> List[ir.LocalVariable]:
         argvars: List[ir.LocalVariable] = []
         if self_var is not None:
@@ -250,15 +221,16 @@ class _FunctionOrMethodConverter:
                     path = self.file_converter.path.relative_to(pathlib.Path.cwd())
                     raw_args.append(ast.StringConstant(str(path)))
                     raw_args.append(ast.IntConstant(call.func.lineno))
-                args = self.do_args(raw_args, func.type.argtypes)
+                args = self.do_args(raw_args, func.type.argtypes, None)
             self.code.append(ir.CallFunction(func, args, result_var))
 
         elif isinstance(call.func, ast.Constructor):
             the_class = self.get_type(call.func.type)
             assert the_class.constructor_argtypes is not None
-            args = self.do_args(call.args, the_class.constructor_argtypes)
+            args = self.do_args(call.args, the_class.constructor_argtypes, None)
             result_var = self.create_var(the_class)
             self.code.append(ir.CallConstructor(result_var, args))
+
         else:
             raise NotImplementedError
 
@@ -514,7 +486,6 @@ class _FunctionOrMethodConverter:
             return result
 
         if isinstance(expr, ast.Null):
-            # Variables are nulled by default (see create_var)
             return self.create_var(OPTIONAL.get_type(self.get_type(expr.type)))
 
         raise NotImplementedError(expr)
@@ -658,7 +629,7 @@ class _FunctionOrMethodConverter:
         return result
 
     def _no_auto(self, the_type: Type) -> Type:
-        while isinstance(the_type, AutoType):
+        if isinstance(the_type, AutoType):
             the_type = self.resolved_autotypes[the_type]
         if the_type.generic_origin is not None:
             the_type = the_type.generic_origin.generic.get_type(
