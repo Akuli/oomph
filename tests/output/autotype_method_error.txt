@@ -1,2 +1,0 @@
-RuntimeError: can't call method of auto-typed variable
-

@@ -101,8 +101,9 @@ class Generic:
             result.methods["push_all"] = FunctionType([result, result], None)
             result.methods["reversed"] = FunctionType([result], result)
             result.methods["to_string"] = FunctionType([result], STRING)
-            if generic_arg is STRING:
-                result.methods["join"] = FunctionType([result, STRING], STRING)
+            # TODO: this is only for strings, but List[auto] may become List[Str] later
+            #if generic_arg is STRING:
+            result.methods["join"] = FunctionType([result, STRING], STRING)
         else:
             raise NotImplementedError
 

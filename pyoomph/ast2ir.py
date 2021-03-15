@@ -88,6 +88,7 @@ class _FunctionOrMethodConverter:
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
+        assert not (isinstance(target_type, AutoType) and isinstance(var.type, AutoType))
         if isinstance(target_type, AutoType):
             try:
                 target_type = self.resolved_autotypes[target_type]
@@ -184,26 +185,36 @@ class _FunctionOrMethodConverter:
             for var, typ in zip(argvars, target_types)
         ]
 
-    def do_call(self, call: ast.Call) -> Optional[ir.LocalVariable]:
+    def _get_method_functype(self, the_type: Type, name: str) -> FunctionType:
+        try:
+            return the_type.methods[name]
+        except KeyError:
+            raise RuntimeError(f"{the_type.name} has no method {name}()")
+
+    def do_call(
+        self, call: ast.Call, must_return_value: bool
+    ) -> Optional[ir.LocalVariable]:
         if isinstance(call.func, ast.GetAttribute):
             self_var = self.do_expression(call.func.obj)
+            # TODO: do all this for attributes too
             try:
                 self._get_rid_of_auto_in_var(self_var, recursive=False)
             except KeyError:
-                raise RuntimeError("can't call method of auto-typed variable")
-
-            try:
-                functype = self_var.type.methods[call.func.attribute]
-            except KeyError:
-                raise RuntimeError(
-                    f"{self_var.type.name} has no method {call.func.attribute}()"
-                )
-            assert self_var.type == functype.argtypes[0]
-            if functype.returntype is None:
-                result_var = None
+                # Self variable has to remain auto-typed, less type information
+                # available now and no implicit conversion for args can be done
+                args = [self.do_expression(expr) for expr in call.args]
+                if must_return_value:
+                    result_var: Optional[ir.LocalVariable] = self.create_var(AutoType())
+                else:
+                    result_var = None
             else:
-                result_var = self.create_var(functype.returntype)
-            args = self.do_args(call.args, functype.argtypes, self_var)[1:]
+                functype = self._get_method_functype(self_var.type, call.func.attribute)
+                assert self_var.type == functype.argtypes[0]
+                if functype.returntype is None:
+                    result_var = None
+                else:
+                    result_var = self.create_var(functype.returntype)
+                args = self.do_args(call.args, functype.argtypes, self_var)[1:]
             self.code.append(
                 ir.CallMethod(self_var, call.func.attribute, args, result_var)
             )
@@ -371,13 +382,10 @@ class _FunctionOrMethodConverter:
         # Avoid evaluating right side when not needed
         # TODO: mention this in docs
         if op_ast.op in {"and", "or"}:
-            lhs_var = self.do_expression(op_ast.lhs)
+            lhs_var = self.implicit_conversion(self.do_expression(op_ast.lhs), BOOL)
             result_var = self.create_var(BOOL)
             with self.code_to_separate_list() as rhs_evaluation:
-                rhs_var = self.do_expression(op_ast.rhs)
-
-            assert lhs_var.type == BOOL
-            assert rhs_var.type == BOOL
+                rhs_var = self.implicit_conversion(self.do_expression(op_ast.rhs), BOOL)
 
             if op_ast.op == "and":
                 self.code.append(
@@ -452,7 +460,7 @@ class _FunctionOrMethodConverter:
                     self.code.append(ir.InstantiateUnion(var, obj))
                     return var
 
-            call = self.do_call(expr)
+            call = self.do_call(expr, True)
             assert call is not None, f"return value of void function {expr.func} used"
             return call
 
@@ -506,7 +514,7 @@ class _FunctionOrMethodConverter:
 
     def do_statement(self, stmt: ast.Statement) -> None:
         if isinstance(stmt, ast.Call):
-            self.do_call(stmt)
+            self.do_call(stmt, False)
 
         elif isinstance(stmt, ast.Let):
             self.variables[stmt.varname] = self.do_expression(stmt.value)
@@ -685,14 +693,21 @@ class _FunctionOrMethodConverter:
             ):
                 self._get_rid_of_auto_in_var(ins.var)
             elif isinstance(ins, (ir.CallConstructor, ir.CallMethod, ir.CallFunction)):
+                if isinstance(ins, ir.CallMethod):
+                    # This is here because method calls can happen before the type is known
+                    self._get_rid_of_auto_in_var(ins.obj)
+                    functype = ins.obj.type.methods[ins.method_name]
+                    assert functype.argtypes[1:] == [
+                        var.type for var in ins.args
+                    ], f"wrong args to {ins.obj.type.name}.{ins.method_name}()"
+                    if functype.returntype is None:
+                        ins.result = None
                 if ins.result is not None:
                     self._get_rid_of_auto_in_var(ins.result)
                 if isinstance(ins, ir.CallFunction) and isinstance(
                     ins.func, ir.LocalVariable
                 ):
                     self._get_rid_of_auto_in_var(ins.func)
-                if isinstance(ins, ir.CallMethod):
-                    self._get_rid_of_auto_in_var(ins.obj)
                 for arg in ins.args:
                     self._get_rid_of_auto_in_var(arg)
             elif isinstance(ins, ir.VarCpy):

@@ -7,3 +7,5 @@ export func main():
     foreach foo of foos:
         # foo has auto type
         foo.lol()
+    # ...except that it doesn't, because this determines the type:
+    foos.push(new Foo())
