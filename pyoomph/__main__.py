@@ -30,8 +30,8 @@ class CompilationUnit:
 
     def create_c_code(self, exports: List[ir.Symbol]) -> None:
         try:
-            ir = ast2ir.convert_program(self.ast, self.source_path, exports)
-            self.session.create_c_code(ir, self.source_path)
+            the_ir = ast2ir.convert_program(self.ast, self.source_path, exports)
+            self.session.create_c_code(the_ir, self.source_path)
         except Exception:
             traceback.print_exc()
             print(
