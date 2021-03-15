@@ -16,6 +16,7 @@ _TOKEN_REGEX = r'''
         | union
         | switch
         | case
+        | auto
         | generic
         | new
         | return
