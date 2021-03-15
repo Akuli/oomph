@@ -183,6 +183,11 @@ class _FunctionOrMethodConverter:
         if isinstance(call.func, ast.GetAttribute):
             self_var = self.do_expression(call.func.obj)
             try:
+                self._get_rid_of_auto_in_var(self_var, recursive=False)
+            except KeyError:
+                raise RuntimeError("can't call method of auto-typed variable")
+
+            try:
                 functype = self_var.type.methods[call.func.attribute]
             except KeyError:
                 raise RuntimeError(
@@ -473,6 +478,11 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.GetAttribute):
             obj = self.do_expression(expr.obj)
+            try:
+                self._get_rid_of_auto_in_var(obj, recursive=False)
+            except KeyError:
+                raise RuntimeError("can't get attribute of auto-typed variable")
+
             matching_types = [
                 the_type
                 for the_type, name in obj.type.members
@@ -628,16 +638,27 @@ class _FunctionOrMethodConverter:
                 self.do_statement(statement)
         return result
 
-    def _no_auto(self, the_type: Type) -> Type:
+    def _get_rid_of_auto(self, the_type: Type) -> Type:
         if isinstance(the_type, AutoType):
             the_type = self.resolved_autotypes[the_type]
         if the_type.generic_origin is not None:
             the_type = the_type.generic_origin.generic.get_type(
-                self._no_auto(the_type.generic_origin.arg)
+                self._get_rid_of_auto(the_type.generic_origin.arg)
             )
         return the_type
 
-    def get_rid_of_autotypes(self, code: List[ir.Instruction]) -> None:
+    def _get_rid_of_auto_in_var(
+        self, var: ir.LocalVariable, *, recursive: bool = True
+    ) -> None:
+        if recursive:
+            var.type = self._get_rid_of_auto(var.type)
+        else:
+            # This can be used before get_rid_of_auto_everywhere() runs
+            if isinstance(var.type, AutoType):
+                var.type = self.resolved_autotypes[var.type]
+
+    def get_rid_of_auto_everywhere(self, code: List[ir.Instruction]) -> None:
+        # TODO: this doesn't affect earlier _get_rid_of_auto_in_var(recursive=False) calls
         for auto1, auto2 in self.matching_autotypes:
             if auto1 in self.resolved_autotypes and auto2 in self.resolved_autotypes:
                 assert self.resolved_autotypes[auto1] == self.resolved_autotypes[auto2]
@@ -658,53 +679,53 @@ class _FunctionOrMethodConverter:
                     ir.FloatConstant,
                 ),
             ):
-                ins.var.type = self._no_auto(ins.var.type)
+                self._get_rid_of_auto_in_var(ins.var)
             elif isinstance(ins, (ir.CallConstructor, ir.CallMethod, ir.CallFunction)):
                 if ins.result is not None:
-                    ins.result.type = self._no_auto(ins.result.type)
+                    self._get_rid_of_auto_in_var(ins.result)
                 if isinstance(ins, ir.CallFunction):
-                    ins.func.type = self._no_auto(ins.func.type)
+                    self._get_rid_of_auto_in_var(ins.func)
                 if isinstance(ins, ir.CallMethod):
-                    ins.obj.type = self._no_auto(ins.obj.type)
+                    self._get_rid_of_auto_in_var(ins.obj)
                 for arg in ins.args:
-                    arg.type = self._no_auto(arg.type)
+                    self._get_rid_of_auto_in_var(arg)
             elif isinstance(ins, ir.VarCpy):
-                ins.dest.type = self._no_auto(ins.dest.type)
-                ins.source.type = self._no_auto(ins.source.type)
+                self._get_rid_of_auto_in_var(ins.dest)
+                self._get_rid_of_auto_in_var(ins.source)
             elif isinstance(ins, ir.If):
-                ins.condition.type = self._no_auto(ins.condition.type)
-                self.get_rid_of_autotypes(ins.then)
-                self.get_rid_of_autotypes(ins.otherwise)
+                self._get_rid_of_auto_in_var(ins.condition)
+                self.get_rid_of_auto_everywhere(ins.then)
+                self.get_rid_of_auto_everywhere(ins.otherwise)
             elif isinstance(ins, ir.Loop):
-                self.get_rid_of_autotypes(ins.cond_code)
-                self.get_rid_of_autotypes(ins.body)
-                self.get_rid_of_autotypes(ins.incr)
-                ins.cond.type = self._no_auto(ins.cond.type)
+                self.get_rid_of_auto_everywhere(ins.cond_code)
+                self.get_rid_of_auto_everywhere(ins.body)
+                self.get_rid_of_auto_everywhere(ins.incr)
+                self._get_rid_of_auto_in_var(ins.cond)
             elif isinstance(ins, ir.Return):
                 if ins.value is not None:
-                    ins.value.type = self._no_auto(ins.value.type)
+                    self._get_rid_of_auto_in_var(ins.value)
             elif isinstance(ins, (ir.InstantiateUnion, ir.IsNull)):
-                ins.result.type = self._no_auto(ins.result.type)
-                ins.value.type = self._no_auto(ins.value.type)
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.value)
             elif isinstance(ins, ir.GetAttribute):
-                ins.result.type = self._no_auto(ins.result.type)
-                ins.obj.type = self._no_auto(ins.obj.type)
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, ir.SetAttribute):
-                ins.value.type = self._no_auto(ins.value.type)
-                ins.obj.type = self._no_auto(ins.obj.type)
+                self._get_rid_of_auto_in_var(ins.value)
+                self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, ir.GetFromUnion):
-                ins.result.type = self._no_auto(ins.result.type)
-                ins.union.type = self._no_auto(ins.union.type)
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.union)
             elif isinstance(ins, (ir.Continue, ir.Break)):
                 pass
             elif isinstance(ins, ir.Switch):
-                ins.union.type = self._no_auto(ins.union.type)
+                self._get_rid_of_auto_in_var(ins.union)
                 ins.cases = {
-                    self._no_auto(membertype): body
+                    self._get_rid_of_auto(membertype): body
                     for membertype, body in ins.cases.items()
                 }
                 for body in ins.cases.values():
-                    self.get_rid_of_autotypes(body)
+                    self.get_rid_of_auto_everywhere(body)
             else:
                 raise NotImplementedError(ins)
 
@@ -819,7 +840,7 @@ class _FileConverter:
         converter = _FunctionOrMethodConverter(self, local_vars, functype.returntype)
         for statement in funcdef.body:
             converter.do_statement(statement)
-        converter.get_rid_of_autotypes(converter.code)
+        converter.get_rid_of_auto_everywhere(converter.code)
         body.extend(converter.code)
 
         if classtype is None:

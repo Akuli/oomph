@@ -1,0 +1,9 @@
+class Foo():
+    meth lol():
+        print("lollll")
+
+export func main():
+    let foos = []
+    foreach foo of foos:
+        # foo has auto type
+        foo.lol()
