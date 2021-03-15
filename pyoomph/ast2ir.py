@@ -683,7 +683,9 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, (ir.CallConstructor, ir.CallMethod, ir.CallFunction)):
                 if ins.result is not None:
                     self._get_rid_of_auto_in_var(ins.result)
-                if isinstance(ins, ir.CallFunction):
+                if isinstance(ins, ir.CallFunction) and isinstance(
+                    ins.func, ir.LocalVariable
+                ):
                     self._get_rid_of_auto_in_var(ins.func)
                 if isinstance(ins, ir.CallMethod):
                     self._get_rid_of_auto_in_var(ins.obj)
@@ -691,7 +693,8 @@ class _FunctionOrMethodConverter:
                     self._get_rid_of_auto_in_var(arg)
             elif isinstance(ins, ir.VarCpy):
                 self._get_rid_of_auto_in_var(ins.dest)
-                self._get_rid_of_auto_in_var(ins.source)
+                if isinstance(ins.source, ir.LocalVariable):
+                    self._get_rid_of_auto_in_var(ins.source)
             elif isinstance(ins, ir.If):
                 self._get_rid_of_auto_in_var(ins.condition)
                 self.get_rid_of_auto_everywhere(ins.then)
