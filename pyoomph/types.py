@@ -38,6 +38,8 @@ class Type:
         return f"<{type(self).__name__}: {self.name}>"
 
     def __eq__(self, other: object) -> bool:
+        if isinstance(self, AutoType) or isinstance(other, AutoType):
+            return self is other
         return (
             isinstance(other, Type)
             and self.name == other.name
@@ -47,6 +49,11 @@ class Type:
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+
+class AutoType(Type):
+    def __init__(self) -> None:
+        super().__init__("auto_" + hex(id(self))[-4:], True)
 
 
 class UnionType(Type):

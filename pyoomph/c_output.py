@@ -15,6 +15,7 @@ from pyoomph.types import (
     NULL_TYPE,
     OPTIONAL,
     STRING,
+    AutoType,
     FunctionType,
     Type,
     UnionType,
@@ -63,13 +64,13 @@ class _FunctionEmitter:
 
     def emit_instruction(self, ins: ir.Instruction) -> str:
         if isinstance(ins, ir.StringConstant):
-            return f"{self.emit_var(ins.result)} = {self.file_pair.emit_string(ins.value)}; {self.incref_var(ins.result)};\n"
+            return f"{self.emit_var(ins.var)} = {self.file_pair.emit_string(ins.value)}; {self.incref_var(ins.var)};\n"
 
         if isinstance(ins, ir.IntConstant):
-            return f"{self.emit_var(ins.result)} = {ins.value}LL;\n"
+            return f"{self.emit_var(ins.var)} = {ins.value}LL;\n"
 
         if isinstance(ins, ir.FloatConstant):
-            return f"{self.emit_var(ins.result)} = {ins.value};\n"
+            return f"{self.emit_var(ins.var)} = {ins.value};\n"
 
         if isinstance(ins, ir.VarCpy):
             return f"{self.emit_var(ins.dest)} = {self.emit_var(ins.source)};\n"
@@ -186,7 +187,9 @@ class _FunctionEmitter:
             """
 
         if isinstance(ins, ir.IsNull):
-            return f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.var)});\n"
+            return (
+                f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.value)});\n"
+            )
 
         if isinstance(ins, ir.UnSet):
             if isinstance(ins.var.type, UnionType):
@@ -466,6 +469,7 @@ class _FilePair:
     def emit_type(
         self, the_type: Optional[Type], *, can_fwd_declare_in_header: bool = True
     ) -> str:
+        assert not isinstance(the_type, AutoType)
         if the_type is None:
             return "void"
         if the_type is INT:
@@ -603,6 +607,8 @@ class _FilePair:
                 }}
 
                 struct class_Str *res = {self.emit_string(the_type.name)};
+                // TODO: missing incref, although doesn't matter since these
+                //       strings are not reference counted
                 string_concat_inplace(&res, "(");
                 string_concat_inplace(&res, valstr->str);
                 string_concat_inplace(&res, ")");
