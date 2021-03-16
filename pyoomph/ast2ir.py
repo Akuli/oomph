@@ -128,7 +128,10 @@ class _FunctionOrMethodConverter:
     ) -> ir.LocalVariable:
         if isinstance(target_type, AutoType) and isinstance(var.type, AutoType):
             if var.type != target_type:
-                assert var.type in self.resolved_autotypes or target_type in self.resolved_autotypes
+                assert (
+                    var.type in self.resolved_autotypes
+                    or target_type in self.resolved_autotypes
+                )
                 var.type = self.resolved_autotypes.get(var.type, var.type)
                 target_type = self.resolved_autotypes.get(target_type, target_type)
         elif isinstance(target_type, AutoType):
@@ -228,14 +231,10 @@ class _FunctionOrMethodConverter:
         except KeyError:
             raise RuntimeError(f"{the_type.name} has no method {name}()")
 
-    def _get_attribute_type(self, the_type: Type, name: str) -> FunctionType:
-        matching_types = [
-            the_type
-            for the_type, the_name in the_type.members
-            if the_name == name
-        ]
+    def _get_attribute_type(self, the_type: Type, attribute: str) -> Type:
+        matching_types = [typ for typ, nam in the_type.members if nam == attribute]
         if not matching_types:
-            raise RuntimeError(f"{the_type.name} has no attribute {name}")
+            raise RuntimeError(f"{the_type.name} has no attribute {attribute}")
         [result] = matching_types
         return result
 
@@ -548,7 +547,9 @@ class _FunctionOrMethodConverter:
             except KeyError:
                 result = self.create_var(AutoType())
             else:
-                result = self.create_var(self._get_attribute_type(obj.type, expr.attribute))
+                result = self.create_var(
+                    self._get_attribute_type(obj.type, expr.attribute)
+                )
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
@@ -749,7 +750,10 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.obj)
                 # FIXME: copy/pasta
                 if isinstance(ins.result.type, AutoType):
-                    self._resolve_autotype(ins.result.type, self._get_attribute_type(ins.obj.type, ins.attribute))
+                    self._resolve_autotype(
+                        ins.result.type,
+                        self._get_attribute_type(ins.obj.type, ins.attribute),
+                    )
                 else:
                     self._get_rid_of_auto_in_var(ins.result)
 
