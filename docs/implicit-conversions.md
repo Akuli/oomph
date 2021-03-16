@@ -2,6 +2,8 @@
 
 Implicit conversion rules are applied in these situations (and more is planned):
 - Arguments of all calls, including functions, methods, `new`, and so on.
+- Variable assignments (but not `let` statements;
+    they use the type of the value as the type of the variable, with no conversions).
 - The value of a `return` statement.
 - The operators `==`, `!=`, `<`, `>`, `<=`, `>=`, `+`, `-`, `*` and `/`
     attempt converting their left side to have the type of the right side,
@@ -12,6 +14,7 @@ Implicit conversion rules are applied in these situations (and more is planned):
         to prevent ambiguity in choosing the "right" conversion to do.
     - If one conversion succeeds and the other fails, the successful conversion is used.
     - If neither conversion succeeds, a compilation error occurs.
+- The operators `and`, `or`, `not` implicitly convert all values to type `Bool`.
 
 Implicitly converting an object to a type follows these rules:
 - If the object already has the desired type, then nothing happens; the

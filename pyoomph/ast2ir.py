@@ -527,7 +527,10 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.UnaryOperator):
             obj = self.do_expression(expr.obj)
             if obj.type is BOOL and expr.op == "not":
-                return self.create_special_call("bool_not", [obj])
+                return self.create_special_call(
+                    "bool_not", [self.implicit_conversion(obj, BOOL)]
+                )
+            # TODO: auto type support (remember docs)
             if obj.type is INT and expr.op == "-":
                 return self.create_special_call("int_neg", [obj])
             if obj.type is FLOAT and expr.op == "-":
