@@ -694,7 +694,10 @@ class _FunctionOrMethodConverter:
 
     def _get_rid_of_auto(self, the_type: Type) -> Type:
         if isinstance(the_type, AutoType):
-            the_type = self.resolved_autotypes[the_type]
+            try:
+                the_type = self.resolved_autotypes[the_type]
+            except KeyError:
+                raise RuntimeError("can't determine automatic type")
         if the_type.generic_origin is not None:
             the_type = the_type.generic_origin.generic.get_type(
                 self._get_rid_of_auto(the_type.generic_origin.arg)
