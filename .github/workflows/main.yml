@@ -1,0 +1,31 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: "3.9"
+    - run: pip install -r requirements.txt
+    - run: ./lint --check
+  build:
+    strategy:
+      matrix:
+        compiler: ["gcc", "tcc"]
+        python: ["3.7", "3.8", "3.9"]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python }}
+    - run: pip install -r requirements.txt
+    - run: sudo apt install ${{ matrix.compiler }}
+    - run: CC=${{ matrix.compiler }} make
+    - run: ./test
