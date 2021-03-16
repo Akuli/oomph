@@ -87,7 +87,7 @@ _TOKEN_REGEX = r'''
 '''
 
 
-def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
+def raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
     if not code.endswith("\n"):
         code += "\n"
 
@@ -164,4 +164,4 @@ def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, st
 
 
 def tokenize(code: str) -> Iterator[Tuple[str, str]]:
-    return _clean_newlines(_find_blocks(_clean_newlines(_raw_tokenize(code))))
+    return _clean_newlines(_find_blocks(_clean_newlines(raw_tokenize(code))))
