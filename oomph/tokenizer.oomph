@@ -110,7 +110,7 @@ func clean_newlines(List[Token] tokens) -> List[Token]:
 
 func find_blocks(List[Token] tokens) -> List[Token]:
     let indent_level = 0
-    let result = new List[Token]()  # TODO: [] triggers pyoomph assert
+    let result = []
     tokens = tokens.reversed()
 
     while tokens.length() != 0:

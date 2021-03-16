@@ -127,7 +127,10 @@ class _FunctionOrMethodConverter:
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
         if isinstance(target_type, AutoType) and isinstance(var.type, AutoType):
-            assert var.type == target_type
+            if var.type != target_type:
+                assert var.type in self.resolved_autotypes or target_type in self.resolved_autotypes
+                var.type = self.resolved_autotypes.get(var.type, var.type)
+                target_type = self.resolved_autotypes.get(target_type, target_type)
         elif isinstance(target_type, AutoType):
             try:
                 target_type = self.resolved_autotypes[target_type]
