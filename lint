@@ -8,4 +8,4 @@ black pyoomph "$@" || error=yes
 isort pyoomph "$@" || error=yes
 mypy pyoomph || error=yes
 pyflakes pyoomph || error=yes
-[ "$error" != yes ] || exit 1
+[ "$error" == yes ] && exit 1

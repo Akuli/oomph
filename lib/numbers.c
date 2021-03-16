@@ -10,7 +10,7 @@
 #include <string.h>
 
 #ifndef DBL_DECIMAL_DIG
-#define DBL_DECIMAL_DIG 17  // TODO: what should be used instead?
+#define DBL_DECIMAL_DIG 17  // TODO: what should be used instead? this is for tcc
 #endif
 
 int64_t meth_Float_floor(double f) { return (int64_t)floor(f); }
