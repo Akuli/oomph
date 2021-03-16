@@ -158,12 +158,13 @@ class _FunctionOrMethodConverter:
             if isinstance(var.type.generic_origin.arg, AutoType) and isinstance(
                 target_type.generic_origin.arg, AutoType
             ):
+                # TODO: implement what docs say
                 assert var.type.generic_origin == target_type.generic_origin
             elif isinstance(var.type.generic_origin.arg, AutoType):
                 self._resolve_autotype(
                     var.type.generic_origin.arg, target_type.generic_origin.arg
                 )
-                var.type = target_type  # a bit of a hack, but seems to work
+                var.type = target_type
                 return var
             elif isinstance(target_type.generic_origin.arg, AutoType):
                 assert var.type.generic_origin is not None  # fuck you fucking mypy
@@ -751,7 +752,6 @@ class _FunctionOrMethodConverter:
 
             elif isinstance(ins, ir.GetAttribute):
                 self._get_rid_of_auto_in_var(ins.obj)
-                # FIXME: copy/pasta
                 if isinstance(ins.result.type, AutoType):
                     self._resolve_autotype(
                         ins.result.type,

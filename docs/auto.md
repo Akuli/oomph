@@ -1,94 +1,56 @@
-```
-func foo(List[Float] list):
-    pass
+# Automatic types
 
-let asdf = new List[auto]()   # Let A denote the type created here
-asdf.push(1)                  # Conversion(from=Int, to=A)
-foo(asdf)                     # A = Float
-```
+The keyword `auto` creates a new automatic type, or auto type for short.
+The first "use" of the type will determine what that type actually is.
+Also, the type of the empty list `[]` is `List[auto]`.
 
-## Defining the conversions
+In this context, the first "use" is actually the first
+[implicit conversion](implicit-conversions.md).
+To understand why, consider this code:
 
-- Int can convert to float
-- Union member type can convert to union itself, nested not allowed
+    foreach thing of []:
+        thing.blah()
 
-NOT transitive. Allowing nested when unambiguous does not help:
+Here `thing` has the type of a list item, which is `auto`.
+Even though it's used to do `thing.blah()`,
+there is not enough information to determine the type of the list,
+and this code in fact doesn't compile.
+In general, writing `thing.blah` does not count as "using" `thing` in this context,
+as it that does not implicitly convert `thing` to a different type.
 
-```
-class A()
 
-union B:
-    A
-    Str
+## How are auto types resolved
 
-union B2:
-    A
-    Int
+First, the code is compiled without paying much attention to auto types,
+treating them like any other type.
+However, implicit conversions treat auto types specially:
+- An implicit conversion between an auto type and a non-auto type
+    (either from auto to non-auto, or from non-auto to auto)
+    determines what the auto type is.
+    The value of the auto type is not immediately substituted everywhere;
+    instead, it is remembered for later.
+- An implicit conversion between two different auto types is an error,
+    unless the value of one (or both) auto types has been determined already;
+    in that case, the determined value is used.
+    This simplifies the implementation and doesn't seem to have much practical impact.
+- A similar thing happens when implicitly converting from `List[T]` to `List[U]`,
+    where `T` and `U` are different types,
+    or similarly for any other generic instead of `List`.
+    (TODO: implement the rest of this)
+    Currently this does not recurse,
+    so `List[List[auto]]` does not convert `List[List[Str]]` for example,
+    but this will hopefully be changed in a future version of Oomph.
 
-union C:
-    B
-    B2
-```
+Also, when `thing` has automatic type, `thing.blah(foo)`
+is not used to implicitly convert `foo` to the correct argument type,
+because the type of `thing` might not be known yet.
 
-Now A converts to B and B converts to C, but A does not convert to C (ambiguous).
-- Conclusion: not gonna allow nested, that's not necessary
+Once all that is done, the compiled code contains `auto` types,
+and we also have a mapping of values of the `auto` types.
+The next step is to plug in the types of
+the `thing`s of `thing.blah` attribute and method lookups,
+and then do the implicit conversions for method arguments.
 
-## The "convert-equals rule"
-
-(couldn't think of better name)
-
-Assume:
-
-```
-A1 converts to A2
-A2 converts to A3
-...
-A(n-1) converts to An
-An converts to A1
-```
-
-Then A1 = A2 = ... = An.
-
-In other words, union membership graph has no cycles.
-
-TODO: disallow this:
-
-```
-union A:
-    Str
-    B
-
-union B:
-    Int
-    A
-```
-
-## Auto-type resolving algorithm
-
-Assume only `Conversion`s left. They form a directed graph.
-
-- Break cycles with convert-equals rule: `A >= B >= C ==> A=B=C`. Now we have DAG.
-- Eliminate type variables from DAG like this:
-    - Find any type variable
-    - While possible, choose a narrower type variable instead. Let result be T
-    - If a subtype of T includes all subtypes of T:
-        - Choose T to be the(*) subtype that includes others
-    - Else:
-        - Error for now, the rest needs more thought. In particular, do results
-            depend on which type variable chosen in "find any type variable"?
-        - Walk towards wider types, finding all unions that include the subtypes,
-            including indirect unions
-        - If exactly one union found:
-            - Choose T to be that type
-        - Else:
-            - Error
-
-(*) From convert-equals rule,
-it follows that there can't be multiple matching subtypes,
-as they would convert to each other.
-
--------------
-
-Problems: `autotyped == blah`, `autotyped.attrib`, `autotyped.method()`
-- Should left side convert to right side? Or right to left?
-- Solution: Leave as is, convert separately afterwards
+Finally, all automatic types are replaced with the corresponding actual types.
+It is an error if the actual type is not available;
+in that case, the automatic type has never been used.

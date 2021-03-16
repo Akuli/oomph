@@ -27,6 +27,9 @@ Implicitly converting an object to a type follows these rules:
     type itself is a union type, then its members are ignored.
 - Otherwise, the implicit conversion fails.
 
+There are also a few additional rules that apply only when automatic types are involved.
+See [the documentation on automatic types](auto.md).
+
 These rules are intentionally weak. For example, unlike in many other programming
 languages, `1 == "2"` is an error: even though the `==` operator does implicit
 conversions, nothing can implicitly convert between `Int` and `Str`.
