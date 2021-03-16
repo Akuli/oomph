@@ -142,3 +142,31 @@ Optimization ideas:
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
 - streams, as an alternative to lists
     - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
+
+
+## Editor support
+
+There is `oomph_pygments_lexer.py` for syntax highlighting.
+To use it in an editor:
+1. Make sure that you are using an editor that supports [Pygments](https://pygments.org/),
+    such as [Porcupine](https://github.com/Akuli/porcupine) (I made it).
+    If you want syntax highlighting in an editor that doesn't use Pygments,
+    you can make a pull request that makes Oomph support
+    the syntax highlighting library that the editor uses.
+2. Configure the editor. At the time of writing this, I use the following config in Porcupine's `filetypes.toml`:
+    ```toml
+    [Oomph]
+    filename_patterns = ["*.oomph"]
+    pygments_lexer = 'oomph_pygments_lexer.CustomLexer'
+    comment_prefix = '#'
+    autoindent_regexes = {dedent = 'return( .+)?|break|pass|continue', indent = '.*:'}
+    ```
+3. Start the editor so that it can import `oomph_pygments_lexer`.
+    Python imports from the current working directory when using the `-m` switch,
+    so with Porcupine, you can do:
+    ```
+    cd path/to/oomph
+    python3 -m porcupine
+    ```
+    Note that you should not have the virtual env activated when doing this,
+    unless you have installed Porcupine into it.
