@@ -22,22 +22,28 @@ class CompilationUnit:
         self.source_path = source_path
         self.session = session
 
-    def create_untyped_ast(self) -> None:
-        source_code = self.source_path.read_text(encoding="utf-8")
-        self.ast = parser.parse_file(
-            source_code, self.source_path, project_root / "stdlib"
+    def _handle_error(self):
+        traceback.print_exc()
+        print(
+            f"\nThis happened while compiling {self.source_path}", file=sys.stderr
         )
+        sys.exit(1)
+
+    def create_untyped_ast(self) -> None:
+        try:
+            source_code = self.source_path.read_text(encoding="utf-8")
+            self.ast = parser.parse_file(
+                source_code, self.source_path, project_root / "stdlib"
+            )
+        except Exception:
+            self._handle_error()
 
     def create_c_code(self, exports: List[ir.Symbol]) -> None:
         try:
             the_ir = ast2ir.convert_program(self.ast, self.source_path, exports)
             self.session.create_c_code(the_ir, self.source_path)
         except Exception:
-            traceback.print_exc()
-            print(
-                f"\nThis happened while compiling {self.source_path}", file=sys.stderr
-            )
-            sys.exit(1)
+            self._handle_error()
 
 
 def get_c_compiler_command(
