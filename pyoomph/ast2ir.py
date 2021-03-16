@@ -234,7 +234,6 @@ class _FunctionOrMethodConverter:
         if isinstance(call.func, ast.GetAttribute):
             self_var = self.do_expression(call.func.obj)
             args = [self.do_expression(expr) for expr in call.args]
-            # TODO: do all this for attributes too
             try:
                 self._get_rid_of_auto_in_var(self_var, recursive=False)
             except KeyError:
@@ -536,16 +535,16 @@ class _FunctionOrMethodConverter:
             try:
                 self._get_rid_of_auto_in_var(obj, recursive=False)
             except KeyError:
-                raise RuntimeError("can't get attribute of auto-typed variable")
-
-            matching_types = [
-                the_type
-                for the_type, name in obj.type.members
-                if name == expr.attribute
-            ]
-            assert matching_types, expr.attribute
-            [member_type] = matching_types
-            result = self.create_var(member_type)
+                result = self.create_var(AutoType())
+            else:
+                matching_types = [
+                    the_type
+                    for the_type, name in obj.type.members
+                    if name == expr.attribute
+                ]
+                assert matching_types, expr.attribute
+                [member_type] = matching_types
+                result = self.create_var(member_type)
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
@@ -738,6 +737,21 @@ class _FunctionOrMethodConverter:
 
                 for arg in ins.args:
                     self._get_rid_of_auto_in_var(arg)
+
+            elif isinstance(ins, ir.GetAttribute):
+                self._get_rid_of_auto_in_var(ins.obj)
+                # FIXME: copy/pasta
+                matching_types = [
+                    the_type
+                    for the_type, name in ins.obj.type.members
+                    if name == ins.attribute
+                ]
+                assert matching_types, ins.attribute
+                [member_type] = matching_types
+                if isinstance(ins.result.type, AutoType):
+                    self._resolve_autotype(ins.result.type, member_type)
+                else:
+                    self._get_rid_of_auto_in_var(ins.result)
 
         for inslist, ins in list(_get_instructions_recursively(code)):
             if isinstance(

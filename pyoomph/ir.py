@@ -125,9 +125,6 @@ class GetAttribute(Instruction):
     result: LocalVariable
     attribute: str
 
-    def __post_init__(self) -> None:
-        assert (self.result.type, self.attribute) in self.obj.type.members
-
 
 @dataclass(eq=False)
 class SetAttribute(Instruction):
