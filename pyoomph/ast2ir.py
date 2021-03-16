@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Union
+from typing import Callable, Dict, Iterator, List, Optional, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
@@ -163,21 +163,19 @@ class _FunctionOrMethodConverter:
             var = new_var
         return var
 
+    # Can be called multiple times, that doesn't matter
     def do_args(
         self,
-        args: List[ast.Expression],
+        args: List[ir.LocalVariable],
         target_types: List[Type],
         self_var: Optional[ir.LocalVariable],
     ) -> List[ir.LocalVariable]:
-        argvars: List[ir.LocalVariable] = []
         if self_var is not None:
-            argvars.append(self_var)
-        argvars.extend(self.do_expression(expr) for expr in args)
+            args = [self_var] + args
 
-        assert len(argvars) == len(target_types)
+        assert len(args) == len(target_types), "wrong number of args"
         return [
-            self.implicit_conversion(var, typ)
-            for var, typ in zip(argvars, target_types)
+            self.implicit_conversion(var, typ) for var, typ in zip(args, target_types)
         ]
 
     def _get_method_functype(self, the_type: Type, name: str) -> FunctionType:
@@ -191,13 +189,13 @@ class _FunctionOrMethodConverter:
     ) -> Optional[ir.LocalVariable]:
         if isinstance(call.func, ast.GetAttribute):
             self_var = self.do_expression(call.func.obj)
+            args = [self.do_expression(expr) for expr in call.args]
             # TODO: do all this for attributes too
             try:
                 self._get_rid_of_auto_in_var(self_var, recursive=False)
             except KeyError:
                 # Self variable has to remain auto-typed, less type information
-                # available now and no implicit conversion for args can be done
-                args = [self.do_expression(expr) for expr in call.args]
+                # available, do_args will be called later
                 if must_return_value:
                     result_var: Optional[ir.LocalVariable] = self.create_var(AutoType())
                 else:
@@ -209,7 +207,7 @@ class _FunctionOrMethodConverter:
                     result_var = None
                 else:
                     result_var = self.create_var(functype.returntype)
-                args = self.do_args(call.args, functype.argtypes, self_var)[1:]
+                args = self.do_args(args, functype.argtypes, self_var)[1:]
             self.code.append(
                 ir.CallMethod(self_var, call.func.attribute, args, result_var)
             )
@@ -237,13 +235,19 @@ class _FunctionOrMethodConverter:
                     path = self.file_converter.path.relative_to(pathlib.Path.cwd())
                     raw_args.append(ast.StringConstant(str(path)))
                     raw_args.append(ast.IntConstant(call.func.lineno))
-                args = self.do_args(raw_args, func.type.argtypes, None)
+                args = self.do_args(
+                    list(map(self.do_expression, raw_args)), func.type.argtypes, None
+                )
             self.code.append(ir.CallFunction(func, args, result_var))
 
         elif isinstance(call.func, ast.Constructor):
             the_class = self.get_type(call.func.type)
             assert the_class.constructor_argtypes is not None
-            args = self.do_args(call.args, the_class.constructor_argtypes, None)
+            args = self.do_args(
+                list(map(self.do_expression, call.args)),
+                the_class.constructor_argtypes,
+                None,
+            )
             result_var = self.create_var(the_class)
             self.code.append(ir.CallConstructor(result_var, args))
 
@@ -665,6 +669,7 @@ class _FunctionOrMethodConverter:
                 var.type = self.resolved_autotypes[var.type]
 
     def get_rid_of_auto_everywhere(self, code: List[ir.Instruction]) -> None:
+        adding_to_front: Dict[ir.Instruction, List[ir.Instruction]] = {}
         for ins in code:
             if isinstance(
                 ins,
@@ -683,9 +688,12 @@ class _FunctionOrMethodConverter:
                     # This is here because method calls can happen before the type is known
                     self._get_rid_of_auto_in_var(ins.obj)
                     functype = ins.obj.type.methods[ins.method_name]
-                    assert functype.argtypes[1:] == [
-                        var.type for var in ins.args
-                    ], f"wrong args to {ins.obj.type.name}.{ins.method_name}()"
+                    with self.code_to_separate_list() as adding_to_front[ins]:
+                        ins.args = self.do_args(
+                            ins.args,
+                            functype.argtypes,
+                            ins.obj,
+                        )[1:]
                     if functype.returntype is None:
                         ins.result = None
                 if ins.result is not None:
@@ -736,6 +744,11 @@ class _FunctionOrMethodConverter:
                     self.get_rid_of_auto_everywhere(body)
             else:
                 raise NotImplementedError(ins)
+
+        for ins, front in adding_to_front.items():
+            assert code.count(ins) == 1
+            i = code.index(ins)
+            code[i:i] = front
 
 
 def _create_to_string_method(class_type: ir.Type) -> ast.FuncOrMethodDef:

@@ -1,2 +1,2 @@
-AssertionError: wrong args to Str.slice()
+AssertionError: wrong number of args
 
