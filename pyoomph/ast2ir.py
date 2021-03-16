@@ -918,7 +918,6 @@ class _FileConverter:
             argvars.append(argvar)
 
             # Copy arguments to separate local variables to allow assigning to arguments
-            # TODO: document how auto types aren't created here
             copied_var = ir.LocalVariable(the_type)
             body.append(ir.VarCpy(copied_var, argvar))
             body.append(ir.IncRef(copied_var))
