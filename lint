@@ -4,8 +4,8 @@ if ! which black isort mypy pyflakes >/dev/null; then
     echo "can't find stuff, is venv active?"
     exit 1
 fi
-black pyoomph "$@" || error=yes
-isort pyoomph "$@" || error=yes
+black pyoomph lexer.py "$@" || error=yes
+isort pyoomph lexer.py "$@" || error=yes
 mypy pyoomph || error=yes
-pyflakes pyoomph || error=yes
+pyflakes pyoomph lexer.py || error=yes
 [ "$error" != yes ] || exit 1
