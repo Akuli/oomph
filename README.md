@@ -150,15 +150,16 @@ There is `oomph_pygments_lexer.py` for syntax highlighting.
 To use it in an editor:
 1. Make sure that you are using an editor that supports [Pygments](https://pygments.org/),
     such as [Porcupine](https://github.com/Akuli/porcupine) (I made it).
-    If you really want syntax highlighting in an editor that doesn't support Oomph,
-    please consider contributing support for that editor.
-2. Configure the editor. At the time of writing this, I use the following config in Porcupine:
+    If you want syntax highlighting in an editor that doesn't use Pygments,
+    you can make a pull request that makes Oomph support
+    the syntax highlighting library that the editor uses.
+2. Configure the editor. At the time of writing this, I use the following config in Porcupine's `filetypes.toml`:
     ```toml
     [Oomph]
     filename_patterns = ["*.oomph"]
     pygments_lexer = 'oomph_pygments_lexer.CustomLexer'
     comment_prefix = '#'
-    autoindent_regexes = {dedent = '(return|raise)( .+)?|break|pass|continue', indent = '.*:'}
+    autoindent_regexes = {dedent = 'return( .+)?|break|pass|continue', indent = '.*:'}
     ```
 3. Start the editor so that it can import `oomph_pygments_lexer`.
     Python imports from the current working directory when using the `-m` switch,
