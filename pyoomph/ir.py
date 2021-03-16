@@ -112,13 +112,6 @@ class VarCpy(Instruction):
     source: Variable
 
 
-# Replaced with other instructions before C output
-@dataclass(eq=False)
-class Conversion(Instruction):
-    dest: LocalVariable
-    source: LocalVariable  # automagically increffed when necessary
-
-
 @dataclass(eq=False)
 class GetAttribute(Instruction):
     obj: LocalVariable

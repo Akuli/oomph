@@ -228,6 +228,17 @@ class _FunctionOrMethodConverter:
         except KeyError:
             raise RuntimeError(f"{the_type.name} has no method {name}()")
 
+    def _get_attribute_type(self, the_type: Type, name: str) -> FunctionType:
+        matching_types = [
+            the_type
+            for the_type, the_name in the_type.members
+            if the_name == name
+        ]
+        if not matching_types:
+            raise RuntimeError(f"{the_type.name} has no attribute {name}")
+        [result] = matching_types
+        return result
+
     def do_call(
         self, call: ast.Call, must_return_value: bool
     ) -> Optional[ir.LocalVariable]:
@@ -537,14 +548,7 @@ class _FunctionOrMethodConverter:
             except KeyError:
                 result = self.create_var(AutoType())
             else:
-                matching_types = [
-                    the_type
-                    for the_type, name in obj.type.members
-                    if name == expr.attribute
-                ]
-                assert matching_types, expr.attribute
-                [member_type] = matching_types
-                result = self.create_var(member_type)
+                result = self.create_var(self._get_attribute_type(obj.type, expr.attribute))
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
@@ -714,13 +718,13 @@ class _FunctionOrMethodConverter:
             if isinstance(var.type, AutoType):
                 var.type = self.resolved_autotypes[var.type]
 
-    def get_rid_of_auto_everywhere(self, code: List[ir.Instruction]) -> None:
+    def get_rid_of_auto_everywhere(self) -> None:
         # Method calls can happen before the type is known. Here we assume that
         # the types got figured out.
-        for inslist, ins in list(_get_instructions_recursively(code)):
+        for inslist, ins in list(_get_instructions_recursively(self.code)):
             if isinstance(ins, ir.CallMethod):
                 self._get_rid_of_auto_in_var(ins.obj)
-                functype = ins.obj.type.methods[ins.method_name]
+                functype = self._get_method_functype(ins.obj.type, ins.method_name)
                 with self.code_to_separate_list() as front_code:
                     ins.args = self.do_args(
                         ins.args,
@@ -731,7 +735,7 @@ class _FunctionOrMethodConverter:
                 inslist[where:where] = front_code
 
                 if functype.returntype is None:
-                    ins.result = None
+                    assert ins.result is None
                 elif ins.result is not None:
                     if isinstance(ins.result.type, AutoType):
                         self._resolve_autotype(ins.result.type, functype.returntype)
@@ -744,19 +748,12 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.GetAttribute):
                 self._get_rid_of_auto_in_var(ins.obj)
                 # FIXME: copy/pasta
-                matching_types = [
-                    the_type
-                    for the_type, name in ins.obj.type.members
-                    if name == ins.attribute
-                ]
-                assert matching_types, ins.attribute
-                [member_type] = matching_types
                 if isinstance(ins.result.type, AutoType):
-                    self._resolve_autotype(ins.result.type, member_type)
+                    self._resolve_autotype(ins.result.type, self._get_attribute_type(ins.obj.type, ins.attribute))
                 else:
                     self._get_rid_of_auto_in_var(ins.result)
 
-        for inslist, ins in list(_get_instructions_recursively(code)):
+        for inslist, ins in list(_get_instructions_recursively(self.code)):
             if isinstance(
                 ins,
                 (
@@ -786,12 +783,7 @@ class _FunctionOrMethodConverter:
                     self._get_rid_of_auto_in_var(ins.source)
             elif isinstance(ins, ir.If):
                 self._get_rid_of_auto_in_var(ins.condition)
-                self.get_rid_of_auto_everywhere(ins.then)
-                self.get_rid_of_auto_everywhere(ins.otherwise)
             elif isinstance(ins, ir.Loop):
-                self.get_rid_of_auto_everywhere(ins.cond_code)
-                self.get_rid_of_auto_everywhere(ins.body)
-                self.get_rid_of_auto_everywhere(ins.incr)
                 self._get_rid_of_auto_in_var(ins.cond)
             elif isinstance(ins, ir.Return):
                 if ins.value is not None:
@@ -816,8 +808,6 @@ class _FunctionOrMethodConverter:
                     self._get_rid_of_auto(membertype): body
                     for membertype, body in ins.cases.items()
                 }
-                for body in ins.cases.values():
-                    self.get_rid_of_auto_everywhere(body)
             else:
                 raise NotImplementedError(ins)
 
@@ -932,7 +922,7 @@ class _FileConverter:
         converter = _FunctionOrMethodConverter(self, local_vars, functype.returntype)
         for statement in funcdef.body:
             converter.do_statement(statement)
-        converter.get_rid_of_auto_everywhere(converter.code)
+        converter.get_rid_of_auto_everywhere()
         body.extend(converter.code)
 
         if classtype is None:
