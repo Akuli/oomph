@@ -24,8 +24,8 @@ class CustomLexer(Lexer):
             value = match.group()
             index = match.start()
 
-#            if tokentype in {"indent", "error", "ignore"}:
-#                continue
+            if tokentype in {"indent", "error", "ignore"}:
+                continue
 
             for line in text[prev_end:index].splitlines(keepends=True):
                 if "#" in line:
