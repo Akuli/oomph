@@ -35,7 +35,6 @@ class _FunctionOrMethodConverter:
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
         self.resolved_autotypes: Dict[AutoType, Type] = {}
-        self.matching_autotypes: Set[Tuple[AutoType, AutoType]] = set()
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
         if raw_type.name == "auto":
@@ -81,15 +80,14 @@ class _FunctionOrMethodConverter:
 
     def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
         assert not isinstance(actual, AutoType)
-        # TODO: should update self.resolved_autotypes better?
-        # any(auto in pair for pair in self.matching_autotypes)
         self.resolved_autotypes[auto] = actual
 
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
-        assert not (isinstance(target_type, AutoType) and isinstance(var.type, AutoType))
-        if isinstance(target_type, AutoType):
+        if isinstance(target_type, AutoType) and isinstance(var.type, AutoType):
+            assert var.type == target_type
+        elif isinstance(target_type, AutoType):
             try:
                 target_type = self.resolved_autotypes[target_type]
             except KeyError:
@@ -113,10 +111,7 @@ class _FunctionOrMethodConverter:
             if isinstance(var.type.generic_origin.arg, AutoType) and isinstance(
                 target_type.generic_origin.arg, AutoType
             ):
-                self.matching_autotypes.add(
-                    (var.type.generic_origin.arg, target_type.generic_origin.arg)
-                )
-                return var
+                assert var.type.generic_origin == target_type.generic_origin
             elif isinstance(var.type.generic_origin.arg, AutoType):
                 self._resolve_autotype(
                     var.type.generic_origin.arg, target_type.generic_origin.arg
@@ -670,15 +665,6 @@ class _FunctionOrMethodConverter:
                 var.type = self.resolved_autotypes[var.type]
 
     def get_rid_of_auto_everywhere(self, code: List[ir.Instruction]) -> None:
-        # TODO: this doesn't affect earlier _get_rid_of_auto_in_var(recursive=False) calls
-        for auto1, auto2 in self.matching_autotypes:
-            if auto1 in self.resolved_autotypes and auto2 in self.resolved_autotypes:
-                assert self.resolved_autotypes[auto1] == self.resolved_autotypes[auto2]
-            elif auto1 in self.resolved_autotypes:
-                self.resolved_autotypes[auto2] = self.resolved_autotypes[auto1]
-            elif auto2 in self.resolved_autotypes:
-                self.resolved_autotypes[auto1] = self.resolved_autotypes[auto2]
-
         for ins in code:
             if isinstance(
                 ins,
