@@ -3,39 +3,40 @@ from typing import Iterator, Tuple
 
 import more_itertools
 
-KEYWORDS = [
-    "let",
-    "import",
-    "as",
-    "export",
-    "func",
-    "meth",
-    "class",
-    "union",
-    "switch",
-    "case",
-    "auto",
-    "generic",
-    "new",
-    "return",
-    "pass",
-    "mod",
-    "and",
-    "or",
-    "not",
-    "if",
-    "elif",
-    "else",
-    "while",
-    "for",
-    "foreach",
-    "of",
-    "continue",
-    "break",
-]
-
 _TOKEN_REGEX = r'''
-(?P<identifier>
+(?P<keyword>
+    \b (
+        let
+        | import
+        | as
+        | export
+        | func
+        | meth
+        | class
+        | union
+        | switch
+        | case
+        | auto
+        | generic
+        | new
+        | return
+        | pass
+        | mod
+        | and
+        | or
+        | not
+        | if
+        | elif
+        | else
+        | while
+        | for
+        | foreach
+        | of
+        | continue
+        | break
+    ) \b
+)
+| (?P<identifier>
     [A-Za-z_] [A-Za-z0-9_]* ( :: [A-Za-z_] [A-Za-z0-9_]* )?
 )
 | (?P<float>
@@ -96,13 +97,10 @@ def _raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
         value = match.group()
         assert tokentype != "error", repr(value)
         if tokentype != "ignore":
-            if tokentype == "identifier":
-                if value == "assert":
-                    # TODO: this is a "temporary" hack to track line numbers in asserts
-                    lineno = code[: match.start()].count("\n") + 1
-                    tokentype = f"assert_{lineno}"
-                elif value in KEYWORDS:
-                    tokentype = "keyword"
+            # TODO: this is a "temporary" hack to track line numbers in asserts
+            if tokentype == "identifier" and value == "assert":
+                lineno = code[: match.start()].count("\n") + 1
+                tokentype = f"assert_{lineno}"
             yield (tokentype, match.group())
 
 
