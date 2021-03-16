@@ -38,8 +38,12 @@ jobs:
         python-version: "3.9"
     - run: pip install -r requirements.txt
     - run: pip install pygments
-    - run: |
-      set -e
-      for file in tests/*.oomph; do
-        python3 -m pygments -x -l oomph_pygments_lexer.py $file
-      done
+    - shell: bash
+      run: |
+        set -e
+        for file in tests/*.oomph; do
+          diff $file <(
+            python3 -m pygments -x -l oomph_pygments_lexer.py $file
+            | sed 's/\x1b\[[0-9;]*m//g'   # https://superuser.com/a/380778
+          )
+        done
