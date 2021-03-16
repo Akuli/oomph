@@ -36,21 +36,25 @@ However, implicit conversions treat auto types specially:
 - A similar thing happens when implicitly converting from `List[T]` to `List[U]`,
     where `T` and `U` are different types,
     or similarly for any other generic instead of `List`.
-    (TODO: implement the rest of this)
+    (TODO: this is not fully implemented)
     Currently this does not recurse,
-    so `List[List[auto]]` does not convert `List[List[Str]]` for example,
+    so `List[List[auto]]` does not convert to `List[List[Str]]` for example,
     but this will hopefully be changed in a future version of Oomph.
 
 Also, when `thing` has automatic type, `thing.blah(foo)`
-is not used to implicitly convert `foo` to the correct argument type,
+is not used to implicitly convert the argument `foo` to the correct argument type,
 because the type of `thing` might not be known yet.
+In fact, the return type is not known either, and a new automatic type is used for that;
+this means you can do `thing.blah(foo).lol()`, 
+as long as there is enough information to eventually determine the types.
 
 Once all that is done, the compiled code contains `auto` types,
 and we also have a mapping of values of the `auto` types.
 The next step is to plug in the types of
 the `thing`s of `thing.blah` attribute and method lookups,
+and more generally, all method calls and attribute lookups on automatic types,
 and then do the implicit conversions for method arguments.
 
 Finally, all automatic types are replaced with the corresponding actual types.
-It is an error if the actual type is not available;
+It is an error if the actual type of some automatic type is not available;
 in that case, the automatic type has never been used.
