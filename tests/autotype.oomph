@@ -1,0 +1,11 @@
+func auto_inside_list() -> List[Str]:
+    let foo = []
+    foo = new List[Int]()
+    return []
+
+export func main():
+    let foo = new List[auto]()
+    foo.push(1)
+    print(foo)
+
+    auto_inside_list().push("lol")

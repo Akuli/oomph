@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from typing import Dict, Iterator, List, Optional, Union
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
@@ -12,12 +12,54 @@ from pyoomph.types import (
     LIST,
     OPTIONAL,
     STRING,
+    AutoType,
     FunctionType,
     Type,
     UnionType,
     builtin_generic_types,
     builtin_types,
 )
+
+
+def _get_instructions_recursively(
+    code: List[ir.Instruction],
+) -> Iterator[Tuple[List[ir.Instruction], ir.Instruction]]:
+    for ins in code:
+        yield (code, ins)
+        if isinstance(ins, ir.If):
+            yield from _get_instructions_recursively(ins.then)
+            yield from _get_instructions_recursively(ins.otherwise)
+        elif isinstance(ins, ir.Loop):
+            yield from _get_instructions_recursively(ins.cond_code)
+            yield from _get_instructions_recursively(ins.body)
+            yield from _get_instructions_recursively(ins.incr)
+        elif isinstance(ins, ir.Switch):
+            for body in ins.cases.values():
+                yield from _get_instructions_recursively(body)
+        elif not isinstance(
+            ins,
+            (
+                ir.Break,
+                ir.CallConstructor,
+                ir.CallFunction,
+                ir.CallMethod,
+                ir.Continue,
+                ir.DecRef,
+                ir.FloatConstant,
+                ir.GetAttribute,
+                ir.GetFromUnion,
+                ir.IncRef,
+                ir.InstantiateUnion,
+                ir.IntConstant,
+                ir.IsNull,
+                ir.Return,
+                ir.SetAttribute,
+                ir.StringConstant,
+                ir.UnSet,
+                ir.VarCpy,
+            ),
+        ):
+            raise NotImplementedError(ins)
 
 
 class _FunctionOrMethodConverter:
@@ -33,6 +75,13 @@ class _FunctionOrMethodConverter:
         self.loop_stack: List[str] = []
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
+        self.resolved_autotypes: Dict[AutoType, Type] = {}
+
+    def get_type(self, raw_type: ast.Type) -> ir.Type:
+        if raw_type.name == "auto":
+            assert raw_type.generic is None, "auto types can't be generic"
+            return AutoType()
+        return self.file_converter.get_type(raw_type, recursing_callback=self.get_type)
 
     def create_var(self, the_type: Type) -> ir.LocalVariable:
         # Newly created variables must be decreffed, in case we are in a loop.
@@ -70,9 +119,61 @@ class _FunctionOrMethodConverter:
         self.code.append(ir.CallFunction(func, args, result_var))
         return result_var
 
+    def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
+        assert not isinstance(actual, AutoType)
+        self.resolved_autotypes[auto] = actual
+
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
+        if isinstance(target_type, AutoType) and isinstance(var.type, AutoType):
+            if var.type != target_type:
+                assert (
+                    var.type in self.resolved_autotypes
+                    or target_type in self.resolved_autotypes
+                )
+                var.type = self.resolved_autotypes.get(var.type, var.type)
+                target_type = self.resolved_autotypes.get(target_type, target_type)
+        elif isinstance(target_type, AutoType):
+            try:
+                target_type = self.resolved_autotypes[target_type]
+            except KeyError:
+                assert isinstance(target_type, AutoType)  # fuck you mypy
+                self._resolve_autotype(target_type, var.type)
+                target_type = var.type
+        elif isinstance(var.type, AutoType):
+            try:
+                var.type = self.resolved_autotypes[var.type]
+            except KeyError:
+                assert isinstance(var.type, AutoType)  # saatana
+                self._resolve_autotype(var.type, target_type)
+                var.type = target_type
+
+        # Handle List[Str] matching List[auto]
+        if (
+            var.type.generic_origin is not None
+            and target_type.generic_origin is not None
+            and var.type.generic_origin.generic == target_type.generic_origin.generic
+        ):
+            if isinstance(var.type.generic_origin.arg, AutoType) and isinstance(
+                target_type.generic_origin.arg, AutoType
+            ):
+                # TODO: implement what docs say
+                assert var.type.generic_origin == target_type.generic_origin
+            elif isinstance(var.type.generic_origin.arg, AutoType):
+                self._resolve_autotype(
+                    var.type.generic_origin.arg, target_type.generic_origin.arg
+                )
+                var.type = target_type
+                return var
+            elif isinstance(target_type.generic_origin.arg, AutoType):
+                assert var.type.generic_origin is not None  # fuck you fucking mypy
+                self._resolve_autotype(
+                    target_type.generic_origin.arg, var.type.generic_origin.arg
+                )
+                target_type = var.type
+                return var
+
         if var.type == target_type:
             return var
 
@@ -110,33 +211,61 @@ class _FunctionOrMethodConverter:
             var = new_var
         return var
 
+    # Can be called multiple times, that doesn't matter
     def do_args(
-        self, args: List[ast.Expression], target_types: List[Type]
+        self,
+        args: List[ir.LocalVariable],
+        target_types: List[Type],
+        self_var: Optional[ir.LocalVariable],
     ) -> List[ir.LocalVariable]:
-        assert len(args) == len(target_types)
+        if self_var is not None:
+            args = [self_var] + args
+
+        assert len(args) == len(target_types), "wrong number of args"
         return [
-            self.implicit_conversion(self.do_expression(expr), typ)
-            for expr, typ in zip(args, target_types)
+            self.implicit_conversion(var, typ) for var, typ in zip(args, target_types)
         ]
 
-    def do_call(self, call: ast.Call) -> Optional[ir.LocalVariable]:
+    def _get_method_functype(self, the_type: Type, name: str) -> FunctionType:
+        try:
+            return the_type.methods[name]
+        except KeyError:
+            raise RuntimeError(f"{the_type.name} has no method {name}()")
+
+    def _get_attribute_type(self, the_type: Type, attribute: str) -> Type:
+        matching_types = [typ for typ, nam in the_type.members if nam == attribute]
+        if not matching_types:
+            raise RuntimeError(f"{the_type.name} has no attribute {attribute}")
+        [result] = matching_types
+        return result
+
+    def do_call(
+        self, call: ast.Call, must_return_value: bool
+    ) -> Optional[ir.LocalVariable]:
         if isinstance(call.func, ast.GetAttribute):
-            self_arg = self.do_expression(call.func.obj)
+            self_var = self.do_expression(call.func.obj)
+            args = [self.do_expression(expr) for expr in call.args]
             try:
-                functype = self_arg.type.methods[call.func.attribute]
+                self._get_rid_of_auto_in_var(self_var, recursive=False)
             except KeyError:
-                raise RuntimeError(
-                    f"{self_arg.type.name} has no method {call.func.attribute}()"
-                )
-            assert self_arg.type == functype.argtypes[0]
-            if functype.returntype is None:
-                result_var = None
+                # Self variable has to remain auto-typed, less type information
+                # available, do_args will be called later
+                if must_return_value:
+                    result_var: Optional[ir.LocalVariable] = self.create_var(AutoType())
+                else:
+                    result_var = None
             else:
-                result_var = self.create_var(functype.returntype)
-            args = self.do_args(call.args, functype.argtypes[1:])
+                functype = self._get_method_functype(self_var.type, call.func.attribute)
+                assert self_var.type == functype.argtypes[0]
+                if functype.returntype is None:
+                    result_var = None
+                else:
+                    result_var = self.create_var(functype.returntype)
+                args = self.do_args(args, functype.argtypes, self_var)[1:]
             self.code.append(
-                ir.CallMethod(self_arg, call.func.attribute, args, result_var)
+                ir.CallMethod(self_var, call.func.attribute, args, result_var)
             )
+
         elif isinstance(call.func, ast.GetVar):
             func = self.variables[call.func.varname]
             assert not isinstance(func, ir.LocalVariable)
@@ -160,14 +289,22 @@ class _FunctionOrMethodConverter:
                     path = self.file_converter.path.relative_to(pathlib.Path.cwd())
                     raw_args.append(ast.StringConstant(str(path)))
                     raw_args.append(ast.IntConstant(call.func.lineno))
-                args = self.do_args(raw_args, func.type.argtypes)
+                args = self.do_args(
+                    list(map(self.do_expression, raw_args)), func.type.argtypes, None
+                )
             self.code.append(ir.CallFunction(func, args, result_var))
+
         elif isinstance(call.func, ast.Constructor):
-            the_class = self.file_converter.get_type(call.func.type)
+            the_class = self.get_type(call.func.type)
             assert the_class.constructor_argtypes is not None
-            args = self.do_args(call.args, the_class.constructor_argtypes)
+            args = self.do_args(
+                list(map(self.do_expression, call.args)),
+                the_class.constructor_argtypes,
+                None,
+            )
             result_var = self.create_var(the_class)
             self.code.append(ir.CallConstructor(result_var, args))
+
         else:
             raise NotImplementedError
 
@@ -298,13 +435,10 @@ class _FunctionOrMethodConverter:
         # Avoid evaluating right side when not needed
         # TODO: mention this in docs
         if op_ast.op in {"and", "or"}:
-            lhs_var = self.do_expression(op_ast.lhs)
+            lhs_var = self.implicit_conversion(self.do_expression(op_ast.lhs), BOOL)
             result_var = self.create_var(BOOL)
             with self.code_to_separate_list() as rhs_evaluation:
-                rhs_var = self.do_expression(op_ast.rhs)
-
-            assert lhs_var.type == BOOL
-            assert rhs_var.type == BOOL
+                rhs_var = self.implicit_conversion(self.do_expression(op_ast.rhs), BOOL)
 
             if op_ast.op == "and":
                 self.code.append(
@@ -348,7 +482,10 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.ListLiteral):
             content = [self.do_expression(item) for item in expr.content]
-            [content_type] = {var.type for var in content}
+            if content:
+                [content_type] = {var.type for var in content}
+            else:
+                content_type = AutoType()
             list_var = self.create_var(LIST.get_type(content_type))
             self.code.append(ir.CallConstructor(list_var, []))
             for item_var in content:
@@ -367,7 +504,7 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.Call):
             if isinstance(expr.func, ast.Constructor):
-                union_type = self.file_converter.get_type(expr.func.type)
+                union_type = self.get_type(expr.func.type)
                 if isinstance(union_type, UnionType):
                     var = self.create_var(union_type)
                     assert len(expr.args) == 1
@@ -376,7 +513,7 @@ class _FunctionOrMethodConverter:
                     self.code.append(ir.InstantiateUnion(var, obj))
                     return var
 
-            call = self.do_call(expr)
+            call = self.do_call(expr, True)
             assert call is not None, f"return value of void function {expr.func} used"
             return call
 
@@ -391,7 +528,10 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.UnaryOperator):
             obj = self.do_expression(expr.obj)
             if obj.type is BOOL and expr.op == "not":
-                return self.create_special_call("bool_not", [obj])
+                return self.create_special_call(
+                    "bool_not", [self.implicit_conversion(obj, BOOL)]
+                )
+            # TODO: auto type support (remember docs)
             if obj.type is INT and expr.op == "-":
                 return self.create_special_call("int_neg", [obj])
             if obj.type is FLOAT and expr.op == "-":
@@ -406,29 +546,26 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.GetAttribute):
             obj = self.do_expression(expr.obj)
-            matching_types = [
-                the_type
-                for the_type, name in obj.type.members
-                if name == expr.attribute
-            ]
-            assert matching_types, expr.attribute
-            [member_type] = matching_types
-            result = self.create_var(member_type)
+            try:
+                self._get_rid_of_auto_in_var(obj, recursive=False)
+            except KeyError:
+                result = self.create_var(AutoType())
+            else:
+                result = self.create_var(
+                    self._get_attribute_type(obj.type, expr.attribute)
+                )
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
 
         if isinstance(expr, ast.Null):
-            # Variables are nulled by default (see create_var)
-            return self.create_var(
-                OPTIONAL.get_type(self.file_converter.get_type(expr.type))
-            )
+            return self.create_var(OPTIONAL.get_type(self.get_type(expr.type)))
 
         raise NotImplementedError(expr)
 
     def do_statement(self, stmt: ast.Statement) -> None:
         if isinstance(stmt, ast.Call):
-            self.do_call(stmt)
+            self.do_call(stmt, False)
 
         elif isinstance(stmt, ast.Let):
             self.variables[stmt.varname] = self.do_expression(stmt.value)
@@ -438,7 +575,9 @@ class _FunctionOrMethodConverter:
             assert isinstance(var, ir.LocalVariable)
             new_value_var = self.do_expression(stmt.value)
             self.code.append(ir.DecRef(var))
-            self.code.append(ir.VarCpy(var, new_value_var))
+            self.code.append(
+                ir.VarCpy(var, self.implicit_conversion(new_value_var, var.type))
+            )
             self.code.append(ir.IncRef(var))
 
         elif isinstance(stmt, ast.SetAttribute):
@@ -532,7 +671,7 @@ class _FunctionOrMethodConverter:
                     types_to_do.clear()
                 else:
                     ugly_type, varname = case.type_and_varname
-                    nice_type = self.file_converter.get_type(ugly_type)
+                    nice_type = self.get_type(ugly_type)
                     nice_types = [nice_type]
                     types_to_do.remove(nice_type)
                     case_var = self.create_var(nice_type)
@@ -561,6 +700,123 @@ class _FunctionOrMethodConverter:
             for statement in block:
                 self.do_statement(statement)
         return result
+
+    def _get_rid_of_auto(self, the_type: Type) -> Type:
+        if isinstance(the_type, AutoType):
+            try:
+                the_type = self.resolved_autotypes[the_type]
+            except KeyError:
+                raise RuntimeError("can't determine automatic type")
+        if the_type.generic_origin is not None:
+            the_type = the_type.generic_origin.generic.get_type(
+                self._get_rid_of_auto(the_type.generic_origin.arg)
+            )
+        return the_type
+
+    def _get_rid_of_auto_in_var(
+        self, var: ir.LocalVariable, *, recursive: bool = True
+    ) -> None:
+        if recursive:
+            var.type = self._get_rid_of_auto(var.type)
+        else:
+            # This can be used before get_rid_of_auto_everywhere() runs
+            if isinstance(var.type, AutoType):
+                var.type = self.resolved_autotypes[var.type]
+
+    def get_rid_of_auto_everywhere(self) -> None:
+        # Method calls can happen before the type is known. Here we assume that
+        # the types got figured out.
+        for inslist, ins in list(_get_instructions_recursively(self.code)):
+            if isinstance(ins, ir.CallMethod):
+                self._get_rid_of_auto_in_var(ins.obj)
+                functype = self._get_method_functype(ins.obj.type, ins.method_name)
+                with self.code_to_separate_list() as front_code:
+                    ins.args = self.do_args(
+                        ins.args,
+                        functype.argtypes,
+                        ins.obj,
+                    )[1:]
+                where = inslist.index(ins)
+                inslist[where:where] = front_code
+
+                if functype.returntype is None:
+                    assert ins.result is None
+                elif ins.result is not None:
+                    if isinstance(ins.result.type, AutoType):
+                        self._resolve_autotype(ins.result.type, functype.returntype)
+                    else:
+                        self._get_rid_of_auto_in_var(ins.result)
+
+                for arg in ins.args:
+                    self._get_rid_of_auto_in_var(arg)
+
+            elif isinstance(ins, ir.GetAttribute):
+                self._get_rid_of_auto_in_var(ins.obj)
+                if isinstance(ins.result.type, AutoType):
+                    self._resolve_autotype(
+                        ins.result.type,
+                        self._get_attribute_type(ins.obj.type, ins.attribute),
+                    )
+                else:
+                    self._get_rid_of_auto_in_var(ins.result)
+
+        for inslist, ins in list(_get_instructions_recursively(self.code)):
+            if isinstance(
+                ins,
+                (
+                    ir.DecRef,
+                    ir.UnSet,
+                    ir.IncRef,
+                    ir.IntConstant,
+                    ir.StringConstant,
+                    ir.FloatConstant,
+                ),
+            ):
+                self._get_rid_of_auto_in_var(ins.var)
+            elif isinstance(ins, ir.CallMethod):
+                pass  # done separately above
+            elif isinstance(ins, (ir.CallConstructor, ir.CallFunction)):
+                if ins.result is not None:
+                    self._get_rid_of_auto_in_var(ins.result)
+                if isinstance(ins, ir.CallFunction) and isinstance(
+                    ins.func, ir.LocalVariable
+                ):
+                    self._get_rid_of_auto_in_var(ins.func)
+                for arg in ins.args:
+                    self._get_rid_of_auto_in_var(arg)
+            elif isinstance(ins, ir.VarCpy):
+                self._get_rid_of_auto_in_var(ins.dest)
+                if isinstance(ins.source, ir.LocalVariable):
+                    self._get_rid_of_auto_in_var(ins.source)
+            elif isinstance(ins, ir.If):
+                self._get_rid_of_auto_in_var(ins.condition)
+            elif isinstance(ins, ir.Loop):
+                self._get_rid_of_auto_in_var(ins.cond)
+            elif isinstance(ins, ir.Return):
+                if ins.value is not None:
+                    self._get_rid_of_auto_in_var(ins.value)
+            elif isinstance(ins, (ir.InstantiateUnion, ir.IsNull)):
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.value)
+            elif isinstance(ins, ir.GetAttribute):
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.obj)
+            elif isinstance(ins, ir.SetAttribute):
+                self._get_rid_of_auto_in_var(ins.value)
+                self._get_rid_of_auto_in_var(ins.obj)
+            elif isinstance(ins, ir.GetFromUnion):
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.union)
+            elif isinstance(ins, (ir.Continue, ir.Break)):
+                pass
+            elif isinstance(ins, ir.Switch):
+                self._get_rid_of_auto_in_var(ins.union)
+                ins.cases = {
+                    self._get_rid_of_auto(membertype): body
+                    for membertype, body in ins.cases.items()
+                }
+            else:
+                raise NotImplementedError(ins)
 
 
 def _create_to_string_method(class_type: ir.Type) -> ast.FuncOrMethodDef:
@@ -610,11 +866,17 @@ class _FileConverter:
         assert name not in self.variables
         self.variables[name] = var
 
-    def get_type(self, raw_type: ast.Type) -> ir.Type:
+    def get_type(
+        self,
+        raw_type: ast.Type,
+        *,
+        recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
+    ) -> ir.Type:
+        assert raw_type.name != "auto", "can't use auto type here"
         if raw_type.generic is None:
             return self._types[raw_type.name]
         return self._generic_types[raw_type.name].get_type(
-            self.get_type(raw_type.generic)
+            (recursing_callback or self.get_type)(raw_type.generic)
         )
 
     def _do_func_or_method_def_pass1(
@@ -664,7 +926,10 @@ class _FileConverter:
             local_vars[argname] = copied_var
 
         converter = _FunctionOrMethodConverter(self, local_vars, functype.returntype)
-        body.extend(converter.do_block(funcdef.body))
+        for statement in funcdef.body:
+            converter.do_statement(statement)
+        converter.get_rid_of_auto_everywhere()
+        body.extend(converter.code)
 
         if classtype is None:
             assert isinstance(funcvar, ir.FileVariable)
@@ -830,4 +1095,5 @@ def convert_program(
     result = []
     for top in program:
         result.extend(converter.do_toplevel_declaration_pass2(top))
+
     return result

@@ -2,6 +2,8 @@
 
 Implicit conversion rules are applied in these situations (and more is planned):
 - Arguments of all calls, including functions, methods, `new`, and so on.
+- Variable assignments (but not `let` statements;
+    they use the type of the value as the type of the variable, with no conversions).
 - The value of a `return` statement.
 - The operators `==`, `!=`, `<`, `>`, `<=`, `>=`, `+`, `-`, `*` and `/`
     attempt converting their left side to have the type of the right side,
@@ -12,6 +14,7 @@ Implicit conversion rules are applied in these situations (and more is planned):
         to prevent ambiguity in choosing the "right" conversion to do.
     - If one conversion succeeds and the other fails, the successful conversion is used.
     - If neither conversion succeeds, a compilation error occurs.
+- The operators `and`, `or`, `not` implicitly convert all values to type `Bool`.
 
 Implicitly converting an object to a type follows these rules:
 - If the object already has the desired type, then nothing happens; the
@@ -23,6 +26,9 @@ Implicitly converting an object to a type follows these rules:
     type. Nested unions are allowed when they are not ambiguous. If the desired
     type itself is a union type, then its members are ignored.
 - Otherwise, the implicit conversion fails.
+
+There are also a few additional rules that apply only when automatic types are involved.
+See [the documentation on automatic types](auto.md).
 
 These rules are intentionally weak. For example, unlike in many other programming
 languages, `1 == "2"` is an error: even though the `==` operator does implicit

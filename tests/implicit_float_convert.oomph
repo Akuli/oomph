@@ -3,3 +3,7 @@ func foo(Float x):
 
 export func main():
     foo(123)
+
+    let x = 1.23
+    x = 45
+    print(x)

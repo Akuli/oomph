@@ -31,7 +31,7 @@ func get_int(Str code) -> Str:
     return code.slice(0, len)
 
 func raw_tokenize(Str code) -> List[Token]:
-    let result = new List[Token]()
+    let result = []
     while code != "":
         let id = get_simple_identifier(code)
         let op = starts_with_any(code, ["(", ")", ":", "\n", "+", "-", "*", "/"])
@@ -96,7 +96,7 @@ func skip_newlines(List[Token] tokens):
         tokens.pop()
 
 func clean_newlines(List[Token] tokens) -> List[Token]:
-    let result = new List[Token]()
+    let result = []
     tokens = tokens.reversed()
 
     skip_newlines(tokens)
@@ -110,12 +110,12 @@ func clean_newlines(List[Token] tokens) -> List[Token]:
 
 func find_blocks(List[Token] tokens) -> List[Token]:
     let indent_level = 0
-    let result = new List[Token]()
+    let result = []
     tokens = tokens.reversed()
 
     while tokens.length() != 0:
         # TODO: add slice method to lists
-        let head = new List[Token]()
+        let head = []
         for let i = 0; i < 3; i = i + 1:
             if tokens.length() > i:
                 head.push(tokens.get(tokens.length() - 1 - i))

@@ -29,7 +29,7 @@ class LocalVariable:
 
     # Default dataclass repr does not distinguish different instances
     def __repr__(self) -> str:
-        return "<LocalVariable %#x: %s>" % (id(self), self.type.name)
+        return "<LocalVariable %s: %s>" % (hex(id(self))[-4:], self.type.name)
 
 
 @dataclass(eq=False)
@@ -111,18 +111,12 @@ class VarCpy(Instruction):
     dest: LocalVariable
     source: Variable
 
-    def __post_init__(self) -> None:
-        assert self.dest.type == self.source.type, (self.dest, self.source)
-
 
 @dataclass(eq=False)
 class GetAttribute(Instruction):
     obj: LocalVariable
     result: LocalVariable
     attribute: str
-
-    def __post_init__(self) -> None:
-        assert (self.result.type, self.attribute) in self.obj.type.members
 
 
 @dataclass(eq=False)
@@ -142,17 +136,6 @@ class CallMethod(Instruction):
     method_name: str
     args: List[LocalVariable]
     result: Optional[LocalVariable]
-
-    def __post_init__(self) -> None:
-        functype = self.obj.type.methods[self.method_name]
-        if functype.returntype is None:
-            assert self.result is None
-        else:
-            assert self.result is not None
-            assert self.result.type == functype.returntype
-        assert [self.obj.type] + [
-            arg.type for arg in self.args
-        ] == functype.argtypes, self.method_name
 
 
 @dataclass(eq=False)
@@ -187,19 +170,19 @@ class CallConstructor(Instruction):
 
 @dataclass(eq=False)
 class StringConstant(Instruction):
-    result: LocalVariable
+    var: LocalVariable
     value: str
 
 
 @dataclass(eq=False)
 class IntConstant(Instruction):
-    result: LocalVariable
+    var: LocalVariable
     value: int
 
 
 @dataclass(eq=False)
 class FloatConstant(Instruction):
-    result: LocalVariable
+    var: LocalVariable
     value: str
 
 
@@ -249,13 +232,13 @@ class UnSet(Instruction):
 # For optionals only
 @dataclass(eq=False)
 class IsNull(Instruction):
-    var: LocalVariable
+    value: LocalVariable
     result: LocalVariable
 
     def __post_init__(self) -> None:
         assert self.result.type == BOOL
-        assert self.var.type.generic_origin is not None
-        assert self.var.type.generic_origin.generic is OPTIONAL
+        assert self.value.type.generic_origin is not None
+        assert self.value.type.generic_origin.generic is OPTIONAL
 
 
 @dataclass(eq=False)

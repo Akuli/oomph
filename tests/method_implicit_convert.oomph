@@ -1,0 +1,8 @@
+export func main():
+    let foo = []
+    foreach item of foo:
+        item.push(1)  # currently auto-typed, but will convert to float
+    foo.push([1.2])
+    foreach item of foo:
+        item.push(1)  # converts to float
+    print(foo)

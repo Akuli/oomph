@@ -406,7 +406,12 @@ class _Parser:
         return [result]
 
     def parse_type(self) -> ast.Type:
-        name = self.get_token("identifier")[1]
+        if self.token_iter.peek() == ("keyword", "auto"):
+            self.get_token("keyword", "auto")
+            name = "auto"
+        else:
+            name = self.get_token("identifier")[1]
+
         generic = None
         if self.token_iter.peek() == ("op", "["):
             self.get_token("op", "[")

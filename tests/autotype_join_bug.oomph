@@ -1,0 +1,6 @@
+export func main():
+    # List[T] has join method if and only if T is Str
+    let foo = []   # unknown type
+    foo.push("a")  # type becomes Str
+    foo.push("b")
+    print(foo.join(" and "))

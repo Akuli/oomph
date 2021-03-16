@@ -1,0 +1,11 @@
+class Foo():
+    meth lol():
+        print("lollll")
+
+export func main():
+    let foos = []
+    foreach foo of foos:
+        # foo has auto type
+        foo.lol()
+    # ...except that it doesn't, because this determines the type:
+    foos.push(new Foo())

@@ -1,0 +1,7 @@
+class Foo(Str lol)
+
+export func main():
+    let foos = []
+    foreach foo of foos:
+        # foo has auto type
+        print(foo.lol)
