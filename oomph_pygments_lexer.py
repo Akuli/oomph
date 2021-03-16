@@ -5,15 +5,7 @@
 import re
 
 from pygments.lexer import Lexer
-from pygments.token import (
-    Comment,
-    Keyword,
-    Name,
-    Number,
-    Operator,
-    String,
-    Text,
-)
+from pygments.token import Comment, Keyword, Name, Number, Operator, String, Text
 
 from pyoomph.tokenizer import TOKEN_REGEX
 
