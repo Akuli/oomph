@@ -710,6 +710,32 @@ class _FunctionOrMethodConverter:
                 var.type = self.resolved_autotypes[var.type]
 
     def get_rid_of_auto_everywhere(self, code: List[ir.Instruction]) -> None:
+        # Method calls can happen before the type is known. Here we assume that
+        # the types got figured out.
+        for inslist, ins in list(_get_instructions_recursively(code)):
+            if isinstance(ins, ir.CallMethod):
+                self._get_rid_of_auto_in_var(ins.obj)
+                functype = ins.obj.type.methods[ins.method_name]
+                with self.code_to_separate_list() as front_code:
+                    ins.args = self.do_args(
+                        ins.args,
+                        functype.argtypes,
+                        ins.obj,
+                    )[1:]
+                where = inslist.index(ins)
+                inslist[where:where] = front_code
+
+                if functype.returntype is None:
+                    ins.result = None
+                elif ins.result is not None:
+                    if isinstance(ins.result.type, AutoType):
+                        self._resolve_autotype(ins.result.type, functype.returntype)
+                    else:
+                        self._get_rid_of_auto_in_var(ins.result)
+
+                for arg in ins.args:
+                    self._get_rid_of_auto_in_var(arg)
+
         for inslist, ins in list(_get_instructions_recursively(code)):
             if isinstance(
                 ins,
@@ -723,21 +749,9 @@ class _FunctionOrMethodConverter:
                 ),
             ):
                 self._get_rid_of_auto_in_var(ins.var)
-            elif isinstance(ins, (ir.CallConstructor, ir.CallMethod, ir.CallFunction)):
-                if isinstance(ins, ir.CallMethod):
-                    # This is here because method calls can happen before the type is known
-                    self._get_rid_of_auto_in_var(ins.obj)
-                    functype = ins.obj.type.methods[ins.method_name]
-                    with self.code_to_separate_list() as front_code:
-                        ins.args = self.do_args(
-                            ins.args,
-                            functype.argtypes,
-                            ins.obj,
-                        )[1:]
-                    where = inslist.index(ins)
-                    inslist[where:where] = front_code
-                    if functype.returntype is None:
-                        ins.result = None
+            elif isinstance(ins, ir.CallMethod):
+                pass  # done separately above
+            elif isinstance(ins, (ir.CallConstructor, ir.CallFunction)):
                 if ins.result is not None:
                     self._get_rid_of_auto_in_var(ins.result)
                 if isinstance(ins, ir.CallFunction) and isinstance(

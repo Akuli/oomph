@@ -1,0 +1,9 @@
+class Foo(Str thing):
+    meth bar() -> Str:
+        return "abc"
+
+export func main():
+    let wat = []
+    foreach foo of wat:
+        print(foo.bar())
+    wat.push(new Foo(""))  # but not anymore
