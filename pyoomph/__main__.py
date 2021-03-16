@@ -22,11 +22,9 @@ class CompilationUnit:
         self.source_path = source_path
         self.session = session
 
-    def _handle_error(self):
+    def _handle_error(self) -> None:
         traceback.print_exc()
-        print(
-            f"\nThis happened while compiling {self.source_path}", file=sys.stderr
-        )
+        print(f"\nThis happened while compiling {self.source_path}", file=sys.stderr)
         sys.exit(1)
 
     def create_untyped_ast(self) -> None:
@@ -136,10 +134,8 @@ def main() -> None:
             unit = need_first[0]
             decisions.append(unit)
             if decisions.count(unit) >= 2:
-                raise RuntimeError(
-                    "cyclic imports: "
-                    + " --> ".join(d.source_path.name for d in decisions)
-                )
+                message = " --> ".join(d.source_path.name for d in decisions)
+                raise RuntimeError("cyclic imports: " + message)
         compilation_order.append(unit)
 
     for unit in compilation_order:
