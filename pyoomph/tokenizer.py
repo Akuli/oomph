@@ -3,7 +3,7 @@ from typing import Iterator, Tuple
 
 import more_itertools
 
-_TOKEN_REGEX = r'''
+TOKEN_REGEX = r'''
 (?P<keyword>
     \b (
         let
@@ -91,7 +91,7 @@ def raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
     if not code.endswith("\n"):
         code += "\n"
 
-    for match in re.finditer(_TOKEN_REGEX, code, flags=re.VERBOSE):
+    for match in re.finditer(TOKEN_REGEX, code, flags=re.VERBOSE):
         tokentype = match.lastgroup
         assert tokentype is not None
         value = match.group()
