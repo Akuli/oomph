@@ -42,8 +42,7 @@ jobs:
       run: |
         set -e
         for file in tests/*.oomph; do
-          diff $file <(
-            python3 -m pygments -x -l oomph_pygments_lexer.py $file
-            | sed 's/\x1b\[[0-9;]*m//g'   # https://superuser.com/a/380778
-          )
+          # https://superuser.com/a/380778
+          python3 -m pygments -x -l oomph_pygments_lexer.py $file | sed 's/\x1b\[[0-9;]*m//g' > out
+          diff $file out
         done
