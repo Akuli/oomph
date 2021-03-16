@@ -6,7 +6,7 @@ git clone https://github.com/Akuli/oomph
 cd oomph
 python3 -m venv env
 . env/bin/activate
-pip install more_itertools black isort mypy pyflakes
+pip install -r requirements.txt
 ./test
 python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 ```

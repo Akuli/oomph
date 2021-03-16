@@ -2,7 +2,6 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <stdnoreturn.h>
 
 noreturn void panic_printf_errno(const char *fmt, ...)
 {
