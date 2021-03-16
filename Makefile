@@ -1,4 +1,3 @@
-#CFLAGS += -fsanitize=undefined -fsanitize=address
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
@@ -10,6 +9,12 @@ CFLAGS += -Wno-unused-but-set-variable
 CFLAGS += -Wno-unused-label
 CFLAGS += -g
 LDFLAGS += -lm
+
+# tcc doesn't have <stdnoreturn.h>
+# https://stackoverflow.com/a/37741652
+ifeq ($(findstring tcc,$(CC)),tcc)
+CFLAGS += -Dnoreturn=
+endif
 
 SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)

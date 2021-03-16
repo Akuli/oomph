@@ -106,3 +106,7 @@ else
 fi
 echo -e "
 ======================== $successes succeeded, $failmsg ========================"
+
+if [ $fails != 0 ]; then
+    exit 1
+fi
