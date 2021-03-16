@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from typing import Callable, Dict, Iterator, List, Optional, Union
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
@@ -19,6 +19,47 @@ from pyoomph.types import (
     builtin_generic_types,
     builtin_types,
 )
+
+
+def _get_instructions_recursively(
+    code: List[ir.Instruction],
+) -> Iterator[Tuple[List[ir.Instruction], ir.Instruction]]:
+    for ins in code:
+        yield (code, ins)
+        if isinstance(ins, ir.If):
+            yield from _get_instructions_recursively(ins.then)
+            yield from _get_instructions_recursively(ins.otherwise)
+        elif isinstance(ins, ir.Loop):
+            yield from _get_instructions_recursively(ins.cond_code)
+            yield from _get_instructions_recursively(ins.body)
+            yield from _get_instructions_recursively(ins.incr)
+        elif isinstance(ins, ir.Switch):
+            for body in ins.cases.values():
+                yield from _get_instructions_recursively(body)
+        elif not isinstance(
+            ins,
+            (
+                ir.Break,
+                ir.CallConstructor,
+                ir.CallFunction,
+                ir.CallMethod,
+                ir.Continue,
+                ir.DecRef,
+                ir.FloatConstant,
+                ir.GetAttribute,
+                ir.GetFromUnion,
+                ir.IncRef,
+                ir.InstantiateUnion,
+                ir.IntConstant,
+                ir.IsNull,
+                ir.Return,
+                ir.SetAttribute,
+                ir.StringConstant,
+                ir.UnSet,
+                ir.VarCpy,
+            ),
+        ):
+            raise NotImplementedError(ins)
 
 
 class _FunctionOrMethodConverter:
@@ -669,8 +710,7 @@ class _FunctionOrMethodConverter:
                 var.type = self.resolved_autotypes[var.type]
 
     def get_rid_of_auto_everywhere(self, code: List[ir.Instruction]) -> None:
-        adding_to_front: Dict[ir.Instruction, List[ir.Instruction]] = {}
-        for ins in code:
+        for inslist, ins in list(_get_instructions_recursively(code)):
             if isinstance(
                 ins,
                 (
@@ -688,12 +728,14 @@ class _FunctionOrMethodConverter:
                     # This is here because method calls can happen before the type is known
                     self._get_rid_of_auto_in_var(ins.obj)
                     functype = ins.obj.type.methods[ins.method_name]
-                    with self.code_to_separate_list() as adding_to_front[ins]:
+                    with self.code_to_separate_list() as front_code:
                         ins.args = self.do_args(
                             ins.args,
                             functype.argtypes,
                             ins.obj,
                         )[1:]
+                    where = inslist.index(ins)
+                    inslist[where:where] = front_code
                     if functype.returntype is None:
                         ins.result = None
                 if ins.result is not None:
@@ -744,11 +786,6 @@ class _FunctionOrMethodConverter:
                     self.get_rid_of_auto_everywhere(body)
             else:
                 raise NotImplementedError(ins)
-
-        for ins, front in adding_to_front.items():
-            assert code.count(ins) == 1
-            i = code.index(ins)
-            code[i:i] = front
 
 
 def _create_to_string_method(class_type: ir.Type) -> ast.FuncOrMethodDef:
