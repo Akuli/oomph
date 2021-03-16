@@ -40,8 +40,8 @@ jobs:
     - run: pip install pygments
     - shell: bash
       run: |
-        set -e
-        for file in tests/*.oomph; do
+        for file in tests/*.oomph oomph/*.oomph; do
+          echo $file
           # https://superuser.com/a/380778
           python3 -m pygments -x -l oomph_pygments_lexer.py $file | sed 's/\x1b\[[0-9;]*m//g' > out
           diff $file out
