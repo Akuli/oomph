@@ -11,7 +11,8 @@ CFLAGS += -g
 LDFLAGS += -lm
 
 # tcc doesn't have <stdnoreturn.h>
-ifeq ($(CC),tcc)
+# https://stackoverflow.com/a/37741652
+ifeq ($(findstring tcc,$(CC)),tcc)
 CFLAGS += -Dnoreturn=
 endif
 
