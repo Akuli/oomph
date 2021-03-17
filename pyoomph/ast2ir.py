@@ -165,7 +165,7 @@ class _FunctionOrMethodConverter:
                         or target_type.generic_origin.arg in self.resolved_autotypes
                     ), (self.resolved_autotypes, var.type.generic_origin, target_type.generic_origin)
                     var.type.generic_origin.arg = self.resolved_autotypes.get(var.type.generic_origin.arg, var.type.generic_origin.arg)
-                    target_type.generic_origin.arg = self.resolved_autotypes.get(target_type.generic_origin.arg, target_type.generic_origin.arg)
+                    target_type = self.resolved_autotypes.get(target_type.generic_origin.arg, target_type.generic_origin.arg)
                 assert var.type.generic_origin == target_type.generic_origin
             elif isinstance(var.type.generic_origin.arg, AutoType):
                 self._resolve_autotype(
