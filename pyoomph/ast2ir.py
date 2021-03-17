@@ -84,24 +84,28 @@ class _FunctionOrMethodConverter:
         self.resolved_autotypes: Dict[AutoType, Type] = {}
         self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
 
-    def types_equal(self, type1: Type, type2: Type):
+    def types_equal(self, type1: Type, type2: Type) -> bool:
         try:
-            type1 = self.resolved_autotypes[type1]
+            type1 = self.resolved_autotypes[type1]  # type: ignore
         except KeyError:
             pass
         try:
-            type2 = self.resolved_autotypes[type2]
+            type2 = self.resolved_autotypes[type2]  # type: ignore
         except KeyError:
             pass
 
         # TODO: transitivity?
-        if (type1, type2) in self.matching_autotypes or (type2, type1) in self.matching_autotypes:
+        if (type1, type2) in self.matching_autotypes or (
+            type2,
+            type1,
+        ) in self.matching_autotypes:
             return True
 
         if type1.generic_origin is not None and type2.generic_origin is not None:
             return (
-                type1.generic_origin.generic == type2.generic_origin.generic and
-                self.types_equal(type1.generic_origin.arg, type2.generic_origin.arg))
+                type1.generic_origin.generic == type2.generic_origin.generic
+                and self.types_equal(type1.generic_origin.arg, type2.generic_origin.arg)
+            )
         return type1 == type2
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
@@ -382,7 +386,11 @@ class _FunctionOrMethodConverter:
             except ConversionError:
                 new_rhs = None
 
-            if new_lhs is not None and new_rhs is not None and self.types_equal(lhs.type, rhs.type):
+            if (
+                new_lhs is not None
+                and new_rhs is not None
+                and self.types_equal(lhs.type, rhs.type)
+            ):
                 # Weird case, can happen with auto types
                 pass
             elif new_lhs is None and new_rhs is not None:
