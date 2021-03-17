@@ -172,11 +172,11 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     meth parse_expression() -> ast::Expression:
-        let ops = ["+", "-", "*", "/", "and", "or", "not"]
+        let binary_ops = ["+", "-", "*", "/", "and", "or"]
 
         let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
-        while util::list_contains(ops, self.peek().value):
+        while util::list_contains(binary_ops, self.peek().value):
             magic_list.push(self.tokens.pop().value)
             magic_list.push_all(self.get_unary_operators())
             magic_list.push(self.parse_simple_expression())
