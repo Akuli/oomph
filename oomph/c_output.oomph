@@ -2,10 +2,6 @@ import "ir.oomph" as ir
 
 class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
     meth get_type_c_name(ir::ObjectType type) -> Str:
-        # TODO: simplify this with C typedefs (also in pyoomph)
-        foreach builtin_type of self.builtins.get_types():
-            if type == builtin_type:
-                return builtin_type.name
         return type.name
 
     meth emit_type(ir::ObjectType type) -> Str:
@@ -89,7 +85,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 """
             case ir::FunctionCall call:
                 # TODO: use emit_var
-                if call.function == self.file.builtins.PRINT:
+                if call.function == self.file.builtins.get_visible_var("print"):
                     self.emit_call("io_print", call.args, null)
                 else:
                     self.emit_call(call.function.name, call.args, call.result_var)

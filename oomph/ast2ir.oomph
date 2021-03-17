@@ -2,12 +2,6 @@ import "ast.oomph" as ast
 import "ir.oomph" as ir
 
 class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counter):
-    meth find_function(Str name) -> ir::BuiltinVariable:
-        foreach var of self.builtins.get_variables():
-            if var.name == name:
-                return var
-        assert(false)  # TODO: error
-
     meth create_var(ir::Type type) -> ir::LocalVariable:
         switch type:
             case ir::FunctionType functype:
@@ -44,8 +38,8 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
                     let result_var = self.create_var(self.builtins.BOOL)
                     let local_true = self.create_var(self.builtins.BOOL)
                     let local_false = self.create_var(self.builtins.BOOL)
-                    self.code.push(new ir::VarCpy(local_true, self.builtins.get_hidden_var("true")))
-                    self.code.push(new ir::VarCpy(local_false, self.builtins.get_hidden_var("false")))
+                    self.code.push(new ir::VarCpy(local_true, self.builtins.get_visible_var("true")))
+                    self.code.push(new ir::VarCpy(local_false, self.builtins.get_visible_var("false")))
 
                     let lhs_var = self.do_expression(bin_op.lhs)
                     assert(lhs_var.type == self.builtins.BOOL)  # TODO: error
@@ -68,7 +62,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
 
                     let result_var = self.create_var(self.builtins.BOOL)
                     let local_true = self.create_var(self.builtins.BOOL)
-                    self.code.push(new ir::VarCpy(local_true, self.builtins.get_hidden_var("true")))
+                    self.code.push(new ir::VarCpy(local_true, self.builtins.get_visible_var("true")))
 
                     let lhs_var = self.do_expression(bin_op.lhs)
                     assert(lhs_var.type == self.builtins.BOOL)  # TODO: error
@@ -131,8 +125,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
 
             case ast::GetVar getvar:
                 # TODO: refcounts
-                # TODO: don't allow access to all hidden vars
-                let old_var = self.builtins.get_hidden_var(getvar.varname)
+                let old_var = self.builtins.get_visible_var(getvar.varname)
                 let new_var = self.create_var(old_var.type)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 return new_var
@@ -160,14 +153,14 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
         switch call.function:
             # Currently, functions must be variables
             case ast::GetVar getvar:
-                let func_var = self.find_function(getvar.varname)
+                let func_var = self.builtins.get_visible_var(getvar.varname)
             case *:
                 assert(false)  # TODO: error
 
         let argvars = []
         foreach arg of call.args:
             let expr = self.do_expression(arg)
-            if func_var == self.builtins.PRINT and expr.type != self.builtins.STR:
+            if func_var == self.builtins.get_visible_var("print") and expr.type != self.builtins.STR:
                 expr = self.stringify(expr)
             argvars.push(expr)
         self.code.push(new ir::FunctionCall(func_var, argvars, null))

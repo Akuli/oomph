@@ -14,20 +14,21 @@ export union Variable:
 
 
 # TODO: global (but const) variables
-export class Builtins(ObjectType BOOL, ObjectType FLOAT, ObjectType INT, ObjectType STR, BuiltinVariable PRINT, List[BuiltinVariable] hidden_vars):
-    meth get_types() -> List[ObjectType]:
-        return [self.BOOL, self.INT, self.STR]
+export class Builtins(ObjectType BOOL, ObjectType FLOAT, ObjectType INT, ObjectType STR, List[BuiltinVariable] visible_vars, List[BuiltinVariable] hidden_vars):
+    meth get_visible_var(Str name) -> BuiltinVariable:
+        foreach var of self.visible_vars:
+            if var.name == name:
+                return var
+        print("variable {name} not found")
+        assert(false)
 
-    meth get_variables() -> List[BuiltinVariable]:
-        return [self.PRINT]
-
-    # These variables are not exposed in oomph
     meth get_hidden_var(Str name) -> BuiltinVariable:
         foreach var of self.hidden_vars:
             if var.name == name:
                 return var
-        print("hidden var {name} not found")
+        print("INTERNAL ERROR: hidden variable {name} not found")
         assert(false)
+
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
@@ -38,10 +39,14 @@ export func create_builtins() -> Builtins:
 
     let prrrint = new BuiltinVariable("print", new FunctionType([STR], null))
 
-    # TODO: multiline lists
+    let visible_vars = []
+    visible_vars.push(new BuiltinVariable("false", BOOL))
+    visible_vars.push(new BuiltinVariable("print", new FunctionType([STR], null)))
+    visible_vars.push(new BuiltinVariable("true", BOOL))
+
+    # These variables are not exposed in oomph
     let hidden_vars = []
     hidden_vars.push(new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)))
-    hidden_vars.push(new BuiltinVariable("false", BOOL))  # FIXME: not hidden
     hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)))
     hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)))
     hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)))
@@ -51,9 +56,8 @@ export func create_builtins() -> Builtins:
     hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
-    hidden_vars.push(new BuiltinVariable("true", BOOL))  # FIXME: not hidden
 
-    return new Builtins(BOOL, FLOAT, INT, STR, prrrint, hidden_vars)
+    return new Builtins(BOOL, FLOAT, INT, STR, visible_vars, hidden_vars)
 
 
 export union Instruction:
