@@ -77,7 +77,7 @@ def get_compilation_dir(parent_dir: pathlib.Path, name_hint: str) -> pathlib.Pat
         path = parent_dir / (name_hint + str(i))
         path.mkdir(parents=True, exist_ok=True)
         try:
-            (path / "compiling").open("x").close()
+            (path / "compiling").touch(exist_ok=False)
         except FileExistsError:
             # Another instance of oomph compiler running in parallel
             continue
