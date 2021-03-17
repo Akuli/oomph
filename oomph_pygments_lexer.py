@@ -41,8 +41,8 @@ class CustomLexer(Lexer):
                 yield (index, Keyword, value)
             elif tokentype in {"oneline_string", "multiline_string"}:
                 subindex = 0
-                for match in re.finditer(r'(?<!\\)\{([^{}\\\n]+)\}', value):
-                    yield (index + subindex, String, value[subindex:match.start(1)])
+                for match in re.finditer(r"(?<!\\)\{([^{}\\\n]+)\}", value):
+                    yield (index + subindex, String, value[subindex : match.start(1)])
                     for i, t, v in self.get_tokens_unprocessed(match.group(1)):
                         yield (index + match.start() + i, t, v)
                     subindex = match.end(1)
