@@ -284,6 +284,7 @@ _generic_c_codes = {
         "function_decls": """
         struct class_%(type_cname)s *ctor_%(type_cname)s(void);
         void dtor_%(type_cname)s (void *ptr);
+        bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other);
         void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
         void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
         %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
@@ -319,6 +320,17 @@ _generic_c_codes = {
             if (self->data != self->smalldata)
                 free(self->data);
             free(self);
+        }
+
+        bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other)
+        {
+            if (self->len != other->len)
+                return false;
+            for (int64_t i = 0; i < self->len; i++) {
+                if (!meth_%(itemtype_cname)s_equals(self->data[i], other->data[i]))
+                    return false;
+            }
+            return true;
         }
 
         void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)

@@ -346,7 +346,10 @@ class _FunctionOrMethodConverter:
             except TypeError:
                 new_rhs = None
 
-            if new_lhs is None and new_rhs is not None:
+            if new_lhs is not None and new_rhs is not None and lhs.type == rhs.type:
+                # Weird case, can happen with auto types
+                pass
+            elif new_lhs is None and new_rhs is not None:
                 rhs = new_rhs
             elif new_lhs is not None and new_rhs is None:
                 lhs = new_lhs

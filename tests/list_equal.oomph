@@ -1,0 +1,6 @@
+export func main():
+    print([1, 2] == [1, 2])
+    print([1, 2] == [2, 2])
+    print([1, 2] == [1, 2, 3])
+    print([1, 2] == [])
+    print(new List[Int]() == [])    # [] == [] is error, because automatic types
