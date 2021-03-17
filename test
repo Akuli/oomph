@@ -62,7 +62,7 @@ function check()
 
         if diff --color -u $outfile $out; then
             success=yes
-        elif [ $outfile -ot $file ]; then
+        elif [ $outfile -ot $file ] && [ "$GITHUB_ACTIONS" != true ]; then
             echo "Updating $outfile with this diff"
             cp $out $outfile
             success=yes
