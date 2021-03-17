@@ -10,12 +10,6 @@ else
 fi
 pyoomphopts="$@"
 
-echo "GITHUB_ACTIONS = $GITHUB_ACTIONS"
-if [ "$GITHUB_ACTIONS" == true ]; then
-    echo "gh actions"
-    exit 7
-fi
-
 make
 
 function check()
@@ -68,7 +62,7 @@ function check()
 
         if diff --color -u $outfile $out; then
             success=yes
-        elif [ $outfile -ot $file ]; then
+        elif [ $outfile -ot $file ] && [ "$GITHUB_ACTIONS" != true ]; then
             echo "Updating $outfile with this diff"
             cp $out $outfile
             success=yes
