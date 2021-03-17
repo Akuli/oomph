@@ -96,6 +96,7 @@ Missing features:
 - `case Foo(Str x, Int y):`
     - combined with unused variable warnings, it is impossible to accidentally forget
         to use some data, a feature that I wish Python had
+- good error message for using non-function as function
 
 Deprecated:
 - maybe traditional `for` loops? they seem more confusing than useful
