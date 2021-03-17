@@ -151,6 +151,10 @@ class Parser(List[tokenizer::Token] tokens):
 
             if un_or_null != null:
                 let i = un_or_null.get()
+                if i != 0 and magic_list.get(i) == "-":
+                    # TODO: error
+                    print("prefix minus not in start of expression")
+                    assert(false)
                 let op_and_expr = delete_slice_from_list(magic_list, i, i+2)
                 let op = get_op(op_and_expr.first())
                 let expr = get_expr(op_and_expr.last())

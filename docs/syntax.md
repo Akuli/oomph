@@ -148,7 +148,7 @@ A one-line-ish statement can be:
 
 An expression is a sequence of simple expressions or operators and keywords from the below precedence list:
 1. `*`, `/`
-2. `+`, `-` (can be `-x` or `x - y`)
+2. `+`, `-` (can be `-x` or `x - y`, but not `x + -y`; `-` must be first unless it's `x - y`)
 3. `mod`
 4. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
 5. `<`, `>`, `<=`, `>=` (it is an error to chain these)
