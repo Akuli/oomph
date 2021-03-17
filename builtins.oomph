@@ -96,7 +96,7 @@ func __Str_split(Str self, Str sep) -> List[Str]:
         self = self.slice(i.get() + sep.length(), self.length())
 
 func __List_Str_join(List[Str] self, Str sep) -> Str:
-    if self == []:
+    if self.length() == 0:
         return ""
 
     let result = self.get(0)
