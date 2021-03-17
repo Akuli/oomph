@@ -262,7 +262,9 @@ class _FunctionOrMethodConverter:
                     result_var = None
                 else:
                     result_var = self.create_var(functype.returntype)
-                args = self.do_args(args, functype.argtypes, self_var, call.func.attribute)[1:]
+                args = self.do_args(
+                    args, functype.argtypes, self_var, call.func.attribute
+                )[1:]
             self.code.append(
                 ir.CallMethod(self_var, call.func.attribute, args, result_var)
             )
@@ -291,7 +293,10 @@ class _FunctionOrMethodConverter:
                     raw_args.append(ast.StringConstant(str(path)))
                     raw_args.append(ast.IntConstant(call.func.lineno))
                 args = self.do_args(
-                    list(map(self.do_expression, raw_args)), func.type.argtypes, None, call.func.varname
+                    list(map(self.do_expression, raw_args)),
+                    func.type.argtypes,
+                    None,
+                    call.func.varname,
                 )
             self.code.append(ir.CallFunction(func, args, result_var))
 
@@ -301,7 +306,8 @@ class _FunctionOrMethodConverter:
             args = self.do_args(
                 list(map(self.do_expression, call.args)),
                 the_class.constructor_argtypes,
-                None, f'constructor of {the_class.name}'
+                None,
+                f"constructor of {the_class.name}",
             )
             result_var = self.create_var(the_class)
             self.code.append(ir.CallConstructor(result_var, args))
@@ -733,9 +739,7 @@ class _FunctionOrMethodConverter:
                 functype = self._get_method_functype(ins.obj.type, ins.method_name)
                 with self.code_to_separate_list() as front_code:
                     ins.args = self.do_args(
-                        ins.args,
-                        functype.argtypes,
-                        ins.obj, ins.method_name
+                        ins.args, functype.argtypes, ins.obj, ins.method_name
                     )[1:]
                 where = inslist.index(ins)
                 inslist[where:where] = front_code
