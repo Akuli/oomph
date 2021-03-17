@@ -38,7 +38,7 @@ export func create_builtins() -> Builtins:
 
     let prrrint = new BuiltinVariable("print", new FunctionType([STR], null))
 
-    # TODO: multiline literals
+    # TODO: multiline lists
     let hidden_vars = []
     hidden_vars.push(new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)))
     hidden_vars.push(new BuiltinVariable("false", BOOL))  # FIXME: not hidden

@@ -96,8 +96,7 @@ class Parser(List[tokenizer::Token] tokens):
 
         return result
 
-    # TODO: this should not be as difficult as it is
-
+    # TODO: find_blah_operator() functions should not be as difficult as they are
     meth find_unary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
         for let i = 0; i < magic_list.length() - 1; i = i+1:
             switch magic_list.get(i):

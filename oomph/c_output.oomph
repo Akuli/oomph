@@ -115,9 +115,15 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 """
             case ir::GotoLabel label:
                 # (void)0 needed when label is last thing in function
-                self.body = self.body + "label{label.id}: (void)0;"
+                self.body = self.body + """
+                label{label.id}:
+                    (void)0;
+                """
             case ir::GotoIf goto:
-                self.body = self.body + "if ({self.emit_var(goto.condition)}) goto label{goto.label.id};"
+                self.body = self.body + """
+                if ({self.emit_var(goto.condition)})
+                    goto label{goto.label.id};
+                """
 
 export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
     let file = new File(builtins, [], "")
