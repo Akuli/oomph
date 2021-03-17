@@ -1,0 +1,2 @@
+assert() failed in "oomph/parser.oomph", line N
+Program killed by signal 6 (SIGABRT)

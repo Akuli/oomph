@@ -8,22 +8,32 @@ if [ "$1" == --keep-going ]; then
 else
     keep_going=no
 fi
-oomphopts="$@"
+pyoomphopts="$@"
 
 make
 
 function check()
 {
     local file=$1
-    shift
-    local oomph="$@"
+    local compiler=$2
 
     if [[ $file == tests/*_error.oomph ]]; then
         local expect_fail=yes
-        local command="$oomph $file"
+        if [ $compiler == pyoomph ]; then
+            local outfile=tests/output/pyoomph/$(basename $file | cut -d. -f1).txt
+            local command="python3 -m pyoomph $file"
+        else
+            local outfile=tests/output/self_hosted/$(basename $file | cut -d. -f1).txt
+            local command="python3 -m pyoomph oomph/main.oomph $file"
+        fi
     else
         local expect_fail=no
-        local command="$oomph $oomphopts $file"
+        local outfile=tests/output/common/$(basename $file | cut -d. -f1).txt
+        if [ $compiler == pyoomph ]; then
+            local command="python3 -m pyoomph $pyoomphopts $file"
+        else
+            local command="python3 -m pyoomph $pyoomphopts oomph/main.oomph $file"
+        fi
         if [ $file == tests/args.oomph ]; then
             command="$command hello world"
         fi
@@ -40,7 +50,10 @@ function check()
         echo "========== ERROR: $command"
         success=no
     else
-        local outfile=tests/output/$(basename $file | cut -d. -f1).txt
+        if [ $file != tests/assert_error.oomph ]; then
+            sed -i 's/, line [0-9][0-9]*/, line N/' $out
+        fi
+
         if ! [ -f $outfile ]; then
             echo "Creating $outfile automatically"
             cp $out $outfile
@@ -76,6 +89,7 @@ function run {
 mkdir -vp test_out
 rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
+echo "Running $(nproc) tests at a time in parallel"
 
 trap wait EXIT
 for file in tests/*.oomph; do
@@ -85,13 +99,12 @@ for file in tests/*.oomph; do
     fi
 
     if grep -q fail test_out/status && [ $keep_going == no ]; then
-        # Test failed, stop instead of making more failures
         break
     fi
 
-    run check $file python3 -m pyoomph
+    run check $file pyoomph
     if grep -q "^$file" tests/self_hosted.txt; then
-        run check $file python3 -m pyoomph $oomphopts oomph/main.oomph
+        run check $file self_hosted
     fi
 done
 wait

@@ -1,2 +1,0 @@
-assert() failed in "tests/mkdir_assert_error.oomph", line 5
-Program killed by signal 6 (SIGABRT)
