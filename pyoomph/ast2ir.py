@@ -76,6 +76,7 @@ class _FunctionOrMethodConverter:
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
         self.resolved_autotypes: Dict[AutoType, Type] = {}
+        self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
         if raw_type.name == "auto":
@@ -123,31 +124,46 @@ class _FunctionOrMethodConverter:
         assert not isinstance(actual, AutoType)
         self.resolved_autotypes[auto] = actual
 
+        for first, second in self.matching_autotypes.copy():
+            if auto == first:
+                self.resolved_autotypes[second] = actual
+            elif auto == second:
+                self.resolved_autotypes[first] = actual
+            else:
+                continue
+            self.matching_autotypes.remove((first, second))
+
+    def _do_the_autotype_thing(self, type1: Type, type2: Type) -> Tuple[Type, Type]:
+        if isinstance(type1, AutoType) and isinstance(type2, AutoType):
+            if type1 != type2:
+                if type1 in self.resolved_autotypes or type2 in self.resolved_autotypes:
+                    return (
+                        self.resolved_autotypes.get(type1, type1),
+                        self.resolved_autotypes.get(type2, type2),
+                    )
+                else:
+                    self.matching_autotypes.append((type1, type2))
+                    return (type1, type1)
+        elif isinstance(type1, AutoType):
+            try:
+                type1 = self.resolved_autotypes[type1]
+            except KeyError:
+                assert isinstance(type1, AutoType)  # fuck you mypy
+                self._resolve_autotype(type1, type2)
+                return (type2, type2)
+        elif isinstance(type2, AutoType):
+            try:
+                type2 = self.resolved_autotypes[type2]
+            except KeyError:
+                assert isinstance(type2, AutoType)  # saatana
+                self._resolve_autotype(type2, type1)
+                return (type1, type1)
+        return (type1, type2)
+
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
-        if isinstance(target_type, AutoType) and isinstance(var.type, AutoType):
-            if var.type != target_type:
-                assert (
-                    var.type in self.resolved_autotypes
-                    or target_type in self.resolved_autotypes
-                )
-                var.type = self.resolved_autotypes.get(var.type, var.type)
-                target_type = self.resolved_autotypes.get(target_type, target_type)
-        elif isinstance(target_type, AutoType):
-            try:
-                target_type = self.resolved_autotypes[target_type]
-            except KeyError:
-                assert isinstance(target_type, AutoType)  # fuck you mypy
-                self._resolve_autotype(target_type, var.type)
-                target_type = var.type
-        elif isinstance(var.type, AutoType):
-            try:
-                var.type = self.resolved_autotypes[var.type]
-            except KeyError:
-                assert isinstance(var.type, AutoType)  # saatana
-                self._resolve_autotype(var.type, target_type)
-                var.type = target_type
+        var.type, target_type = self._do_the_autotype_thing(var.type, target_type)
 
         # Handle List[Str] matching List[auto]
         # TODO: this is a bit copy/pasta
@@ -156,24 +172,13 @@ class _FunctionOrMethodConverter:
             and target_type.generic_origin is not None
             and var.type.generic_origin.generic == target_type.generic_origin.generic
         ):
-            if isinstance(var.type.generic_origin.arg, AutoType) and isinstance(
-                target_type.generic_origin.arg, AutoType
-            ):
-                # TODO: implement what docs say
-                assert var.type.generic_origin == target_type.generic_origin
-            elif isinstance(var.type.generic_origin.arg, AutoType):
-                self._resolve_autotype(
+            generic = target_type.generic_origin.generic
+            var.type, target_type = map(
+                generic.get_type,
+                self._do_the_autotype_thing(
                     var.type.generic_origin.arg, target_type.generic_origin.arg
-                )
-                var.type = target_type
-                return var
-            elif isinstance(target_type.generic_origin.arg, AutoType):
-                assert var.type.generic_origin is not None  # fuck you fucking mypy
-                self._resolve_autotype(
-                    target_type.generic_origin.arg, var.type.generic_origin.arg
-                )
-                target_type = var.type
-                return var
+                ),
+            )
 
         if var.type == target_type:
             return var

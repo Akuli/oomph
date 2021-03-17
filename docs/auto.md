@@ -29,14 +29,15 @@ However, implicit conversions treat auto types specially:
     determines what the auto type is.
     The value of the auto type is not immediately substituted everywhere;
     instead, it is remembered for later.
-- An implicit conversion between two different auto types is an error,
-    unless the value of one (or both) auto types has been determined already;
-    in that case, the determined value is used.
-    This simplifies the implementation and doesn't seem to have much practical impact.
+- An implicit conversion between two different auto types
+    first checks if the actual type of one (or both) auto types has been determined already;
+    in that case, the implicit conversion continues with the actual types used instead.
+    If no actual types are available, the pair of auto types is remembered so that
+    later when the actual type of one auto type becomes available,
+    that actual type is used for the other auto type as well.
 - A similar thing happens when implicitly converting from `List[T]` to `List[U]`,
     where `T` and `U` are different types,
     or similarly for any other generic instead of `List`.
-    (TODO: this is not fully implemented)
     Currently this does not recurse,
     so `List[List[auto]]` does not convert to `List[List[Str]]` for example,
     but this will hopefully be changed in a future version of Oomph.
