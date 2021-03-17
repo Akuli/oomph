@@ -40,7 +40,8 @@ export func create_builtins() -> Builtins:
 
     # TODO: multiline literals
     let hidden_vars = []
-    hidden_vars.push(new BuiltinVariable("false", BOOL))
+    hidden_vars.push(new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)))
+    hidden_vars.push(new BuiltinVariable("false", BOOL))  # FIXME: not hidden
     hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)))
     hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)))
     hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)))
@@ -50,7 +51,7 @@ export func create_builtins() -> Builtins:
     hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
-    hidden_vars.push(new BuiltinVariable("true", BOOL))
+    hidden_vars.push(new BuiltinVariable("true", BOOL))  # FIXME: not hidden
 
     return new Builtins(BOOL, FLOAT, INT, STR, prrrint, hidden_vars)
 
@@ -58,6 +59,8 @@ export func create_builtins() -> Builtins:
 export union Instruction:
     FloatConstant
     FunctionCall
+    GotoIf
+    GotoLabel
     IntConstant
     IntToFloat
     MethodCall
@@ -66,6 +69,8 @@ export union Instruction:
 
 export class FloatConstant(Str value, LocalVariable var)
 export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, Optional[LocalVariable] result_var)
+export class GotoLabel(Int id)
+export class GotoIf(GotoLabel label, LocalVariable condition)
 export class IntConstant(Int value, LocalVariable var)
 export class IntToFloat(LocalVariable int_var, LocalVariable float_var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, Optional[LocalVariable] result)

@@ -52,17 +52,15 @@ class Parser(List[tokenizer::Token] tokens):
         self.peek()   # Error if end of file
         let token = self.tokens.pop()
         if token.type != type:
-            # TODO: error
             print("Wrong token type: expected {type}, got {token.type}")
-            assert(token.type == type)  # TODO: error
+            assert(false)  # TODO: error
         return token
 
     meth get_token(Str type, Str value) -> tokenizer::Token:
         let token = self.get_token_by_type(type)
         if token.value != value:
-            # TODO: error
             print("Expected '{value}', got '{token.value}'")
-            assert(false)
+            assert(false)  # TODO: error
         return token
 
     meth parse_simple_expression() -> ast::Expression:
@@ -99,6 +97,23 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     # TODO: this should not be as difficult as it is
+
+    meth find_unary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
+        for let i = 0; i < magic_list.length() - 1; i = i+1:
+            switch magic_list.get(i):
+                case Str op:
+                    if not util::list_contains(operators, op):
+                        continue
+                case *:
+                    continue
+            switch magic_list.get(i+1):
+                case ast::Expression expr:
+                    pass
+                case *:
+                    continue
+            return i
+        return null
+
     meth find_binary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
         for let i = 0; i <= magic_list.length() - 3; i = i+1:
             switch magic_list.get(i):
@@ -120,44 +135,57 @@ class Parser(List[tokenizer::Token] tokens):
             return i
         return null
 
-    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] operators):
+    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] unary, List[Str] binary):
         while magic_list.length() >= 2:
-            switch magic_list.first():
-                case Str op:
-                    if util::list_contains(operators, op):
-                        # Unary operation
-                        let expr = get_expr(magic_list.get(1))
-                        delete_slice_from_list(magic_list, 0, 2)
-                        insert_to_list(magic_list, 0, new ast::UnaryOperator(op, expr))
-                        continue
-                case *:
-                    pass
+            let un_or_null = self.find_unary_operator(magic_list, unary)
+            let bin_or_null = self.find_binary_operator(magic_list, binary)
 
-            let i_or_null = self.find_binary_operator(magic_list, operators)
-            if i_or_null != null:
-                let i = i_or_null.get()
+            if un_or_null != null and bin_or_null != null:
+                if un_or_null.get() < bin_or_null.get():
+                    bin_or_null = null
+                elif un_or_null.get() > bin_or_null.get():
+                    un_or_null = null
+                else:
+                    # TODO: error
+                    print("ambiguous operators")
+                    assert(false)
+
+            if un_or_null != null:
+                let i = un_or_null.get()
+                let op_and_expr = delete_slice_from_list(magic_list, i, i+2)
+                let op = get_op(op_and_expr.first())
+                let expr = get_expr(op_and_expr.last())
+                insert_to_list(magic_list, i, new ast::UnaryOperator(op, expr))
+            elif bin_or_null != null:
+                let i = bin_or_null.get()
                 let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
                 let lhs = get_expr(lhs_op_rhs.first())
                 let op = get_op(lhs_op_rhs.get(1))
                 let rhs = get_expr(lhs_op_rhs.last())
                 insert_to_list(magic_list, i, new ast::BinaryOperator(lhs, op, rhs))
-                continue
+            else:
+                break
 
-            break
+    meth get_unary_operators() -> List[PrecedenceItem]:
+        let result = new List[PrecedenceItem]()
+        while self.peek().matches("keyword", "not") or self.peek().matches("op", "-"):
+            result.push(self.tokens.pop().value)
+        return result
 
     meth parse_expression() -> ast::Expression:
-        let ops = ["+", "-", "*", "/"]
+        let ops = ["+", "-", "*", "/", "and", "or", "not"]
 
-        let magic_list = new List[PrecedenceItem]()
-        if self.peek().type == "op" and util::list_contains(ops, self.peek().value):
-            magic_list.push(self.get_token_by_type("op").value)
+        let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
-        while self.peek().type == "op" and util::list_contains(ops, self.peek().value):
-            magic_list.push(self.get_token_by_type("op").value)
+        while util::list_contains(ops, self.peek().value):
+            magic_list.push(self.tokens.pop().value)
+            magic_list.push_all(self.get_unary_operators())
             magic_list.push(self.parse_simple_expression())
 
-        self.eliminate_operators(magic_list, ["*", "/"])
-        self.eliminate_operators(magic_list, ["+", "-"])
+        self.eliminate_operators(magic_list, [], ["*", "/"])
+        self.eliminate_operators(magic_list, ["-"], ["+", "-"])
+        self.eliminate_operators(magic_list, ["not"], [])
+        self.eliminate_operators(magic_list, [], ["and", "or"])
 
         assert(magic_list.length() == 1)
         switch magic_list.first():
