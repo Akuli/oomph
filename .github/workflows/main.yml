@@ -41,8 +41,10 @@ jobs:
     - shell: bash
       run: |
         for file in tests/*.oomph oomph/*.oomph; do
-          echo $file
-          # https://superuser.com/a/380778
-          python3 -m pygments -x -l oomph_pygments_lexer.py $file | sed 's/\x1b\[[0-9;]*m//g' > out
-          diff $file out
+          if [ $file != tests/no_trailing_newline.oomph ]; then
+            echo $file
+            # https://superuser.com/a/380778
+            python3 -m pygments -x -l oomph_pygments_lexer.py $file | sed 's/\x1b\[[0-9;]*m//g' > out
+            diff $file out
+          fi
         done
