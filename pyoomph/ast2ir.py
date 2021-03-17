@@ -143,7 +143,7 @@ class _FunctionOrMethodConverter:
                     )
                 else:
                     self.matching_autotypes.append((type1, type2))
-                    return ((type1, type1))
+                    return (type1, type1)
         elif isinstance(type1, AutoType):
             try:
                 type1 = self.resolved_autotypes[type1]
