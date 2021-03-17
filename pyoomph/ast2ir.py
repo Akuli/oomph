@@ -150,6 +150,7 @@ class _FunctionOrMethodConverter:
                 var.type = target_type
 
         # Handle List[Str] matching List[auto]
+        # TODO: this is a bit copy/pasta
         if (
             var.type.generic_origin is not None
             and target_type.generic_origin is not None

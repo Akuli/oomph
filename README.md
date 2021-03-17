@@ -89,7 +89,7 @@ Missing features:
 - `starts_with` + `slice` string method
 - exceptions (easiest to implement similar to union?)
 - compilation errors or warnings for bad/unconventional/complicated style
-    - `string.length() == 0` is more complicated than `string == ""`
+    - `string.length() == 0` is more complicated than `string == ""`, same for lists
     - `not (a and not b)` is more complicated than `(not a) or b`
     - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
 - warnings about unused things (unions, classes, functions, methods, variables, arguments)
@@ -134,6 +134,7 @@ Design questions to (re)think:
 Optimization ideas:
 - avoiding allocations when an object isn't passed around and no reference
   counting is actually needed
+    - In particular, `thing == []` does not have to allocate
 - concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
     - `List[Str].join` and various other functions
 - caching `strlen` result
