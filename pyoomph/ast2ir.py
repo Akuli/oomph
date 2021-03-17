@@ -76,6 +76,7 @@ class _FunctionOrMethodConverter:
         self.loop_counter = 0
         self.code: List[ir.Instruction] = []
         self.resolved_autotypes: Dict[AutoType, Type] = {}
+        self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
         if raw_type.name == "auto":
@@ -123,16 +124,26 @@ class _FunctionOrMethodConverter:
         assert not isinstance(actual, AutoType)
         self.resolved_autotypes[auto] = actual
 
+        for first, second in self.matching_autotypes.copy():
+            if auto == first:
+                self.resolved_autotypes[second] = actual
+            elif auto == second:
+                self.resolved_autotypes[first] = actual
+            else:
+                continue
+            self.matching_autotypes.remove((first, second))
+
     def _do_the_autotype_thing(self, type1: Type, type2: Type) -> Tuple[Type, Type]:
         if isinstance(type1, AutoType) and isinstance(type2, AutoType):
             if type1 != type2:
-                assert (
-                    type1 in self.resolved_autotypes or type2 in self.resolved_autotypes
-                )
-                return (
-                    self.resolved_autotypes.get(type1, type1),
-                    self.resolved_autotypes.get(type2, type2),
-                )
+                if type1 in self.resolved_autotypes or type2 in self.resolved_autotypes:
+                    return (
+                        self.resolved_autotypes.get(type1, type1),
+                        self.resolved_autotypes.get(type2, type2),
+                    )
+                else:
+                    self.matching_autotypes.append((type1, type2))
+                    return ((type1, type1))
         elif isinstance(type1, AutoType):
             try:
                 type1 = self.resolved_autotypes[type1]

@@ -1,0 +1,6 @@
+export func main():
+    foreach foo of []:
+        let bars = []
+        foreach bar of bars:
+            foo = bar
+        bars.push(1)
