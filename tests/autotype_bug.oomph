@@ -1,0 +1,5 @@
+export func main():
+    let result = []
+    if result != []:
+        print("lol")
+    result.push("a")

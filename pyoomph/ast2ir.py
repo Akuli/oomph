@@ -62,6 +62,12 @@ def _get_instructions_recursively(
             raise NotImplementedError(ins)
 
 
+# Custom exception so that we can catch it and not accidentally silence bugs.
+# Just spent quite a while wondering what was wrong...
+class ConversionError(Exception):
+    pass
+
+
 class _FunctionOrMethodConverter:
     def __init__(
         self,
@@ -77,6 +83,26 @@ class _FunctionOrMethodConverter:
         self.code: List[ir.Instruction] = []
         self.resolved_autotypes: Dict[AutoType, Type] = {}
         self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
+
+    def types_equal(self, type1: Type, type2: Type):
+        try:
+            type1 = self.resolved_autotypes[type1]
+        except KeyError:
+            pass
+        try:
+            type2 = self.resolved_autotypes[type2]
+        except KeyError:
+            pass
+
+        # TODO: transitivity?
+        if (type1, type2) in self.matching_autotypes or (type2, type1) in self.matching_autotypes:
+            return True
+
+        if type1.generic_origin is not None and type2.generic_origin is not None:
+            return (
+                type1.generic_origin.generic == type2.generic_origin.generic and
+                self.types_equal(type1.generic_origin.arg, type2.generic_origin.arg))
+        return type1 == type2
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
         if raw_type.name == "auto":
@@ -122,7 +148,10 @@ class _FunctionOrMethodConverter:
 
     def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
         assert not isinstance(actual, AutoType)
-        self.resolved_autotypes[auto] = actual
+        if auto in self.resolved_autotypes:
+            assert self.resolved_autotypes[auto] == actual
+        else:
+            self.resolved_autotypes[auto] = actual
 
         for first, second in self.matching_autotypes.copy():
             if auto == first:
@@ -133,6 +162,7 @@ class _FunctionOrMethodConverter:
                 continue
             self.matching_autotypes.remove((first, second))
 
+    # TODO: is self.types_equal() useful for this?
     def _do_the_autotype_thing(self, type1: Type, type2: Type) -> Tuple[Type, Type]:
         if isinstance(type1, AutoType) and isinstance(type2, AutoType):
             if type1 != type2:
@@ -186,7 +216,7 @@ class _FunctionOrMethodConverter:
             return self.create_special_call("int2float", [var])
 
         if not isinstance(target_type, UnionType):
-            raise TypeError(
+            raise ConversionError(
                 f"can't implicitly convert {var.type.name} to {target_type.name}"
             )
 
@@ -199,13 +229,13 @@ class _FunctionOrMethodConverter:
             for member in path[-1].type_members:
                 if member == var.type:
                     if result_path is not None:
-                        raise TypeError("ambiguous implicit conversion")
+                        raise ConversionError("ambiguous implicit conversion")
                     result_path = path
                 elif isinstance(member, UnionType):
                     todo_paths.append(path + [member])
 
         if result_path is None:
-            raise TypeError(
+            raise ConversionError(
                 f"can't implicitly convert from {var.type.name} to {target_type.name}"
             )
 
@@ -341,17 +371,18 @@ class _FunctionOrMethodConverter:
         if lhs.type != rhs.type:
             new_lhs: Optional[ir.LocalVariable]
             new_rhs: Optional[ir.LocalVariable]
+
             try:
                 new_lhs = self.implicit_conversion(lhs, rhs.type)
-            except TypeError:
+            except ConversionError:
                 new_lhs = None
 
             try:
                 new_rhs = self.implicit_conversion(rhs, lhs.type)
-            except TypeError:
+            except ConversionError:
                 new_rhs = None
 
-            if new_lhs is not None and new_rhs is not None and lhs.type == rhs.type:
+            if new_lhs is not None and new_rhs is not None and self.types_equal(lhs.type, rhs.type):
                 # Weird case, can happen with auto types
                 pass
             elif new_lhs is None and new_rhs is not None:
@@ -361,7 +392,7 @@ class _FunctionOrMethodConverter:
             else:
                 raise RuntimeError(f"{lhs.type.name} {op} {rhs.type.name}")
 
-        assert lhs.type == rhs.type
+        assert self.types_equal(lhs.type, rhs.type)
         the_type = lhs.type
 
         if op == "!=":

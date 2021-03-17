@@ -1,2 +1,2 @@
-TypeError: ambiguous implicit conversion
+pyoomph.ast2ir.ConversionError: ambiguous implicit conversion
 
