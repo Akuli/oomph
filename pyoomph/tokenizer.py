@@ -25,6 +25,7 @@ TOKEN_REGEX = r'''
         | and
         | or
         | not
+        | in
         | if
         | elif
         | else

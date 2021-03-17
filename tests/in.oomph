@@ -1,0 +1,4 @@
+export func main():
+    print(1 in [2])
+    print(2 in [2])
+    print(1+2 == 3 and not 1+2 in new List[Int]())

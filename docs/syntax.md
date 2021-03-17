@@ -152,8 +152,9 @@ An expression is a sequence of simple expressions or operators and keywords from
 3. `mod`
 4. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
 5. `<`, `>`, `<=`, `>=` (it is an error to chain these)
-6. `not`
-7. `and`, `or` (it is an error to chain these)
+6. `in`
+7. `not`
+8. `and`, `or` (it is an error to chain these)
 
 Items high in the list take precedence, and when chaining is allowed, it happens from left to right.
 For example `a+b*c/d*e` means `(a + (((b * c) / d) * e))`.
