@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import atexit
+import itertools
 import pathlib
 import shlex
 import signal
@@ -70,6 +72,21 @@ def run(command: List[str], verbose: bool) -> int:
     return subprocess.run(command).returncode
 
 
+def get_compilation_dir(parent_dir: pathlib.Path, name_hint: str) -> pathlib.Path:
+    for i in itertools.count():
+        path = parent_dir / (name_hint + str(i))
+        path.mkdir(parents=True, exist_ok=True)
+        try:
+            (path / "compiling").open("x").close()
+        except FileExistsError:
+            # Another instance of oomph compiler running in parallel
+            continue
+        else:
+            atexit.register((path / "compiling").unlink)
+            return path
+    assert False  # make mypy feel good
+
+
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=pathlib.Path)
@@ -84,8 +101,9 @@ def main() -> None:
         cache_dir = pathlib.Path.cwd() / ".oomph-cache"
         cache_dir.mkdir(exist_ok=True)
 
-    exe_path = cache_dir / compiler_args.infile.stem
-    session = c_output.Session(cache_dir / (exe_path.stem + "_compilation"))
+    session = c_output.Session(
+        get_compilation_dir(cache_dir, compiler_args.infile.stem + "_compilation")
+    )
     session.compilation_dir.mkdir(exist_ok=True)
 
     all_compilation_units: List[CompilationUnit] = []
@@ -144,6 +162,7 @@ def main() -> None:
         unit.create_c_code(session.symbols)
 
     c_paths = session.write_everything(project_root / "builtins.oomph")
+    exe_path = session.compilation_dir / compiler_args.infile.stem
     command = get_c_compiler_command(c_paths, exe_path)
 
     result = run(command, compiler_args.verbose)
