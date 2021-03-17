@@ -42,7 +42,13 @@ jobs:
       run: |
         for file in tests/*.oomph oomph/*.oomph; do
           echo $file
+          python3 -m pygments -x -l oomph_pygments_lexer.py $file > out
           # https://superuser.com/a/380778
-          python3 -m pygments -x -l oomph_pygments_lexer.py $file | sed 's/\x1b\[[0-9;]*m//g' > out
+          sed -i 's/\x1b\[[0-9;]*m//g' out
+          if [ $file == tests/no_trailing_newline.oomph ]; then
+            # Pygments adds trailing newline, diff doesn't like it
+            # https://unix.stackexchange.com/a/254753
+            truncate -s -1 out
+          fi
           diff $file out
         done
