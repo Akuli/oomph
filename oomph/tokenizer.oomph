@@ -57,8 +57,7 @@ func raw_tokenize(Str code) -> List[Token]:
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
                 token = new Token("Int", int_value)
         elif code.starts_with(" "):
-            # TODO: can't write 'result == []' here
-            if result.length() != 0 and result.last().matches("op", "\n"):
+            if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
                 let indent_level = 0
                 while code.slice(indent_level, indent_level + 1) == " ":
