@@ -2,6 +2,7 @@
 tests/1plus2.oomph
 tests/comments.oomph
 tests/hello.oomph
+tests/no_trailing_newline.oomph
 tests/operators.oomph
 tests/prefix_minus.oomph
 tests/prefix_minus_error.oomph

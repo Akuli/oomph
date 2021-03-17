@@ -31,6 +31,9 @@ func get_int(Str code) -> Str:
     return code.slice(0, len)
 
 func raw_tokenize(Str code) -> List[Token]:
+    if not code.ends_with("\n"):
+        code = code + "\n"
+
     let result = []
     while code != "":
         let id = get_simple_identifier(code)

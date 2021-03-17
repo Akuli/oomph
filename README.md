@@ -31,8 +31,6 @@ Docs:
 
 Known bugs:
 - ref cycles are not prevented or garbage collected
-- self-hosted compiler (very wip) doesn't add `\n` to end of code
-    as specified in syntax docs
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:

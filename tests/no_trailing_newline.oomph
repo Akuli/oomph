@@ -1,0 +1,3 @@
+# Be careful when editing this file, editors like to add trailing newline
+export func main():
+    print("hello")
