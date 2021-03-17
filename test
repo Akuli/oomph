@@ -10,6 +10,12 @@ else
 fi
 pyoomphopts="$@"
 
+echo "GITHUB_ACTIONS = $GITHUB_ACTIONS"
+if [ "$GITHUB_ACTIONS" == true ]; then
+    echo "gh actions"
+    exit 7
+fi
+
 make
 
 function check()
