@@ -37,8 +37,6 @@ export func create_builtins() -> Builtins:
     let INT = new ObjectType("Int", true)
     let STR = new ObjectType("Str", true)
 
-    let prrrint = new BuiltinVariable("print", new FunctionType([STR], null))
-
     let visible_vars = []
     visible_vars.push(new BuiltinVariable("false", BOOL))
     visible_vars.push(new BuiltinVariable("print", new FunctionType([STR], null)))
