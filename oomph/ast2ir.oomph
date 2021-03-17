@@ -8,14 +8,22 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
                 return var
         assert(false)  # TODO: error
 
-    meth create_var(ir::ObjectType type) -> ir::LocalVariable:
-        self.varname_counter = self.varname_counter + 1
-        return new ir::LocalVariable(type, self.varname_counter)
+    meth create_var(ir::Type type) -> ir::LocalVariable:
+        switch type:
+            case ir::FunctionType functype:
+                assert(false)
+            case ir::ObjectType objtype:
+                self.varname_counter = self.varname_counter + 1
+                return new ir::LocalVariable(objtype, self.varname_counter)
 
     meth builtin_call(ir::BuiltinVariable function, List[ir::LocalVariable] args) -> ir::LocalVariable:
-        let result_var = self.create_var(function.type.returntype.get())
-        self.code.push(new ir::FunctionCall(function, args, result_var))
-        return result_var
+        switch function.type:
+            case ir::FunctionType functype:
+                let result_var = self.create_var(functype.returntype.get())
+                self.code.push(new ir::FunctionCall(function, args, result_var))
+                return result_var
+            case ir::ObjectType ot:
+                assert(false)
 
     meth int_to_float(ir::LocalVariable int_var) -> ir::LocalVariable:
         let float_var = self.create_var(self.builtins.FLOAT)
@@ -67,8 +75,11 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
                 assert(false)  # TODO
 
             case ast::GetVar getvar:
-                print("getvar {getvar}")
-                assert(false)  # TODO
+                # TODO: refcounts
+                let old_var = self.builtins.get_hidden_var(getvar.varname)
+                let new_var = self.create_var(old_var.type)
+                self.code.push(new ir::VarCpy(new_var, old_var))
+                return new_var
 
             case ast::FloatConstant floatconst:
                 let var = self.create_var(self.builtins.FLOAT)

@@ -2,19 +2,22 @@ import "ir.oomph" as ir
 
 class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
     meth get_type_c_name(ir::ObjectType type) -> Str:
-        # TODO: simplify this with C typedefs
-        if type == self.builtins.INT or type == self.builtins.FLOAT:
-            return type.name
-        return "struct class_{type.name}"
+        # TODO: simplify this with C typedefs (also in pyoomph)
+        foreach builtin_type of self.builtins.get_types():
+            if type == builtin_type:
+                return builtin_type.name
+        return type.name
 
     meth emit_type(ir::ObjectType type) -> Str:
         if type == self.builtins.INT:
             return "int64_t"
+        if type == self.builtins.BOOL:
+            return "bool"
         if type == self.builtins.FLOAT:
             return "double"
         if type.refcounted:
-            return self.get_type_c_name(type) + "*"
-        return self.get_type_c_name(type)
+            return "struct class_{self.get_type_c_name(type)} *"
+        return "struct class_{self.get_type_c_name(type)}"
 
     meth emit_declaration(ir::ObjectType type, Str varname) -> Str:
         if type == self.builtins.INT or type == self.builtins.FLOAT:
@@ -49,15 +52,21 @@ class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
         return varname
 
 class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str before_body, Str body, Str after_body):
-    meth emit_var(ir::LocalVariable var) -> Str:
-        # TODO: list contains method
-        foreach declared_var of self.declared_vars:
-            if declared_var == var:
-                return "var{var.id}"
+    meth emit_var(ir::Variable var) -> Str:
+        switch var:
+            case ir::LocalVariable local_var:
+                # TODO: list contains method
+                foreach declared_var of self.declared_vars:
+                    if declared_var == local_var:
+                        return "var{local_var.id}"
 
-        self.before_body = self.before_body + self.file.emit_declaration(var.type, "var{var.id}")
-        self.declared_vars.push(var)
-        return "var{var.id}"
+                self.before_body = self.before_body + self.file.emit_declaration(local_var.type, "var{local_var.id}")
+                self.declared_vars.push(local_var)
+                return "var{local_var.id}"
+            case ir::BuiltinVariable builtin_var:
+                return builtin_var.name
+            case ir::ThisFileVariable this_file_var:
+                assert(false)
 
     meth emit_call(Str c_func, List[ir::LocalVariable] args, Optional[ir::LocalVariable] result):
         let arg_strings = []
@@ -79,6 +88,7 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
                 {self.emit_var(floatconst.var)} = {floatconst.value};
                 """
             case ir::FunctionCall call:
+                # TODO: use emit_var
                 if call.function == self.file.builtins.PRINT:
                     self.emit_call("io_print", call.args, null)
                 else:
@@ -98,6 +108,10 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
             case ir::StringConstant strconst:
                 self.body = self.body + """
                 {self.emit_var(strconst.var)} = {self.file.emit_string(strconst.value)};
+                """
+            case ir::VarCpy varcpy:
+                self.body = self.body + """
+                {self.emit_var(varcpy.dest)} = {self.emit_var(varcpy.source)};
                 """
 
 export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
@@ -120,4 +134,4 @@ export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
         \}
         """
 
-    return "#include <lib/oomph.h>\n" + file.string_defs + code
+    return "#define SELF_HOSTED\n#include <lib/oomph.h>\n" + file.string_defs + code
