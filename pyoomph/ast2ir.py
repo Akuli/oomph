@@ -150,6 +150,7 @@ class _FunctionOrMethodConverter:
                 var.type = target_type
 
         # Handle List[Str] matching List[auto]
+        # TODO: this is a bit copy/pasta
         if (
             var.type.generic_origin is not None
             and target_type.generic_origin is not None
@@ -158,7 +159,13 @@ class _FunctionOrMethodConverter:
             if isinstance(var.type.generic_origin.arg, AutoType) and isinstance(
                 target_type.generic_origin.arg, AutoType
             ):
-                # TODO: implement what docs say
+                if var.type.generic_origin.arg != target_type.generic_origin.arg:
+                    assert (
+                        var.type.generic_origin.arg in self.resolved_autotypes
+                        or target_type.generic_origin.arg in self.resolved_autotypes
+                    ), (self.resolved_autotypes, var.type.generic_origin, target_type.generic_origin)
+                    var.type.generic_origin.arg = self.resolved_autotypes.get(var.type.generic_origin.arg, var.type.generic_origin.arg)
+                    target_type = self.resolved_autotypes.get(target_type.generic_origin.arg, target_type.generic_origin.arg)
                 assert var.type.generic_origin == target_type.generic_origin
             elif isinstance(var.type.generic_origin.arg, AutoType):
                 self._resolve_autotype(

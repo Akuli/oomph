@@ -167,13 +167,13 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
 
     meth do_block(List[ast::Call] body) -> List[ir::Instruction]:
         # TODO: separate class
-        assert(self.code.length() == 0)
+        assert(self.code == [])
         foreach call of body:
             self.do_statement(call)
         return self.code
 
     meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
-        assert(funcdef.args.length() == 0)
+        assert(funcdef.args == [])
         let functype = new ir::FunctionType([], null)
         assert(funcdef.name == "main")
         let func_var = new ir::ThisFileVariable(funcdef.name, functype)

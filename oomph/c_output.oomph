@@ -127,7 +127,7 @@ export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
     let code = ""
     foreach funcdef of ir:
         assert(funcdef.var.name == "main")
-        assert(funcdef.argvars.length() == 0)
+        assert(funcdef.argvars == [])
 
         let emitter = new FunctionEmitter(file, [], "", "", "")
         foreach ins of funcdef.body:
