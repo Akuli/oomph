@@ -1,5 +1,6 @@
 # List of files that self-hosted compler can compile
 tests/1plus2.oomph
+tests/bool.oomph
 tests/comments.oomph
 tests/hello.oomph
 tests/no_trailing_newline.oomph
@@ -9,3 +10,4 @@ tests/prefix_minus_error.oomph
 tests/print1.oomph
 tests/print_float.oomph
 tests/trailing_ws.oomph
+tests/weird_minus_error.oomph

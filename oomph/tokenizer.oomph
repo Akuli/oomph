@@ -41,7 +41,7 @@ func raw_tokenize(Str code) -> List[Token]:
         let int_value = get_int(code)
 
         if id != null:
-            if id.get() == "export" or id.get() == "func":
+            if util::list_contains(["export", "func", "and", "or", "not"], id.get()):
                 let token = new Token("keyword", id.get())
             else:
                 token = new Token("id", id.get())

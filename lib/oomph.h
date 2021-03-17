@@ -89,4 +89,9 @@ struct class_Str *string_concat(const struct class_Str *str1, const struct class
 // To set variable to null, do:  var = (the_type){0};
 #define IS_NULL(unionvar) ((unionvar).membernum == 1)
 
+// self-hosted can't use builtins.oomph yet
+#ifdef SELF_HOSTED
+	#define meth_Bool_to_string(b) cstr_to_string((b) ? "true" : "false")
+#endif
+
 #endif   // LIB_H

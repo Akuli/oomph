@@ -1,61 +1,84 @@
 export class ObjectType(Str name, Bool refcounted)
 export class FunctionType(List[ObjectType] argtypes, Optional[ObjectType] returntype)
+export union Type:
+    ObjectType
+    FunctionType
 
 export class LocalVariable(ObjectType type, Int id)
-export class BuiltinVariable(Str name, FunctionType type)
+export class BuiltinVariable(Str name, Type type)
 export class ThisFileVariable(Str name, FunctionType type)
+export union Variable:
+    BuiltinVariable
+    LocalVariable
+    ThisFileVariable
+
 
 # TODO: global (but const) variables
-export class Builtins(ObjectType STR, ObjectType INT, ObjectType FLOAT, BuiltinVariable PRINT, List[BuiltinVariable] hidden_vars):
-    meth get_types() -> List[ObjectType]:
-        return [self.STR, self.INT]
+export class Builtins(ObjectType BOOL, ObjectType FLOAT, ObjectType INT, ObjectType STR, List[BuiltinVariable] visible_vars, List[BuiltinVariable] hidden_vars):
+    meth get_visible_var(Str name) -> BuiltinVariable:
+        foreach var of self.visible_vars:
+            if var.name == name:
+                return var
+        print("variable {name} not found")
+        assert(false)
 
-    meth get_variables() -> List[BuiltinVariable]:
-        return [self.PRINT]
-
-    # These variables are not exposed in oomph
     meth get_hidden_var(Str name) -> BuiltinVariable:
         foreach var of self.hidden_vars:
             if var.name == name:
                 return var
-        print("hidden var {name} not found")
+        print("INTERNAL ERROR: hidden variable {name} not found")
         assert(false)
+
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
-    let STR = new ObjectType("Str", true)
-    let INT = new ObjectType("Int", true)
+    let BOOL = new ObjectType("Bool", true)
     let FLOAT = new ObjectType("Float", true)
+    let INT = new ObjectType("Int", true)
+    let STR = new ObjectType("Str", true)
 
     let prrrint = new BuiltinVariable("print", new FunctionType([STR], null))
 
-    # TODO: multiline literals
+    let visible_vars = []
+    visible_vars.push(new BuiltinVariable("false", BOOL))
+    visible_vars.push(new BuiltinVariable("print", new FunctionType([STR], null)))
+    visible_vars.push(new BuiltinVariable("true", BOOL))
+
+    # These variables are not exposed in oomph
     let hidden_vars = []
+    hidden_vars.push(new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)))
+    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], FLOAT)))
     hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)))
-    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)))
     hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], INT)))
-    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], FLOAT)))
+    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
 
-    return new Builtins(STR, INT, FLOAT, prrrint, hidden_vars)
+    return new Builtins(BOOL, FLOAT, INT, STR, visible_vars, hidden_vars)
+
 
 export union Instruction:
     FloatConstant
     FunctionCall
+    GotoIf
+    GotoLabel
     IntConstant
     IntToFloat
     MethodCall
     StringConstant
+    VarCpy
 
 export class FloatConstant(Str value, LocalVariable var)
 export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, Optional[LocalVariable] result_var)
+export class GotoLabel(Int id)
+export class GotoIf(GotoLabel label, LocalVariable condition)
 export class IntConstant(Int value, LocalVariable var)
 export class IntToFloat(LocalVariable int_var, LocalVariable float_var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, Optional[LocalVariable] result)
 export class StringConstant(Str value, LocalVariable var)
+export class VarCpy(LocalVariable dest, Variable source)  # same argument order as memcpy
 
 export class FuncDef(ThisFileVariable var, List[LocalVariable] argvars, List[Instruction] body)

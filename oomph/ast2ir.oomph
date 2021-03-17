@@ -1,21 +1,27 @@
 import "ast.oomph" as ast
 import "ir.oomph" as ir
 
-class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_counter):
-    meth find_function(Str name) -> ir::BuiltinVariable:
-        foreach var of self.builtins.get_variables():
-            if var.name == name:
-                return var
-        assert(false)  # TODO: error
+class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counter):
+    meth create_var(ir::Type type) -> ir::LocalVariable:
+        switch type:
+            case ir::FunctionType functype:
+                assert(false)
+            case ir::ObjectType objtype:
+                self.id_counter = self.id_counter + 1
+                return new ir::LocalVariable(objtype, self.id_counter)
 
-    meth create_var(ir::ObjectType type) -> ir::LocalVariable:
-        self.varname_counter = self.varname_counter + 1
-        return new ir::LocalVariable(type, self.varname_counter)
+    meth create_goto_label() -> ir::GotoLabel:
+        self.id_counter = self.id_counter + 1
+        return new ir::GotoLabel(self.id_counter)
 
     meth builtin_call(ir::BuiltinVariable function, List[ir::LocalVariable] args) -> ir::LocalVariable:
-        let result_var = self.create_var(function.type.returntype.get())
-        self.code.push(new ir::FunctionCall(function, args, result_var))
-        return result_var
+        switch function.type:
+            case ir::FunctionType functype:
+                let result_var = self.create_var(functype.returntype.get())
+                self.code.push(new ir::FunctionCall(function, args, result_var))
+                return result_var
+            case ir::ObjectType ot:
+                assert(false)
 
     meth int_to_float(ir::LocalVariable int_var) -> ir::LocalVariable:
         let float_var = self.create_var(self.builtins.FLOAT)
@@ -25,8 +31,57 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
     meth do_expression(ast::Expression expr) -> ir::LocalVariable:
         switch expr:
             case ast::BinaryOperator bin_op:
-                let lhs_var = self.do_expression(bin_op.lhs)
-                let rhs_var = self.do_expression(bin_op.rhs)
+                if bin_op.op == "and":
+                    let skip_early_false = self.create_goto_label()
+                    let done = self.create_goto_label()
+
+                    let result_var = self.create_var(self.builtins.BOOL)
+                    let local_true = self.create_var(self.builtins.BOOL)
+                    let local_false = self.create_var(self.builtins.BOOL)
+                    self.code.push(new ir::VarCpy(local_true, self.builtins.get_visible_var("true")))
+                    self.code.push(new ir::VarCpy(local_false, self.builtins.get_visible_var("false")))
+
+                    let lhs_var = self.do_expression(bin_op.lhs)
+                    assert(lhs_var.type == self.builtins.BOOL)  # TODO: error
+                    self.code.push(new ir::GotoIf(skip_early_false, lhs_var))
+
+                    self.code.push(new ir::VarCpy(result_var, local_false))
+                    self.code.push(new ir::GotoIf(done, local_true))
+
+                    self.code.push(skip_early_false)
+                    let rhs_var = self.do_expression(bin_op.rhs)
+                    assert(rhs_var.type == self.builtins.BOOL)  # TODO: error
+                    self.code.push(new ir::VarCpy(result_var, rhs_var))
+
+                    self.code.push(done)
+                    return result_var
+
+                if bin_op.op == "or":
+                    let skip_rhs = self.create_goto_label()
+                    let done = self.create_goto_label()
+
+                    let result_var = self.create_var(self.builtins.BOOL)
+                    let local_true = self.create_var(self.builtins.BOOL)
+                    self.code.push(new ir::VarCpy(local_true, self.builtins.get_visible_var("true")))
+
+                    let lhs_var = self.do_expression(bin_op.lhs)
+                    assert(lhs_var.type == self.builtins.BOOL)  # TODO: error
+                    self.code.push(new ir::GotoIf(skip_rhs, lhs_var))
+
+                    let rhs_var = self.do_expression(bin_op.rhs)
+                    assert(rhs_var.type == self.builtins.BOOL)  # TODO: error
+                    self.code.push(new ir::VarCpy(result_var, rhs_var))
+                    self.code.push(new ir::GotoIf(done, local_true))
+
+                    self.code.push(skip_rhs)
+                    self.code.push(new ir::VarCpy(result_var, local_true))
+                    self.code.push(new ir::GotoIf(done, local_true))
+
+                    self.code.push(done)
+                    return result_var
+
+                lhs_var = self.do_expression(bin_op.lhs)
+                rhs_var = self.do_expression(bin_op.rhs)
 
                 if lhs_var.type == self.builtins.INT and bin_op.op == "+" and rhs_var.type == self.builtins.INT:
                     return self.builtin_call(self.builtins.get_hidden_var("int_add"), [lhs_var, rhs_var])
@@ -58,6 +113,8 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
                     return self.builtin_call(self.builtins.get_hidden_var("int_neg"), [var])
                 if var.type == self.builtins.FLOAT and unary_op.op == "-":
                     return self.builtin_call(self.builtins.get_hidden_var("float_neg"), [var])
+                if var.type == self.builtins.BOOL and unary_op.op == "not":
+                    return self.builtin_call(self.builtins.get_hidden_var("bool_not"), [var])
 
                 print("bad unary op: {unary_op.op} {var.type.name}")
                 assert(false)  # TODO: error
@@ -67,8 +124,11 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
                 assert(false)  # TODO
 
             case ast::GetVar getvar:
-                print("getvar {getvar}")
-                assert(false)  # TODO
+                # TODO: refcounts
+                let old_var = self.builtins.get_visible_var(getvar.varname)
+                let new_var = self.create_var(old_var.type)
+                self.code.push(new ir::VarCpy(new_var, old_var))
+                return new_var
 
             case ast::FloatConstant floatconst:
                 let var = self.create_var(self.builtins.FLOAT)
@@ -93,14 +153,14 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int varname_c
         switch call.function:
             # Currently, functions must be variables
             case ast::GetVar getvar:
-                let func_var = self.find_function(getvar.varname)
+                let func_var = self.builtins.get_visible_var(getvar.varname)
             case *:
                 assert(false)  # TODO: error
 
         let argvars = []
         foreach arg of call.args:
             let expr = self.do_expression(arg)
-            if func_var == self.builtins.PRINT and expr.type != self.builtins.STR:
+            if func_var == self.builtins.get_visible_var("print") and expr.type != self.builtins.STR:
                 expr = self.stringify(expr)
             argvars.push(expr)
         self.code.push(new ir::FunctionCall(func_var, argvars, null))
