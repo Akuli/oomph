@@ -38,9 +38,7 @@ However, implicit conversions treat auto types specially:
 - A similar thing happens when implicitly converting from `List[T]` to `List[U]`,
     where `T` and `U` are different types,
     or similarly for any other generic instead of `List`.
-    Currently this does not recurse,
-    so `List[List[auto]]` does not convert to `List[List[Str]]` for example,
-    but this will hopefully be changed in a future version of Oomph.
+    This recurses, so `List[List[auto]]` converts to `List[List[Str]]`, for example.
 
 Also, when `thing` has automatic type, `thing.blah(foo)`
 is not used to implicitly convert the argument `foo` to the correct argument type,
