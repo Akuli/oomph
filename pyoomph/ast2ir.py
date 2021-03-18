@@ -36,30 +36,6 @@ def _get_instructions_recursively(
         elif isinstance(ins, ir.Switch):
             for body in ins.cases.values():
                 yield from _get_instructions_recursively(body)
-        elif not isinstance(
-            ins,
-            (
-                ir.Break,
-                ir.CallConstructor,
-                ir.CallFunction,
-                ir.CallMethod,
-                ir.Continue,
-                ir.DecRef,
-                ir.FloatConstant,
-                ir.GetAttribute,
-                ir.GetFromUnion,
-                ir.IncRef,
-                ir.InstantiateUnion,
-                ir.IntConstant,
-                ir.IsNull,
-                ir.Return,
-                ir.SetAttribute,
-                ir.StringConstant,
-                ir.UnSet,
-                ir.VarCpy,
-            ),
-        ):
-            raise NotImplementedError(ins)
 
 
 # Custom exception so that we can catch it and not accidentally silence bugs.
@@ -99,18 +75,20 @@ class _FunctionOrMethodConverter:
             for matching in self._get_matching_autotype_set(auto):
                 self.resolved_autotypes[matching] = actual
 
-    def _substitute_known_autotypes(self, the_type: Type) -> Type:
+    def _substitute_autotypes(self, the_type: Type, must_succeed: bool = False) -> Type:
         if isinstance(the_type, AutoType):
             try:
                 return self.resolved_autotypes[the_type]
             except KeyError:
+                if must_succeed:
+                    raise RuntimeError("can't determine automatic type")
                 # Return exactly one of all matching autotypes consistently
                 return min(self._get_matching_autotype_set(the_type), key=id)
 
         if the_type.generic_origin is None:
             return the_type
         return the_type.generic_origin.generic.get_type(
-            self._substitute_known_autotypes(the_type.generic_origin.arg)
+            self._substitute_autotypes(the_type.generic_origin.arg, must_succeed)
         )
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
@@ -269,11 +247,10 @@ class _FunctionOrMethodConverter:
         if isinstance(call.func, ast.GetAttribute):
             self_var = self.do_expression(call.func.obj)
             args = [self.do_expression(expr) for expr in call.args]
-            try:
-                self._get_rid_of_auto_in_var(self_var, recursive=False)
-            except KeyError:
-                # Self variable has to remain auto-typed, less type information
-                # available, do_args will be called later
+
+            self_var.type = self._substitute_autotypes(self_var.type)
+            if isinstance(self_var.type, AutoType):
+                # Less type information available, do_args will be called later
                 if must_return_value:
                     result_var: Optional[ir.LocalVariable] = self.create_var(AutoType())
                 else:
@@ -375,11 +352,9 @@ class _FunctionOrMethodConverter:
             elif new_lhs is not None and new_rhs is None:
                 lhs = new_lhs
 
-        if self._substitute_known_autotypes(
-            lhs.type
-        ) != self._substitute_known_autotypes(rhs.type):
+        if self._substitute_autotypes(lhs.type) != self._substitute_autotypes(rhs.type):
             raise RuntimeError(f"{lhs.type.name} {op} {rhs.type.name}")
-        the_type = self._substitute_known_autotypes(lhs.type)
+        the_type = self._substitute_autotypes(lhs.type)
 
         if op == "!=":
             return self._not(self._do_binary_op_typed(lhs, "==", rhs))
@@ -578,9 +553,8 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.GetAttribute):
             obj = self.do_expression(expr.obj)
-            try:
-                self._get_rid_of_auto_in_var(obj, recursive=False)
-            except KeyError:
+            obj.type = self._substitute_autotypes(obj.type)
+            if isinstance(obj.type, AutoType):
                 result = self.create_var(AutoType())
             else:
                 result = self.create_var(
@@ -733,27 +707,8 @@ class _FunctionOrMethodConverter:
                 self.do_statement(statement)
         return result
 
-    def _get_rid_of_auto(self, the_type: Type) -> Type:
-        if isinstance(the_type, AutoType):
-            try:
-                the_type = self.resolved_autotypes[the_type]
-            except KeyError:
-                raise RuntimeError("can't determine automatic type")
-        if the_type.generic_origin is not None:
-            the_type = the_type.generic_origin.generic.get_type(
-                self._get_rid_of_auto(the_type.generic_origin.arg)
-            )
-        return the_type
-
-    def _get_rid_of_auto_in_var(
-        self, var: ir.LocalVariable, *, recursive: bool = True
-    ) -> None:
-        if recursive:
-            var.type = self._get_rid_of_auto(var.type)
-        else:
-            # This can be used before get_rid_of_auto_everywhere() runs
-            if isinstance(var.type, AutoType):
-                var.type = self.resolved_autotypes[var.type]
+    def _get_rid_of_auto_in_var(self, var: ir.LocalVariable) -> None:
+        var.type = self._substitute_autotypes(var.type, must_succeed=True)
 
     def get_rid_of_auto_everywhere(self) -> None:
         # Method calls can happen before the type is known. Here we assume that
@@ -842,7 +797,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.Switch):
                 self._get_rid_of_auto_in_var(ins.union)
                 ins.cases = {
-                    self._get_rid_of_auto(membertype): body
+                    self._substitute_autotypes(membertype, must_succeed=True): body
                     for membertype, body in ins.cases.items()
                 }
             else:
