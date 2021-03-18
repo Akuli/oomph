@@ -172,7 +172,7 @@ def main() -> None:
         sys.exit(result)
 
     if compiler_args.outfile is not None:
-        assert not compiler_args.outfile.is_dir()
+        assert not compiler_args.outfile.is_dir()  # shutil.move is weird for dirs
         shutil.move(str(exe_path), str(compiler_args.outfile))
         if compiler_args.verbose:
             print("Moved executable to", compiler_args.outfile)

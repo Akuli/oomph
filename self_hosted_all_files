@@ -7,6 +7,7 @@ set -e
 python3 -m pyoomph oomph/main.oomph -o oomphc
 for file in builtins.oomph tests/*.oomph oomph/*.oomph; do
     if [ $file == tests/unterminated_string_error.oomph ]; then
+        # tokenizing fails, as supposed to
         continue
     fi
 
@@ -15,5 +16,4 @@ for file in builtins.oomph tests/*.oomph oomph/*.oomph; do
 done
 
 echo "
-
 ================== success =================="
