@@ -150,6 +150,12 @@ Optimization ideas:
     - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
 
 
+## Self-hosted compiler
+
+Very wip. The `./test` script runs working tests specified in `tests/self_hosted.txt`.
+Run `./generate_self_hosted_test_list` to update it.
+
+
 ## Editor support
 
 There is `oomph_pygments_lexer.py` for syntax highlighting.
