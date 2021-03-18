@@ -5,7 +5,7 @@
 set -e
 
 python3 -m pyoomph oomph/main.oomph -o oomphc
-for file in tests/*.oomph; do
+for file in builtins.oomph tests/*.oomph oomph/*.oomph; do
     echo $file
     ./oomphc --tokens $file >/dev/null
 done

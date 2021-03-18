@@ -78,12 +78,24 @@ func raw_tokenize(Str code) -> List[Token]:
         elif code.starts_with("#"):
             code = code.slice(code.find_first("\n").get(), code.length())
             continue
+        # TODO: multiline strings
         elif code.starts_with("\""):
-            # TODO: escapes
-            # TODO: error handling
-            let content_length = code.slice(1, code.length()).find_first("\"").get()
-            let token_length = content_length + 2
-            token = new Token("string", code.slice(0, token_length))
+            let end = 1
+            let line = code.split("\n").first()
+            while not line.slice(end, line.length()).starts_with("\""):
+                if line.slice(end, line.length()).starts_with("\\"):
+                    # Skip \ followed by some character (\n, \t, \\ etc)
+                    end = end + 2
+                else:
+                    end = end + 1
+                    while end < line.length() and line.has_continuation_byte_at(end):
+                        end = end + 1
+
+                if end >= code.length():
+                    print("string does not terminate")
+                    assert(false)  # TODO: error
+
+            token = new Token("string", code.slice(0, end + 1))
         else:
             print(result)
             print("Invalid syntax: {code}")
