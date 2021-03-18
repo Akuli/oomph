@@ -42,7 +42,6 @@ Missing features:
 - attributes of classes that are not arguments
 - init methods of classes (or something similar)
 - path objects and maybe `p"/home/akuli"` syntax
-- `from "lib.oomph" import foo` syntax
 - trailing commas
 - newlines ignored inside parentheses
 - automatic dedenting in multiline strings
@@ -107,6 +106,12 @@ Deprecated:
                     - why is this list so deeply nested lol
 
 Design questions to (re)think:
+- `from "lib.oomph" import foo` syntax?
+    - Advantage: no need to write `lib::` in front of everything, can improve readability
+    - Disadvantage: makes things more complicated in several ways
+        - Imports can't be sorted line-by-line alphabetically
+        - An import can span multiple lines, with lots of stuff imported
+        - More work to implement
 - `union` syntax: should it be one-line `Union(Foo, Bar)`
     instead of `Foo` and `Bar` on separate lines?
 - rename `switch` to `match`? note that `match` is a beautiful variable name
