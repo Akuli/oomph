@@ -328,7 +328,7 @@ _generic_c_codes = {
             if (self->len != other->len)
                 return false;
             for (int64_t i = 0; i < self->len; i++) {
-                if (!meth_%(itemtype_cname)s_equals(self->data[i], other->data[i]))
+                if (!ITEM_EQUALS(self->data[i], other->data[i]))
                     return false;
             }
             return true;
