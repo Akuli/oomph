@@ -32,10 +32,13 @@ func raw_tokenize(Str code) -> List[Token]:
     if not code.ends_with("\n"):
         code = code + "\n"
 
+    # Longer ops need to be first, otherwise -> is detect as - and > separate
+    let op_list = "-> == != <= >= < > ; , . ( ) [ ] = : + - * / \n".split(" ")
+
     let result = []
     while code != "":
         let id = get_simple_identifier(code)
-        let op = starts_with_any(code, ["(", ")", ":", "\n", "+", "-", "*", "/"])
+        let op = starts_with_any(code, op_list)
         let int_value = get_int(code)
 
         if id != null:
