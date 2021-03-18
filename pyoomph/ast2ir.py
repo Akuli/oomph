@@ -36,30 +36,6 @@ def _get_instructions_recursively(
         elif isinstance(ins, ir.Switch):
             for body in ins.cases.values():
                 yield from _get_instructions_recursively(body)
-        elif not isinstance(
-            ins,
-            (
-                ir.Break,
-                ir.CallConstructor,
-                ir.CallFunction,
-                ir.CallMethod,
-                ir.Continue,
-                ir.DecRef,
-                ir.FloatConstant,
-                ir.GetAttribute,
-                ir.GetFromUnion,
-                ir.IncRef,
-                ir.InstantiateUnion,
-                ir.IntConstant,
-                ir.IsNull,
-                ir.Return,
-                ir.SetAttribute,
-                ir.StringConstant,
-                ir.UnSet,
-                ir.VarCpy,
-            ),
-        ):
-            raise NotImplementedError(ins)
 
 
 # Custom exception so that we can catch it and not accidentally silence bugs.
