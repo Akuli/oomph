@@ -291,6 +291,7 @@ _generic_c_codes = {
         %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
         %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
+        bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item);
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
         struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
@@ -327,7 +328,7 @@ _generic_c_codes = {
             if (self->len != other->len)
                 return false;
             for (int64_t i = 0; i < self->len; i++) {
-                if (!meth_%(itemtype_cname)s_equals(self->data[i], other->data[i]))
+                if (!ITEM_EQUALS(self->data[i], other->data[i]))
                     return false;
             }
             return true;
@@ -400,6 +401,15 @@ _generic_c_codes = {
                 panic_printf("can't get last item of empty list");
             INCREF_ITEM(self->data[self->len - 1]);
             return self->data[self->len - 1];
+        }
+
+        bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item)
+        {
+            for (int64_t i = 0; i < self->len; i++) {
+                if (ITEM_EQUALS(self->data[i], item))
+                    return true;
+            }
+            return false;
         }
 
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
@@ -720,9 +730,11 @@ class _FilePair:
             self.function_defs += f"""
             #define INCREF_ITEM(val) {self.session.emit_incref("(val)", itemtype)}
             #define DECREF_ITEM(val) {self.session.emit_decref("(val)", itemtype)}
+            #define ITEM_EQUALS(a, b) meth_{self.session.get_type_c_name(itemtype)}_equals((a), (b))
             {code_dict["function_defs"] % string_formatting}
             #undef INCREF_ITEM
             #undef DECREF_ITEM
+            #undef ITEM_EQUALS
             """
 
         else:

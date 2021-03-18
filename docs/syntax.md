@@ -62,11 +62,13 @@ If more than one of these rules match, then the first matching rule should be us
 - Anything else is an error.
 
 Once tokenized according to the above rules, the stream of tokens must be modified before parsing:
-1. Newlines are cleaned up.
-2. If there is `:` operator followed by a newline and an indentation,
+1. When the keywords `not` and `in` appear consecutively, as two separate tokens,
+    they are replaced with one `not in` token.
+2. Newlines are cleaned up.
+3. If there is `:` operator followed by a newline and an indentation,
    all those tokens are replaced with one token signifying the beginning of a block.
    It is an error if the new indentation level is not 4 spaces more than the previous indentation level.
-3. If a newline token is followed by an indentation token,
+4. If a newline token is followed by an indentation token,
    then the indentation level changes according to that; if not, then the indentation level changes to zero.
    The new indentation level must be a multiple of 4 spaces,
    and less than or equal to the previous indentation level.
@@ -74,7 +76,7 @@ Once tokenized according to the above rules, the stream of tokens must be modifi
    The indentation token used (if any) is deleted;
    it must not be passed on to the next steps of compilation.
    The newline token is not deleted, however, and is yielded before the block ending tokens.
-4. Newlines are cleaned up again.
+5. Newlines are cleaned up again.
 
 Here cleaning up the newlines means that newline tokens are removed when
 - a newline token is in the beginning of the file,
@@ -82,7 +84,7 @@ Here cleaning up the newlines means that newline tokens are removed when
 - a newline token follows a token signifying the beginning of a block, or
 - a newline token follows a token signifying the end of a block.
 
-When implementing the tokenizer, steps 2 and 3 can be combined into one function,
+When implementing the tokenizer, steps 3 and 4 can be combined into one function,
 and the indentation level can be represented with a local integer variable.
 
 
@@ -152,8 +154,9 @@ An expression is a sequence of simple expressions or operators and keywords from
 3. `mod`
 4. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
 5. `<`, `>`, `<=`, `>=` (it is an error to chain these)
-6. `not`
-7. `and`, `or` (it is an error to chain these)
+6. `in`, `not in` (it is an error to chain these)
+7. `not`
+8. `and`, `or` (it is an error to chain these)
 
 Items high in the list take precedence, and when chaining is allowed, it happens from left to right.
 For example `a+b*c/d*e` means `(a + (((b * c) / d) * e))`.
