@@ -99,18 +99,20 @@ class _FunctionOrMethodConverter:
             for matching in self._get_matching_autotype_set(auto):
                 self.resolved_autotypes[matching] = actual
 
-    def _substitute_known_autotypes(self, the_type: Type) -> Type:
+    def _substitute_known_autotypes(self, the_type: Type, must_succeed: bool = False) -> Type:
         if isinstance(the_type, AutoType):
             try:
                 return self.resolved_autotypes[the_type]
             except KeyError:
+                if must_succeed:
+                    raise RuntimeError("can't determine automatic type")
                 # Return exactly one of all matching autotypes consistently
                 return min(self._get_matching_autotype_set(the_type), key=id)
 
         if the_type.generic_origin is None:
             return the_type
         return the_type.generic_origin.generic.get_type(
-            self._substitute_known_autotypes(the_type.generic_origin.arg)
+            self._substitute_known_autotypes(the_type.generic_origin.arg, must_succeed)
         )
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
@@ -733,23 +735,11 @@ class _FunctionOrMethodConverter:
                 self.do_statement(statement)
         return result
 
-    def _get_rid_of_auto(self, the_type: Type) -> Type:
-        if isinstance(the_type, AutoType):
-            try:
-                the_type = self.resolved_autotypes[the_type]
-            except KeyError:
-                raise RuntimeError("can't determine automatic type")
-        if the_type.generic_origin is not None:
-            the_type = the_type.generic_origin.generic.get_type(
-                self._get_rid_of_auto(the_type.generic_origin.arg)
-            )
-        return the_type
-
     def _get_rid_of_auto_in_var(
         self, var: ir.LocalVariable, *, recursive: bool = True
     ) -> None:
         if recursive:
-            var.type = self._get_rid_of_auto(var.type)
+            var.type = self._substitute_known_autotypes(var.type, must_succeed=True)
         else:
             # This can be used before get_rid_of_auto_everywhere() runs
             if isinstance(var.type, AutoType):
@@ -842,7 +832,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.Switch):
                 self._get_rid_of_auto_in_var(ins.union)
                 ins.cases = {
-                    self._get_rid_of_auto(membertype): body
+                    self._substitute_known_autotypes(membertype, must_succeed=True): body
                     for membertype, body in ins.cases.items()
                 }
             else:
