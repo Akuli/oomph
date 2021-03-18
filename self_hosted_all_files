@@ -6,6 +6,10 @@ set -e
 
 python3 -m pyoomph oomph/main.oomph -o oomphc
 for file in builtins.oomph tests/*.oomph oomph/*.oomph; do
+    if [ $file == tests/unterminated_string_error.oomph ]; then
+        continue
+    fi
+
     echo $file
     ./oomphc --tokens $file >/dev/null
 done

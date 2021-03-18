@@ -28,6 +28,26 @@ func get_int(Str code) -> Str:
         len = len+1
     return code.slice(0, len)
 
+func extract_string(Str code, Str quotes) -> Str:
+    assert(code.starts_with(quotes))
+    let end = quotes.length()
+
+    while true:
+        if code.slice(end, code.length()).starts_with(quotes):
+            return code.slice(0, end + quotes.length())
+
+        if code.slice(end, code.length()).starts_with("\\"):
+            # Skip \ followed by some character (\n, \t, \\ etc)
+            end = end + 1
+        # TODO: do,while loop (and just get rid of string weirdness!!...)
+        end = end + 1
+        while end < code.length() and code.has_continuation_byte_at(end):
+            end = end + 1
+
+        if end + quotes.length() > code.length():
+            print("string does not terminate: {code}")
+            assert(false)  # TODO: error
+
 func raw_tokenize(Str code) -> List[Token]:
     if not code.ends_with("\n"):
         code = code + "\n"
@@ -78,24 +98,13 @@ func raw_tokenize(Str code) -> List[Token]:
         elif code.starts_with("#"):
             code = code.slice(code.find_first("\n").get(), code.length())
             continue
+        elif code.starts_with("\"\"\""):
+            let content = extract_string(code, "\"\"\"")
+            token = new Token("string", content)
         # TODO: multiline strings
         elif code.starts_with("\""):
-            let end = 1
-            let line = code.split("\n").first()
-            while not line.slice(end, line.length()).starts_with("\""):
-                if line.slice(end, line.length()).starts_with("\\"):
-                    # Skip \ followed by some character (\n, \t, \\ etc)
-                    end = end + 2
-                else:
-                    end = end + 1
-                    while end < line.length() and line.has_continuation_byte_at(end):
-                        end = end + 1
-
-                if end >= code.length():
-                    print("string does not terminate")
-                    assert(false)  # TODO: error
-
-            token = new Token("string", code.slice(0, end + 1))
+            let content = extract_string(code.split("\n").first(), "\"")
+            token = new Token("string", content)
         else:
             print(result)
             print("Invalid syntax: {code}")
