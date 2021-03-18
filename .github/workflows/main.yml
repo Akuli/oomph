@@ -52,3 +52,13 @@ jobs:
           fi
           diff $file out
         done
+  self_hosted_all_files:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: "3.9"
+    - run: pip install -r requirements.txt
+    - run: sudo apt install tcc
+    - run: ./tokenize_everything

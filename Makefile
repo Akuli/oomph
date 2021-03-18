@@ -29,5 +29,5 @@ obj/compile_info.txt: Makefile
 	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" > $@
 
 clean:
-	rm -rvf obj test_out
+	rm -rvf obj test_out oomphc
 	find -name .oomph-cache -exec rm -rvf {} +

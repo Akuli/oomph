@@ -1,0 +1,13 @@
+#!/bin/bash
+# Make sure self-hosted compiler can do something to all oomph files, including itself.
+# Currently, it tokenizes them all.
+
+python3 -m pyoomph oomph/main.oomph -o oomphc
+for file in tests/*.oomph; do
+    echo "========= $file ========="
+    ./oomphc --tokens $file || break
+done
+
+echo "
+
+================== success =================="
