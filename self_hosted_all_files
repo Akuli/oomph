@@ -6,8 +6,8 @@ set -e
 
 python3 -m pyoomph oomph/main.oomph -o oomphc
 for file in tests/*.oomph; do
-    echo "========= $file ========="
-    ./oomphc --tokens $file
+    echo $file
+    ./oomphc --tokens $file >/dev/null
 done
 
 echo "
