@@ -1,0 +1,4 @@
+export func main():
+    for let i = 0; i < 10; print(x):
+        let x = "lol"
+        i = i + 1

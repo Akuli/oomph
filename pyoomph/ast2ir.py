@@ -697,8 +697,6 @@ class _FunctionOrMethodConverter:
                 with self.code_to_separate_list() as cond_code:
                     cond_var = self.do_expression(stmt.cond)
 
-            incr = [] if stmt.incr is None else self.do_block([stmt.incr])
-
             loop_id = f"loop{self.loop_counter}"
             self.loop_counter += 1
 
@@ -706,6 +704,8 @@ class _FunctionOrMethodConverter:
             body = self.do_block(stmt.body)
             popped = self.loop_stack.pop()
             assert popped == loop_id
+
+            incr = [] if stmt.incr is None else self.do_block([stmt.incr])
 
             self.code.append(ir.Loop(loop_id, cond_code, cond_var, incr, body))
             if isinstance(stmt.init, ast.Let):
