@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
@@ -84,29 +84,34 @@ class _FunctionOrMethodConverter:
         self.resolved_autotypes: Dict[AutoType, Type] = {}
         self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
 
-    def types_equal(self, type1: Type, type2: Type) -> bool:
-        try:
-            type1 = self.resolved_autotypes[type1]  # type: ignore
-        except KeyError:
-            pass
-        try:
-            type2 = self.resolved_autotypes[type2]  # type: ignore
-        except KeyError:
-            pass
+    def _get_matching_autotype_set(self, auto: AutoType) -> Set[AutoType]:
+        # TODO: transitivity? if (A,B) and (B,C) in matching_autotypes then A --> {A,B,C}
+        matches = {
+            typ for pair in self.matching_autotypes for typ in pair if auto in pair
+        }
+        return matches | {auto}
 
-        # TODO: transitivity?
-        if (type1, type2) in self.matching_autotypes or (
-            type2,
-            type1,
-        ) in self.matching_autotypes:
-            return True
+    def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
+        assert not isinstance(actual, AutoType)
+        if auto in self.resolved_autotypes:
+            assert self.resolved_autotypes[auto] == actual
+        else:
+            for matching in self._get_matching_autotype_set(auto):
+                self.resolved_autotypes[matching] = actual
 
-        if type1.generic_origin is not None and type2.generic_origin is not None:
-            return (
-                type1.generic_origin.generic == type2.generic_origin.generic
-                and self.types_equal(type1.generic_origin.arg, type2.generic_origin.arg)
-            )
-        return type1 == type2
+    def _substitute_known_autotypes(self, the_type: Type) -> Type:
+        if isinstance(the_type, AutoType):
+            try:
+                return self.resolved_autotypes[the_type]
+            except KeyError:
+                # Return exactly one of all matching autotypes consistently
+                return min(self._get_matching_autotype_set(the_type), key=id)
+
+        if the_type.generic_origin is None:
+            return the_type
+        return the_type.generic_origin.generic.get_type(
+            self._substitute_known_autotypes(the_type.generic_origin.arg)
+        )
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
         if raw_type.name == "auto":
@@ -150,23 +155,6 @@ class _FunctionOrMethodConverter:
         self.code.append(ir.CallFunction(func, args, result_var))
         return result_var
 
-    def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
-        assert not isinstance(actual, AutoType)
-        if auto in self.resolved_autotypes:
-            assert self.resolved_autotypes[auto] == actual
-        else:
-            self.resolved_autotypes[auto] = actual
-
-        for first, second in self.matching_autotypes.copy():
-            if auto == first:
-                self.resolved_autotypes[second] = actual
-            elif auto == second:
-                self.resolved_autotypes[first] = actual
-            else:
-                continue
-            self.matching_autotypes.remove((first, second))
-
-    # TODO: is self.types_equal() useful for this?
     def _do_the_autotype_thing(self, type1: Type, type2: Type) -> Tuple[Type, Type]:
         if isinstance(type1, AutoType) and isinstance(type2, AutoType):
             if type1 != type2:
@@ -192,27 +180,23 @@ class _FunctionOrMethodConverter:
                 assert isinstance(type2, AutoType)  # saatana
                 self._resolve_autotype(type2, type1)
                 return (type1, type1)
+        elif (
+            type1.generic_origin is not None
+            and type2.generic_origin is not None
+            and type1.generic_origin.generic == type2.generic_origin.generic
+        ):
+            # Handle List[Str] matching List[auto]
+            generic = type1.generic_origin.generic
+            type1_arg, type2_arg = self._do_the_autotype_thing(
+                type1.generic_origin.arg, type2.generic_origin.arg
+            )
+            return (generic.get_type(type1_arg), generic.get_type(type2_arg))
         return (type1, type2)
 
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
         var.type, target_type = self._do_the_autotype_thing(var.type, target_type)
-
-        # Handle List[Str] matching List[auto]
-        if (
-            var.type.generic_origin is not None
-            and target_type.generic_origin is not None
-            and var.type.generic_origin.generic == target_type.generic_origin.generic
-        ):
-            generic = target_type.generic_origin.generic
-            var.type, target_type = map(
-                generic.get_type,
-                self._do_the_autotype_thing(
-                    var.type.generic_origin.arg, target_type.generic_origin.arg
-                ),
-            )
-
         if var.type == target_type:
             return var
 
@@ -386,22 +370,16 @@ class _FunctionOrMethodConverter:
             except ConversionError:
                 new_rhs = None
 
-            if (
-                new_lhs is not None
-                and new_rhs is not None
-                and self.types_equal(lhs.type, rhs.type)
-            ):
-                # Weird case, can happen with auto types
-                pass
-            elif new_lhs is None and new_rhs is not None:
+            if new_lhs is None and new_rhs is not None:
                 rhs = new_rhs
             elif new_lhs is not None and new_rhs is None:
                 lhs = new_lhs
-            else:
-                raise RuntimeError(f"{lhs.type.name} {op} {rhs.type.name}")
 
-        assert self.types_equal(lhs.type, rhs.type)
-        the_type = lhs.type
+        if self._substitute_known_autotypes(
+            lhs.type
+        ) != self._substitute_known_autotypes(rhs.type):
+            raise RuntimeError(f"{lhs.type.name} {op} {rhs.type.name}")
+        the_type = self._substitute_known_autotypes(lhs.type)
 
         if op == "!=":
             return self._not(self._do_binary_op_typed(lhs, "==", rhs))
