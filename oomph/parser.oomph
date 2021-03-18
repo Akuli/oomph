@@ -1,6 +1,5 @@
 import "ast.oomph" as ast
 import "tokenizer.oomph" as tokenizer
-import "util.oomph" as util
 
 union PrecedenceItem:
     ast::Expression
@@ -101,7 +100,8 @@ class Parser(List[tokenizer::Token] tokens):
         for let i = 0; i < magic_list.length() - 1; i = i+1:
             switch magic_list.get(i):
                 case Str op:
-                    if not util::list_contains(operators, op):
+                    # TODO: 'not in'
+                    if not op in operators:
                         continue
                 case *:
                     continue
@@ -122,7 +122,8 @@ class Parser(List[tokenizer::Token] tokens):
                     continue
             switch magic_list.get(i+1):
                 case Str s:
-                    if not util::list_contains(operators, s):
+                    # TODO: not in
+                    if not s in operators:
                         continue
                 case *:
                     continue
@@ -180,7 +181,7 @@ class Parser(List[tokenizer::Token] tokens):
 
         let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
-        while util::list_contains(binary_ops, self.peek().value):
+        while self.peek().value in binary_ops:
             magic_list.push(self.tokens.pop().value)
             magic_list.push_all(self.get_unary_operators())
             magic_list.push(self.parse_simple_expression())
