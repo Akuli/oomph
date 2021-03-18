@@ -168,6 +168,7 @@ class _Parser:
             ("op", "<="),
             ("op", ">="),
             ("keyword", "in"),
+            ("keyword", "not in"),
             ("keyword", "and"),
             ("keyword", "or"),
             ("keyword", "mod"),
@@ -184,7 +185,8 @@ class _Parser:
         )
 
         # a==b==c is not supported yet
-        # FIXME: this test is broken for a == -b == c
+        # TODO: this test is broken for a == -b == c
+        # TODO: prevent other chainings as well
         assert not any(
             first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
             for first, second in zip(magic_list, magic_list[2:])
@@ -205,7 +207,7 @@ class _Parser:
             [(2, "mod")],
             [(2, "=="), (2, "!=")],
             [(2, "<"), (2, ">"), (2, "<="), (2, ">=")],
-            [(2, "in")],
+            [(2, "in"), (2, "not in")],
             [(1, "not")],
             [(2, "and"), (2, "or")],
         ]:

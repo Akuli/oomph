@@ -2,3 +2,7 @@ export func main():
     print(1 in [2])
     print(2 in [2])
     print(1+2 == 3 and not 1+2 in new List[Int]())
+
+    print(1 not in [2])
+    print(2 not in [2])
+    print(1+2 == 3 and 1+2 not in new List[Int]())

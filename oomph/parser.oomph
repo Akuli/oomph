@@ -100,8 +100,7 @@ class Parser(List[tokenizer::Token] tokens):
         for let i = 0; i < magic_list.length() - 1; i = i+1:
             switch magic_list.get(i):
                 case Str op:
-                    # TODO: 'not in'
-                    if not op in operators:
+                    if op not in operators:
                         continue
                 case *:
                     continue
@@ -122,8 +121,7 @@ class Parser(List[tokenizer::Token] tokens):
                     continue
             switch magic_list.get(i+1):
                 case Str s:
-                    # TODO: not in
-                    if not s in operators:
+                    if s not in operators:
                         continue
                 case *:
                     continue

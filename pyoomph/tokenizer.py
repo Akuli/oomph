@@ -105,6 +105,20 @@ def raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
             yield (tokentype, match.group())
 
 
+def _combine_not_in(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
+    while True:
+        head, tokens = more_itertools.spy(tokens, 2)
+        if not head:
+            break
+
+        if head == [("keyword", "not"), ("keyword", "in")]:
+            yield ("keyword", "not in")
+            next(tokens)
+            next(tokens)
+        else:
+            yield next(tokens)
+
+
 def _find_blocks(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
     indent_level = 0
     while True:
@@ -165,4 +179,4 @@ def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, st
 
 
 def tokenize(code: str) -> Iterator[Tuple[str, str]]:
-    return _clean_newlines(_find_blocks(_clean_newlines(raw_tokenize(code))))
+    return _clean_newlines(_find_blocks(_clean_newlines(_combine_not_in(raw_tokenize(code)))))

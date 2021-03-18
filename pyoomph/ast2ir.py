@@ -332,9 +332,11 @@ class _FunctionOrMethodConverter:
     def _do_binary_op_typed(
         self, lhs: ir.LocalVariable, op: str, rhs: ir.LocalVariable
     ) -> ir.LocalVariable:
-        if op == "in":
+        if op in {"in", "not in"}:
             result_var = self.create_var(BOOL)
             self.code.append(ir.CallMethod(rhs, "__contains", [lhs], result_var))
+            if op == "not in":
+                return self._not(result_var)
             return result_var
 
         # See docs/implicit-conversions.md
