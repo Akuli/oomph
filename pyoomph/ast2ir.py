@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import pathlib
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
@@ -84,21 +84,20 @@ class _FunctionOrMethodConverter:
         self.resolved_autotypes: Dict[AutoType, Type] = {}
         self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
 
+    def _get_matching_autotype_set(self, auto: AutoType) -> Set[AutoType]:
+        # TODO: transitivity? if (A,B) and (B,C) in matching_autotypes then A --> {A,B,C}
+        matches = {
+            typ for pair in self.matching_autotypes for typ in pair if auto in pair
+        }
+        return matches | {auto}
+
     def _resolve_autotype(self, auto: AutoType, actual: Type) -> None:
         assert not isinstance(actual, AutoType)
         if auto in self.resolved_autotypes:
             assert self.resolved_autotypes[auto] == actual
         else:
-            self.resolved_autotypes[auto] = actual
-
-        for first, second in self.matching_autotypes.copy():
-            if auto == first:
-                self.resolved_autotypes[second] = actual
-            elif auto == second:
-                self.resolved_autotypes[first] = actual
-            else:
-                continue
-            self.matching_autotypes.remove((first, second))
+            for matching in self._get_matching_autotype_set(auto):
+                self.resolved_autotypes[matching] = actual
 
     def _substitute_known_autotypes(self, the_type: Type) -> Type:
         if isinstance(the_type, AutoType):
@@ -106,14 +105,7 @@ class _FunctionOrMethodConverter:
                 return self.resolved_autotypes[the_type]
             except KeyError:
                 # Return exactly one of all matching autotypes consistently
-                # TODO: transitivity?
-                matches = {
-                    typ
-                    for pair in self.matching_autotypes
-                    for typ in pair
-                    if the_type in pair
-                }
-                return min(matches | {the_type}, key=id)
+                return min(self._get_matching_autotype_set(the_type), key=id)
 
         if the_type.generic_origin is None:
             return the_type
