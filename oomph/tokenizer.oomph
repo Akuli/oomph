@@ -37,7 +37,7 @@ func extract_string(Str code, Str quotes) -> Str:
             return code.slice(0, end + quotes.length())
 
         if code.slice(end, code.length()).starts_with("\\"):
-            # Skip \ followed by some character (\n, \t, \\ etc)
+            # Skip backslash
             end = end + 1
         # TODO: do,while loop (and just get rid of string weirdness!!...)
         end = end + 1
