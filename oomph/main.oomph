@@ -50,7 +50,7 @@ export func main():
     io::mkdir(cache_dir)
 
     let args = process::get_args()
-    assert(args.length() != 0)  # TODO: error
+    assert(args != [])  # TODO: error
     let source_path = args.first()
 
     let builtins = ir::create_builtins()

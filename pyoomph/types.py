@@ -88,7 +88,6 @@ class Generic:
             result = mypy_sucks
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
-            result.methods["equals"] = FunctionType([result, result], BOOL)
         elif self is LIST:
             result = Type(f"{self.name}[{generic_arg.name}]", True)
             result.constructor_argtypes = []
@@ -107,6 +106,7 @@ class Generic:
         else:
             raise NotImplementedError
 
+        result.methods["equals"] = FunctionType([result, result], BOOL)
         result.generic_origin = GenericSource(self, generic_arg)
         return result
 

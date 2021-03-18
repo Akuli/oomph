@@ -45,7 +45,7 @@ func cast(ast::Expression arg) -> ast::Expression:
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
     meth peek() -> tokenizer::Token:
-        assert(self.tokens.length() != 0)  # TODO: error
+        assert(self.tokens != [])  # TODO: error
         return self.tokens.last()
 
     meth get_token_by_type(Str type) -> tokenizer::Token:
@@ -83,7 +83,7 @@ class Parser(List[tokenizer::Token] tokens):
             print("Don't know what to do: {self.peek()}")
             assert(false)
 
-        while self.tokens.length() != 0 and self.peek().matches("op", "("):
+        while self.tokens != [] and self.peek().matches("op", "("):
             self.get_token("op", "(")
             let args = []
             if not self.peek().matches("op", ")"):
@@ -208,7 +208,7 @@ class Parser(List[tokenizer::Token] tokens):
     meth parse_block_of_statements() -> List[ast::Call]:
         let result = []
         self.get_token_by_type("begin_block")
-        while self.tokens.length() != 0 and self.peek().type != "end_block":
+        while self.tokens != [] and self.peek().type != "end_block":
             result.push(self.parse_statement())
         self.get_token_by_type("end_block")
         return result
@@ -224,6 +224,6 @@ class Parser(List[tokenizer::Token] tokens):
 export func parse_file(Str code) -> List[ast::FuncDef]:
     let parser = new Parser(tokenizer::tokenize(code).reversed())
     let result = []
-    while parser.tokens.length() != 0:
+    while parser.tokens != []:
         result.push(parser.parse_function())
     return result

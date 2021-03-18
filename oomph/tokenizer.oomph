@@ -57,7 +57,7 @@ func raw_tokenize(Str code) -> List[Token]:
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
                 token = new Token("Int", int_value)
         elif code.starts_with(" "):
-            if result.length() != 0 and result.last().matches("op", "\n"):
+            if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
                 let indent_level = 0
                 while code.slice(indent_level, indent_level + 1) == " ":
@@ -95,7 +95,7 @@ func raw_tokenize(Str code) -> List[Token]:
     return result
 
 func skip_newlines(List[Token] tokens):
-    while tokens.length() != 0 and tokens.last().matches("op", "\n"):
+    while tokens != [] and tokens.last().matches("op", "\n"):
         tokens.pop()
 
 func clean_newlines(List[Token] tokens) -> List[Token]:
@@ -103,7 +103,7 @@ func clean_newlines(List[Token] tokens) -> List[Token]:
     tokens = tokens.reversed()
 
     skip_newlines(tokens)
-    while tokens.length() != 0:
+    while tokens != []:
         let token = tokens.pop()
         result.push(token)
         if token.matches("op", "\n") or token.type == "begin_block" or token.type == "end_block":
@@ -116,7 +116,7 @@ func find_blocks(List[Token] tokens) -> List[Token]:
     let result = []
     tokens = tokens.reversed()
 
-    while tokens.length() != 0:
+    while tokens != []:
         # TODO: add slice method to lists
         let head = []
         for let i = 0; i < 3; i = i + 1:
