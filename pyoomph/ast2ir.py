@@ -271,11 +271,10 @@ class _FunctionOrMethodConverter:
         if isinstance(call.func, ast.GetAttribute):
             self_var = self.do_expression(call.func.obj)
             args = [self.do_expression(expr) for expr in call.args]
-            try:
-                self._get_rid_of_auto_in_var(self_var, recursive=False)
-            except KeyError:
-                # Self variable has to remain auto-typed, less type information
-                # available, do_args will be called later
+
+            self_var.type = self._substitute_known_autotypes(self_var.type)
+            if isinstance(self_var.type, AutoType):
+                # Less type information available, do_args will be called later
                 if must_return_value:
                     result_var: Optional[ir.LocalVariable] = self.create_var(AutoType())
                 else:
@@ -580,9 +579,8 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.GetAttribute):
             obj = self.do_expression(expr.obj)
-            try:
-                self._get_rid_of_auto_in_var(obj, recursive=False)
-            except KeyError:
+            obj.type = self._substitute_known_autotypes(obj.type)
+            if isinstance(obj.type, AutoType):
                 result = self.create_var(AutoType())
             else:
                 result = self.create_var(
@@ -735,15 +733,8 @@ class _FunctionOrMethodConverter:
                 self.do_statement(statement)
         return result
 
-    def _get_rid_of_auto_in_var(
-        self, var: ir.LocalVariable, *, recursive: bool = True
-    ) -> None:
-        if recursive:
-            var.type = self._substitute_known_autotypes(var.type, must_succeed=True)
-        else:
-            # This can be used before get_rid_of_auto_everywhere() runs
-            if isinstance(var.type, AutoType):
-                var.type = self.resolved_autotypes[var.type]
+    def _get_rid_of_auto_in_var(self, var: ir.LocalVariable) -> None:
+        var.type = self._substitute_known_autotypes(var.type, must_succeed=True)
 
     def get_rid_of_auto_everywhere(self) -> None:
         # Method calls can happen before the type is known. Here we assume that
