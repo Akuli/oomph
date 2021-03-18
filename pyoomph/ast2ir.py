@@ -352,9 +352,7 @@ class _FunctionOrMethodConverter:
             elif new_lhs is not None and new_rhs is None:
                 lhs = new_lhs
 
-        if self._substitute_autotypes(
-            lhs.type
-        ) != self._substitute_autotypes(rhs.type):
+        if self._substitute_autotypes(lhs.type) != self._substitute_autotypes(rhs.type):
             raise RuntimeError(f"{lhs.type.name} {op} {rhs.type.name}")
         the_type = self._substitute_autotypes(lhs.type)
 
