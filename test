@@ -54,7 +54,7 @@ function check()
             sed -i 's/, line [0-9][0-9]*/, line N/' $out
         fi
 
-        if ! [ -f $outfile ]; then
+        if [ -z "$GITHUB_ACTIONS" ] && ! [ -f $outfile ]; then
             echo "Creating $outfile automatically"
             cp $out $outfile
             cat -n $outfile
@@ -62,7 +62,7 @@ function check()
 
         if diff --color -u $outfile $out; then
             success=yes
-        elif [ $outfile -ot $file ] && [ "$GITHUB_ACTIONS" != true ]; then
+        elif [ -z "$GITHUB_ACTIONS" ] && [ $outfile -ot $file ]; then
             echo "Updating $outfile with this diff"
             cp $out $outfile
             success=yes
