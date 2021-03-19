@@ -241,6 +241,7 @@ class IsNull(Instruction):
         assert self.value.type.generic_origin.generic is OPTIONAL
 
 
+# TODO: replace Return with gotos?
 @dataclass(eq=False)
 class Return(Instruction):
     value: Optional[LocalVariable]
