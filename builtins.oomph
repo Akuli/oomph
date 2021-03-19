@@ -16,10 +16,12 @@ func __Str_repeat(Str self, Int n) -> Str:
     return result.slice(0, n*self.length())
 
 func __Str_starts_with(Str self, Str prefix) -> Bool:
-    return self.slice(0, prefix.length()) == prefix
+    let end = prefix.length()
+    return (not self.has_continuation_byte_at(end)) and self.slice(0, end) == prefix
 
 func __Str_ends_with(Str self, Str suffix) -> Bool:
-    return self.slice(self.length() - suffix.length(), self.length()) == suffix
+    let start = self.length() - suffix.length()
+    return (not self.has_continuation_byte_at(start)) and self.slice(start, self.length()) == suffix
 
 func __Str_contains(Str self, Str substring) -> Bool:
     return self.find_first(substring) != null

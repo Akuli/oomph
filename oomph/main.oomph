@@ -4,6 +4,7 @@ import "ast2ir.oomph" as ast2ir
 import "c_output.oomph" as c_output
 import "ir.oomph" as ir
 import "parser.oomph" as parser
+import "tokenizer.oomph" as tokenizer
 
 # TODO: respect quoting rules
 func split(Str s) -> List[Str]:
@@ -50,11 +51,28 @@ export func main():
     io::mkdir(cache_dir)
 
     let args = process::get_args()
+
+    assert(args != [])  # TODO: error
+    if args.first() == "--tokens":
+        # TODO: better way to delete from beginning
+        args = args.reversed()
+        args.pop()
+        args = args.reversed()
+        let tokens_only = true
+    else:
+        tokens_only = false
+
     assert(args != [])  # TODO: error
     let source_path = args.first()
 
     let builtins = ir::create_builtins()
     let code = io::read_file(source_path)
+
+    if tokens_only:
+        foreach token of tokenizer::tokenize(code):
+            print(token)
+        return
+
     let ast = parser::parse_file(code)
     let ir = ast2ir::convert_program(builtins, ast)
     let c_code = c_output::create_code(builtins, ir)

@@ -1,0 +1,19 @@
+#!/bin/bash
+# Make sure self-hosted compiler can do something to all oomph files, including itself.
+# Currently, it tokenizes them all.
+
+set -e
+
+python3 -m pyoomph oomph/main.oomph -o oomphc
+for file in builtins.oomph tests/*.oomph oomph/*.oomph; do
+    if [ $file == tests/unterminated_string_error.oomph ]; then
+        # tokenizing fails, as supposed to
+        continue
+    fi
+
+    echo $file
+    ./oomphc --tokens $file >/dev/null
+done
+
+echo "
+================== success =================="

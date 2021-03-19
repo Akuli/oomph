@@ -1,3 +1,4 @@
 a\b
 a{b}c\d
-e	f
+e	f"g
+"

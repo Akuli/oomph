@@ -28,14 +28,42 @@ func get_int(Str code) -> Str:
         len = len+1
     return code.slice(0, len)
 
+func extract_string(Str code, Str quotes) -> Str:
+    assert(code.starts_with(quotes))
+    let end = quotes.length()
+
+    while true:
+        if code.slice(end, code.length()).starts_with(quotes):
+            return code.slice(0, end + quotes.length())
+
+        if code.slice(end, code.length()).starts_with("\\"):
+            # Skip backslash
+            end = end + 1
+        # TODO: do,while loop (and just get rid of string weirdness!!...)
+        end = end + 1
+        while end < code.length() and code.has_continuation_byte_at(end):
+            end = end + 1
+
+        if end + quotes.length() > code.length():
+            print("string does not terminate: {code}")
+            assert(false)  # TODO: error
+
 func raw_tokenize(Str code) -> List[Token]:
     if not code.ends_with("\n"):
         code = code + "\n"
 
+    # Longer ops need to be first, otherwise -> is detected as - and > separate
+    # TODO: multiline lists would be handy for keywords
+    let op_list = "-> == != <= >= < > ; , . ( ) [ ] = : + - * / \n".split(" ")
+    let keyword_list = []
+    keyword_list.push_all("let import as export func meth class union switch case".split(" "))
+    keyword_list.push_all("auto generic new return pass mod and or not in".split(" "))
+    keyword_list.push_all("if elif else while for foreach of continue break".split(" "))
+
     let result = []
     while code != "":
         let id = get_simple_identifier(code)
-        let op = starts_with_any(code, ["(", ")", ":", "\n", "+", "-", "*", "/"])
+        let op = starts_with_any(code, op_list)
         let int_value = get_int(code)
 
         if id != null:
@@ -75,12 +103,13 @@ func raw_tokenize(Str code) -> List[Token]:
         elif code.starts_with("#"):
             code = code.slice(code.find_first("\n").get(), code.length())
             continue
+        elif code.starts_with("\"\"\""):
+            let content = extract_string(code, "\"\"\"")
+            token = new Token("string", content)
+        # TODO: multiline strings
         elif code.starts_with("\""):
-            # TODO: escapes
-            # TODO: error handling
-            let content_length = code.slice(1, code.length()).find_first("\"").get()
-            let token_length = content_length + 2
-            token = new Token("string", code.slice(0, token_length))
+            let content = extract_string(code.split("\n").first(), "\"")
+            token = new Token("string", content)
         else:
             print(result)
             print("Invalid syntax: {code}")
