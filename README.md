@@ -12,7 +12,7 @@ python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 ```
 
 - If you delete or rename files in `lib/`, you may need to run `make clean`.
-- Run `./lint` before commit.
+- Run `./lint` and `./test` to check stuff e.g. before commit.
 - If `./test` fails because test output changes as expected, run `./test --fix`
 - To valgrind-check everything, run `./test --valgrind`
 

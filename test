@@ -17,7 +17,7 @@ while [[ "$1" == --* ]]; do
             ;;
         --valgrind)
             valgrind='valgrind -q --leak-check=full --show-leak-kinds=all'
-            pyoomph_valgrind="--valgrind='$valgrind'"
+            compiler_valgrind_arg="--valgrind='$valgrind'"
             shift
             ;;
         *)
@@ -46,9 +46,9 @@ function check()
         local expect_fail=no
         local outfile=tests/output/common/$(basename $file | cut -d. -f1).txt
         if [ $compiler == pyoomph ]; then
-            local command="python3 -m pyoomph $pyoomph_valgrind $file"
+            local command="python3 -m pyoomph $compiler_valgrind_arg $file"
         else
-            local command="$valgrind ./oomphc $file"
+            local command="$valgrind ./oomphc $compiler_valgrind_arg $file"
         fi
         if [ $file == tests/args.oomph ]; then
             command="$command hello world"
