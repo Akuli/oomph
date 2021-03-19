@@ -242,30 +242,8 @@ class IsNull(Instruction):
 
 
 @dataclass(eq=False)
-class Continue(Instruction):
-    loop_id: str
-
-
-@dataclass(eq=False)
-class Break(Instruction):
-    loop_id: str
-
-
-@dataclass(eq=False)
 class Return(Instruction):
     value: Optional[LocalVariable]
-
-
-@dataclass(eq=False)
-class Loop(Instruction):
-    loop_id: str
-    cond_code: List[Instruction]
-    cond: LocalVariable
-    incr: List[Instruction]
-    body: List[Instruction]
-
-    def __post_init__(self) -> None:
-        assert self.cond.type == BOOL
 
 
 @dataclass(eq=False, repr=False)

@@ -115,28 +115,6 @@ class _FunctionEmitter:
         if isinstance(ins, ir.PointersEqual):
             return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});\n"
 
-        if isinstance(ins, ir.Loop):
-            cond_code = self.emit_body(ins.cond_code)
-            body = self.emit_body(ins.body)
-            incr = self.emit_body(ins.incr)
-            return f"""
-            while(1) {{
-                {cond_code}
-                if (!{self.emit_var(ins.cond)})
-                    break;
-                {body}
-                {_emit_label(ins.loop_id + "_continue")}
-                {incr}
-            }}
-            {_emit_label(ins.loop_id + "_break")}
-            """
-
-        if isinstance(ins, ir.Continue):
-            return f"goto {ins.loop_id}_continue;\n"
-
-        if isinstance(ins, ir.Break):
-            return f"goto {ins.loop_id}_break;\n"
-
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
             assert ins.result.type.type_members is not None

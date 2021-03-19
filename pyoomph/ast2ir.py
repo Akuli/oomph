@@ -21,15 +21,12 @@ from pyoomph.types import (
 )
 
 
+# TODO: delete this
 def _get_instructions_recursively(
     code: List[ir.Instruction],
 ) -> Iterator[Tuple[List[ir.Instruction], ir.Instruction]]:
     for ins in code:
         yield (code, ins)
-        if isinstance(ins, ir.Loop):
-            yield from _get_instructions_recursively(ins.cond_code)
-            yield from _get_instructions_recursively(ins.body)
-            yield from _get_instructions_recursively(ins.incr)
 
 
 # Custom exception so that we can catch it and not accidentally silence bugs.
@@ -48,8 +45,7 @@ class _FunctionOrMethodConverter:
         self.file_converter = file_converter
         self.variables = variables
         self.return_type = return_type
-        self.loop_stack: List[str] = []
-        self.loop_counter = 0
+        self.loop_stack: List[Tuple[ir.GotoLabel, ir.GotoLabel]] = []
         self.code: List[ir.Instruction] = []
         self.resolved_autotypes: Dict[AutoType, Type] = {}
         self.matching_autotypes: List[Tuple[AutoType, AutoType]] = []
@@ -608,10 +604,12 @@ class _FunctionOrMethodConverter:
             pass
 
         elif isinstance(stmt, ast.Continue):
-            self.code.append(ir.Continue(self.loop_stack[-1]))
+            continue_label, break_label = self.loop_stack[-1]
+            self.code.append(ir.Goto(continue_label, ir.builtin_variables["true"]))
 
         elif isinstance(stmt, ast.Break):
-            self.code.append(ir.Break(self.loop_stack[-1]))
+            continue_label, break_label = self.loop_stack[-1]
+            self.code.append(ir.Goto(break_label, ir.builtin_variables["true"]))
 
         elif isinstance(stmt, ast.Return):
             if self.return_type is None:
@@ -643,30 +641,32 @@ class _FunctionOrMethodConverter:
             self.do_if(condition, body, otherwise)
 
         elif isinstance(stmt, ast.Loop):
+            cond_label = ir.GotoLabel()
+            continue_label = ir.GotoLabel()
+            break_label = ir.GotoLabel()
+
             if stmt.init is not None:
                 self.do_statement(stmt.init)
 
+            self.code.append(cond_label)
             if stmt.cond is None:
                 cond_var = self.create_var(BOOL)
-                mypy_sucks: ir.Instruction = ir.VarCpy(
-                    cond_var, ir.builtin_variables["true"]
-                )
-                cond_code = [mypy_sucks]
+                self.code.append(ir.VarCpy(cond_var, ir.builtin_variables["true"]))
             else:
-                with self.code_to_separate_list() as cond_code:
-                    cond_var = self.do_expression(stmt.cond)
+                cond_var = self.do_expression(stmt.cond)
+            self.code.append(ir.Goto(break_label, self._not(cond_var)))
 
-            loop_id = f"loop{self.loop_counter}"
-            self.loop_counter += 1
-
-            self.loop_stack.append(loop_id)
-            body = self.do_block(stmt.body)
+            self.loop_stack.append((continue_label, break_label))
+            self.code.extend(self.do_block(stmt.body))
             popped = self.loop_stack.pop()
-            assert popped == loop_id
+            assert popped == (continue_label, break_label)
 
-            incr = [] if stmt.incr is None else self.do_block([stmt.incr])
+            self.code.append(continue_label)
+            if stmt.incr is not None:
+                self.do_statement(stmt.incr)
+            self.code.append(ir.Goto(cond_label, ir.builtin_variables["true"]))
+            self.code.append(break_label)
 
-            self.code.append(ir.Loop(loop_id, cond_code, cond_var, incr, body))
             if isinstance(stmt.init, ast.Let):
                 del self.variables[stmt.init.varname]
 
@@ -792,8 +792,6 @@ class _FunctionOrMethodConverter:
                     self._get_rid_of_auto_in_var(ins.source)
             elif isinstance(ins, ir.Goto):
                 self._get_rid_of_auto_in_var(ins.cond)
-            elif isinstance(ins, ir.Loop):
-                self._get_rid_of_auto_in_var(ins.cond)
             elif isinstance(ins, ir.Return):
                 if ins.value is not None:
                     self._get_rid_of_auto_in_var(ins.value)
@@ -809,7 +807,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.union)
-            elif isinstance(ins, (ir.Continue, ir.Break, ir.GotoLabel)):
+            elif isinstance(ins, ir.GotoLabel):
                 pass
             else:
                 raise NotImplementedError(ins)
