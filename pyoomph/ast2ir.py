@@ -21,14 +21,6 @@ from pyoomph.types import (
 )
 
 
-# TODO: delete this
-def _get_instructions_recursively(
-    code: List[ir.Instruction],
-) -> Iterator[Tuple[List[ir.Instruction], ir.Instruction]]:
-    for ins in code:
-        yield (code, ins)
-
-
 # Custom exception so that we can catch it and not accidentally silence bugs.
 # Just spent quite a while wondering what was wrong...
 class ConversionError(Exception):
@@ -730,7 +722,7 @@ class _FunctionOrMethodConverter:
     def get_rid_of_auto_everywhere(self) -> None:
         # Method calls can happen before the type is known. Here we assume that
         # the types got figured out.
-        for inslist, ins in list(_get_instructions_recursively(self.code)):
+        for ins in self.code.copy():
             if isinstance(ins, ir.CallMethod):
                 self._get_rid_of_auto_in_var(ins.obj)
                 functype = self._get_method_functype(ins.obj.type, ins.method_name)
@@ -738,8 +730,8 @@ class _FunctionOrMethodConverter:
                     ins.args = self.do_args(
                         ins.args, functype.argtypes, ins.obj, ins.method_name
                     )[1:]
-                where = inslist.index(ins)
-                inslist[where:where] = front_code
+                where = self.code.index(ins)
+                self.code[where:where] = front_code
 
                 if functype.returntype is None:
                     assert ins.result is None
@@ -762,7 +754,7 @@ class _FunctionOrMethodConverter:
                 else:
                     self._get_rid_of_auto_in_var(ins.result)
 
-        for inslist, ins in list(_get_instructions_recursively(self.code)):
+        for ins in self.code:
             if isinstance(
                 ins,
                 (
