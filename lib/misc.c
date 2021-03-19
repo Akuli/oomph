@@ -6,8 +6,6 @@
 noreturn void panic_printf_errno(const char *fmt, ...)
 {
 	int er = errno;
-	fflush(stdout);
-	fflush(stderr);
 
 	// Make sure that what is printed here goes after everything else
 	fflush(stdout);
