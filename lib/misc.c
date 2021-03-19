@@ -16,8 +16,7 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 		fprintf(stderr, " (errno %d: %s)", er, strerror(er));
 	fputc('\n', stderr);
 
-	fflush(stderr);
-	abort();
+	exit(1);
 }
 
 void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno)

@@ -1,2 +1,2 @@
 assert() failed in "tests/assert_error.oomph", line 3
-Program killed by signal 6 (SIGABRT)
+Program exited with status 1

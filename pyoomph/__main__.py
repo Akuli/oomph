@@ -198,6 +198,8 @@ def main() -> None:
         except ValueError:  # e.g. SIGRTMIN + 1
             pass
         print(message, file=sys.stderr)
+    elif result > 0:
+        print(f"Program exited with status {result}", file=sys.stderr)
     sys.exit(result)
 
 
