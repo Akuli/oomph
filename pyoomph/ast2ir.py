@@ -559,9 +559,6 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.IncRef(result))
             return result
 
-        if isinstance(expr, ast.Null):
-            return self.create_var(OPTIONAL.get_type(self.get_type(expr.type)))
-
         raise NotImplementedError(expr)
 
     def do_statement(self, stmt: ast.Statement) -> None:
