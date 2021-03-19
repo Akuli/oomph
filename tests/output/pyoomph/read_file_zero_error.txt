@@ -1,2 +1,2 @@
 file "tests/10_zero_bytes" contains a zero byte at offset 0
-Program killed by signal 6 (SIGABRT)
+Program exited with status 1

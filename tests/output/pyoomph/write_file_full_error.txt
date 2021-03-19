@@ -1,2 +1,2 @@
 writing to file "/dev/full" failed (errno 28: No space left on device)
-Program killed by signal 6 (SIGABRT)
+Program exited with status 1

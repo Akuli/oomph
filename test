@@ -24,7 +24,7 @@ function check()
             local command="python3 -m pyoomph $file"
         else
             local outfile=tests/output/self_hosted/$(basename $file | cut -d. -f1).txt
-            local command="python3 -m pyoomph oomph/main.oomph $file"
+            local command="./oomphc $file"
         fi
     else
         local expect_fail=no
@@ -32,11 +32,16 @@ function check()
         if [ $compiler == pyoomph ]; then
             local command="python3 -m pyoomph $pyoomphopts $file"
         else
-            local command="python3 -m pyoomph $pyoomphopts oomph/main.oomph $file"
+            local command="./oomphc $file"
         fi
         if [ $file == tests/args.oomph ]; then
             command="$command hello world"
         fi
+    fi
+
+    if [ $keep_going == no ] && grep -q '^fail:' test_out/status; then
+        echo "skip: $command" >> test_out/status
+        return
     fi
 
     local success
@@ -79,7 +84,8 @@ function check()
     fi
 }
 
-function run {
+function run()
+{
     if [ $(jobs | wc -l) -ge $(nproc) ]; then
         wait -n
     fi
@@ -87,39 +93,41 @@ function run {
 }
 
 mkdir -vp test_out
-rm -rvf test_out/status test_out/io_testing_dir
+rm -rvf test_out/status test_out/io_testing_dir oomphc
 touch test_out/status
 echo "Running $(nproc) tests at a time in parallel"
-
 trap wait EXIT
+
 for file in tests/*.oomph; do
     if [[ $file == tests/*_lib.oomph ]]; then
         # The file is meant to be imported
         continue
     fi
-
-    if grep -q fail test_out/status && [ $keep_going == no ]; then
-        break
-    fi
-
     run check $file pyoomph
-    if grep -q "^$file" tests/self_hosted.txt; then
-        run check $file self_hosted
-    fi
 done
 wait
 
-successes=$(grep -c '^success:' test_out/status || true)
-fails=$(grep -c '^fail:' test_out/status || true)
-
-if [ $fails == 0 ]; then
-    failmsg="0 failed"
-else
-    failmsg="\u001b[31m$fails failed\u001b[0m"
+# Run all self-hosted tests with same compiler (speeds up a LOT)
+if [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status; then
+    echo "Compiling self-hosted compiler"
+    python3 -m pyoomph -o oomphc oomph/main.oomph
 fi
-echo -e "
-======================== $successes succeeded, $failmsg ========================"
 
-if [ $fails != 0 ]; then
-    exit 1
+for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
+    # Currently self-hosted doesn't parallelize well, but is fast
+    check $file self_hosted
+done
+
+status=0
+msg="$(grep -c '^success:' test_out/status || true) succeeded"
+if grep -q '^fail:' test_out/status; then
+    msg="$msg, \u001b[31m$(grep -c '^fail:' test_out/status) failed\u001b[0m"
+    status=1
 fi
+if grep -q '^skip:' test_out/status; then
+    msg="$msg, $(grep -c '^skip:' test_out/status) skipped"
+fi
+
+echo ""
+echo -e "==================== $msg ===================="
+exit $status
