@@ -26,10 +26,7 @@ def _get_instructions_recursively(
 ) -> Iterator[Tuple[List[ir.Instruction], ir.Instruction]]:
     for ins in code:
         yield (code, ins)
-        if isinstance(ins, ir.If):
-            yield from _get_instructions_recursively(ins.then)
-            yield from _get_instructions_recursively(ins.otherwise)
-        elif isinstance(ins, ir.Loop):
+        if isinstance(ins, ir.Loop):
             yield from _get_instructions_recursively(ins.cond_code)
             yield from _get_instructions_recursively(ins.body)
             yield from _get_instructions_recursively(ins.incr)
@@ -393,19 +390,10 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.IsNull(lhs, lhs_null))
             self.code.append(ir.IsNull(rhs, rhs_null))
 
-            self.code.append(
-                ir.If(
-                    lhs_null,
-                    [ir.VarCpy(result_var, rhs_null)],
-                    [
-                        ir.If(
-                            rhs_null,
-                            [ir.VarCpy(result_var, ir.builtin_variables["false"])],
-                            neither_null_code,
-                        )
-                    ],
-                )
-            )
+            with self.code_to_separate_list() as lhs_not_null_code:
+                self.do_if(rhs_null, [ir.VarCpy(result_var, ir.builtin_variables["false"])], neither_null_code)
+            self.do_if(lhs_null, [ir.VarCpy(result_var, rhs_null)], lhs_not_null_code)
+
             return result_var
 
         if the_type == INT and op in {"+", "-", "*", "mod", ">"}:
@@ -476,13 +464,11 @@ class _FunctionOrMethodConverter:
                     [ir.VarCpy(result_var, ir.builtin_variables["false"])],
                 )
             else:
-                self.code.append(
-                    ir.If(
+                self.do_if(
                         lhs_var,
                         [ir.VarCpy(result_var, ir.builtin_variables["true"])],
-                        rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
+                        rhs_evaluation + [ir.VarCpy(result_var, rhs_var)]
                     )
-                )
             return result_var
 
         lhs = self.do_expression(op_ast.lhs)
@@ -653,7 +639,7 @@ class _FunctionOrMethodConverter:
                 )
             else:
                 otherwise = self.do_block(stmt.else_block)
-            self.code.append(ir.If(condition, body, otherwise))
+            self.do_if(condition, body, otherwise)
 
         elif isinstance(stmt, ast.Loop):
             if stmt.init is not None:
@@ -794,8 +780,6 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.dest)
                 if isinstance(ins.source, ir.LocalVariable):
                     self._get_rid_of_auto_in_var(ins.source)
-            elif isinstance(ins, ir.If):
-                self._get_rid_of_auto_in_var(ins.condition)
             elif isinstance(ins, ir.Goto):
                 self._get_rid_of_auto_in_var(ins.cond)
             elif isinstance(ins, ir.Loop):

@@ -115,17 +115,6 @@ class _FunctionEmitter:
         if isinstance(ins, ir.PointersEqual):
             return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});\n"
 
-        if isinstance(ins, ir.If):
-            then = self.emit_body(ins.then)
-            otherwise = self.emit_body(ins.otherwise)
-            return f"""
-            if ({self.emit_var(ins.condition)}) {{
-                {then}
-            }} else {{
-                {otherwise}
-            }}
-            """
-
         if isinstance(ins, ir.Loop):
             cond_code = self.emit_body(ins.cond_code)
             body = self.emit_body(ins.body)

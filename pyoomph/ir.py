@@ -257,16 +257,6 @@ class Return(Instruction):
 
 
 @dataclass(eq=False)
-class If(Instruction):
-    condition: LocalVariable
-    then: List[Instruction]
-    otherwise: List[Instruction]
-
-    def __post_init__(self) -> None:
-        assert self.condition.type == BOOL
-
-
-@dataclass(eq=False)
 class Loop(Instruction):
     loop_id: str
     cond_code: List[Instruction]
