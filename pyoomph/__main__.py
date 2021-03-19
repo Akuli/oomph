@@ -92,7 +92,7 @@ def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=pathlib.Path)
     arg_parser.add_argument("-o", "--outfile", type=pathlib.Path)
-    arg_parser.add_argument("--valgrind", action="store_true")
+    arg_parser.add_argument("--valgrind", default="")
     arg_parser.add_argument("-v", "--verbose", action="store_true")
     compiler_args, program_args = arg_parser.parse_known_args()
 
@@ -178,17 +178,7 @@ def main() -> None:
             print("Moved executable to", compiler_args.outfile)
         return
 
-    command = []
-    if compiler_args.valgrind:
-        command.extend(
-            [
-                "valgrind",
-                "-q",
-                "--leak-check=full",
-                "--show-leak-kinds=all",
-            ]
-        )
-    command.extend([str(exe_path)] + program_args)
+    command = shlex.split(compiler_args.valgrind) + [str(exe_path)] + program_args
 
     result = run(command, compiler_args.verbose)
     if result < 0:  # killed by signal

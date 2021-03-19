@@ -13,9 +13,8 @@ python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 
 - If you delete or rename files in `lib/`, you may need to run `make clean`.
 - Run `./lint` before commit.
-- If first argument of test does not start with `-`, it should be a valid oomph compiler command.
-  The default is so that `./test` and `./test 'python3 -m pyoomph'` do the same thing.
-- Test script passes other arguments to oomph. Try e.g. `./test --valgrind`.
+- If `./test` fails because test output changes as expected, run `./test --fix`
+- To valgrind-check everything, run `./test --valgrind`
 
 
 ## The language

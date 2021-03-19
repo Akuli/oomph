@@ -2,13 +2,29 @@
 set -e
 set -o pipefail
 
-if [ "$1" == --keep-going ]; then
-    keep_going=yes
-    shift
-else
-    keep_going=no
-fi
-pyoomphopts="$@"
+keep_going=no
+fix=no
+
+while [[ "$1" == --* ]]; do
+    case "$1" in
+        --keep-going)
+            keep_going=yes
+            shift
+            ;;
+        --fix)
+            fix=yes
+            shift
+            ;;
+        --valgrind)
+            valgrind='valgrind -q --leak-check=full --show-leak-kinds=all'
+            pyoomph_valgrind="--valgrind='$valgrind'"
+            shift
+            ;;
+        *)
+            echo "unknown argument: $1" 1>&2
+            exit 2
+    esac
+done
 
 make
 
@@ -30,9 +46,9 @@ function check()
         local expect_fail=no
         local outfile=tests/output/common/$(basename $file | cut -d. -f1).txt
         if [ $compiler == pyoomph ]; then
-            local command="python3 -m pyoomph $pyoomphopts $file"
+            local command="python3 -m pyoomph $pyoomph_valgrind $file"
         else
-            local command="./oomphc $file"
+            local command="$valgrind ./oomphc $file"
         fi
         if [ $file == tests/args.oomph ]; then
             command="$command hello world"
@@ -48,26 +64,23 @@ function check()
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
     echo "$command"
-    if [ $expect_fail == yes ] && $command 2>&1 | grep -v "This happened while" | tail -2 > $out; then
+    if [ $expect_fail == yes ] && eval "$command" 2>&1 | grep -v "This happened while" | tail -2 > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't: $command"
         success=no
-    elif [ $expect_fail == no ] && ! $command > $out; then
+    elif [ $expect_fail == no ] && ! eval "$command" > $out; then
         echo "========== ERROR: $command"
         success=no
     else
         if [ $file != tests/assert_error.oomph ]; then
             sed -i 's/, line [0-9][0-9]*/, line N/' $out
         fi
-
-        if [ -z "$GITHUB_ACTIONS" ] && ! [ -f $outfile ]; then
-            echo "Creating $outfile automatically"
-            cp $out $outfile
-            cat -n $outfile
+        if [ $fix == yes ]; then
+            touch $outfile
         fi
 
-        if diff --color -u $outfile $out; then
+        if diff --color --unified $outfile $out; then
             success=yes
-        elif [ -z "$GITHUB_ACTIONS" ] && [ $outfile -ot $file ]; then
+        elif [ $fix == yes ]; then
             echo "Updating $outfile with this diff"
             cp $out $outfile
             success=yes
