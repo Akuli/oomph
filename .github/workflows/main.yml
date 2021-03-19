@@ -40,7 +40,7 @@ jobs:
     - run: pip install pygments
     - shell: bash
       run: |
-        for file in tests/*.oomph oomph/*.oomph; do
+        for file in tests/*.oomph self_hosted/*.oomph; do
           echo $file
           python3 -m pygments -x -l oomph_pygments_lexer.py $file > out
           # https://superuser.com/a/380778

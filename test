@@ -110,7 +110,7 @@ wait
 # Run all self-hosted tests with same compiler (speeds up a LOT)
 if [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status; then
     echo "Compiling self-hosted compiler"
-    python3 -m pyoomph -o oomphc oomph/main.oomph
+    python3 -m pyoomph -o oomphc self_hosted/main.oomph
 fi
 
 for file in $(sed 's/#.*//g' tests/self_hosted.txt); do

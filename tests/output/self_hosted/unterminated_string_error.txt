@@ -1,2 +1,2 @@
 string does not terminate: "hello)
-assert() failed in "oomph/tokenizer.oomph", line N
+assert() failed in "self_hosted/tokenizer.oomph", line N
