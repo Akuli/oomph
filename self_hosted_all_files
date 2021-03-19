@@ -4,7 +4,7 @@
 
 set -e
 
-python3 -m pyoomph self_hosted/main.oomph -o oomphc
+make oomphc
 for file in builtins.oomph tests/*.oomph self_hosted/*.oomph; do
     if [ $file == tests/unterminated_string_error.oomph ]; then
         # tokenizing fails, as supposed to
