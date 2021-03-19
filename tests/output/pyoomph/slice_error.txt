@@ -1,2 +1,2 @@
 can't slice string in the middle of continuation byte
-Program killed by signal 6 (SIGABRT)
+Program exited with status 1

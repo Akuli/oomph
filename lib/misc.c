@@ -7,6 +7,10 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 {
 	int er = errno;
 
+	// Make sure that what is printed here goes after everything else
+	fflush(stdout);
+	fflush(stderr);
+
 	va_list ap;
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
@@ -16,8 +20,7 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 		fprintf(stderr, " (errno %d: %s)", er, strerror(er));
 	fputc('\n', stderr);
 
-	fflush(stderr);
-	abort();
+	exit(1);
 }
 
 void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno)

@@ -5,6 +5,7 @@ import atexit
 import itertools
 import pathlib
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -90,6 +91,7 @@ def get_compilation_dir(parent_dir: pathlib.Path, name_hint: str) -> pathlib.Pat
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("infile", type=pathlib.Path)
+    arg_parser.add_argument("-o", "--outfile", type=pathlib.Path)
     arg_parser.add_argument("--valgrind", action="store_true")
     arg_parser.add_argument("-v", "--verbose", action="store_true")
     compiler_args, program_args = arg_parser.parse_known_args()
@@ -169,6 +171,13 @@ def main() -> None:
     if result != 0:
         sys.exit(result)
 
+    if compiler_args.outfile is not None:
+        assert not compiler_args.outfile.is_dir()  # shutil.move is weird for dirs
+        shutil.move(str(exe_path), str(compiler_args.outfile))
+        if compiler_args.verbose:
+            print("Moved executable to", compiler_args.outfile)
+        return
+
     command = []
     if compiler_args.valgrind:
         command.extend(
@@ -189,6 +198,8 @@ def main() -> None:
         except ValueError:  # e.g. SIGRTMIN + 1
             pass
         print(message, file=sys.stderr)
+    elif result > 0:
+        print(f"Program exited with status {result}", file=sys.stderr)
     sys.exit(result)
 
 

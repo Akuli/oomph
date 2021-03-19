@@ -1,2 +1,2 @@
 invalid utf-8 in "tests/latin1.txt"
-Program killed by signal 6 (SIGABRT)
+Program exited with status 1
