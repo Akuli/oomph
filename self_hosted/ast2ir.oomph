@@ -149,30 +149,35 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
         self.code.push(new ir::MethodCall(var, "to_string", [], result))
         return result
 
-    meth do_statement(ast::Call call):
-        switch call.function:
-            # Currently, functions must be variables
-            case ast::GetVar getvar:
-                let func_var = self.builtins.get_visible_var(getvar.varname)
+    meth do_statement(ast::Statement statement):
+        switch statement:
+            case ast::Call call:
+                switch call.function:
+                    # Currently, functions must be variables
+                    case ast::GetVar getvar:
+                        let func_var = self.builtins.get_visible_var(getvar.varname)
+                    case *:
+                        assert(false)  # TODO: error
+
+                let argvars = []
+                foreach arg of call.args:
+                    let expr = self.do_expression(arg)
+                    if func_var == self.builtins.get_visible_var("print") and expr.type != self.builtins.STR:
+                        expr = self.stringify(expr)
+                    argvars.push(expr)
+                self.code.push(new ir::FunctionCall(func_var, argvars, null))
             case *:
-                assert(false)  # TODO: error
+                print("unknown statement {statement}")
+                assert(false)
 
-        let argvars = []
-        foreach arg of call.args:
-            let expr = self.do_expression(arg)
-            if func_var == self.builtins.get_visible_var("print") and expr.type != self.builtins.STR:
-                expr = self.stringify(expr)
-            argvars.push(expr)
-        self.code.push(new ir::FunctionCall(func_var, argvars, null))
-
-    meth do_block(List[ast::Call] body) -> List[ir::Instruction]:
+    meth do_block(List[ast::Statement] body) -> List[ir::Instruction]:
         # TODO: separate class
         assert(self.code == [])
-        foreach call of body:
-            self.do_statement(call)
+        foreach stmt of body:
+            self.do_statement(stmt)
         return self.code
 
-    meth do_funcdef(ast::FuncDef funcdef) -> ir::FuncDef:
+    meth do_funcdef(ast::FuncOrMethodDef funcdef) -> ir::FuncDef:
         assert(funcdef.args == [])
         let functype = new ir::FunctionType([], null)
         assert(funcdef.name == "main")
@@ -180,7 +185,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
         let body = self.do_block(funcdef.body)
         return new ir::FuncDef(func_var, [], body)
 
-export func convert_program(ir::Builtins builtins, List[ast::FuncDef] program) -> List[ir::FuncDef]:
+export func convert_program(ir::Builtins builtins, List[ast::FuncOrMethodDef] program) -> List[ir::FuncDef]:
     let result = []
     foreach funcdef of program:
         result.push(new Converter(builtins, [], 0).do_funcdef(funcdef))

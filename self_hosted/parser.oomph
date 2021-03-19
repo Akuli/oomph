@@ -196,7 +196,7 @@ class Parser(List[tokenizer::Token] tokens):
             case *:
                 assert(false)
 
-    meth parse_statement() -> ast::Call:
+    meth parse_statement() -> ast::Statement:
         switch self.parse_expression():
             case ast::Call call:
                 self.get_token("op", "\n")
@@ -204,7 +204,7 @@ class Parser(List[tokenizer::Token] tokens):
             case *:
                 assert(false)  # TODO: error
 
-    meth parse_block_of_statements() -> List[ast::Call]:
+    meth parse_block_of_statements() -> List[ast::Statement]:
         let result = []
         self.get_token_by_type("begin_block")
         while self.tokens != [] and self.peek().type != "end_block":
@@ -212,15 +212,15 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token_by_type("end_block")
         return result
 
-    meth parse_function() -> ast::FuncDef:
+    meth parse_function() -> ast::FuncOrMethodDef:
         self.get_token("keyword", "export")
         self.get_token("keyword", "func")
         let name = self.get_token_by_type("id").value
         self.get_token("op", "(")
         self.get_token("op", ")")
-        return new ast::FuncDef(name, [], null, self.parse_block_of_statements())
+        return new ast::FuncOrMethodDef(name, [], null, self.parse_block_of_statements())
 
-export func parse_file(Str code) -> List[ast::FuncDef]:
+export func parse_file(Str code) -> List[ast::FuncOrMethodDef]:
     let parser = new Parser(tokenizer::tokenize(code).reversed())
     let result = []
     while parser.tokens != []:

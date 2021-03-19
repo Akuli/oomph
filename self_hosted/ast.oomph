@@ -1,21 +1,62 @@
-export class Type(Str name)
+# TODO: line number info everywhere
+
+class Type(Str name, Optional[Type] generic_arg)
 
 export union Expression:
     BinaryOperator
     Call
+    Constructor
     FloatConstant
+    GetAttribute
     GetVar
     IntConstant
+    ListLiteral
     StringConstant
+    StringFormatJoin
     UnaryOperator
+
+export union Statement:
+    Break
+    Call
+    Continue
+    If
+    Let
+    Loop
+    Pass
+    Return
+    SetAttribute
+    SetVar
+    Switch
+
+# 'case *' means that type and varname are null
+export class Case(Optional[Type] type, Optional[Str] varname, List[Statement] body)
+export class ConditionAndBody(Expression cond, List[Statement] body)
+export class TypeAndName(Type type, Str name)
 
 export class BinaryOperator(Expression lhs, Str op, Expression rhs)
 export class Call(Expression function, List[Expression] args)
-export class FloatConstant(Str value)
+export class Constructor(Type type)
+export class FloatConstant(Str value)  # value not converted to float in case weirdness :D
+export class GetAttribute(Expression obj, Str attribute)
 export class GetVar(Str varname)
 export class IntConstant(Int value)
+export class ListLiteral(List[Expression] content)
 export class StringConstant(Str value)
+export class StringFormatJoin(List[Expression] parts)  # always >=2 parts
 export class UnaryOperator(Str op, Expression obj)
 
-export class FuncDefArgument(Type type, Str name)
-export class FuncDef(Str name, List[FuncDefArgument] args, Optional[Type] returntype, List[Call] body)
+export class Break()
+export class Continue()
+export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
+export class Let(Str varname, Expression value)
+export class Loop(Optional[Statement] init, Optional[Expression] cond, Optional[Statement] incr, List[Statement] body)
+export class Pass()
+export class Return(Optional[Expression] value)
+export class SetAttribute(Expression obj, Str attribute, Expression value)
+export class SetVar(Str varname, Expression value)
+export class Switch(Expression union_obj, List[Case] cases)
+
+export class FuncOrMethodDef(Str name, List[TypeAndName] args, Optional[Type] returntype, List[Statement] body)
+export class ClassDef(Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
+export class Import(Str path, Str name)
+export class UnionDef(Str name, List[Type] type_members)
