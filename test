@@ -39,6 +39,11 @@ function check()
         fi
     fi
 
+    if grep -q '^fail:' test_out/status && [ $keep_going == no ]; then
+        echo "skip: $command" >> test_out/status
+        return
+    fi
+
     local success
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
@@ -98,10 +103,6 @@ for file in tests/*.oomph; do
         continue
     fi
 
-    if grep -q fail test_out/status && [ $keep_going == no ]; then
-        break
-    fi
-
     run check $file pyoomph
     if grep -q "^$file" tests/self_hosted.txt; then
         run check $file self_hosted
@@ -109,17 +110,16 @@ for file in tests/*.oomph; do
 done
 wait
 
-successes=$(grep -c '^success:' test_out/status || true)
-fails=$(grep -c '^fail:' test_out/status || true)
-
-if [ $fails == 0 ]; then
-    failmsg="0 failed"
-else
-    failmsg="\u001b[31m$fails failed\u001b[0m"
+status=0
+msg="$(grep -c '^success:' test_out/status || true) succeeded"
+if grep -q '^fail:' test_out/status; then
+    msg="$msg, \u001b[31m$(grep -c '^fail:' test_out/status) failed\u001b[0m"
+    status=1
 fi
+if grep -q '^skip:' test_out/status; then
+    msg="$msg, \u001b[31m$(grep -c '^skip:' test_out/status) failed\u001b[0m"
+fi
+
 echo -e "
 ======================== $successes succeeded, $failmsg ========================"
-
-if [ $fails != 0 ]; then
-    exit 1
-fi
+exit $status
