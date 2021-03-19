@@ -948,8 +948,12 @@ class _FileConverter:
         )
 
         for member_type in union_type.type_members:
-            converter.code.append(ir.UnionMemberCheck(self_matches_var, self_var, member_type))
-            converter.code.append(ir.UnionMemberCheck(other_matches_var, self_var, member_type))
+            converter.code.append(
+                ir.UnionMemberCheck(self_matches_var, self_var, member_type)
+            )
+            converter.code.append(
+                ir.UnionMemberCheck(other_matches_var, self_var, member_type)
+            )
             specific_self_var = ir.LocalVariable(member_type)
             specific_other_var = ir.LocalVariable(member_type)
             when_both_match = [
