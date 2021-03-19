@@ -115,8 +115,7 @@ fi
 
 for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
     # Currently self-hosted doesn't parallelize well, but is fast
-    run check $file self_hosted
-    wait
+    check $file self_hosted
 done
 
 status=0
