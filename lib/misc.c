@@ -16,6 +16,8 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 		fprintf(stderr, " (errno %d: %s)", er, strerror(er));
 	fputc('\n', stderr);
 
+	fflush(stdout);
+	fflush(stderr);
 	exit(1);
 }
 
