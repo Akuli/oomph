@@ -952,7 +952,7 @@ class _FileConverter:
                 ir.UnionMemberCheck(self_matches_var, self_var, member_type)
             )
             converter.code.append(
-                ir.UnionMemberCheck(other_matches_var, self_var, member_type)
+                ir.UnionMemberCheck(other_matches_var, other_var, member_type)
             )
             specific_self_var = ir.LocalVariable(member_type)
             specific_other_var = ir.LocalVariable(member_type)
