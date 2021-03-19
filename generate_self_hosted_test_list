@@ -15,7 +15,7 @@ for file in tests/*.oomph; do
     fi
 
     echo $file
-    if python3 -m pyoomph oomph/main.oomph $file >test_out/tmp 2>&1; then
+    if python3 -m pyoomph self_hosted/main.oomph $file >test_out/tmp 2>&1; then
         echo $file >> tests/self_hosted.txt
         LANG=C sort tests/self_hosted.txt -o tests/self_hosted.txt
     fi
