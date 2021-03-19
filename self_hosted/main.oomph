@@ -45,6 +45,13 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
     result.push(project_root)
     return result
 
+# TODO: this sucks
+func slice_from_1_to_end(List[Str] list) -> List[Str]:
+    list = list.reversed()
+    list.pop()
+    list = list.reversed()
+    return list
+
 export func main():
     let project_root = "."
     let cache_dir = "{project_root}/.oomph-cache"
@@ -52,18 +59,23 @@ export func main():
 
     let args = process::get_args()
 
-    assert(args != [])  # TODO: error
-    if args.first() == "--tokens":
-        # TODO: better way to delete from beginning
-        args = args.reversed()
-        args.pop()
-        args = args.reversed()
-        let tokens_only = true
-    else:
-        tokens_only = false
+    let tokens_only = false
+    let valgrind = ""
+
+    while args != [] and args.first().starts_with("--"):
+        if args.first() == "--tokens":
+            tokens_only = true
+        elif args.first().starts_with("--valgrind="):
+            valgrind = args.first().slice("--valgrind=".length(), args.first().length())
+        else:
+            print("bad arg: {args.first()}")
+            assert(false)  # TODO: error
+
+        args = slice_from_1_to_end(args)
 
     assert(args != [])  # TODO: error
     let source_path = args.first()
+    args = slice_from_1_to_end(args)
 
     let builtins = ir::create_builtins()
     let code = io::read_file(source_path)
@@ -79,8 +91,7 @@ export func main():
     io::write_file("{cache_dir}/out.c", c_code)
     assert(process::run(get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")) == 0)
 
-    let run_command = ["{cache_dir}/out"]
-    # TODO: list slice method
-    for let i = 1; i < args.length(); i = i+1:
-        run_command.push(args.get(i))
+    let run_command = split(valgrind)
+    run_command.push("{cache_dir}/out")
+    run_command.push_all(args)
     assert(process::run(run_command) == 0)
