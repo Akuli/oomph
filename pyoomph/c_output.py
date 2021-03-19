@@ -155,27 +155,6 @@ class _FunctionEmitter:
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};\n"
 
-        if isinstance(ins, ir.Switch):
-            assert isinstance(ins.union.type, ir.UnionType)
-            assert ins.union.type.type_members is not None
-
-            body_code = ""
-            for membernum, the_type in enumerate(ins.union.type.type_members):
-                case_content = self.emit_body(ins.cases[the_type])
-                body_code += f"""
-                case {membernum}:
-                    {case_content}
-                    break;
-                """
-
-            return f"""
-            switch ({self.emit_var(ins.union)}.membernum) {{
-                {body_code}
-                default:
-                    assert(0);
-            }}
-            """
-
         if isinstance(ins, ir.IsNull):
             return (
                 f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.value)});\n"
@@ -194,6 +173,17 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.Goto):
             return f"if ({self.emit_var(ins.cond)}) goto {self.get_label_name(ins.label)};\n"
+
+        if isinstance(ins, ir.UnionMemberCheck):
+            assert (
+                isinstance(ins.union.type, UnionType)
+                and ins.union.type.type_members is not None
+            )
+            return f"""
+            {self.emit_var(ins.result)} = (
+                {self.emit_var(ins.union)}.membernum == {ins.union.type.type_members.index(ins.member_type)}
+            );
+            """
 
         raise NotImplementedError(ins)
 

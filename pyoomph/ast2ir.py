@@ -30,9 +30,6 @@ def _get_instructions_recursively(
             yield from _get_instructions_recursively(ins.cond_code)
             yield from _get_instructions_recursively(ins.body)
             yield from _get_instructions_recursively(ins.incr)
-        elif isinstance(ins, ir.Switch):
-            for body in ins.cases.values():
-                yield from _get_instructions_recursively(body)
 
 
 # Custom exception so that we can catch it and not accidentally silence bugs.
@@ -391,7 +388,11 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.IsNull(rhs, rhs_null))
 
             with self.code_to_separate_list() as lhs_not_null_code:
-                self.do_if(rhs_null, [ir.VarCpy(result_var, ir.builtin_variables["false"])], neither_null_code)
+                self.do_if(
+                    rhs_null,
+                    [ir.VarCpy(result_var, ir.builtin_variables["false"])],
+                    neither_null_code,
+                )
             self.do_if(lhs_null, [ir.VarCpy(result_var, rhs_null)], lhs_not_null_code)
 
             return result_var
@@ -465,10 +466,10 @@ class _FunctionOrMethodConverter:
                 )
             else:
                 self.do_if(
-                        lhs_var,
-                        [ir.VarCpy(result_var, ir.builtin_variables["true"])],
-                        rhs_evaluation + [ir.VarCpy(result_var, rhs_var)]
-                    )
+                    lhs_var,
+                    [ir.VarCpy(result_var, ir.builtin_variables["true"])],
+                    rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
+                )
             return result_var
 
         lhs = self.do_expression(op_ast.lhs)
@@ -675,7 +676,10 @@ class _FunctionOrMethodConverter:
             assert union_var.type.type_members is not None
             types_to_do = union_var.type.type_members.copy()
 
-            cases: Dict[ir.Type, List[ir.Instruction]] = {}
+            done_label = ir.GotoLabel()
+            member_check = self.create_var(BOOL)
+
+            cases: List[ir.Instruction] = []
             for case in stmt.cases:
                 if case.type_and_varname is None:
                     assert types_to_do
@@ -690,19 +694,25 @@ class _FunctionOrMethodConverter:
                     assert varname not in self.variables
                     self.variables[varname] = case_var
 
-                body = [
-                    ir.GetFromUnion(case_var, union_var),
-                    ir.IncRef(case_var),
-                ] + self.do_block(case.body)
-                for typ in nice_types:
-                    cases[typ] = body
-
+                body = self.do_block(case.body)
                 if case.type_and_varname is not None:
                     assert self.variables[varname] is case_var
                     del self.variables[varname]
 
-            assert not types_to_do, types_to_do
-            self.code.append(ir.Switch(union_var, cases))
+                label = ir.GotoLabel()
+                cases.append(label)
+                cases.append(ir.GetFromUnion(case_var, union_var))
+                cases.append(ir.IncRef(case_var))
+                cases.extend(body)
+                cases.append(ir.Goto(done_label, ir.builtin_variables["true"]))
+
+                for typ in nice_types:
+                    self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
+                    self.code.append(ir.Goto(label, member_check))
+
+            # TODO: add panic here (since no union members matched)
+            self.code.extend(cases)
+            self.code.append(done_label)
 
         else:
             raise NotImplementedError(stmt)
@@ -796,17 +806,11 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.SetAttribute):
                 self._get_rid_of_auto_in_var(ins.value)
                 self._get_rid_of_auto_in_var(ins.obj)
-            elif isinstance(ins, ir.GetFromUnion):
+            elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.union)
             elif isinstance(ins, (ir.Continue, ir.Break, ir.GotoLabel)):
                 pass
-            elif isinstance(ins, ir.Switch):
-                self._get_rid_of_auto_in_var(ins.union)
-                ins.cases = {
-                    self._substitute_autotypes(membertype, must_succeed=True): body
-                    for membertype, body in ins.cases.items()
-                }
             else:
                 raise NotImplementedError(ins)
 
@@ -946,44 +950,40 @@ class _FileConverter:
         functype = FunctionType(argtypes=[union_type, union_type], returntype=BOOL)
         self_var = ir.LocalVariable(union_type)
         other_var = ir.LocalVariable(union_type)
-
-        self_switch_cases: Dict[Type, List[ir.Instruction]] = {}
-        for self_type in union_type.type_members:
-            specific_self_var = ir.LocalVariable(self_type)
-
-            other_switch_cases = {}
-            for other_type in union_type.type_members:
-                specific_other_var = ir.LocalVariable(other_type)
-                result_var = ir.LocalVariable(BOOL)
-                other_switch_cases[other_type] = (
-                    [
-                        ir.GetFromUnion(specific_self_var, self_var),
-                        ir.GetFromUnion(specific_other_var, other_var),
-                        ir.IncRef(specific_self_var),
-                        ir.IncRef(specific_other_var),
-                        ir.CallMethod(
-                            specific_self_var,
-                            "equals",
-                            [specific_other_var],
-                            result_var,
-                        ),
-                        ir.Return(result_var),
-                    ]
-                    if self_type == other_type
-                    else [
-                        ir.VarCpy(result_var, self.variables["false"]),
-                        ir.Return(result_var),
-                    ]
-                )
-
-            self_switch_cases[self_type] = [ir.Switch(other_var, other_switch_cases)]
-
-        return ir.MethodDef(
-            "equals",
-            functype,
-            [self_var, other_var],
-            [ir.Switch(self_var, self_switch_cases)],
+        self_matches_var = ir.LocalVariable(BOOL)
+        other_matches_var = ir.LocalVariable(BOOL)
+        result_var = ir.LocalVariable(BOOL)
+        converter = _FunctionOrMethodConverter(
+            self, self.variables.copy(), functype.returntype
         )
+
+        for member_type in union_type.type_members:
+            converter.code.extend(
+                [
+                    ir.UnionMemberCheck(self_matches_var, self_var, member_type),
+                    ir.UnionMemberCheck(other_matches_var, self_var, member_type),
+                ]
+            )
+            specific_self_var = ir.LocalVariable(member_type)
+            specific_other_var = ir.LocalVariable(member_type)
+            when_both_match = [
+                ir.GetFromUnion(specific_self_var, self_var),
+                ir.GetFromUnion(specific_other_var, other_var),
+                ir.IncRef(specific_self_var),
+                ir.IncRef(specific_other_var),
+                ir.CallMethod(
+                    specific_self_var, "equals", [specific_other_var], result_var
+                ),
+                ir.Return(result_var),
+            ]
+
+            with converter.code_to_separate_list() as inner_if:
+                converter.do_if(other_matches_var, when_both_match, [])
+            converter.do_if(self_matches_var, inner_if, [])
+
+        converter.code.append(ir.VarCpy(result_var, ir.builtin_variables["false"]))
+        converter.code.append(ir.Return(result_var))
+        return ir.MethodDef("equals", functype, [self_var, other_var], converter.code)
 
     def do_toplevel_declaration_pass1(
         self, top_declaration: ast.ToplevelDeclaration

@@ -290,11 +290,12 @@ class GetFromUnion(Instruction):
     union: LocalVariable
 
 
-# TODO: replace with nested Ifs or something like that?
+# Check is it possible to call GetFromUnion with result var of given member type
 @dataclass(eq=False)
-class Switch(Instruction):
+class UnionMemberCheck(Instruction):
+    result: LocalVariable
     union: LocalVariable
-    cases: Dict[Type, List[Instruction]]
+    member_type: Type
 
 
 @dataclass(eq=False)
