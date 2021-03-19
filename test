@@ -114,9 +114,10 @@ if [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status; then
 fi
 
 for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
+    # Currently self-hosted doesn't parallelize well, but is fast
     run check $file self_hosted
+    wait
 done
-wait
 
 status=0
 msg="$(grep -c '^success:' test_out/status || true) succeeded"

@@ -1,0 +1,2 @@
+assert() failed in "oomph/parser.oomph", line N
+Don't know what to do: Token("op", "+")
