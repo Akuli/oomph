@@ -1,2 +1,3 @@
+string does not terminate: "hello)
 assert() failed in "oomph/tokenizer.oomph", line N
 Program killed by signal 6 (SIGABRT)

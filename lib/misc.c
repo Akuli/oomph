@@ -6,6 +6,8 @@
 noreturn void panic_printf_errno(const char *fmt, ...)
 {
 	int er = errno;
+	fflush(stdout);
+	fflush(stderr);
 
 	va_list ap;
 	va_start(ap, fmt);
