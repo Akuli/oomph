@@ -48,7 +48,7 @@ function check()
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
     echo "$command"
-    if [ $expect_fail == yes ] && $command 2>&1 | tail -3 | grep -vE 'This happened while|File "/' > $out; then
+    if [ $expect_fail == yes ] && $command 2>&1 | grep -v "This happened while" | tail -2 > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't: $command"
         success=no
     elif [ $expect_fail == no ] && ! $command > $out; then
