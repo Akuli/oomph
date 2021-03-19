@@ -55,7 +55,8 @@ func raw_tokenize(Str code) -> List[Token]:
     # Longer ops need to be first, otherwise -> is detect as - and > separate
     # TODO: multiline lists would be handy for keywordsfor keywords
     let op_list = "-> == != <= >= < > ; , . ( ) [ ] = : + - * / \n".split(" ")
-    let keyword_list = "let import as export func meth class union switch case".split(" ")
+    let keyword_list = []
+    keyword_list.push_all("let import as export func meth class union switch case".split(" "))
     keyword_list.push_all("auto generic new return pass mod and or not in".split(" "))
     keyword_list.push_all("if elif else while for foreach of continue break".split(" "))
 
