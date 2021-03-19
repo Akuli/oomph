@@ -40,10 +40,11 @@ class _FunctionEmitter:
         self.file_pair = file_pair
         self.session = file_pair.session
         self.local_variable_names: Dict[ir.LocalVariable, str] = {}
+        self.label_names: Dict[ir.GotoLabel, str] = {}
         self.before_body = ""
         self.after_body = ""
         self.need_decref: List[ir.LocalVariable] = []
-        self.varname_counter = 0
+        self.name_counter = 0
 
     def incref_var(self, var: ir.LocalVariable) -> str:
         return self.session.emit_incref(self.emit_var(var), var.type)
@@ -199,13 +200,25 @@ class _FunctionEmitter:
                 return ""
             return f"{self.emit_var(ins.var)} = NULL;\n"
 
+        if isinstance(ins, ir.GotoLabel):
+            return _emit_label(self.get_label_name(ins))
+
+        if isinstance(ins, ir.Goto):
+            return f"if ({self.emit_var(ins.cond)}) goto {self.get_label_name(ins.label)};\n"
+
         raise NotImplementedError(ins)
+
+    def get_label_name(self, label: ir.GotoLabel) -> str:
+        if label not in self.label_names:
+            self.name_counter += 1
+            self.label_names[label] = f"label{self.name_counter}"
+        return self.label_names[label]
 
     def add_local_var(
         self, var: ir.LocalVariable, *, declare: bool = True, need_decref: bool = True
     ) -> None:
-        self.varname_counter += 1
-        name = f"var{self.varname_counter}"
+        self.name_counter += 1
+        name = f"var{self.name_counter}"
         assert var not in self.local_variable_names
         self.local_variable_names[var] = name
 

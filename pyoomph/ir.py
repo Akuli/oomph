@@ -278,6 +278,20 @@ class Loop(Instruction):
         assert self.cond.type == BOOL
 
 
+@dataclass(eq=False, repr=False)
+class GotoLabel(Instruction):
+    pass
+
+
+@dataclass(eq=False)
+class Goto(Instruction):
+    label: GotoLabel
+    cond: Union[BuiltinVariable, LocalVariable]  # can be set to builtin true
+
+    def __post_init__(self) -> None:
+        assert self.cond.type == BOOL
+
+
 # Runtime error if trying to get wrong union member
 # think of it as VarCpy for unions
 @dataclass(eq=False)

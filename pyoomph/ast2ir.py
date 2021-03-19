@@ -445,6 +445,21 @@ class _FunctionOrMethodConverter:
 
         raise TypeError(f"{the_type.name} {op} {the_type.name}")
 
+    def do_if(
+        self,
+        cond: ir.LocalVariable,
+        then: List[ir.Instruction],
+        otherwise: List[ir.Instruction],
+    ) -> None:
+        then_label = ir.GotoLabel()
+        done_label = ir.GotoLabel()
+        self.code.append(ir.Goto(then_label, cond))
+        self.code.extend(otherwise)
+        self.code.append(ir.Goto(done_label, ir.builtin_variables["true"]))
+        self.code.append(then_label)
+        self.code.extend(then)
+        self.code.append(done_label)
+
     def do_binary_op(self, op_ast: ast.BinaryOperator) -> ir.LocalVariable:
         # Avoid evaluating right side when not needed
         # TODO: mention this in docs
@@ -455,12 +470,10 @@ class _FunctionOrMethodConverter:
                 rhs_var = self.implicit_conversion(self.do_expression(op_ast.rhs), BOOL)
 
             if op_ast.op == "and":
-                self.code.append(
-                    ir.If(
-                        lhs_var,
-                        rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
-                        [ir.VarCpy(result_var, ir.builtin_variables["false"])],
-                    )
+                self.do_if(
+                    lhs_var,
+                    rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
+                    [ir.VarCpy(result_var, ir.builtin_variables["false"])],
                 )
             else:
                 self.code.append(
@@ -714,8 +727,9 @@ class _FunctionOrMethodConverter:
                 self.do_statement(statement)
         return result
 
-    def _get_rid_of_auto_in_var(self, var: ir.LocalVariable) -> None:
-        var.type = self._substitute_autotypes(var.type, must_succeed=True)
+    def _get_rid_of_auto_in_var(self, var: ir.Variable) -> None:
+        if isinstance(var, ir.LocalVariable):
+            var.type = self._substitute_autotypes(var.type, must_succeed=True)
 
     def get_rid_of_auto_everywhere(self) -> None:
         # Method calls can happen before the type is known. Here we assume that
@@ -782,6 +796,8 @@ class _FunctionOrMethodConverter:
                     self._get_rid_of_auto_in_var(ins.source)
             elif isinstance(ins, ir.If):
                 self._get_rid_of_auto_in_var(ins.condition)
+            elif isinstance(ins, ir.Goto):
+                self._get_rid_of_auto_in_var(ins.cond)
             elif isinstance(ins, ir.Loop):
                 self._get_rid_of_auto_in_var(ins.cond)
             elif isinstance(ins, ir.Return):
@@ -799,7 +815,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.GetFromUnion):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.union)
-            elif isinstance(ins, (ir.Continue, ir.Break)):
+            elif isinstance(ins, (ir.Continue, ir.Break, ir.GotoLabel)):
                 pass
             elif isinstance(ins, ir.Switch):
                 self._get_rid_of_auto_in_var(ins.union)
