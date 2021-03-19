@@ -1,3 +1,2 @@
-  File "/home/akuli/oomph/pyoomph/__main__.py", line N, in main
     raise RuntimeError("cyclic imports: " + message)
 RuntimeError: cyclic imports: cyclic1_error.oomph --> cyclic2_error.oomph --> cyclic3_error.oomph --> cyclic2_error.oomph
