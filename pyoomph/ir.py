@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from pyoomph.types import (
     BOOL,
@@ -241,38 +241,21 @@ class IsNull(Instruction):
         assert self.value.type.generic_origin.generic is OPTIONAL
 
 
-@dataclass(eq=False)
-class Continue(Instruction):
-    loop_id: str
-
-
-@dataclass(eq=False)
-class Break(Instruction):
-    loop_id: str
-
-
+# TODO: replace Return with gotos?
 @dataclass(eq=False)
 class Return(Instruction):
     value: Optional[LocalVariable]
 
 
-@dataclass(eq=False)
-class If(Instruction):
-    condition: LocalVariable
-    then: List[Instruction]
-    otherwise: List[Instruction]
-
-    def __post_init__(self) -> None:
-        assert self.condition.type == BOOL
+@dataclass(eq=False, repr=False)
+class GotoLabel(Instruction):
+    pass
 
 
 @dataclass(eq=False)
-class Loop(Instruction):
-    loop_id: str
-    cond_code: List[Instruction]
-    cond: LocalVariable
-    incr: List[Instruction]
-    body: List[Instruction]
+class Goto(Instruction):
+    label: GotoLabel
+    cond: Union[BuiltinVariable, LocalVariable]  # can be set to builtin true
 
     def __post_init__(self) -> None:
         assert self.cond.type == BOOL
@@ -286,11 +269,12 @@ class GetFromUnion(Instruction):
     union: LocalVariable
 
 
-# TODO: replace with nested Ifs or something like that?
+# Check is it possible to call GetFromUnion with result var of given member type
 @dataclass(eq=False)
-class Switch(Instruction):
+class UnionMemberCheck(Instruction):
+    result: LocalVariable
     union: LocalVariable
-    cases: Dict[Type, List[Instruction]]
+    member_type: Type
 
 
 @dataclass(eq=False)

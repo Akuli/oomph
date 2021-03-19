@@ -40,10 +40,11 @@ class _FunctionEmitter:
         self.file_pair = file_pair
         self.session = file_pair.session
         self.local_variable_names: Dict[ir.LocalVariable, str] = {}
+        self.label_names: Dict[ir.GotoLabel, str] = {}
         self.before_body = ""
         self.after_body = ""
         self.need_decref: List[ir.LocalVariable] = []
-        self.varname_counter = 0
+        self.name_counter = 0
 
     def incref_var(self, var: ir.LocalVariable) -> str:
         return self.session.emit_incref(self.emit_var(var), var.type)
@@ -114,39 +115,6 @@ class _FunctionEmitter:
         if isinstance(ins, ir.PointersEqual):
             return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});\n"
 
-        if isinstance(ins, ir.If):
-            then = self.emit_body(ins.then)
-            otherwise = self.emit_body(ins.otherwise)
-            return f"""
-            if ({self.emit_var(ins.condition)}) {{
-                {then}
-            }} else {{
-                {otherwise}
-            }}
-            """
-
-        if isinstance(ins, ir.Loop):
-            cond_code = self.emit_body(ins.cond_code)
-            body = self.emit_body(ins.body)
-            incr = self.emit_body(ins.incr)
-            return f"""
-            while(1) {{
-                {cond_code}
-                if (!{self.emit_var(ins.cond)})
-                    break;
-                {body}
-                {_emit_label(ins.loop_id + "_continue")}
-                {incr}
-            }}
-            {_emit_label(ins.loop_id + "_break")}
-            """
-
-        if isinstance(ins, ir.Continue):
-            return f"goto {ins.loop_id}_continue;\n"
-
-        if isinstance(ins, ir.Break):
-            return f"goto {ins.loop_id}_break;\n"
-
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
             assert ins.result.type.type_members is not None
@@ -165,27 +133,6 @@ class _FunctionEmitter:
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};\n"
 
-        if isinstance(ins, ir.Switch):
-            assert isinstance(ins.union.type, ir.UnionType)
-            assert ins.union.type.type_members is not None
-
-            body_code = ""
-            for membernum, the_type in enumerate(ins.union.type.type_members):
-                case_content = self.emit_body(ins.cases[the_type])
-                body_code += f"""
-                case {membernum}:
-                    {case_content}
-                    break;
-                """
-
-            return f"""
-            switch ({self.emit_var(ins.union)}.membernum) {{
-                {body_code}
-                default:
-                    assert(0);
-            }}
-            """
-
         if isinstance(ins, ir.IsNull):
             return (
                 f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.value)});\n"
@@ -199,13 +146,36 @@ class _FunctionEmitter:
                 return ""
             return f"{self.emit_var(ins.var)} = NULL;\n"
 
+        if isinstance(ins, ir.GotoLabel):
+            return _emit_label(self.get_label_name(ins))
+
+        if isinstance(ins, ir.Goto):
+            return f"if ({self.emit_var(ins.cond)}) goto {self.get_label_name(ins.label)};\n"
+
+        if isinstance(ins, ir.UnionMemberCheck):
+            assert (
+                isinstance(ins.union.type, UnionType)
+                and ins.union.type.type_members is not None
+            )
+            return f"""
+            {self.emit_var(ins.result)} = (
+                {self.emit_var(ins.union)}.membernum == {ins.union.type.type_members.index(ins.member_type)}
+            );
+            """
+
         raise NotImplementedError(ins)
+
+    def get_label_name(self, label: ir.GotoLabel) -> str:
+        if label not in self.label_names:
+            self.name_counter += 1
+            self.label_names[label] = f"label{self.name_counter}"
+        return self.label_names[label]
 
     def add_local_var(
         self, var: ir.LocalVariable, *, declare: bool = True, need_decref: bool = True
     ) -> None:
-        self.varname_counter += 1
-        name = f"var{self.varname_counter}"
+        self.name_counter += 1
+        name = f"var{self.name_counter}"
         assert var not in self.local_variable_names
         self.local_variable_names[var] = name
 
