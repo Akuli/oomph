@@ -1,2 +1,0 @@
-prefix minus not in start of expression
-assert() failed in "self_hosted/parser.oomph", line N
