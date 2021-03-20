@@ -28,6 +28,12 @@ export union Statement:
     SetVar
     Switch
 
+export union ToplevelDeclaration:
+    ClassDef
+    FuncOrMethodDef  # function definition, in this context
+    Import
+    UnionDef
+
 # 'case *' means that type and varname are null
 export class Case(Optional[Type] type, Optional[Str] varname, List[Statement] body)
 export class ConditionAndBody(Expression cond, List[Statement] body)
