@@ -40,9 +40,10 @@ bool METHOD(equals)(TYPE self, TYPE other)
 static void set_length(TYPE self, int64_t n)
 {
 	assert(n >= 0);
+	self->len = n;
+
 	if (self->alloc >= n)
 		return;
-
 	while (self->alloc < n)
 		self->alloc *= 2;
 
