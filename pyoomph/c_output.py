@@ -375,7 +375,7 @@ _generic_c_codes = {
 
         void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i)
         {
-            // FIXME: copy pasta
+            // TODO: copy pasta
             if (i < 0)
                 panic_printf("negative list index %%d", (long)i);
             if (i >= self->len)
