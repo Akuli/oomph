@@ -133,15 +133,13 @@ func raw_tokenize(Str code) -> List[Token]:
     return result
 
 func combine_not_in(List[Token] tokens) -> List[Token]:
-    tokens = tokens.reversed()  # TODO: better way to make copy
     let result = []
-    while tokens != []:
-        if tokens.length() >= 2 and tokens.last().matches("keyword", "not") and tokens.get(tokens.length() - 2).matches("keyword", "in"):
+    for let i = 0; i < tokens.length(); :
+        if i+1 < tokens.length() and tokens.get(i).matches("keyword", "not") and tokens.get(i+1).matches("keyword", "in"):
             result.push(new Token("keyword", "not in"))
-            tokens.pop()
-            tokens.pop()
+            i = i + 2
         else:
-            result.push(tokens.pop())
+            i = i + 1
     return result
 
 func skip_newlines(List[Token] tokens):

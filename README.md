@@ -33,6 +33,7 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
+- safe and unsafe (user-input) strings: would prevent a lot of security problems
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - functions as first-class objects
 - better error messaging
