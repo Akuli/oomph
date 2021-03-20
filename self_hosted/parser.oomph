@@ -345,8 +345,9 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
                     return new ast::SetVar(getvar.varname, value)
                 case ast::GetAttribute getattr:
                     return new ast::SetAttribute(getattr.obj, getattr.attribute, value)
-            print("can't assing to {expr}")
-            assert(false)
+                case *:
+                    print("can't assing to {expr}")
+                    assert(false)
 
         switch expr:
             case ast::Call call:

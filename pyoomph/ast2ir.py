@@ -699,6 +699,8 @@ class _FunctionOrMethodConverter:
                     self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
                     self.code.append(ir.Goto(label, member_check))
 
+            assert not types_to_do, f"switch does not handle: {types_to_do}"
+
             # TODO: add panic here (since no union members matched)
             self.code.extend(cases)
             self.code.append(done_label)

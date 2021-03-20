@@ -119,10 +119,6 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
                 print("bad unary op: {unary_op.op} {var.type.name}")
                 assert(false)  # TODO: error
 
-            case ast::Call call:
-                print("call {call}")
-                assert(false)  # TODO
-
             case ast::GetVar getvar:
                 # TODO: refcounts
                 let old_var = self.builtins.get_visible_var(getvar.varname)
@@ -133,16 +129,21 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
             case ast::FloatConstant floatconst:
                 let var = self.create_var(self.builtins.FLOAT)
                 self.code.push(new ir::FloatConstant(floatconst.value, var))
+                return var
 
             case ast::IntConstant intconst:
                 var = self.create_var(self.builtins.INT)
                 self.code.push(new ir::IntConstant(intconst.value, var))
+                return var
 
             case ast::StringConstant strconst:
                 var = self.create_var(self.builtins.STR)
                 self.code.push(new ir::StringConstant(strconst.value, var))
+                return var
 
-        return var
+            case *:
+                print("TODO: {expr}")
+                assert(false)
 
     meth stringify(ir::LocalVariable var) -> ir::LocalVariable:
         let result = self.create_var(self.builtins.STR)
@@ -192,5 +193,6 @@ export func convert_program(ir::Builtins builtins, List[ast::ToplevelDeclaration
             case ast::FuncOrMethodDef funcdef:
                 result.push(new Converter(builtins, [], 0).do_funcdef(funcdef))
             case *:
-                break
+                print("don't know what to do with {top_decl}")
+                assert(false)
     return result

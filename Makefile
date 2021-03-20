@@ -29,7 +29,7 @@ obj/compile_info.txt: Makefile
 	mkdir -p $(@D) && printf "cc=%s\ncflags=%s\nldflags=%s\n" "$(CC)" "$(CFLAGS)" "$(LDFLAGS)" > $@
 
 # self-hosted compiler
-oomphc: $(wildcard pyoomph/*.py self_hosted/*.oomph)
+oomphc: $(OBJ) obj/compile_info.txt $(wildcard pyoomph/*.py self_hosted/*.oomph)
 	python3 -m pyoomph self_hosted/main.oomph -o $@
 
 clean:

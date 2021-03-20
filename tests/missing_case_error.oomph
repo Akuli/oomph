@@ -1,0 +1,8 @@
+union Foo:
+    Int
+    Str
+
+export func main():
+    switch new Foo(1):
+        case Int i:
+            print("Lol")
