@@ -45,13 +45,6 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
     result.push(project_root)
     return result
 
-# TODO: this sucks
-func slice_from_1_to_end(List[Str] list) -> List[Str]:
-    list = list.reversed()
-    list.pop()
-    list = list.reversed()
-    return list
-
 export func main():
     let project_root = "."
     let cache_dir = "{project_root}/.oomph-cache"
@@ -74,12 +67,12 @@ export func main():
             print("bad arg: {args.first()}")
             assert(false)  # TODO: error
 
-        args = slice_from_1_to_end(args)
+        args.delete_by_index(0)
 
     assert(not (ast_only and tokens_only))
     assert(args != [])  # TODO: error
     let source_path = args.first()
-    args = slice_from_1_to_end(args)
+    args.delete_by_index(0)
 
     let builtins = ir::create_builtins()
     let code = io::read_file(source_path)

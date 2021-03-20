@@ -258,6 +258,7 @@ _generic_c_codes = {
         void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
         void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
         void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val);
+        void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i);
         %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
         %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
@@ -370,6 +371,19 @@ _generic_c_codes = {
 
             INCREF_ITEM(self->data[i]);
             return self->data[i];
+        }
+
+        void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i)
+        {
+            // FIXME: copy pasta
+            if (i < 0)
+                panic_printf("negative list index %%d", (long)i);
+            if (i >= self->len)
+                panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
+
+            DECREF_ITEM(self->data[i]);
+            self->len--;
+            memmove(self->data+i, self->data+i+1, (self->len - i)*sizeof(self->data[0]));
         }
 
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)

@@ -98,6 +98,7 @@ class Generic:
             result.methods["insert"] = FunctionType([result, INT, generic_arg], None)
             result.methods["last"] = FunctionType([result], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
+            result.methods["delete_by_index"] = FunctionType([result, INT], None)
             result.methods["pop"] = FunctionType([result], generic_arg)
             result.methods["push"] = FunctionType([result, generic_arg], None)
             result.methods["push_all"] = FunctionType([result, result], None)

@@ -1,0 +1,6 @@
+export func main():
+    let foo = ["a", "b", "c"]
+    foo.delete_by_index(0)
+    print(foo)
+    foo.delete_by_index(1)
+    print(foo)
