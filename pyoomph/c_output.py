@@ -517,7 +517,6 @@ class _FilePair:
 
         elif the_type.generic_origin is not None:
             itemtype = the_type.generic_origin.arg
-            assert the_type.generic_origin.generic == LIST
             c_path, h_path = _generic_paths[the_type.generic_origin.generic]
             macro_dict = {
                 "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
