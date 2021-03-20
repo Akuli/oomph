@@ -50,8 +50,6 @@ Missing features:
 - named arguments
 - default values of arguments
 - string methods
-    - reverse
-        - actually this sucks, nobody needs it irl
     - find occurrence of substring
         - last occurrence
         - all occurrences
