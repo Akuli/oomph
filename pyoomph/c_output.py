@@ -347,12 +347,12 @@ _generic_c_codes = {
 
         void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val)
         {
-            class_%(type_cname)s_ensure_alloc(self, self->len + 1);
             if (index < 0)
                 index = 0;
             if (index > self->len)
                 index = self->len;
 
+            class_%(type_cname)s_ensure_alloc(self, self->len + 1);
             memmove(self->data + index + 1, self->data + index, (self->len - index)*sizeof(self->data[0]));
             self->data[index] = val;
             self->len++;
