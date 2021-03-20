@@ -139,6 +139,7 @@ func combine_not_in(List[Token] tokens) -> List[Token]:
             result.push(new Token("keyword", "not in"))
             i = i + 2
         else:
+            result.push(tokens.get(i))
             i = i + 1
     return result
 
