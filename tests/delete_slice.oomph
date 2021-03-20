@@ -1,0 +1,10 @@
+export func main():
+    let foo = ["a", "b", "c", "d", "e"]
+    print(foo.delete_slice(3, 2))
+    print(foo)
+    print(foo.delete_slice(3, 3))
+    print(foo)
+    print(foo.delete_slice(3, 7))
+    print(foo)
+    print(foo.delete_slice(-1, 2))
+    print(foo)

@@ -259,6 +259,7 @@ _generic_c_codes = {
         void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
         void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val);
         void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i);
+        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
         %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
         %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
@@ -384,6 +385,24 @@ _generic_c_codes = {
             DECREF_ITEM(self->data[i]);
             self->len--;
             memmove(self->data+i, self->data+i+1, (self->len - i)*sizeof(self->data[0]));
+        }
+
+        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
+        {
+            if (start < 0)
+                start = 0;
+            if (end > self->len)
+                end = self->len;
+
+            struct class_%(type_cname)s *res = ctor_%(type_cname)s();
+            if (start < end) {
+                class_%(type_cname)s_ensure_alloc(res, end-start);
+                res->len = end-start;
+                memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
+                memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
+                self->len -= res->len;
+            }
+            return res;
         }
 
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
