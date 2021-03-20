@@ -30,10 +30,6 @@ func delete_slice_from_list(List[PrecedenceItem] list, Int start, Int end) -> Li
     list.push_all(stack.reversed())
     return result.reversed()
 
-# TODO: more implicit conversions to avoid this
-func cast(ast::Expression arg) -> ast::Expression:
-    return arg
-
 # TODO: should become string method
 func find_last(Str s, Str what2find) -> Optional[Int]:
     for let i = s.length() - what2find.length(); i >= 0; i = i-1:
