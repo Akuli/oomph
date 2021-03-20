@@ -264,6 +264,7 @@ _generic_c_codes = {
         %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
         %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
+        struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
         bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item);
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
@@ -401,6 +402,25 @@ _generic_c_codes = {
                 memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
                 memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
                 self->len -= res->len;
+            }
+            return res;
+        }
+
+        // TODO: copy pasta
+        struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
+        {
+            if (start < 0)
+                start = 0;
+            if (end > self->len)
+                end = self->len;
+
+            struct class_%(type_cname)s *res = ctor_%(type_cname)s();
+            if (start < end) {
+                class_%(type_cname)s_ensure_alloc(res, end-start);
+                res->len = end-start;
+                memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
+                for (size_t i = 0; i < res->len; i++)
+                    INCREF_ITEM(res->data[i]);
             }
             return res;
         }

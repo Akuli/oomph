@@ -166,12 +166,7 @@ func find_blocks(List[Token] tokens) -> List[Token]:
     tokens = tokens.reversed()
 
     while tokens != []:
-        # TODO: add slice method to lists
-        let head = []
-        for let i = 0; i < 3; i = i + 1:
-            if tokens.length() > i:
-                head.push(tokens.get(tokens.length() - 1 - i))
-
+        let head = tokens.reversed().slice(0, 3)
         if head.length() == 3 and head.get(0).matches("op", ":") and head.get(1).matches("op", "\n") and head.get(2).type == "indent":
             indent_level = indent_level + 1
             assert(head.get(2).value == " ".repeat(4*indent_level))  # TODO: error

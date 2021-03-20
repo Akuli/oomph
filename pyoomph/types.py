@@ -104,6 +104,7 @@ class Generic:
             result.methods["push"] = FunctionType([result, generic_arg], None)
             result.methods["push_all"] = FunctionType([result, result], None)
             result.methods["reversed"] = FunctionType([result], result)
+            result.methods["slice"] = FunctionType([result, INT, INT], result)
             result.methods["to_string"] = FunctionType([result], STRING)
             # TODO: this is only for strings, but List[auto] may become List[Str] later
             # if generic_arg is STRING:
