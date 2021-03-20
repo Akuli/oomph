@@ -519,7 +519,7 @@ class _FilePair:
             itemtype = the_type.generic_origin.arg
             assert the_type.generic_origin.generic == LIST
             c_path, h_path = _generic_paths[the_type.generic_origin.generic]
-            define_dict = {
+            macro_dict = {
                 "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
                 "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
                 "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
@@ -532,9 +532,9 @@ class _FilePair:
                 "DECREF_ITEM(val)": self.session.emit_decref("(val)", itemtype),
             }
             defines = "".join(
-                f"\n#define {key} {value}\n" for key, value in define_dict.items()
+                f"\n#define {key} {value}\n" for key, value in macro_dict.items()
             )
-            undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in define_dict)
+            undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in macro_dict)
             self.struct = defines + c_path.read_text("utf-8") + undefs
             for name, functype in the_type.methods.items():
                 self.define_function(
