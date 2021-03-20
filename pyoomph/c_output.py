@@ -366,31 +366,30 @@ _generic_c_codes = {
             return self->data[--self->len];
         }
 
-        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
+        static void validate_index(const struct class_%(type_cname)s *self, int64_t i)
         {
             if (i < 0)
                 panic_printf("negative list index %%d", (long)i);
             if (i >= self->len)
                 panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
+        }
 
+        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
+        {
+            validate_index(self, i);
             INCREF_ITEM(self->data[i]);
             return self->data[i];
         }
 
         void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i)
         {
-            // TODO: copy pasta
-            if (i < 0)
-                panic_printf("negative list index %%d", (long)i);
-            if (i >= self->len)
-                panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
-
+            validate_index(self, i);
             DECREF_ITEM(self->data[i]);
             self->len--;
             memmove(self->data+i, self->data+i+1, (self->len - i)*sizeof(self->data[0]));
         }
 
-        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
+        static struct class_%(type_cname)s *slice(struct class_%(type_cname)s *self, int64_t start, int64_t end, bool del)
         {
             if (start < 0)
                 start = 0;
@@ -402,29 +401,25 @@ _generic_c_codes = {
                 class_%(type_cname)s_ensure_alloc(res, end-start);
                 res->len = end-start;
                 memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
-                memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
-                self->len -= res->len;
+                if (del) {
+                    memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
+                    self->len -= res->len;
+                } else {
+                    for (size_t i = 0; i < res->len; i++)
+                        INCREF_ITEM(res->data[i]);
+                }
             }
             return res;
         }
 
-        // TODO: copy pasta
         struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
         {
-            if (start < 0)
-                start = 0;
-            if (end > self->len)
-                end = self->len;
+            return slice(self, start, end, false);
+        }
 
-            struct class_%(type_cname)s *res = ctor_%(type_cname)s();
-            if (start < end) {
-                class_%(type_cname)s_ensure_alloc(res, end-start);
-                res->len = end-start;
-                memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
-                for (size_t i = 0; i < res->len; i++)
-                    INCREF_ITEM(res->data[i]);
-            }
-            return res;
+        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
+        {
+            return slice(self, start, end, true);
         }
 
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
