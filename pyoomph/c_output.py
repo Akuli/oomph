@@ -252,26 +252,6 @@ _generic_c_codes = {
         };
         """,
         "function_decls": """
-        struct class_%(type_cname)s *ctor_%(type_cname)s(void);
-        void dtor_%(type_cname)s (void *ptr);
-        bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other);
-        void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
-        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
-        void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val);
-        void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i);
-        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
-        %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
-        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
-        %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
-        %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
-        struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
-        bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item);
-        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix);
-        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix);
-        int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
-        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
-        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
-
         // Kind of a weird hack
         #if %(itemtype_is_string)s
         #define meth_%(type_cname)s_join meth_List_Str_join
@@ -299,7 +279,7 @@ _generic_c_codes = {
             free(self);
         }
 
-        bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other)
+        bool meth_%(type_cname)s_equals(struct class_%(type_cname)s *self, struct class_%(type_cname)s *other)
         {
             if (self->len != other->len)
                 return false;
@@ -336,7 +316,7 @@ _generic_c_codes = {
             INCREF_ITEM(val);
         }
 
-        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src)
+        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, struct class_%(type_cname)s *src)
         {
             class_%(type_cname)s_ensure_alloc(self, self->len + src->len);
             memcpy(self->data + self->len, src->data, sizeof(src->data[0]) * src->len);
@@ -366,7 +346,7 @@ _generic_c_codes = {
             return self->data[--self->len];
         }
 
-        static void validate_index(const struct class_%(type_cname)s *self, int64_t i)
+        static void validate_index(struct class_%(type_cname)s *self, int64_t i)
         {
             if (i < 0)
                 panic_printf("negative list index %%d", (long)i);
@@ -405,7 +385,7 @@ _generic_c_codes = {
                     memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
                     self->len -= res->len;
                 } else {
-                    for (size_t i = 0; i < res->len; i++)
+                    for (int64_t i = 0; i < res->len; i++)
                         INCREF_ITEM(res->data[i]);
                 }
             }
@@ -447,7 +427,7 @@ _generic_c_codes = {
             return false;
         }
 
-        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix)
+        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, struct class_%(type_cname)s *prefix)
         {
             if (self->len < prefix->len)
                 return false;
@@ -457,7 +437,7 @@ _generic_c_codes = {
             return true;
         }
 
-        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix)
+        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, struct class_%(type_cname)s *prefix)
         {
             if (self->len < prefix->len)
                 return false;
@@ -490,7 +470,7 @@ _generic_c_codes = {
             return res;
         }
 
-        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self)
+        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(struct class_%(type_cname)s *self)
         {
             struct class_%(type_cname)s *res = ctor_%(type_cname)s();
             class_%(type_cname)s_ensure_alloc(res, self->len);
@@ -622,14 +602,18 @@ class _FilePair:
             c_name = self.id + "_" + var.name
         return c_name
 
+    # If body is None, declares but does not actually define
     def define_function(
-        self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
+        self, function_name: str, the_type: FunctionType, argnames: Optional[List[str]], body: Optional[str]
     ) -> None:
-        assert len(the_type.argtypes) == len(argnames)
-        arg_decls = [
-            self.emit_type(argtype) + " " + name
-            for argtype, name in zip(the_type.argtypes, argnames)
-        ]
+        if argnames is None:
+            arg_decls = list(map(self.emit_type, the_type.argtypes))
+        else:
+            assert len(the_type.argtypes) == len(argnames)
+            arg_decls = [
+                self.emit_type(argtype) + " " + name
+                for argtype, name in zip(the_type.argtypes, argnames)
+            ]
 
         declaration = "%s %s(%s)" % (
             self.emit_type(the_type.returntype),
@@ -637,7 +621,8 @@ class _FilePair:
             (", ".join(arg_decls) or "void"),
         )
         self.function_decls += declaration + ";\n"
-        self.function_defs += declaration + "{" + body + "}"
+        if body is not None:
+            self.function_defs += declaration + "{" + body + "}"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
@@ -781,7 +766,16 @@ class _FilePair:
                 "itemtype_is_string": int(itemtype == STRING),
             }
             self.struct = code_dict["struct"] % string_formatting
+            for name, functype in the_type.methods.items():
+                self.define_function(
+                    f"meth_{self.session.get_type_c_name(the_type)}_{name}",
+                    functype,
+                    None, None)
             self.function_decls += code_dict["function_decls"] % string_formatting
+            self.function_decls += """
+            struct class_%(type_cname)s *ctor_%(type_cname)s(void);
+            void dtor_%(type_cname)s (void *ptr);
+            """ % string_formatting
             self.function_defs += f"""
             #define INCREF_ITEM(val) {self.session.emit_incref("(val)", itemtype)}
             #define DECREF_ITEM(val) {self.session.emit_decref("(val)", itemtype)}
