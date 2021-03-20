@@ -37,7 +37,7 @@ bool METHOD(equals)(TYPE self, TYPE other)
 	return true;
 }
 
-static void ensure_alloc(TYPE self, int64_t n)
+static void set_length(TYPE self, int64_t n)
 {
 	assert(n >= 0);
 	if (self->alloc >= n)
@@ -58,18 +58,18 @@ static void ensure_alloc(TYPE self, int64_t n)
 
 void METHOD(push)(TYPE self, ITEMTYPE val)
 {
-	ensure_alloc(self, self->len + 1);
-	self->data[self->len++] = val;
+	set_length(self, self->len + 1);
+	self->data[self->len - 1] = val;
 	INCREF_ITEM(val);
 }
 
 void METHOD(push_all)(TYPE self, TYPE src)
 {
-	ensure_alloc(self, self->len + src->len);
-	memcpy(self->data + self->len, src->data, sizeof(src->data[0]) * src->len);
+	int64_t oldlen = self->len;
+	set_length(self, self->len + src->len);
+	memcpy(self->data + oldlen, src->data, sizeof(src->data[0]) * src->len);
 	for (int64_t i = 0; i < src->len; i++)
 		INCREF_ITEM(src->data[i]);
-	self->len += src->len;
 }
 
 void METHOD(insert)(TYPE self, int64_t index, ITEMTYPE val)
@@ -79,10 +79,9 @@ void METHOD(insert)(TYPE self, int64_t index, ITEMTYPE val)
 	if (index > self->len)
 		index = self->len;
 
-	ensure_alloc(self, self->len + 1);
-	memmove(self->data + index + 1, self->data + index, (self->len - index)*sizeof(self->data[0]));
+	set_length(self, self->len + 1);
+	memmove(self->data + index + 1, self->data + index, (self->len - index - 1)*sizeof(self->data[0]));
 	self->data[index] = val;
-	self->len++;
 	INCREF_ITEM(val);
 }
 
@@ -125,8 +124,7 @@ static TYPE slice(TYPE self, int64_t start, int64_t end, bool del)
 
 	TYPE res = CONSTRUCTOR();
 	if (start < end) {
-		ensure_alloc(res, end-start);
-		res->len = end-start;
+		set_length(res, end-start);
 		memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
 		if (del) {
 			memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
@@ -220,11 +218,10 @@ struct class_Str *METHOD(to_string)(TYPE self)
 TYPE METHOD(reversed)(TYPE self)
 {
 	TYPE res = CONSTRUCTOR();
-	ensure_alloc(res, self->len);
+	set_length(res, self->len);
 	for (int64_t i = 0; i < self->len; i++) {
 		res->data[i] = self->data[self->len - 1 - i];
 		INCREF_ITEM(res->data[i]);
 	}
-	res->len = self->len;
 	return res;
 }
