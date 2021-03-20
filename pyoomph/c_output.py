@@ -266,6 +266,8 @@ _generic_c_codes = {
         %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
         struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
         bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item);
+        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix);
+        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix);
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
         struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
         struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
@@ -448,6 +450,26 @@ _generic_c_codes = {
                     return true;
             }
             return false;
+        }
+
+        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix)
+        {
+            if (self->len < prefix->len)
+                return false;
+            for (int64_t i = 0; i < prefix->len; i++)
+                if (!ITEM_EQUALS(self->data[i], prefix->data[i]))
+                    return false;
+            return true;
+        }
+
+        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix)
+        {
+            if (self->len < prefix->len)
+                return false;
+            for (int64_t s=self->len-1, p=prefix->len-1; p >= 0; s--,p--)
+                if (!ITEM_EQUALS(self->data[s], prefix->data[p]))
+                    return false;
+            return true;
         }
 
         int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
