@@ -60,11 +60,14 @@ export func main():
     let args = process::get_args()
 
     let tokens_only = false
+    let ast_only = false
     let valgrind = ""
 
     while args != [] and args.first().starts_with("--"):
         if args.first() == "--tokens":
             tokens_only = true
+        elif args.first() == "--ast":
+            ast_only = true
         elif args.first().starts_with("--valgrind="):
             valgrind = args.first().slice("--valgrind=".length(), args.first().length())
         else:
@@ -73,6 +76,7 @@ export func main():
 
         args = slice_from_1_to_end(args)
 
+    assert(not (ast_only and tokens_only))
     assert(args != [])  # TODO: error
     let source_path = args.first()
     args = slice_from_1_to_end(args)
@@ -86,6 +90,10 @@ export func main():
         return
 
     let ast = parser::parse_file(code)
+    if ast_only:
+        print(ast)
+        return
+
     let ir = ast2ir::convert_program(builtins, ast)
     let c_code = c_output::create_code(builtins, ir)
     io::write_file("{cache_dir}/out.c", c_code)

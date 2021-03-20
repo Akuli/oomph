@@ -12,7 +12,7 @@ for file in builtins.oomph tests/*.oomph self_hosted/*.oomph; do
     fi
 
     echo $file
-    ./oomphc --tokens $file >/dev/null
+    ./oomphc --ast $file >/dev/null
 done
 
 echo "
