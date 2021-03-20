@@ -89,7 +89,7 @@ export func main():
             print(token)
         return
 
-    let ast = parser::parse_file(code)
+    let ast = parser::parse_file(code, source_path, "{project_root}/stdlib.oomph")
     if ast_only:
         print(ast)
         return

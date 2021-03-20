@@ -66,16 +66,17 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         self.peek()   # Error if end of file
         let token = self.tokens.pop()
         if token.type != type:
-            print("Wrong token type: expected {type}, got {token.type}")
+            print("Wrong token type: expected {type}, got {token}")
             assert(false)  # TODO: error
         return token
 
     meth get_token(Str type, Str value) -> tokenizer::Token:
-        let token = self.get_token_by_type(type)
-        if token.value != value:
+        self.peek()   # Error if end of file
+        let token = self.tokens.pop()
+        if token.type != type or token.value != value:
             print(self.tokens)
             print("Above is list of tokens.")
-            print("Expected '{value}', got {token}")
+            print("Expected type '{type}' and value '{value}', got {token}")
             assert(false)  # TODO: error
         return token
 
@@ -100,6 +101,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             path = "{path_parent(path_of_this_file)}/{string.slice(1, string.length() - 1)}"
         return new ast::Import(path, name)
 
+    # TODO: these are a bit copy/pasta
     meth parse_commasep_expression_in_parens(Str left, Str right) -> List[ast::Expression]:
         self.get_token("op", left)
         let result = []
@@ -120,6 +122,39 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
                 self.get_token("op", ",")
                 result.push(self.parse_type_and_name())
         self.get_token("op", ")")
+        return result
+
+    meth parse_block_of_statements() -> List[ast::Statement]:
+        self.get_token("begin_block", ":")
+        let result = []
+        while self.tokens != [] and not self.peek().matches("end_block", ""):
+            result.push_all(self.parse_statement())
+        self.get_token("end_block", "")
+        return result
+
+    meth parse_block_of_methods() -> List[ast::FuncOrMethodDef]:
+        self.get_token("begin_block", ":")
+        let result = []
+        while self.tokens != [] and not self.peek().matches("end_block", ""):
+            result.push(self.parse_method())
+        self.get_token("end_block", "")
+        return result
+
+    meth parse_block_of_cases() -> List[ast::Case]:
+        self.get_token("begin_block", ":")
+        let result = []
+        while self.tokens != [] and not self.peek().matches("end_block", ""):
+            result.push(self.parse_case())
+        self.get_token("end_block", "")
+        return result
+
+    meth parse_block_of_union_members() -> List[ast::Type]:
+        self.get_token("begin_block", ":")
+        let result = []
+        while self.tokens != [] and not self.peek().matches("end_block", ""):
+            result.push(self.parse_type())
+            self.get_token("op", "\n")
+        self.get_token("end_block", "")
         return result
 
     meth tokenize_and_parse_expression(Str code) -> ast::Expression:
@@ -156,7 +191,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         elif self.peek().matches("op", "["):
             result = new ast::ListLiteral(self.parse_commasep_expression_in_parens("[", "]"))
         else:
-            print("Token type = {self.peek().type}")
+            print("All tokens: {self.tokens}")
             print("not a valid expression: {self.peek().value}")
             assert(false)
 
@@ -220,15 +255,12 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
                     un_or_null = null
                 else:
                     # TODO: error
+                    # TODO: test
                     print("ambiguous operators")
                     assert(false)
 
             if un_or_null != null:
                 let i = un_or_null.get()
-                if i != 0 and magic_list.get(i) == "-":
-                    # TODO: error
-                    print("prefix minus not in start of expression")
-                    assert(false)
                 let op_and_expr = delete_slice_from_list(magic_list, i, i+2)
                 let op = get_op(op_and_expr.first())
                 let expr = get_expr(op_and_expr.last())
@@ -245,7 +277,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
     meth get_unary_operators() -> List[PrecedenceItem]:
         let result = new List[PrecedenceItem]()
-        while self.peek().matches("keyword", "not") or self.peek().matches("op", "-"):
+        while self.peek().matches("keyword", "not") or self.peek().matches("keyword", "not in") or self.peek().matches("op", "-"):
             result.push(self.tokens.pop().value)
         return result
 
@@ -274,14 +306,6 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
                 return expr
             case *:
                 assert(false)
-
-    meth parse_block_of_statements() -> List[ast::Statement]:
-        self.get_token("begin_block", ":")
-        let result = []
-        while self.tokens != [] and not self.peek().matches("end_block", ""):
-            result.push_all(self.parse_statement())
-        self.get_token("end_block", "")
-        return result
 
     meth parse_oneline_ish_statement() -> ast::Statement:
         if self.peek().matches("keyword", "let"):
@@ -384,47 +408,48 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
             return [new ast::Statement(new ast::If(ifs, else_body))]
 
-#        if self.peek().matches("keyword", "while"):
-#            self.get_token("keyword", "while")
-#            cond: Optional[ast.Expression] = self.parse_expression()
-#            body = self.parse_block_of_statements()
-#            return [ast.Loop(None, cond, None, body)]
-#
-#        if self.peek().matches("keyword", "for"):
-#            self.get_token("keyword", "for")
-#            init = (
-#                None
-#                if self.peek().matches("op", ";")
-#                else self.parse_oneline_ish_statement()
-#            )
-#            self.get_token("op", ";")
-#            cond = (
-#                None
-#                if self.peek().matches("op", ";")
-#                else self.parse_expression()
-#            )
-#            self.get_token("op", ";")
-#            incr = (
-#                None
-#                if self.peek().matches("begin_block", ":")
-#                else self.parse_oneline_ish_statement()
-#            )
-#            body = self.parse_block_of_statements()
-#            return [ast.Loop(init, cond, incr, body)]
-#
-#        if self.peek().matches("keyword", "foreach"):
-#            self.get_token("keyword", "foreach")
-#            varname = self.get_token_by_type("id").value
-#            self.get_token("keyword", "of")
-#            the_list = self.parse_expression()
-#            body = self.parse_block_of_statements()
-#            return self.foreach_loop_to_for_loop(varname, the_list, body)
-#
-#        if self.peek().matches("keyword", "switch"):
-#            self.get_token("keyword", "switch")
-#            union_obj = self.parse_expression()
-#            cases = self.parse_block(self.parse_case)
-#            return [ast.Switch(union_obj, cases)]
+        if self.peek().matches("keyword", "while"):
+            self.get_token("keyword", "while")
+            let cond = self.parse_expression()
+            let body = self.parse_block_of_statements()
+            return [new ast::Statement(new ast::Loop(null, cond, null, body))]
+
+        if self.peek().matches("keyword", "for"):
+            self.get_token("keyword", "for")
+
+            if self.peek().matches("op", ";"):
+                let init = new Optional[ast::Statement](null)
+            else:
+                init = self.parse_oneline_ish_statement()
+            self.get_token("op", ";")
+
+            if self.peek().matches("op", ";"):
+                let cond = new Optional[ast::Expression](null)
+            else:
+                cond = self.parse_expression()
+            self.get_token("op", ";")
+
+            if self.peek().matches("begin_block", ":"):
+                let incr = new Optional[ast::Statement](null)
+            else:
+                incr = self.parse_oneline_ish_statement()
+
+            body = self.parse_block_of_statements()
+            return [new ast::Statement(new ast::Loop(init, cond, incr, body))]
+
+        if self.peek().matches("keyword", "foreach"):
+            self.get_token("keyword", "foreach")
+            let varname = self.get_token_by_type("id").value
+            self.get_token("keyword", "of")
+            let list = self.parse_expression()
+            let body = self.parse_block_of_statements()
+            return self.foreach_loop_to_for_loop(varname, list, body)
+
+        if self.peek().matches("keyword", "switch"):
+            self.get_token("keyword", "switch")
+            let union_obj = self.parse_expression()
+            let cases = self.parse_block_of_cases()
+            return [new ast::Statement(new ast::Switch(union_obj, cases))]
 
         let result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
@@ -463,15 +488,10 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
         return new ast::FuncOrMethodDef(name, args, returntype, self.parse_block_of_statements())
 
-#    def parse_method(self) -> ast.FuncOrMethodDef:
-#        self.get_token("keyword", "meth")
-#        return self.parse_function_or_method()
-#
-#    def parse_union_member(self) -> ast.Type:
-#        result = self.parse_type()
-#        self.get_token("op", "\n")
-#        return result
-#
+    meth parse_method() -> ast::FuncOrMethodDef:
+        self.get_token("keyword", "meth")
+        return self.parse_function_or_method()
+
     meth parse_toplevel() -> ast::ToplevelDeclaration:
         # TODO: don't export everything
         if self.peek().matches("keyword", "export"):
@@ -481,30 +501,35 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             self.get_token("keyword", "func")
             return self.parse_function_or_method()
 
-#        if self.peek().matches("keyword", "class"):
-#            self.get_token("keyword", "class")
-#            let name = self.get_token_by_type("id").value
-#            let args = self.parse_commasep_in_parens(self.parse_type_and_name)
-#            if self.token_iter.peek(None) == ("begin_block", ":"):
-#                body = self.parse_block(self.parse_method)
-#            else:
-#                body = []
-#                self.get_token("op", "\n")
-#            return ast.ClassDef(name, args, body, export)
+        if self.peek().matches("keyword", "class"):
+            self.get_token("keyword", "class")
+            let name = self.get_token_by_type("id").value
+            let args = self.parse_commasep_types_and_names_in_parens()
+            if self.tokens != [] and self.peek().matches("begin_block", ":"):
+                let body = self.parse_block_of_methods()
+            else:
+                body = []
+                self.get_token("op", "\n")
+            return new ast::ClassDef(name, args, body)
 
-#        if self.peek().matches("keyword", "union"):
-#            self.get_token("keyword", "union")
-#            name = self.get_token_by_type("id").value
-#            types = self.parse_block(self.parse_union_member)
-#            return ast.UnionDef(name, types, export)
+        if self.peek().matches("keyword", "union"):
+            self.get_token("keyword", "union")
+            let name = self.get_token_by_type("id").value
+            let types = self.parse_block_of_union_members()
+            return new ast::UnionDef(name, types)
 
         print("don't know what to do: {self.peek()}")
         assert(false)
 
 
-export func parse_file(Str code) -> List[ast::ToplevelDeclaration]:
+export func parse_file(Str code, Optional[Str] path, Optional[Str] stdlib_path) -> List[ast::ToplevelDeclaration]:
     let parser = new Parser(tokenizer::tokenize(code).reversed(), 0)
+
     let result = new List[ast::ToplevelDeclaration]()
+    while parser.tokens != [] and parser.peek().matches("keyword", "import"):
+        assert(path != null)
+        assert(stdlib_path != null)
+        result.push(parser.parse_import(path.get(), stdlib_path.get()))
     while parser.tokens != []:
         result.push(parser.parse_toplevel())
     return result

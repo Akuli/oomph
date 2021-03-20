@@ -12,4 +12,3 @@ tests/print1.oomph
 tests/print_float.oomph
 tests/trailing_ws.oomph
 tests/unterminated_string_error.oomph
-tests/weird_minus_error.oomph

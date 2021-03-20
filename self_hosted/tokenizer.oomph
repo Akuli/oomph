@@ -16,6 +16,17 @@ func get_simple_identifier(Str code) -> Optional[Str]:
         i = i + 1
     return code.slice(0, i)
 
+func get_identifier(Str code) -> Optional[Str]:
+    switch get_simple_identifier(code):
+        case Str s:
+            if code.slice(s.length(), code.length()).starts_with("::"):
+                let index = s.length() + 2
+                # TODO: better error handling for foo::123
+                return code.slice(0, index) + get_simple_identifier(code.slice(s.length() + 2, code.length())).get()
+            return s
+        case *:
+            return null
+
 # TODO: enums
 # TODO: keep track of line numbers
 export class Token(Str type, Str value):
@@ -62,12 +73,12 @@ func raw_tokenize(Str code) -> List[Token]:
 
     let result = []
     while code != "":
-        let id = get_simple_identifier(code)
+        let id = get_identifier(code)
         let op = starts_with_any(code, op_list)
         let int_value = get_int(code)
 
         if id != null:
-            if id.get() in ["export", "func", "and", "or", "not"]:
+            if id.get() in keyword_list:
                 let token = new Token("keyword", id.get())
             else:
                 token = new Token("id", id.get())
@@ -119,6 +130,18 @@ func raw_tokenize(Str code) -> List[Token]:
         code = code.slice(token.value.length(), code.length())
         result.push(token)
 
+    return result
+
+func combine_not_in(List[Token] tokens) -> List[Token]:
+    tokens = tokens.reversed()  # TODO: better way to make copy
+    let result = []
+    while tokens != []:
+        if tokens.length() >= 2 and tokens.last().matches("keyword", "not") and tokens.get(tokens.length() - 2).matches("keyword", "in"):
+            result.push(new Token("keyword", "not in"))
+            tokens.pop()
+            tokens.pop()
+        else:
+            result.push(tokens.pop())
     return result
 
 func skip_newlines(List[Token] tokens):
@@ -177,4 +200,4 @@ func find_blocks(List[Token] tokens) -> List[Token]:
     return result
 
 export func tokenize(Str code) -> List[Token]:
-    return clean_newlines(find_blocks(clean_newlines(raw_tokenize(code))))
+    return clean_newlines(find_blocks(clean_newlines(combine_not_in(raw_tokenize(code)))))
