@@ -93,14 +93,20 @@ class Generic:
             result.constructor_argtypes = []
             # TODO: hide __contains better?
             result.methods["__contains"] = FunctionType([result, generic_arg], BOOL)
+            result.methods["delete_by_index"] = FunctionType([result, INT], None)
+            result.methods["delete_slice"] = FunctionType([result, INT, INT], result)
+            result.methods["ends_with"] = FunctionType([result, result], BOOL)
             result.methods["first"] = FunctionType([result], generic_arg)
             result.methods["get"] = FunctionType([result, INT], generic_arg)
+            result.methods["insert"] = FunctionType([result, INT, generic_arg], None)
             result.methods["last"] = FunctionType([result], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["pop"] = FunctionType([result], generic_arg)
             result.methods["push"] = FunctionType([result, generic_arg], None)
             result.methods["push_all"] = FunctionType([result, result], None)
             result.methods["reversed"] = FunctionType([result], result)
+            result.methods["slice"] = FunctionType([result, INT, INT], result)
+            result.methods["starts_with"] = FunctionType([result, result], BOOL)
             result.methods["to_string"] = FunctionType([result], STRING)
             # TODO: this is only for strings, but List[auto] may become List[Str] later
             # if generic_arg is STRING:

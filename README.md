@@ -50,11 +50,11 @@ Missing features:
 - named arguments
 - default values of arguments
 - string methods
-    - reverse
     - find occurrence of substring
         - last occurrence
         - all occurrences
         - only occurrence, failing if multiple are found
+        - same for lists?
     - upper and lower (need unicode lib?)
 - should `self` be a keyword?
 - chained equalities `a == b == c`
@@ -64,10 +64,6 @@ Missing features:
     - js-style methods (needs lambdas) or list comprehensions
         - idea: `foo.map(.to_string())` would be same as `foo.map(item => item.to_string())`
     - `list + list`
-    - `list.starts_with` and `ends_with`
-    - `insert_item` and `insert_sublist` methods
-        - do we need both?
-    - `delete_slice`
 - generics
     - defining generic classes or functions
     - tuples

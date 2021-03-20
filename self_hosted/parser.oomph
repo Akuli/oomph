@@ -19,28 +19,6 @@ func get_op(PrecedenceItem item) -> Str:
         case *:
             assert(false)
 
-# TODO: more list methods
-func delete_slice_from_list(List[PrecedenceItem] list, Int start, Int end) -> List[PrecedenceItem]:
-    let stack = []
-    let result = []
-    while list.length() > end:
-        stack.push(list.pop())
-    while list.length() > start:
-        result.push(list.pop())
-    list.push_all(stack.reversed())
-    return result.reversed()
-
-func insert_to_list(List[PrecedenceItem] list, Int index, PrecedenceItem item):
-    let stack = []
-    while list.length() > index:
-        stack.push(list.pop())
-    list.push(item)
-    list.push_all(stack.reversed())
-
-# TODO: more implicit conversions to avoid this
-func cast(ast::Expression arg) -> ast::Expression:
-    return arg
-
 # TODO: should become string method
 func find_last(Str s, Str what2find) -> Optional[Int]:
     for let i = s.length() - what2find.length(); i >= 0; i = i-1:
@@ -261,17 +239,17 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
             if un_or_null != null:
                 let i = un_or_null.get()
-                let op_and_expr = delete_slice_from_list(magic_list, i, i+2)
+                let op_and_expr = magic_list.delete_slice(i, i+2)
                 let op = get_op(op_and_expr.first())
                 let expr = get_expr(op_and_expr.last())
-                insert_to_list(magic_list, i, new ast::UnaryOperator(op, expr))
+                magic_list.insert(i, new ast::UnaryOperator(op, expr))
             elif bin_or_null != null:
                 let i = bin_or_null.get()
-                let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
+                let lhs_op_rhs = magic_list.delete_slice(i, i+3)
                 let lhs = get_expr(lhs_op_rhs.first())
                 let op = get_op(lhs_op_rhs.get(1))
                 let rhs = get_expr(lhs_op_rhs.last())
-                insert_to_list(magic_list, i, new ast::BinaryOperator(lhs, op, rhs))
+                magic_list.insert(i, new ast::BinaryOperator(lhs, op, rhs))
             else:
                 break
 

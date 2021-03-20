@@ -1,0 +1,10 @@
+export func main():
+    print([1, 2].starts_with([1, 2]))
+    print([1, 2].starts_with([1]))
+    print([1, 2].starts_with([2]))
+    print([1, 2].starts_with([]))
+
+    print([1, 2].ends_with([1, 2]))
+    print([1, 2].ends_with([1]))
+    print([1, 2].ends_with([2]))
+    print([1, 2].ends_with([]))

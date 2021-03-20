@@ -51,10 +51,8 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
     meth emit_var(ir::Variable var) -> Str:
         switch var:
             case ir::LocalVariable local_var:
-                # TODO: list contains method
-                foreach declared_var of self.declared_vars:
-                    if declared_var == local_var:
-                        return "var{local_var.id}"
+                if local_var in self.declared_vars:
+                    return "var{local_var.id}"
 
                 self.before_body = self.before_body + self.file.emit_declaration(local_var.type, "var{local_var.id}")
                 self.declared_vars.push(local_var)
