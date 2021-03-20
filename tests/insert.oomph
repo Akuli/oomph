@@ -1,0 +1,8 @@
+export func main():
+    let foo = ["a", "b"]
+    foo.insert(0, "c")
+    foo.insert(3, "d")
+    foo.insert(1, "e")
+    foo.insert(-2, "beginning")
+    foo.insert(69, "end")
+    print(foo)

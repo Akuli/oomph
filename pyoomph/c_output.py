@@ -257,6 +257,7 @@ _generic_c_codes = {
         bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other);
         void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
         void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
+        void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val);
         %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
         %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
         %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
@@ -337,6 +338,20 @@ _generic_c_codes = {
             for (int64_t i = 0; i < src->len; i++)
                 INCREF_ITEM(src->data[i]);
             self->len += src->len;
+        }
+
+        void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val)
+        {
+            class_%(type_cname)s_ensure_alloc(self, self->len + 1);
+            if (index < 0)
+                index = 0;
+            if (index > self->len)
+                index = self->len;
+
+            memmove(self->data + index + 1, self->data + index, (self->len - index)*sizeof(self->data[0]));
+            self->data[index] = val;
+            self->len++;
+            INCREF_ITEM(val);
         }
 
         %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self)

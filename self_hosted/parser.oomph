@@ -30,13 +30,6 @@ func delete_slice_from_list(List[PrecedenceItem] list, Int start, Int end) -> Li
     list.push_all(stack.reversed())
     return result.reversed()
 
-func insert_to_list(List[PrecedenceItem] list, Int index, PrecedenceItem item):
-    let stack = []
-    while list.length() > index:
-        stack.push(list.pop())
-    list.push(item)
-    list.push_all(stack.reversed())
-
 # TODO: more implicit conversions to avoid this
 func cast(ast::Expression arg) -> ast::Expression:
     return arg
@@ -264,14 +257,14 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
                 let op_and_expr = delete_slice_from_list(magic_list, i, i+2)
                 let op = get_op(op_and_expr.first())
                 let expr = get_expr(op_and_expr.last())
-                insert_to_list(magic_list, i, new ast::UnaryOperator(op, expr))
+                magic_list.insert(i, new ast::UnaryOperator(op, expr))
             elif bin_or_null != null:
                 let i = bin_or_null.get()
                 let lhs_op_rhs = delete_slice_from_list(magic_list, i, i+3)
                 let lhs = get_expr(lhs_op_rhs.first())
                 let op = get_op(lhs_op_rhs.get(1))
                 let rhs = get_expr(lhs_op_rhs.last())
-                insert_to_list(magic_list, i, new ast::BinaryOperator(lhs, op, rhs))
+                magic_list.insert(i, new ast::BinaryOperator(lhs, op, rhs))
             else:
                 break
 

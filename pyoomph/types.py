@@ -95,6 +95,7 @@ class Generic:
             result.methods["__contains"] = FunctionType([result, generic_arg], BOOL)
             result.methods["first"] = FunctionType([result], generic_arg)
             result.methods["get"] = FunctionType([result, INT], generic_arg)
+            result.methods["insert"] = FunctionType([result, INT, generic_arg], None)
             result.methods["last"] = FunctionType([result], generic_arg)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["pop"] = FunctionType([result], generic_arg)
