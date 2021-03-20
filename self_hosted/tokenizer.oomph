@@ -78,10 +78,10 @@ func raw_tokenize(Str code) -> List[Token]:
             if remaining.starts_with(".") and remaining != "." and "0123456789".contains(remaining.slice(1, 2)):
                 # TODO: remove_prefix method
                 let float_value = int_value + "." + get_int(remaining.slice(1, remaining.length()))
-                token = new Token("Float", float_value)
+                token = new Token("float", float_value)
             else:
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
-                token = new Token("Int", int_value)
+                token = new Token("int", int_value)
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
@@ -105,11 +105,11 @@ func raw_tokenize(Str code) -> List[Token]:
             continue
         elif code.starts_with("\"\"\""):
             let content = extract_string(code, "\"\"\"")
-            token = new Token("string", content)
+            token = new Token("multiline_string", content)
         # TODO: multiline strings
         elif code.starts_with("\""):
             let content = extract_string(code.split("\n").first(), "\"")
-            token = new Token("string", content)
+            token = new Token("oneline_string", content)
         else:
             print(result)
             print("Invalid syntax: {code}")
