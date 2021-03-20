@@ -239,272 +239,8 @@ class _FunctionEmitter:
         )
 
 
-_generic_c_codes = {
-    LIST: {
-        # TODO: have this struct on stack when possible, same with strings
-        "struct": """
-        struct class_%(type_cname)s {
-            REFCOUNT_HEADER
-            int64_t len;
-            int64_t alloc;
-            %(itemtype)s smalldata[8];
-            %(itemtype)s *data;
-        };
-        """,
-        "function_decls": """
-        struct class_%(type_cname)s *ctor_%(type_cname)s(void);
-        void dtor_%(type_cname)s (void *ptr);
-        bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other);
-        void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val);
-        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src);
-        void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val);
-        void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i);
-        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
-        %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self);
-        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i);
-        %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self);
-        %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self);
-        struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end);
-        bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item);
-        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix);
-        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix);
-        int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self);
-        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self);
-        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self);
-
-        // Kind of a weird hack
-        #if %(itemtype_is_string)s
-        #define meth_%(type_cname)s_join meth_List_Str_join
-        #endif
-        """,
-        "function_defs": """
-        struct class_%(type_cname)s *ctor_%(type_cname)s(void)
-        {
-            struct class_%(type_cname)s *res = malloc(sizeof(*res));
-            assert(res);
-            res->refcount = 1;
-            res->len = 0;
-            res->data = res->smalldata;
-            res->alloc = sizeof(res->smalldata)/sizeof(res->smalldata[0]);
-            return res;
-        }
-
-        void dtor_%(type_cname)s (void *ptr)
-        {
-            struct class_%(type_cname)s *self = ptr;
-            for (int64_t i = 0; i < self->len; i++)
-                DECREF_ITEM(self->data[i]);
-            if (self->data != self->smalldata)
-                free(self->data);
-            free(self);
-        }
-
-        bool meth_%(type_cname)s_equals(const struct class_%(type_cname)s *self, const struct class_%(type_cname)s *other)
-        {
-            if (self->len != other->len)
-                return false;
-            for (int64_t i = 0; i < self->len; i++) {
-                if (!ITEM_EQUALS(self->data[i], other->data[i]))
-                    return false;
-            }
-            return true;
-        }
-
-        void class_%(type_cname)s_ensure_alloc(struct class_%(type_cname)s *self, int64_t n)
-        {
-            assert(n >= 0);
-            if (self->alloc >= n)
-                return;
-
-            while (self->alloc < n)
-                self->alloc *= 2;
-
-            if (self->data == self->smalldata) {
-                self->data = malloc(self->alloc * sizeof(self->data[0]));
-                assert(self->data);
-                memcpy(self->data, self->smalldata, sizeof self->smalldata);
-            } else {
-                self->data = realloc(self->data, self->alloc * sizeof(self->data[0]));
-                assert(self->data);
-            }
-        }
-
-        void meth_%(type_cname)s_push(struct class_%(type_cname)s *self, %(itemtype)s val)
-        {
-            class_%(type_cname)s_ensure_alloc(self, self->len + 1);
-            self->data[self->len++] = val;
-            INCREF_ITEM(val);
-        }
-
-        void meth_%(type_cname)s_push_all(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *src)
-        {
-            class_%(type_cname)s_ensure_alloc(self, self->len + src->len);
-            memcpy(self->data + self->len, src->data, sizeof(src->data[0]) * src->len);
-            for (int64_t i = 0; i < src->len; i++)
-                INCREF_ITEM(src->data[i]);
-            self->len += src->len;
-        }
-
-        void meth_%(type_cname)s_insert(struct class_%(type_cname)s *self, int64_t index, %(itemtype)s val)
-        {
-            if (index < 0)
-                index = 0;
-            if (index > self->len)
-                index = self->len;
-
-            class_%(type_cname)s_ensure_alloc(self, self->len + 1);
-            memmove(self->data + index + 1, self->data + index, (self->len - index)*sizeof(self->data[0]));
-            self->data[index] = val;
-            self->len++;
-            INCREF_ITEM(val);
-        }
-
-        %(itemtype)s meth_%(type_cname)s_pop(struct class_%(type_cname)s *self)
-        {
-            if (self->len == 0)
-                panic_printf("pop from empty list");
-            return self->data[--self->len];
-        }
-
-        static void validate_index(const struct class_%(type_cname)s *self, int64_t i)
-        {
-            if (i < 0)
-                panic_printf("negative list index %%d", (long)i);
-            if (i >= self->len)
-                panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
-        }
-
-        %(itemtype)s meth_%(type_cname)s_get(struct class_%(type_cname)s *self, int64_t i)
-        {
-            validate_index(self, i);
-            INCREF_ITEM(self->data[i]);
-            return self->data[i];
-        }
-
-        void meth_%(type_cname)s_delete_by_index(struct class_%(type_cname)s *self, int64_t i)
-        {
-            validate_index(self, i);
-            DECREF_ITEM(self->data[i]);
-            self->len--;
-            memmove(self->data+i, self->data+i+1, (self->len - i)*sizeof(self->data[0]));
-        }
-
-        static struct class_%(type_cname)s *slice(struct class_%(type_cname)s *self, int64_t start, int64_t end, bool del)
-        {
-            if (start < 0)
-                start = 0;
-            if (end > self->len)
-                end = self->len;
-
-            struct class_%(type_cname)s *res = ctor_%(type_cname)s();
-            if (start < end) {
-                class_%(type_cname)s_ensure_alloc(res, end-start);
-                res->len = end-start;
-                memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
-                if (del) {
-                    memmove(&self->data[start], &self->data[end], (self->len - end)*sizeof(self->data[0]));
-                    self->len -= res->len;
-                } else {
-                    for (size_t i = 0; i < res->len; i++)
-                        INCREF_ITEM(res->data[i]);
-                }
-            }
-            return res;
-        }
-
-        struct class_%(type_cname)s *meth_%(type_cname)s_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
-        {
-            return slice(self, start, end, false);
-        }
-
-        struct class_%(type_cname)s *meth_%(type_cname)s_delete_slice(struct class_%(type_cname)s *self, int64_t start, int64_t end)
-        {
-            return slice(self, start, end, true);
-        }
-
-        %(itemtype)s meth_%(type_cname)s_first(struct class_%(type_cname)s *self)
-        {
-            if (self->len == 0)
-                panic_printf("can't get first item of empty list");
-            INCREF_ITEM(self->data[0]);
-            return self->data[0];
-        }
-
-        %(itemtype)s meth_%(type_cname)s_last(struct class_%(type_cname)s *self)
-        {
-            if (self->len == 0)
-                panic_printf("can't get last item of empty list");
-            INCREF_ITEM(self->data[self->len - 1]);
-            return self->data[self->len - 1];
-        }
-
-        bool meth_%(type_cname)s___contains(struct class_%(type_cname)s *self, %(itemtype)s item)
-        {
-            for (int64_t i = 0; i < self->len; i++) {
-                if (ITEM_EQUALS(self->data[i], item))
-                    return true;
-            }
-            return false;
-        }
-
-        bool meth_%(type_cname)s_starts_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix)
-        {
-            if (self->len < prefix->len)
-                return false;
-            for (int64_t i = 0; i < prefix->len; i++)
-                if (!ITEM_EQUALS(self->data[i], prefix->data[i]))
-                    return false;
-            return true;
-        }
-
-        bool meth_%(type_cname)s_ends_with(struct class_%(type_cname)s *self, const struct class_%(type_cname)s *prefix)
-        {
-            if (self->len < prefix->len)
-                return false;
-            for (int64_t s=self->len-1, p=prefix->len-1; p >= 0; s--,p--)
-                if (!ITEM_EQUALS(self->data[s], prefix->data[p]))
-                    return false;
-            return true;
-        }
-
-        int64_t meth_%(type_cname)s_length(struct class_%(type_cname)s *self)
-        {
-            return self->len;
-        }
-
-        // TODO: rewrite better in the language itself
-        struct class_Str *meth_%(type_cname)s_to_string(struct class_%(type_cname)s *self)
-        {
-            struct class_Str *res = cstr_to_string("[");
-
-            for (int64_t i = 0; i < self->len; i++) {
-                if (i != 0) {
-                    string_concat_inplace(&res, ", ");
-                }
-                struct class_Str *s = meth_%(itemtype_cname)s_to_string(self->data[i]);
-                string_concat_inplace(&res, s->str);
-                decref(s, dtor_Str);
-            }
-
-            string_concat_inplace(&res, "]");
-            return res;
-        }
-
-        struct class_%(type_cname)s *meth_%(type_cname)s_reversed(const struct class_%(type_cname)s *self)
-        {
-            struct class_%(type_cname)s *res = ctor_%(type_cname)s();
-            class_%(type_cname)s_ensure_alloc(res, self->len);
-            for (int64_t i = 0; i < self->len; i++) {
-                res->data[i] = self->data[self->len - 1 - i];
-                INCREF_ITEM(res->data[i]);
-            }
-            res->len = self->len;
-            return res;
-        }
-        """,
-    },
-}
-
+_generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generic"
+_generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
     ir.builtin_variables["__argv_count"]: "argv_count",
@@ -622,14 +358,22 @@ class _FilePair:
             c_name = self.id + "_" + var.name
         return c_name
 
+    # If body is None, declares but does not actually define
     def define_function(
-        self, function_name: str, the_type: FunctionType, argnames: List[str], body: str
+        self,
+        function_name: str,
+        the_type: FunctionType,
+        argnames: Optional[List[str]] = None,
+        body: Optional[str] = None,
     ) -> None:
-        assert len(the_type.argtypes) == len(argnames)
-        arg_decls = [
-            self.emit_type(argtype) + " " + name
-            for argtype, name in zip(the_type.argtypes, argnames)
-        ]
+        if argnames is None:
+            arg_decls = list(map(self.emit_type, the_type.argtypes))
+        else:
+            assert len(the_type.argtypes) == len(argnames)
+            arg_decls = [
+                self.emit_type(argtype) + " " + name
+                for argtype, name in zip(the_type.argtypes, argnames)
+            ]
 
         declaration = "%s %s(%s)" % (
             self.emit_type(the_type.returntype),
@@ -637,7 +381,8 @@ class _FilePair:
             (", ".join(arg_decls) or "void"),
         )
         self.function_decls += declaration + ";\n"
-        self.function_defs += declaration + "{" + body + "}"
+        if body is not None:
+            self.function_defs += declaration + "{" + body + "}"
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
@@ -772,25 +517,32 @@ class _FilePair:
 
         elif the_type.generic_origin is not None:
             itemtype = the_type.generic_origin.arg
-            code_dict = _generic_c_codes[the_type.generic_origin.generic]
-            string_formatting = {
-                "type_cname": self.session.get_type_c_name(the_type),
-                "type_string": self.emit_string(the_type.name),
-                "itemtype": self.emit_type(itemtype, can_fwd_declare_in_header=False),
-                "itemtype_cname": self.session.get_type_c_name(itemtype),
-                "itemtype_is_string": int(itemtype == STRING),
+            c_path, h_path = _generic_paths[the_type.generic_origin.generic]
+            macro_dict = {
+                "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
+                "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
+                "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
+                "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
+                "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
+                "ITEMTYPE": self.emit_type(itemtype, can_fwd_declare_in_header=False),
+                "ITEMTYPE_IS_STRING": str(int(itemtype == STRING)),
+                "ITEMTYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(itemtype)}_##name",
+                "INCREF_ITEM(val)": self.session.emit_incref("(val)", itemtype),
+                "DECREF_ITEM(val)": self.session.emit_decref("(val)", itemtype),
             }
-            self.struct = code_dict["struct"] % string_formatting
-            self.function_decls += code_dict["function_decls"] % string_formatting
-            self.function_defs += f"""
-            #define INCREF_ITEM(val) {self.session.emit_incref("(val)", itemtype)}
-            #define DECREF_ITEM(val) {self.session.emit_decref("(val)", itemtype)}
-            #define ITEM_EQUALS(a, b) meth_{self.session.get_type_c_name(itemtype)}_equals((a), (b))
-            {code_dict["function_defs"] % string_formatting}
-            #undef INCREF_ITEM
-            #undef DECREF_ITEM
-            #undef ITEM_EQUALS
-            """
+            defines = "".join(
+                f"\n#define {key} {value}\n" for key, value in macro_dict.items()
+            )
+            undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in macro_dict)
+            self.struct = defines + h_path.read_text("utf-8") + undefs
+            for name, functype in the_type.methods.items():
+                self.define_function(
+                    f"meth_{self.session.get_type_c_name(the_type)}_{name}", functype
+                )
+            self.function_decls += (
+                defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
+            )
+            self.function_defs += defines + c_path.read_text("utf-8") + undefs
 
         else:
             struct_members = "".join(
