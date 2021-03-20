@@ -535,7 +535,7 @@ class _FilePair:
                 f"\n#define {key} {value}\n" for key, value in macro_dict.items()
             )
             undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in macro_dict)
-            self.struct = defines + c_path.read_text("utf-8") + undefs
+            self.struct = defines + h_path.read_text("utf-8") + undefs
             for name, functype in the_type.methods.items():
                 self.define_function(
                     f"meth_{self.session.get_type_c_name(the_type)}_{name}",
@@ -546,7 +546,7 @@ class _FilePair:
             self.function_decls += (
                 defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
             )
-            self.function_defs += defines + h_path.read_text("utf-8") + undefs
+            self.function_defs += defines + c_path.read_text("utf-8") + undefs
 
         else:
             struct_members = "".join(
