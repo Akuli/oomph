@@ -363,8 +363,8 @@ class _FilePair:
         self,
         function_name: str,
         the_type: FunctionType,
-        argnames: Optional[List[str]],
-        body: Optional[str],
+        argnames: Optional[List[str]] = None,
+        body: Optional[str] = None,
     ) -> None:
         if argnames is None:
             arg_decls = list(map(self.emit_type, the_type.argtypes))
@@ -538,10 +538,7 @@ class _FilePair:
             self.struct = defines + h_path.read_text("utf-8") + undefs
             for name, functype in the_type.methods.items():
                 self.define_function(
-                    f"meth_{self.session.get_type_c_name(the_type)}_{name}",
-                    functype,
-                    None,
-                    None,
+                    f"meth_{self.session.get_type_c_name(the_type)}_{name}", functype
                 )
             self.function_decls += (
                 defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
