@@ -131,7 +131,7 @@ static TYPE slice(TYPE self, int64_t start, int64_t end, bool del)
 			self->len -= res->len;
 		} else {
 			for (int64_t i = 0; i < res->len; i++)
-			INCREF_ITEM(res->data[i]);
+				INCREF_ITEM(res->data[i]);
 		}
 	}
 	return res;
