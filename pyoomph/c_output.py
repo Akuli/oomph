@@ -251,13 +251,14 @@ _generic_c_codes = {
             %(itemtype)s *data;
         };
         """,
-        "function_decls": """
-        // Kind of a weird hack
-        #if %(itemtype_is_string)s
-        #define meth_%(type_cname)s_join meth_List_Str_join
-        #endif
-        """,
         "function_defs": """
+        #if %(itemtype_is_string)s
+        struct class_Str *meth_%(type_cname)s_join(struct class_%(type_cname)s *self, struct class_Str *sep)
+        {
+            return meth_List_Str_join(self, sep);   // Implemented in oomph
+        }
+        #endif
+
         struct class_%(type_cname)s *ctor_%(type_cname)s(void)
         {
             struct class_%(type_cname)s *res = malloc(sizeof(*res));
@@ -771,7 +772,6 @@ class _FilePair:
                     f"meth_{self.session.get_type_c_name(the_type)}_{name}",
                     functype,
                     None, None)
-            self.function_decls += code_dict["function_decls"] % string_formatting
             self.function_decls += """
             struct class_%(type_cname)s *ctor_%(type_cname)s(void);
             void dtor_%(type_cname)s (void *ptr);
