@@ -239,27 +239,8 @@ class _FunctionEmitter:
         )
 
 
-_generic_c_codes = {
-    LIST: {
-        # TODO: have this struct on stack when possible, same with strings
-        "struct": """
-        struct class_%(type_cname)s {
-            REFCOUNT_HEADER
-            int64_t len;
-            int64_t alloc;
-            %(itemtype)s smalldata[8];
-            %(itemtype)s *data;
-        };
-        """,
-        "function_defs": (
-            pathlib.Path(__file__).absolute().parent.parent
-            / "lib"
-            / "generic"
-            / "list.c"
-        ).read_text("utf-8"),
-    },
-}
-
+_generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generic"
+_generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
     ir.builtin_variables["__argv_count"]: "argv_count",
@@ -536,15 +517,25 @@ class _FilePair:
 
         elif the_type.generic_origin is not None:
             itemtype = the_type.generic_origin.arg
-            code_dict = _generic_c_codes[the_type.generic_origin.generic]
-            string_formatting = {
-                "type_cname": self.session.get_type_c_name(the_type),
-                "type_string": self.emit_string(the_type.name),
-                "itemtype": self.emit_type(itemtype, can_fwd_declare_in_header=False),
-                "itemtype_cname": self.session.get_type_c_name(itemtype),
-                "itemtype_is_string": int(itemtype == STRING),
+            assert the_type.generic_origin.generic == LIST
+            c_path, h_path = _generic_paths[the_type.generic_origin.generic]
+            define_dict = {
+                "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
+                "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
+                "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
+                "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
+                "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
+                "ITEMTYPE": self.emit_type(itemtype, can_fwd_declare_in_header=False),
+                "ITEMTYPE_IS_STRING": str(int(itemtype == STRING)),
+                "ITEMTYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(itemtype)}_##name",
+                "INCREF_ITEM(val)": self.session.emit_incref("(val)", itemtype),
+                "DECREF_ITEM(val)": self.session.emit_decref("(val)", itemtype),
             }
-            self.struct = code_dict["struct"] % string_formatting
+            defines = "".join(
+                f"\n#define {key} {value}\n" for key, value in define_dict.items()
+            )
+            undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in define_dict)
+            self.struct = defines + c_path.read_text("utf-8") + undefs
             for name, functype in the_type.methods.items():
                 self.define_function(
                     f"meth_{self.session.get_type_c_name(the_type)}_{name}",
@@ -553,21 +544,9 @@ class _FilePair:
                     None,
                 )
             self.function_decls += (
-                """
-                struct class_%(type_cname)s *ctor_%(type_cname)s(void);
-                void dtor_%(type_cname)s (void *ptr);
-                """
-                % string_formatting
+                defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
             )
-            self.function_defs += f"""
-            #define INCREF_ITEM(val) {self.session.emit_incref("(val)", itemtype)}
-            #define DECREF_ITEM(val) {self.session.emit_decref("(val)", itemtype)}
-            #define ITEM_EQUALS(a, b) meth_{self.session.get_type_c_name(itemtype)}_equals((a), (b))
-            {code_dict["function_defs"] % string_formatting}
-            #undef INCREF_ITEM
-            #undef DECREF_ITEM
-            #undef ITEM_EQUALS
-            """
+            self.function_defs += defines + h_path.read_text("utf-8") + undefs
 
         else:
             struct_members = "".join(
