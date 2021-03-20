@@ -1,2 +1,2 @@
-Don't know what to do: Token("op", "+")
+not a valid expression: +
 assert() failed in "self_hosted/parser.oomph", line N

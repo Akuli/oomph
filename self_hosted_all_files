@@ -4,15 +4,18 @@
 
 set -e
 
+echo "make oomphc"
 make oomphc
-for file in builtins.oomph tests/*.oomph self_hosted/*.oomph; do
-    if [ $file == tests/unterminated_string_error.oomph ]; then
-        # tokenizing fails, as supposed to
+
+for file in tests/*.oomph builtins.oomph self_hosted/*.oomph; do
+    if [ $file == tests/unterminated_string_error.oomph ] || [ $file == tests/prefix_minus_error.oomph ]; then
+        # tokenizing or parsing fails, as supposed to
         continue
     fi
 
-    echo $file
-    ./oomphc --tokens $file >/dev/null
+    command="./oomphc --ast $file"
+    echo $command
+    $command >/dev/null
 done
 
 echo "

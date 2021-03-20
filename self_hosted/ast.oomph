@@ -34,10 +34,11 @@ export union ToplevelDeclaration:
     Import
     UnionDef
 
-# 'case *' means that type and varname are null
-export class Case(Optional[Type] type, Optional[Str] varname, List[Statement] body)
-export class ConditionAndBody(Expression cond, List[Statement] body)
 export class TypeAndName(Type type, Str name)
+
+# 'case *' means that type_and_varname is null
+export class Case(Optional[TypeAndName] type_and_name, List[Statement] body)
+export class ConditionAndBody(Expression cond, List[Statement] body)
 
 export class BinaryOperator(Expression lhs, Str op, Expression rhs)
 export class Call(Expression function, List[Expression] args)

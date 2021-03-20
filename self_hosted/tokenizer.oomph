@@ -16,6 +16,17 @@ func get_simple_identifier(Str code) -> Optional[Str]:
         i = i + 1
     return code.slice(0, i)
 
+func get_identifier(Str code) -> Optional[Str]:
+    switch get_simple_identifier(code):
+        case Str s:
+            if code.slice(s.length(), code.length()).starts_with("::"):
+                let index = s.length() + 2
+                # TODO: better error handling for foo::123
+                return code.slice(0, index) + get_simple_identifier(code.slice(s.length() + 2, code.length())).get()
+            return s
+        case *:
+            return null
+
 # TODO: enums
 # TODO: keep track of line numbers
 export class Token(Str type, Str value):
@@ -62,12 +73,12 @@ func raw_tokenize(Str code) -> List[Token]:
 
     let result = []
     while code != "":
-        let id = get_simple_identifier(code)
+        let id = get_identifier(code)
         let op = starts_with_any(code, op_list)
         let int_value = get_int(code)
 
         if id != null:
-            if id.get() in ["export", "func", "and", "or", "not"]:
+            if id.get() in keyword_list:
                 let token = new Token("keyword", id.get())
             else:
                 token = new Token("id", id.get())
@@ -78,10 +89,10 @@ func raw_tokenize(Str code) -> List[Token]:
             if remaining.starts_with(".") and remaining != "." and "0123456789".contains(remaining.slice(1, 2)):
                 # TODO: remove_prefix method
                 let float_value = int_value + "." + get_int(remaining.slice(1, remaining.length()))
-                token = new Token("Float", float_value)
+                token = new Token("float", float_value)
             else:
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
-                token = new Token("Int", int_value)
+                token = new Token("int", int_value)
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
@@ -105,11 +116,11 @@ func raw_tokenize(Str code) -> List[Token]:
             continue
         elif code.starts_with("\"\"\""):
             let content = extract_string(code, "\"\"\"")
-            token = new Token("string", content)
+            token = new Token("multiline_string", content)
         # TODO: multiline strings
         elif code.starts_with("\""):
             let content = extract_string(code.split("\n").first(), "\"")
-            token = new Token("string", content)
+            token = new Token("oneline_string", content)
         else:
             print(result)
             print("Invalid syntax: {code}")
@@ -119,6 +130,17 @@ func raw_tokenize(Str code) -> List[Token]:
         code = code.slice(token.value.length(), code.length())
         result.push(token)
 
+    return result
+
+func combine_not_in(List[Token] tokens) -> List[Token]:
+    let result = []
+    for let i = 0; i < tokens.length(); :
+        if i+1 < tokens.length() and tokens.get(i).matches("keyword", "not") and tokens.get(i+1).matches("keyword", "in"):
+            result.push(new Token("keyword", "not in"))
+            i = i + 2
+        else:
+            result.push(tokens.get(i))
+            i = i + 1
     return result
 
 func skip_newlines(List[Token] tokens):
@@ -177,4 +199,4 @@ func find_blocks(List[Token] tokens) -> List[Token]:
     return result
 
 export func tokenize(Str code) -> List[Token]:
-    return clean_newlines(find_blocks(clean_newlines(raw_tokenize(code))))
+    return clean_newlines(find_blocks(clean_newlines(combine_not_in(raw_tokenize(code)))))

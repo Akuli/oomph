@@ -2,6 +2,7 @@
 # Add names of all working test files to tests/self_hosted.txt
 
 set -e
+echo "make oomphc"
 make oomphc
 
 cp -v tests/self_hosted.txt tests/self_hosted.txt.tmp
