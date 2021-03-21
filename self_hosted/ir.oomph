@@ -20,7 +20,7 @@ export class Builtins(
     ObjectType INT,
     ObjectType STR,
     List[BuiltinVariable] visible_vars,
-    List[BuiltinVariable] hidden_vars
+    List[BuiltinVariable] hidden_vars,
 ):
 
     meth get_visible_var(Str name) -> BuiltinVariable:
@@ -48,7 +48,7 @@ export func create_builtins() -> Builtins:
     let visible_vars = [
         new BuiltinVariable("false", BOOL),
         new BuiltinVariable("print", new FunctionType([STR], null)),
-        new BuiltinVariable("true", BOOL)
+        new BuiltinVariable("true", BOOL),
     ]
 
     # These variables are not exposed in oomph
@@ -62,7 +62,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)),
         new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)),
         new BuiltinVariable("int_neg", new FunctionType([INT], INT)),
-        new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT))
+        new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)),
     ]
 
     return new Builtins(BOOL, FLOAT, INT, STR, visible_vars, hidden_vars)
