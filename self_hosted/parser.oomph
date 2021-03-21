@@ -363,7 +363,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         let result = new List[ast::Statement]()
         result.push(new ast::Let(index_var, new ast::IntConstant(0)))
         result.push(new ast::Let(list_var, list))
-        result.push(new ast::Loop(null, index_less_than_length, increment_index, body))
+        result.push(new ast::Loop(null, index_less_than_length, increment_index, loop_body))
         return result
 
     meth parse_statement() -> List[ast::Statement]:
