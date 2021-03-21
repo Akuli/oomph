@@ -132,6 +132,23 @@ func raw_tokenize(Str code) -> List[Token]:
 
     return result
 
+func ignore_whitespace_in_parens(List[Token] tokens) -> List[Token]:
+    let result = []
+    let paren_stack = []
+
+    foreach token of tokens:
+        if token.matches("op", "("):
+            paren_stack.push(")")
+        elif token.matches("op", "["):
+            paren_stack.push("]")
+        elif token.matches("op", ")") or token.matches("op", "]"):
+            assert(paren_stack.pop() == token.value)
+
+        if paren_stack == [] or token.value.trim() != "":
+            result.push(token)
+
+    return result
+
 func combine_not_in(List[Token] tokens) -> List[Token]:
     let result = []
     for let i = 0; i < tokens.length(); :
@@ -194,4 +211,9 @@ func find_blocks(List[Token] tokens) -> List[Token]:
     return result
 
 export func tokenize(Str code) -> List[Token]:
-    return clean_newlines(find_blocks(clean_newlines(combine_not_in(raw_tokenize(code)))))
+    return clean_newlines(
+        find_blocks(
+        clean_newlines(
+        combine_not_in(
+        ignore_whitespace_in_parens(
+        raw_tokenize(code))))))

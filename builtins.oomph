@@ -60,7 +60,7 @@ func __Str_left_trim(Str self) -> Str:
     return self
 
 func __Str_right_trim(Str self) -> Str:
-    while self.ends_with(" "):
+    while self.ends_with(" "):   # FIXME: something like starts_with_space
         self = self.slice(0, self.length() - 1)
     return self
 

@@ -1,0 +1,8 @@
+export func main():
+    print(
+       [
+          "lol"
+             ,
+    "wat"
+           ]
+      )
