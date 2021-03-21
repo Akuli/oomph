@@ -35,6 +35,7 @@ Known bugs:
 Missing features:
 - safe and unsafe (user-input) strings: would prevent a lot of security problems
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
+- `[first_foo, ...other_foos]` syntax
 - functions as first-class objects
 - better error messaging
 - `>>>` prompt
@@ -43,7 +44,6 @@ Missing features:
 - init methods of classes (or something similar)
 - path objects and maybe `p"/home/akuli"` syntax
 - trailing commas
-- newlines ignored inside parentheses
 - automatic dedenting in multiline strings
 - `r` strings
 - better ternary than in python: `if cond then a else b`
