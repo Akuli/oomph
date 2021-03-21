@@ -118,7 +118,7 @@ def _ignore_whitespace_in_parens(
             popped = paren_stack.pop()
             assert token == ("op", popped)
 
-        if token[1].strip(' \n') or not paren_stack:
+        if token[1].strip(" \n") or not paren_stack:
             yield token
 
     assert not paren_stack
