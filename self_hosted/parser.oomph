@@ -76,7 +76,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             let end = string.length() - 1
             let path = "{stdlib_path}/{string.slice(start, end)}"
         else:
-            path = "{path_parent(path_of_this_file)}/{string.slice(1, string.length() - 1)}"
+            let no_quotes = string.slice(1, string.length() - 1)
+            path = "{path_parent(path_of_this_file)}/{no_quotes}"
         return new ast::Import(path, name)
 
     # TODO: these are a bit copy/pasta
@@ -167,7 +168,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             result = self.parse_expression()
             self.get_token("op", ")")
         elif self.peek().matches("op", "["):
-            result = new ast::ListLiteral(self.parse_commasep_expression_in_parens("[", "]"))
+            result = new ast::ListLiteral(
+                self.parse_commasep_expression_in_parens("[", "]"))
         else:
             print("All tokens: {self.tokens}")
             print("not a valid expression: {self.peek().value}")
@@ -175,7 +177,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
         while true:
             if self.peek().matches("op", "("):
-                result = new ast::Call(result, self.parse_commasep_expression_in_parens("(", ")"))
+                result = new ast::Call(
+                    result, self.parse_commasep_expression_in_parens("(", ")"))
             elif self.peek().matches("op", "."):
                 self.get_token("op", ".")
                 result = new ast::GetAttribute(result, self.get_token_by_type("id").value)
@@ -255,12 +258,18 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
     meth get_unary_operators() -> List[PrecedenceItem]:
         let result = new List[PrecedenceItem]()
-        while self.peek().matches("keyword", "not") or self.peek().matches("keyword", "not in") or self.peek().matches("op", "-"):
+        while (self.peek().matches("keyword", "not")
+               or self.peek().matches("keyword", "not in")
+               or self.peek().matches("op", "-")):
             result.push(self.tokens.pop().value)
         return result
 
     meth parse_expression() -> ast::Expression:
-        let binary_ops = ["+", "-", "*", "/", "==", "!=", "<", ">", "<=", ">=", "in", "not in", "and", "or", "mod"]
+        let binary_ops = [
+            "+", "-", "*", "/",
+            "==", "!=", "<", ">", "<=", ">=",
+            "in", "not in", "and", "or", "mod"
+        ]
 
         let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
@@ -349,22 +358,37 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         let index_var = "__foreach_index_{self.foreach_counter}"
         self.foreach_counter = self.foreach_counter + 1
 
-        let get_method = new ast::GetAttribute(new ast::GetVar(list_var), "get")
-        let get_at_index = new ast::Call(get_method, [new ast::Expression(new ast::GetVar(index_var))])
-        let length = new ast::Call(new ast::GetAttribute(new ast::GetVar(list_var), "length"), [])
-        let index_less_than_length = new ast::BinaryOperator(new ast::GetVar(index_var), "<", length)
-        let index_plus_one = new ast::BinaryOperator(new ast::GetVar(index_var), "+", new ast::IntConstant(1))
-        let increment_index = new ast::SetVar(index_var, index_plus_one)
-
-        let loop_body = new List[ast::Statement]()
-        loop_body.push(new ast::Let(varname, get_at_index))
+        let loop_body = [
+            new ast::Statement(
+                new ast::Let(
+                    varname,
+                    new ast::Call(
+                        new ast::GetAttribute(new ast::GetVar(list_var), "get"),
+                        [new ast::Expression(new ast::GetVar(index_var))]
+                    )
+                )
+            )
+        ]
         loop_body.push_all(body)
 
-        let result = new List[ast::Statement]()
-        result.push(new ast::Let(index_var, new ast::IntConstant(0)))
-        result.push(new ast::Let(list_var, list))
-        result.push(new ast::Loop(null, index_less_than_length, increment_index, loop_body))
-        return result
+        return [
+            new ast::Statement(new ast::Let(index_var, new ast::IntConstant(0))),
+            new ast::Statement(new ast::Let(list_var, list)),
+            new ast::Statement(new ast::Loop(
+                null,
+                new ast::BinaryOperator(
+                    new ast::GetVar(index_var),
+                    "<",
+                    new ast::Call(
+                        new ast::GetAttribute(new ast::GetVar(list_var), "length"), []
+                    )
+                ),
+                new ast::SetVar(index_var, new ast::BinaryOperator(
+                    new ast::GetVar(index_var), "+", new ast::IntConstant(1)
+                )),
+                loop_body
+            ))
+        ]
 
     meth parse_statement() -> List[ast::Statement]:
         if self.peek().matches("keyword", "if"):
@@ -465,7 +489,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         else:
             returntype = null
 
-        return new ast::FuncOrMethodDef(name, args, returntype, self.parse_block_of_statements())
+        return new ast::FuncOrMethodDef(
+            name, args, returntype, self.parse_block_of_statements())
 
     meth parse_method() -> ast::FuncOrMethodDef:
         self.get_token("keyword", "meth")
@@ -501,14 +526,20 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         assert(false)
 
 
-export func parse_file(Str code, Optional[Str] path, Optional[Str] stdlib_path) -> List[ast::ToplevelDeclaration]:
-    let parser = new Parser(tokenizer::tokenize(code).reversed(), 0)
+export func parse_file(
+    Str code,
+    Optional[Str] path,
+    Optional[Str] stdlib_path
+) -> List[ast::ToplevelDeclaration]:
 
+    let parser = new Parser(tokenizer::tokenize(code).reversed(), 0)
     let result = new List[ast::ToplevelDeclaration]()
+
     while parser.tokens != [] and parser.peek().matches("keyword", "import"):
         assert(path != null)
         assert(stdlib_path != null)
         result.push(parser.parse_import(path.get(), stdlib_path.get()))
     while parser.tokens != []:
         result.push(parser.parse_toplevel())
+
     return result

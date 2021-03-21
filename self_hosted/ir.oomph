@@ -14,7 +14,15 @@ export union Variable:
 
 
 # TODO: global (but const) variables
-export class Builtins(ObjectType BOOL, ObjectType FLOAT, ObjectType INT, ObjectType STR, List[BuiltinVariable] visible_vars, List[BuiltinVariable] hidden_vars):
+export class Builtins(
+    ObjectType BOOL,
+    ObjectType FLOAT,
+    ObjectType INT,
+    ObjectType STR,
+    List[BuiltinVariable] visible_vars,
+    List[BuiltinVariable] hidden_vars
+):
+
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
             if var.name == name:
@@ -37,23 +45,25 @@ export func create_builtins() -> Builtins:
     let INT = new ObjectType("Int", true)
     let STR = new ObjectType("Str", true)
 
-    let visible_vars = []
-    visible_vars.push(new BuiltinVariable("false", BOOL))
-    visible_vars.push(new BuiltinVariable("print", new FunctionType([STR], null)))
-    visible_vars.push(new BuiltinVariable("true", BOOL))
+    let visible_vars = [
+        new BuiltinVariable("false", BOOL),
+        new BuiltinVariable("print", new FunctionType([STR], null)),
+        new BuiltinVariable("true", BOOL)
+    ]
 
     # These variables are not exposed in oomph
-    let hidden_vars = []
-    hidden_vars.push(new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)))
-    hidden_vars.push(new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_neg", new FunctionType([FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], FLOAT)))
-    hidden_vars.push(new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)))
-    hidden_vars.push(new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)))
-    hidden_vars.push(new BuiltinVariable("int_neg", new FunctionType([INT], INT)))
-    hidden_vars.push(new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)))
+    let hidden_vars = [
+        new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)),
+        new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)),
+        new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)),
+        new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)),
+        new BuiltinVariable("float_neg", new FunctionType([FLOAT], FLOAT)),
+        new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], FLOAT)),
+        new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)),
+        new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)),
+        new BuiltinVariable("int_neg", new FunctionType([INT], INT)),
+        new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT))
+    ]
 
     return new Builtins(BOOL, FLOAT, INT, STR, visible_vars, hidden_vars)
 

@@ -63,13 +63,20 @@ func raw_tokenize(Str code) -> List[Token]:
     if not code.ends_with("\n"):
         code = code + "\n"
 
-    # Longer ops need to be first, otherwise -> is detected as - and > separate
-    # TODO: multiline lists would be handy for keywords
-    let op_list = "-> == != <= >= < > ; , . ( ) [ ] = : + - * / \n".split(" ")
-    let keyword_list = []
-    keyword_list.push_all("let import as export func meth class union switch case".split(" "))
-    keyword_list.push_all("auto generic new return pass mod and or not in".split(" "))
-    keyword_list.push_all("if elif else while for foreach of continue break".split(" "))
+    let op_list = [
+        # Longer ops need to be first, otherwise -> is detected as - and > separate
+        "->", "==", "!=", "<=", ">=",
+        "<", ">",
+        ";", ",", ".", ":",
+        "(", ")", "[", "]",
+        "+", "-", "*", "/",
+        "=", "\n"
+    ]
+    let keyword_list = [
+        "let", "import", "as", "export", "func", "meth", "class", "union", "switch", "case",
+        "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
+        "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break"
+    ]
 
     let result = []
     while code != "":
@@ -86,7 +93,9 @@ func raw_tokenize(Str code) -> List[Token]:
             token = new Token("op", op.get())
         elif int_value != "":
             let remaining = code.slice(int_value.length(), code.length())
-            if remaining.starts_with(".") and remaining != "." and "0123456789".contains(remaining.slice(1, 2)):
+            if (remaining.starts_with(".")
+            and remaining != "."
+            and "0123456789".contains(remaining.slice(1, 2))):
                 # TODO: remove_prefix method
                 let float_value = int_value + "." + get_int(remaining.slice(1, remaining.length()))
                 token = new Token("float", float_value)
@@ -184,7 +193,10 @@ func find_blocks(List[Token] tokens) -> List[Token]:
 
     while tokens != []:
         let head = tokens.reversed().slice(0, 3)
-        if head.length() == 3 and head.get(0).matches("op", ":") and head.get(1).matches("op", "\n") and head.get(2).type == "indent":
+        if (head.length() == 3
+        and head.get(0).matches("op", ":")
+        and head.get(1).matches("op", "\n")
+        and head.get(2).type == "indent"):
             indent_level = indent_level + 1
             assert(head.get(2).value == " ".repeat(4*indent_level))  # TODO: error
             result.push(new Token("begin_block", ":"))

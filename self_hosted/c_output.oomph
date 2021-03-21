@@ -47,14 +47,22 @@ class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
         """
         return varname
 
-class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str before_body, Str body, Str after_body):
+class FunctionEmitter(
+    File file,
+    List[ir::LocalVariable] declared_vars,
+    Str before_body,
+    Str body,
+    Str after_body
+):
+
     meth emit_var(ir::Variable var) -> Str:
         switch var:
             case ir::LocalVariable local_var:
                 if local_var in self.declared_vars:
                     return "var{local_var.id}"
 
-                self.before_body = self.before_body + self.file.emit_declaration(local_var.type, "var{local_var.id}")
+                self.before_body = self.before_body + self.file.emit_declaration(
+                    local_var.type, "var{local_var.id}")
                 self.declared_vars.push(local_var)
                 return "var{local_var.id}"
             case ir::BuiltinVariable builtin_var:
@@ -98,7 +106,9 @@ class FunctionEmitter(File file, List[ir::LocalVariable] declared_vars, Str befo
             case ir::MethodCall call:
                 let args = [call.obj]
                 args.push_all(call.args)
-                self.emit_call("meth_{self.file.get_type_c_name(call.obj.type)}_{call.method_name}", args, call.result)
+                self.emit_call(
+                    "meth_{self.file.get_type_c_name(call.obj.type)}_{call.method_name}",
+                    args, call.result)
             case ir::StringConstant strconst:
                 self.body = self.body + """
                 {self.emit_var(strconst.var)} = {self.file.emit_string(strconst.value)};
