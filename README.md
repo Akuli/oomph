@@ -43,7 +43,6 @@ Missing features:
 - attributes of classes that are not arguments
 - init methods of classes (or something similar)
 - path objects and maybe `p"/home/akuli"` syntax
-- trailing commas
 - automatic dedenting in multiline strings
 - `r` strings
 - better ternary than in python: `if cond then a else b`
