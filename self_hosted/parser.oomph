@@ -88,6 +88,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             result.push(self.parse_expression())
             while self.peek().matches("op", ","):
                 self.get_token("op", ",")
+                if self.peek().matches("op", right):
+                    break
                 result.push(self.parse_expression())
         self.get_token("op", right)
         return result
@@ -99,6 +101,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             result.push(self.parse_type_and_name())
             while self.peek().matches("op", ","):
                 self.get_token("op", ",")
+                if self.peek().matches("op", ")"):
+                    break
                 result.push(self.parse_type_and_name())
         self.get_token("op", ")")
         return result
