@@ -1,0 +1,6 @@
+# exclude list for ../self_hosted_all_files script
+# tokenizing or parsing these files fails, as supposed to
+tests/comma_error.oomph
+tests/double_comma_error.oomph
+tests/prefix_minus_error.oomph
+tests/unterminated_string_error.oomph

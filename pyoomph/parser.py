@@ -62,6 +62,8 @@ class _Parser:
             result.append(content_callback())
             while self.token_iter.peek() == ("op", ","):
                 self.get_token("op", ",")
+                if self.token_iter.peek() == ("op", right):
+                    break
                 result.append(content_callback())
         self.get_token("op", right)
         return result

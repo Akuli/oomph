@@ -8,8 +8,7 @@ echo "make oomphc"
 make oomphc
 
 for file in tests/*.oomph builtins.oomph self_hosted/*.oomph; do
-    if [ $file == tests/unterminated_string_error.oomph ] || [ $file == tests/prefix_minus_error.oomph ]; then
-        # tokenizing or parsing fails, as supposed to
+    if grep -q "^$file" tests/self_hosted_all_files_exclude.txt; then
         continue
     fi
 

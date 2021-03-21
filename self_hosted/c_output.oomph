@@ -52,7 +52,7 @@ class FunctionEmitter(
     List[ir::LocalVariable] declared_vars,
     Str before_body,
     Str body,
-    Str after_body
+    Str after_body,
 ):
 
     meth emit_var(ir::Variable var) -> Str:

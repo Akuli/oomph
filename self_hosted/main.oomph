@@ -42,7 +42,7 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
         "obj/numbers.o",
         "obj/ref.o",
         "obj/string.o",
-        "obj/subprocess.o"
+        "obj/subprocess.o",
     ])
     result.push(c_path)
     result.push("-o")

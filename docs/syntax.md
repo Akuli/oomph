@@ -98,7 +98,7 @@ In this documentation, we use the following phrases:
   Note that the block includes the `:` used to begin the block, as explained above.
 - "Parenthesized" means enclosed between `(` and `)` operators.
 - "`[]`-parenthesized" means the same thing with `[` and `]` operators.
-- "Comma-separated" means separated by `,` operators, with trailing comma not allowed.
+- "Comma-separated" means separated by `,` operators, with trailing comma allowed.
 
 The tokenized file consists of zero or more toplevel declarations.
 A toplevel declaration can be:

@@ -88,6 +88,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             result.push(self.parse_expression())
             while self.peek().matches("op", ","):
                 self.get_token("op", ",")
+                if self.peek().matches("op", right):
+                    break
                 result.push(self.parse_expression())
         self.get_token("op", right)
         return result
@@ -99,6 +101,8 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
             result.push(self.parse_type_and_name())
             while self.peek().matches("op", ","):
                 self.get_token("op", ",")
+                if self.peek().matches("op", ")"):
+                    break
                 result.push(self.parse_type_and_name())
         self.get_token("op", ")")
         return result
@@ -268,7 +272,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         let binary_ops = [
             "+", "-", "*", "/",
             "==", "!=", "<", ">", "<=", ">=",
-            "in", "not in", "and", "or", "mod"
+            "in", "not in", "and", "or", "mod",
         ]
 
         let magic_list = self.get_unary_operators()
@@ -387,7 +391,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
                     new ast::GetVar(index_var), "+", new ast::IntConstant(1)
                 )),
                 loop_body
-            ))
+            )),
         ]
 
     meth parse_statement() -> List[ast::Statement]:
@@ -529,7 +533,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 export func parse_file(
     Str code,
     Optional[Str] path,
-    Optional[Str] stdlib_path
+    Optional[Str] stdlib_path,
 ) -> List[ast::ToplevelDeclaration]:
 
     let parser = new Parser(tokenizer::tokenize(code).reversed(), 0)
