@@ -36,7 +36,14 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
     let result = [cc]
     result.push_all(split(cflags))
     # FIXME: hard-coded list
-    result.push_all("obj/io.o obj/misc.o obj/numbers.o obj/ref.o obj/string.o obj/subprocess.o".split(" "))
+    result.push_all([
+        "obj/io.o",
+        "obj/misc.o",
+        "obj/numbers.o",
+        "obj/ref.o",
+        "obj/string.o",
+        "obj/subprocess.o"
+    ])
     result.push(c_path)
     result.push("-o")
     result.push(exepath)
@@ -90,7 +97,9 @@ export func main():
     let ir = ast2ir::convert_program(builtins, ast)
     let c_code = c_output::create_code(builtins, ir)
     io::write_file("{cache_dir}/out.c", c_code)
-    assert(process::run(get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")) == 0)
+    assert(process::run(
+        get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")
+    ) == 0)
 
     let run_command = split(valgrind)
     run_command.push("{cache_dir}/out")

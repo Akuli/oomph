@@ -53,7 +53,7 @@ If more than one of these rules match, then the first matching rule should be us
     - Code between braces must not contain `"` characters.
     - Actual newline characters are not allowed.
 - Operators, such as `==` or `(`. You can find a full list similarly to keywords.
-- Newline tokens, matching a single  newline character.
+- Newline tokens, matching a single newline character.
 - An indentation token consists of one or more space characters in the beginning of a line.
   There must not be `#` or a newline character immediately following the indentation;
   that does not produce an indentation token, but is ignored (see below).
@@ -62,13 +62,15 @@ If more than one of these rules match, then the first matching rule should be us
 - Anything else is an error.
 
 Once tokenized according to the above rules, the stream of tokens must be modified before parsing:
-1. When the keywords `not` and `in` appear consecutively, as two separate tokens,
+1. Newline tokens and indentation tokens (that is, newlines and spaces not inside strings)
+    inside `(` `)` or `[` `]` are ignored.
+2. When the keywords `not` and `in` appear consecutively, as two separate tokens,
     they are replaced with one `not in` token.
-2. Newlines are cleaned up.
-3. If there is `:` operator followed by a newline and an indentation,
+3. Newlines are cleaned up.
+4. If there is `:` operator followed by a newline and an indentation,
    all those tokens are replaced with one token signifying the beginning of a block.
    It is an error if the new indentation level is not 4 spaces more than the previous indentation level.
-4. If a newline token is followed by an indentation token,
+5. If a newline token is followed by an indentation token,
    then the indentation level changes according to that; if not, then the indentation level changes to zero.
    The new indentation level must be a multiple of 4 spaces,
    and less than or equal to the previous indentation level.
@@ -76,7 +78,7 @@ Once tokenized according to the above rules, the stream of tokens must be modifi
    The indentation token used (if any) is deleted;
    it must not be passed on to the next steps of compilation.
    The newline token is not deleted, however, and is yielded before the block ending tokens.
-5. Newlines are cleaned up again.
+6. Newlines are cleaned up again.
 
 Here cleaning up the newlines means that newline tokens are removed when
 - a newline token is in the beginning of the file,
@@ -84,7 +86,7 @@ Here cleaning up the newlines means that newline tokens are removed when
 - a newline token follows a token signifying the beginning of a block, or
 - a newline token follows a token signifying the end of a block.
 
-When implementing the tokenizer, steps 3 and 4 can be combined into one function,
+When implementing the tokenizer, steps 4 and 5 can be combined into one function,
 and the indentation level can be represented with a local integer variable.
 
 

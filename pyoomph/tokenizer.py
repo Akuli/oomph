@@ -1,5 +1,5 @@
 import re
-from typing import Iterator, Tuple
+from typing import Iterator, List, Tuple
 
 import more_itertools
 
@@ -105,6 +105,25 @@ def raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
             yield (tokentype, match.group())
 
 
+def _ignore_whitespace_in_parens(
+    tokens: Iterator[Tuple[str, str]]
+) -> Iterator[Tuple[str, str]]:
+    paren_stack: List[str] = []
+    for token in tokens:
+        if token == ("op", "("):
+            paren_stack.append(")")
+        elif token == ("op", "["):
+            paren_stack.append("]")
+        elif token == ("op", ")") or token == ("op", "]"):
+            popped = paren_stack.pop()
+            assert token == ("op", popped)
+
+        if token[1].strip(" \n") or not paren_stack:
+            yield token
+
+    assert not paren_stack
+
+
 def _combine_not_in(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
     while True:
         head, tokens = more_itertools.spy(tokens, 2)
@@ -179,6 +198,10 @@ def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, st
 
 
 def tokenize(code: str) -> Iterator[Tuple[str, str]]:
-    return _clean_newlines(
-        _find_blocks(_clean_newlines(_combine_not_in(raw_tokenize(code))))
-    )
+    tokens = raw_tokenize(code)
+    tokens = _ignore_whitespace_in_parens(tokens)
+    tokens = _combine_not_in(tokens)
+    tokens = _clean_newlines(tokens)
+    tokens = _find_blocks(tokens)
+    tokens = _clean_newlines(tokens)
+    return tokens
