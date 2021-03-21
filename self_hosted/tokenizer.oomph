@@ -70,12 +70,12 @@ func raw_tokenize(Str code) -> List[Token]:
         ";", ",", ".", ":",
         "(", ")", "[", "]",
         "+", "-", "*", "/",
-        "=", "\n"
+        "=", "\n",
     ]
     let keyword_list = [
         "let", "import", "as", "export", "func", "meth", "class", "union", "switch", "case",
         "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
-        "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break"
+        "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
     ]
 
     let result = []
