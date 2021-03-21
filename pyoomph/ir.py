@@ -39,23 +39,16 @@ class FileVariable:
     source_path: pathlib.Path
 
 
-# TODO: combine BuiltinVariable and SpecialVariable?
 @dataclass(eq=False)
 class BuiltinVariable:
     name: str
     type: Type
 
 
-@dataclass(eq=False)
-class SpecialVariable:
-    name: str
-    type: Type
+Variable = Union[LocalVariable, FileVariable, BuiltinVariable]
 
 
-Variable = Union[LocalVariable, FileVariable, BuiltinVariable, SpecialVariable]
-
-
-builtin_variables = {
+visible_builtins = {
     var.name: var
     for var in [
         BuiltinVariable("__argv_count", FunctionType([], INT)),
@@ -73,29 +66,30 @@ builtin_variables = {
     ]
 }
 
-special_variables = {
+# Not exposed into oomph programs
+hidden_builtins = {
     var.name: var
     for var in [
-        SpecialVariable("bool_eq", FunctionType([BOOL, BOOL], BOOL)),
-        SpecialVariable("bool_not", FunctionType([BOOL], BOOL)),
-        SpecialVariable("float_add", FunctionType([FLOAT, FLOAT], FLOAT)),
-        SpecialVariable("float_div", FunctionType([FLOAT, FLOAT], FLOAT)),
-        SpecialVariable("float_eq", FunctionType([FLOAT, FLOAT], BOOL)),
-        SpecialVariable("float_gt", FunctionType([FLOAT, FLOAT], BOOL)),
-        SpecialVariable("float_mod", FunctionType([FLOAT, FLOAT], FLOAT)),
-        SpecialVariable("float_mul", FunctionType([FLOAT, FLOAT], FLOAT)),
-        SpecialVariable("float_neg", FunctionType([FLOAT], FLOAT)),
-        SpecialVariable("float_sub", FunctionType([FLOAT, FLOAT], FLOAT)),
-        SpecialVariable("int2float", FunctionType([INT], FLOAT)),
-        SpecialVariable("int_add", FunctionType([INT, INT], INT)),
-        SpecialVariable("int_eq", FunctionType([INT, INT], BOOL)),
-        SpecialVariable("int_gt", FunctionType([INT, INT], BOOL)),
-        SpecialVariable("int_mod", FunctionType([INT, INT], INT)),
-        SpecialVariable("int_mul", FunctionType([INT, INT], INT)),
-        SpecialVariable("int_neg", FunctionType([INT], INT)),
-        SpecialVariable("int_sub", FunctionType([INT, INT], INT)),
-        SpecialVariable("string_concat", FunctionType([STRING, STRING], STRING)),
-        SpecialVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
+        BuiltinVariable("bool_eq", FunctionType([BOOL, BOOL], BOOL)),
+        BuiltinVariable("bool_not", FunctionType([BOOL], BOOL)),
+        BuiltinVariable("float_add", FunctionType([FLOAT, FLOAT], FLOAT)),
+        BuiltinVariable("float_div", FunctionType([FLOAT, FLOAT], FLOAT)),
+        BuiltinVariable("float_eq", FunctionType([FLOAT, FLOAT], BOOL)),
+        BuiltinVariable("float_gt", FunctionType([FLOAT, FLOAT], BOOL)),
+        BuiltinVariable("float_mod", FunctionType([FLOAT, FLOAT], FLOAT)),
+        BuiltinVariable("float_mul", FunctionType([FLOAT, FLOAT], FLOAT)),
+        BuiltinVariable("float_neg", FunctionType([FLOAT], FLOAT)),
+        BuiltinVariable("float_sub", FunctionType([FLOAT, FLOAT], FLOAT)),
+        BuiltinVariable("int2float", FunctionType([INT], FLOAT)),
+        BuiltinVariable("int_add", FunctionType([INT, INT], INT)),
+        BuiltinVariable("int_eq", FunctionType([INT, INT], BOOL)),
+        BuiltinVariable("int_gt", FunctionType([INT, INT], BOOL)),
+        BuiltinVariable("int_mod", FunctionType([INT, INT], INT)),
+        BuiltinVariable("int_mul", FunctionType([INT, INT], INT)),
+        BuiltinVariable("int_neg", FunctionType([INT], INT)),
+        BuiltinVariable("int_sub", FunctionType([INT, INT], INT)),
+        BuiltinVariable("string_concat", FunctionType([STRING, STRING], STRING)),
+        BuiltinVariable("string_eq", FunctionType([STRING, STRING], BOOL)),
     ]
 }
 

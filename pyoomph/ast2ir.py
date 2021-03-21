@@ -108,7 +108,7 @@ class _FunctionOrMethodConverter:
     def create_special_call(
         self, name: str, args: List[ir.LocalVariable]
     ) -> ir.LocalVariable:
-        func = ir.special_variables[name]
+        func = ir.hidden_builtins[name]
         assert isinstance(func.type, ir.FunctionType)
         assert func.type.returntype is not None
         result_var = self.create_var(func.type.returntype)
@@ -261,12 +261,12 @@ class _FunctionOrMethodConverter:
             else:
                 result_var = self.create_var(result_type)
 
-            if func is ir.builtin_variables["print"]:
+            if func is ir.visible_builtins["print"]:
                 args = [self.stringify(self.do_expression(arg)) for arg in call.args]
                 assert len(args) == 1
             else:
                 raw_args = call.args.copy()
-                if func is ir.builtin_variables["assert"]:
+                if func is ir.visible_builtins["assert"]:
                     assert call.func.lineno is not None
                     # Why relative path:
                     #   - less noise, still enough information
@@ -378,7 +378,7 @@ class _FunctionOrMethodConverter:
             with self.code_to_separate_list() as lhs_not_null_code:
                 self.do_if(
                     rhs_null,
-                    [ir.VarCpy(result_var, ir.builtin_variables["false"])],
+                    [ir.VarCpy(result_var, ir.visible_builtins["false"])],
                     neither_null_code,
                 )
             self.do_if(lhs_null, [ir.VarCpy(result_var, rhs_null)], lhs_not_null_code)
@@ -432,7 +432,7 @@ class _FunctionOrMethodConverter:
         done_label = ir.GotoLabel()
         self.code.append(ir.Goto(then_label, cond))
         self.code.extend(otherwise)
-        self.code.append(ir.Goto(done_label, ir.builtin_variables["true"]))
+        self.code.append(ir.Goto(done_label, ir.visible_builtins["true"]))
         self.code.append(then_label)
         self.code.extend(then)
         self.code.append(done_label)
@@ -450,12 +450,12 @@ class _FunctionOrMethodConverter:
                 self.do_if(
                     lhs_var,
                     rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
-                    [ir.VarCpy(result_var, ir.builtin_variables["false"])],
+                    [ir.VarCpy(result_var, ir.visible_builtins["false"])],
                 )
             else:
                 self.do_if(
                     lhs_var,
-                    [ir.VarCpy(result_var, ir.builtin_variables["true"])],
+                    [ir.VarCpy(result_var, ir.visible_builtins["true"])],
                     rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
                 )
             return result_var
@@ -594,11 +594,11 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(stmt, ast.Continue):
             continue_label, break_label = self.loop_stack[-1]
-            self.code.append(ir.Goto(continue_label, ir.builtin_variables["true"]))
+            self.code.append(ir.Goto(continue_label, ir.visible_builtins["true"]))
 
         elif isinstance(stmt, ast.Break):
             continue_label, break_label = self.loop_stack[-1]
-            self.code.append(ir.Goto(break_label, ir.builtin_variables["true"]))
+            self.code.append(ir.Goto(break_label, ir.visible_builtins["true"]))
 
         elif isinstance(stmt, ast.Return):
             if self.return_type is None:
@@ -640,7 +640,7 @@ class _FunctionOrMethodConverter:
             self.code.append(cond_label)
             if stmt.cond is None:
                 cond_var = self.create_var(BOOL)
-                self.code.append(ir.VarCpy(cond_var, ir.builtin_variables["true"]))
+                self.code.append(ir.VarCpy(cond_var, ir.visible_builtins["true"]))
             else:
                 cond_var = self.do_expression(stmt.cond)
             self.code.append(ir.Goto(break_label, self._not(cond_var)))
@@ -653,7 +653,7 @@ class _FunctionOrMethodConverter:
             self.code.append(continue_label)
             if stmt.incr is not None:
                 self.do_statement(stmt.incr)
-            self.code.append(ir.Goto(cond_label, ir.builtin_variables["true"]))
+            self.code.append(ir.Goto(cond_label, ir.visible_builtins["true"]))
             self.code.append(break_label)
 
             if isinstance(stmt.init, ast.Let):
@@ -693,7 +693,7 @@ class _FunctionOrMethodConverter:
                 cases.append(ir.GetFromUnion(case_var, union_var))
                 cases.append(ir.IncRef(case_var))
                 cases.extend(body)
-                cases.append(ir.Goto(done_label, ir.builtin_variables["true"]))
+                cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
 
                 for typ in nice_types:
                     self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
@@ -841,7 +841,7 @@ class _FileConverter:
         self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         # https://github.com/python/typeshed/issues/5089
-        self.variables: Dict[str, ir.Variable] = ir.builtin_variables.copy()  # type: ignore
+        self.variables: Dict[str, ir.Variable] = ir.visible_builtins.copy()  # type: ignore
 
         # Union members don't need to exist when union is defined (allows nestedness)
         # TODO: is this still necessary?
@@ -970,7 +970,7 @@ class _FileConverter:
                 converter.do_if(other_matches_var, when_both_match, [])
             converter.do_if(self_matches_var, inner_if, [])
 
-        converter.code.append(ir.VarCpy(result_var, ir.builtin_variables["false"]))
+        converter.code.append(ir.VarCpy(result_var, ir.visible_builtins["false"]))
         converter.code.append(ir.Return(result_var))
         return ir.MethodDef("equals", functype, [self_var, other_var], converter.code)
 

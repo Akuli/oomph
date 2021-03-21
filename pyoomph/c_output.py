@@ -243,19 +243,19 @@ _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generi
 _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
-    ir.builtin_variables["__argv_count"]: "argv_count",
-    ir.builtin_variables["__argv_get"]: "argv_get",
-    ir.builtin_variables["__io_mkdir"]: "io_mkdir",
-    ir.builtin_variables["__io_read_file"]: "io_read_file",
-    ir.builtin_variables["__io_write_file"]: "io_write_file",
-    ir.builtin_variables["__string_find_internal"]: "string_find_internal",
-    ir.builtin_variables["__subprocess_run"]: "subprocess_run",
-    ir.builtin_variables["assert"]: "oomph_assert",
-    ir.builtin_variables["false"]: "false",
-    ir.builtin_variables["null"]: "0",
-    ir.builtin_variables["print"]: "io_print",
-    ir.builtin_variables["true"]: "true",
-    **{var: name for name, var in ir.special_variables.items()},
+    ir.visible_builtins["__argv_count"]: "argv_count",
+    ir.visible_builtins["__argv_get"]: "argv_get",
+    ir.visible_builtins["__io_mkdir"]: "io_mkdir",
+    ir.visible_builtins["__io_read_file"]: "io_read_file",
+    ir.visible_builtins["__io_write_file"]: "io_write_file",
+    ir.visible_builtins["__string_find_internal"]: "string_find_internal",
+    ir.visible_builtins["__subprocess_run"]: "subprocess_run",
+    ir.visible_builtins["assert"]: "oomph_assert",
+    ir.visible_builtins["false"]: "false",
+    ir.visible_builtins["null"]: "0",
+    ir.visible_builtins["print"]: "io_print",
+    ir.visible_builtins["true"]: "true",
+    **{var: name for name, var in ir.hidden_builtins.items()},
 }
 
 
