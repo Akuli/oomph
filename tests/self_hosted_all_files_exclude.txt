@@ -2,5 +2,17 @@
 # tokenizing or parsing these files fails, as supposed to
 tests/comma_error.oomph
 tests/double_comma_error.oomph
+tests/line_continuation_error.oomph
 tests/prefix_minus_error.oomph
 tests/unterminated_string_error.oomph
+
+# Escapes don't work yet: \n, \\, etc
+builtins.oomph
+self_hosted/c_output.oomph
+self_hosted/main.oomph
+self_hosted/parser.oomph
+self_hosted/tokenizer.oomph
+tests/escape.oomph
+tests/io.oomph
+tests/subprocess.oomph
+tests/union.oomph
