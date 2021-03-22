@@ -126,7 +126,6 @@ func raw_tokenize(Str code) -> List[Token]:
         elif code.starts_with("\"\"\""):
             let content = extract_string(code, "\"\"\"")
             token = new Token("multiline_string", content)
-        # TODO: multiline strings
         elif code.starts_with("\""):
             let content = extract_string(code.split("\n").first(), "\"")
             token = new Token("oneline_string", content)
