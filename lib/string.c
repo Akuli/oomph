@@ -103,11 +103,6 @@ bool string_validate_utf8(const char *s)
 	return true;
 }
 
-bool meth_Str_has_continuation_byte_at(const struct class_Str *s, int64_t i)
-{
-	return (0 <= i && i < (int64_t)strlen(s->str) && is_utf8_continuation_byte(s->str[i]));
-}
-
 int64_t meth_Str_unicode_length(const struct class_Str *s)
 {
 	const char *str = s->str;

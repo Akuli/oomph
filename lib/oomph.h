@@ -50,7 +50,6 @@ void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
 #define meth_Int_equals(a, b) ((a)==(b))
 #define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
 #define meth_null_to_string(n) cstr_to_string("null")
-bool meth_Str_has_continuation_byte_at(const struct class_Str *s, int64_t i);
 double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Float_ceil(double d);
 int64_t meth_Float_floor(double d);
