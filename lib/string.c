@@ -170,7 +170,6 @@ struct class_Str *string_from_start_to_substring(struct class_Str *s, struct cla
 int64_t string_get_utf8_byte(struct class_Str *s, int64_t i)
 {
 	// Include trailing zero byte
-	if (i < 0 || i > (int64_t)strlen(s->str))
-		panic_printf("utf8 index %lld out of range for string \"%s\"", (long long)i, s->str);
+	assert(0 <= i && i <= (int64_t)strlen(s->str));
 	return (unsigned char) s->str[i];
 }
