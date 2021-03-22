@@ -60,7 +60,7 @@ Count:
 2
 2
 0
-5
+3
 Trim:
 a 
  a
@@ -70,4 +70,4 @@ xcx
 xxa
 xx
 xxxxxxxx
-asdf
+axsxdxf

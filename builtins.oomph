@@ -54,8 +54,8 @@ func __Str_center_pad(Str self, Int len, Str pad_char) -> Str:
 
 func __Str_count(Str self, Str substring) -> Int:
     if substring == "":
-        # Same as what Python does
-        return self.length() + 1
+        # Consistent with .split("")
+        return self.length() - 1
 
     let count = 0
     while true:
@@ -90,18 +90,24 @@ func __Str_replace(Str self, Str old, Str neww) -> Str:
     return self.split(old).join(neww)
 
 func __Str_split(Str self, Str sep) -> List[Str]:
-    if sep == "":
-        # doesn't make much sense, but at least .split(s).join(s) will do nothing
-        return [self]
-
     let result = []
-    while true:
-        let part = __string_from_start_to(self, sep)
-        result.push(part)
-        self = self.remove_prefix(part).get()
-        if self == "":
-            return result
-        self = self.remove_prefix(sep).get()
+    if sep == "":
+        # get list of unicode characters
+        while self != "":
+            let i = 1
+            while self.has_continuation_byte_at(i):
+                i = i + 1
+            result.push(self.slice(0, i))
+            self = self.remove_prefix(result.last()).get()
+        return result
+    else:
+        while true:
+            let part = __string_from_start_to(self, sep)
+            result.push(part)
+            self = self.remove_prefix(part).get()
+            if self == "":
+                return result
+            self = self.remove_prefix(sep).get()
 
 func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self == []:

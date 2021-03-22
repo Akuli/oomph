@@ -5,31 +5,22 @@ func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
     return null
 
 func get_simple_identifier(Str code) -> Optional[Str]:
-    let first_chars = [
-        "a", "b", "c", "d", "e", "f", "g",
-        "h", "i", "j", "k", "l", "m", "n",
-        "o", "p", "q", "r", "s", "t", "u",
-        "v", "w", "x", "y", "z",
-        "A", "B", "C", "D", "E", "F", "G",
-        "H", "I", "J", "K", "L", "M", "N",
-        "O", "P", "Q", "R", "S", "T", "U",
-        "V", "W", "X", "Y", "Z",
-        "_",
-    ]
-    let continue_chars = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    continue_chars.push_all(first_chars)
-
-    # TODO: this code would benefit from nicer optional stuff a lot
-    let match = starts_with_any(code, first_chars)
-    if match == null:
+    assert(code != "")
+    let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
+    if not first_chars.contains(code.split("").first()):
         return null
 
-    let result = match.get()
+    let result = code.split("").first()
+    let continue_chars = first_chars + "1234567890"
+
     while true:
-        let match = starts_with_any(code.remove_prefix(result).get(), continue_chars)
-        if match == null:
+        if code == "":
             return result
-        result = result + match.get()
+
+        let next_char = code.remove_prefix(result).get().split("").first()
+        if not continue_chars.contains(next_char):
+            return result
+        result = result + next_char
 
 func get_identifier(Str code) -> Optional[Str]:
     switch get_simple_identifier(code):
@@ -60,13 +51,6 @@ func get_int(Str code) -> Str:
         if not did_something:
             return result
 
-func first_unicode_char(Str s) -> Str:
-    assert(s != "")
-    let i = 1
-    while s.has_continuation_byte_at(i):
-        i = i + 1
-    return s.slice(0, i)
-
 func extract_string(Str code, Str quotes) -> Str:
     let result = quotes
 
@@ -82,7 +66,7 @@ func extract_string(Str code, Str quotes) -> Str:
         if code == result:
             print("string does not terminate: {code}")
             assert(false)  # TODO: error
-        result = result + first_unicode_char(code.remove_prefix(result).get())
+        result = result + code.remove_prefix(result).get().split("").first()
         if code == result:
             print("string does not terminate: {code}")
             assert(false)  # TODO: error
@@ -130,7 +114,7 @@ func raw_tokenize(Str code) -> List[Token]:
             let remaining = code.remove_prefix(int_value).get()
             if (remaining.starts_with(".")
             and remaining != "."
-            and "0123456789".contains(first_unicode_char(remaining.remove_prefix(".").get()))):
+            and "0123456789".contains(remaining.remove_prefix(".").get().split("").first())):
                 let float_value = int_value + "." + get_int(remaining.remove_prefix(".").get())
                 token = new Token("float", float_value)
             else:
