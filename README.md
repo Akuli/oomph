@@ -139,6 +139,7 @@ Optimization ideas:
 - avoiding allocations when an object isn't passed around and no reference
   counting is actually needed
     - In particular, `thing == []` does not have to allocate
+- strings: some kind of string views, so that `foo.remove_prefix(bar)` does not have to copy many characters of data
 - concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
     - `List[Str].join` and various other functions
 - caching `strlen` result
