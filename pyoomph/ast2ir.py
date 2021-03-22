@@ -662,8 +662,8 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.Goto(cond_label, ir.visible_builtins["true"]))
             self.code.append(break_label)
 
-            if isinstance(stmt.header.init, ast.Let):
-                del self.variables[stmt.header.init.varname]
+            if len(stmt.header.init) == 1 and isinstance(stmt.header.init[0], ast.Let):
+                del self.variables[stmt.header.init[0].varname]
 
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
