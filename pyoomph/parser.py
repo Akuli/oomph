@@ -12,7 +12,6 @@ _T = TypeVar("_T")
 class _Parser:
     def __init__(self, token_iter: Iterator[Tuple[str, str]]):
         self.token_iter = more_itertools.peekable(token_iter)
-        self.foreach_counter = 0
 
     def get_token(
         self,
@@ -105,6 +104,40 @@ class _Parser:
             return parts[0]
         return ast.StringFormatJoin(parts)
 
+    def parse_loop_header(self) -> Union[ast.ForLoopHeader, ast.ForeachLoopHeader]:
+        if self.token_iter.peek() == ("keyword", "while"):
+            self.get_token("keyword", "while")
+            return ast.ForLoopHeader([], self.parse_expression(), [])
+
+        if self.token_iter.peek() == ("keyword", "for"):
+            self.get_token("keyword", "for")
+            init = (
+                []
+                if self.token_iter.peek() == ("op", ";")
+                else [self.parse_oneline_ish_statement()]
+            )
+            self.get_token("op", ";")
+            cond = (
+                None
+                if self.token_iter.peek() == ("op", ";")
+                else self.parse_expression()
+            )
+            self.get_token("op", ";")
+            incr = (
+                []
+                if self.token_iter.peek() == ("begin_block", ":")
+                else [self.parse_oneline_ish_statement()]
+            )
+            return ast.ForLoopHeader(init, cond, incr)
+
+        if self.token_iter.peek() == ("keyword", "foreach"):
+            self.get_token("keyword", "foreach")
+            varname = self.get_token("identifier")[1]
+            self.get_token("keyword", "of")
+            return ast.ForeachLoopHeader(varname, self.parse_expression())
+
+        raise NotImplementedError(self.token_iter.peek())
+
     def parse_simple_expression(self) -> ast.Expression:
         result: ast.Expression
         if self.token_iter.peek()[0] == "oneline_string":
@@ -132,8 +165,13 @@ class _Parser:
             result = self.parse_expression()
             self.get_token("op", ")")
         elif self.token_iter.peek() == ("op", "["):
-            if self.token_iter[1] in {("keyword", "while"), ("keyword", "for"), ("keyword", "foreach")}:
+            if self.token_iter[1] in {
+                ("keyword", "while"),
+                ("keyword", "for"),
+                ("keyword", "foreach"),
+            }:
                 # list comprehension
+                self.get_token("op", "[")
                 loop_header = self.parse_loop_header()
                 self.get_token("op", ":")
                 value = self.parse_expression()
@@ -316,41 +354,6 @@ class _Parser:
             type_and_varname = self.parse_funcdef_arg()
         body = self.parse_block_of_statements()
         return ast.Case(type_and_varname, body)
-
-    def parse_loop_header(self) -> Union[ast.ForLoopHeader, ast.ForeachLoopHeader]:
-        if self.token_iter.peek() == ("keyword", "while"):
-            self.get_token("keyword", "while")
-            cond = self.parse_expression()
-            return ast.ForLoopHeader(None, cond, None)
-
-        if self.token_iter.peek() == ("keyword", "for"):
-            self.get_token("keyword", "for")
-            init = (
-                None
-                if self.token_iter.peek() == ("op", ";")
-                else self.parse_oneline_ish_statement()
-            )
-            self.get_token("op", ";")
-            fucking_mypy = (
-                None
-                if self.token_iter.peek() == ("op", ";")
-                else self.parse_expression()
-            )
-            self.get_token("op", ";")
-            incr = (
-                None
-                if self.token_iter.peek() == ("begin_block", ":")
-                else self.parse_oneline_ish_statement()
-            )
-            return ast.ForLoopHeader(init, fucking_mypy, incr)
-
-        if self.token_iter.peek() == ("keyword", "foreach"):
-            self.get_token("keyword", "foreach")
-            varname = self.get_token("identifier")[1]
-            self.get_token("keyword", "of")
-            return ast.ForeachLoopHeader(varname, self.parse_expression())
-
-        raise NotImplementedError
 
     def parse_statement(self) -> List[ast.Statement]:
         if self.token_iter.peek() == ("keyword", "if"):

@@ -559,6 +559,11 @@ class _FunctionOrMethodConverter:
             self.code.append(ir.IncRef(result))
             return result
 
+        if isinstance(expr, ast.StatementsAndExpression):
+            for stmt in expr.statements:
+                self.do_statement(stmt)
+            return self.do_expression(expr.expression)
+
         raise NotImplementedError(expr)
 
     def do_statement(self, stmt: ast.Statement) -> None:
@@ -635,8 +640,8 @@ class _FunctionOrMethodConverter:
             break_label = ir.GotoLabel()
 
             assert isinstance(stmt.header, ast.ForLoopHeader)
-            if stmt.header.init is not None:
-                self.do_statement(stmt.header.init)
+            for init in stmt.header.init:
+                self.do_statement(init)
 
             self.code.append(cond_label)
             if stmt.header.cond is None:
@@ -652,8 +657,8 @@ class _FunctionOrMethodConverter:
             assert popped == (continue_label, break_label)
 
             self.code.append(continue_label)
-            if stmt.header.incr is not None:
-                self.do_statement(stmt.header.incr)
+            for incr in stmt.header.incr:
+                self.do_statement(incr)
             self.code.append(ir.Goto(cond_label, ir.visible_builtins["true"]))
             self.code.append(break_label)
 

@@ -89,6 +89,13 @@ class BinaryOperator(Expression):
     rhs: Expression
 
 
+# Run statements and evaluate expression. Useful for list comprehensions.
+@dataclass(eq=False)
+class StatementsAndExpression(Expression):
+    statements: List[Statement]
+    expression: Expression
+
+
 @dataclass(eq=False)
 class Constructor(Expression):
     type: Type
@@ -135,9 +142,9 @@ class If(Statement):
 # for init; cond; incr:
 @dataclass(eq=False)
 class ForLoopHeader:
-    init: Optional[Statement]
+    init: List[Statement]
     cond: Optional[Expression]
-    incr: Optional[Statement]
+    incr: List[Statement]
 
 
 @dataclass(eq=False)
@@ -148,8 +155,14 @@ class ForeachLoopHeader:
 
 @dataclass(eq=False)
 class Loop(Statement):
-    header: Union[ForLoopHeader, ForeachLoopHeader]
+    header: Union[ForLoopHeader, ForeachLoopHeader]  # TODO: rename to loop_header
     body: List[Statement]
+
+
+@dataclass(eq=False)
+class ListComprehension(Expression):
+    loop_header: Union[ForLoopHeader, ForeachLoopHeader]
+    value: Expression
 
 
 @dataclass(eq=False)
