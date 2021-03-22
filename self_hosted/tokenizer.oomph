@@ -5,22 +5,19 @@ func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
     return null
 
 func get_simple_identifier(Str code) -> Optional[Str]:
-    assert(code != "")
     let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-    if not first_chars.contains(code.split("").first()):
-        return null
-
-    let result = code.split("").first()
     let continue_chars = first_chars + "1234567890"
 
-    while true:
-        if code == "":
-            return result
+    let match = starts_with_any(code, first_chars.split(""))
+    if match == null:
+        return null
 
-        let next_char = code.remove_prefix(result).get().split("").first()
-        if not continue_chars.contains(next_char):
+    let result = match.get()
+    while true:
+        let match = starts_with_any(code.remove_prefix(result).get(), continue_chars.split(""))
+        if match == null:
             return result
-        result = result + next_char
+        result = result + match.get()
 
 func get_identifier(Str code) -> Optional[Str]:
     switch get_simple_identifier(code):
