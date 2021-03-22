@@ -144,6 +144,7 @@ Optimization ideas:
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
 - streams, as an alternative to lists
     - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
+- `(a / b).floor()` with integers `a` and `b` doesn't have to involve floats at runtime
 
 
 ## Self-hosted compiler

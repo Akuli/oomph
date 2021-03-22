@@ -10,10 +10,15 @@ func __Str_find_first(Str self, Str substring) -> Optional[Int]:
     return result
 
 func __Str_repeat(Str self, Int n) -> Str:
-    let result = self
-    while result.length() < n*self.length():
-        result = result + result
-    return result.slice(0, n*self.length())
+    # Square and multiply algorithm
+    let result = ""
+    let doubling = self
+    while n > 0:
+        if n mod 2 == 1:
+            result = result + doubling
+        n = (n / 2).floor()
+        doubling = doubling + doubling
+    return result
 
 func __Str_remove_prefix(Str self, Str prefix) -> Optional[Str]:
     let result = __remove_prefix(self, prefix)
