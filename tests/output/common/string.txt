@@ -52,10 +52,6 @@ Pad:
 abc**
 *abc*
 *abc**
-Find first:
-Optional[Int](3)
-Optional[Int](null)
-Optional[Int](0)
 Count:
 2
 2

@@ -48,13 +48,14 @@ Missing features:
 - better ternary than in python: `if cond then a else b`
 - named arguments
 - default values of arguments
+- find element from list (with custom callback to specify what matches):
+    - first occurence
+    - last occurrence
+    - all occurrences
+    - only occurrence, failing if multiple are found
 - string methods
-    - find occurrence of substring
-        - last occurrence
-        - all occurrences
-        - only occurrence, failing if multiple are found
-        - same for lists?
     - upper and lower (need unicode lib?)
+    - grep self-hosted compiler for more string method ideas
 - should `self` be a keyword?
 - chained equalities `a == b == c`
 - `x++`

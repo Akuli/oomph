@@ -59,6 +59,13 @@ func extract_string(Str code, Str quotes) -> Str:
             print("string does not terminate: {code}")
             assert(false)  # TODO: error
 
+func get_prefix_spaces(Str string) -> Str:
+    let result = 0
+    while string.starts_with(" "):
+        result = result + 1
+        string = string.remove_prefix(" ").get()
+    return " ".repeat(result)
+
 func raw_tokenize(Str code) -> List[Token]:
     if not code.ends_with("\n"):
         code = code + "\n"
@@ -105,23 +112,20 @@ func raw_tokenize(Str code) -> List[Token]:
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
-                let indent_level = 0
-                while code.slice(indent_level, indent_level + 1) == " ":
-                    indent_level = indent_level + 1
-
-                if code.slice(indent_level, indent_level + 1) in ["#", "\n"]:
+                let spaces = get_prefix_spaces(code)
+                let after_indent = code.remove_prefix(spaces).get()
+                if after_indent.starts_with("#") or after_indent.starts_with("\n"):
                     # This line doesn't actually contain any code, ignore the indent
-                    code = code.slice(indent_level, code.length())
+                    code = after_indent
                     continue
-
-                token = new Token("indent", code.slice(0, indent_level))
+                token = new Token("indent", spaces)
             else:
                 # Space to be ignored
                 # TODO: don't ignore indents in beginning of file
-                code = code.slice(1, code.length())
+                code = code.remove_prefix(" ").get()
                 continue
         elif code.starts_with("#"):
-            code = code.slice(code.find_first("\n").get(), code.length())
+            code = code.remove_prefix(code.split("\n").first()).get()
             continue
         elif code.starts_with("\"\"\""):
             let content = extract_string(code, "\"\"\"")

@@ -63,11 +63,6 @@ export func main():
     print("abc".center_pad(5, "*"))
     print("abc".center_pad(6, "*"))
 
-    print("Find first:")
-    print("abclolwatlolabc".find_first("lol"))
-    print("abclolwatlolabc".find_first("x"))
-    print("abclolwatlolabc".find_first(""))
-
     print("Count:")
     print("abclolwatlolabc".count("lol"))
     print("aaaa".count("aa"))

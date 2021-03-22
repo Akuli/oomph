@@ -189,11 +189,3 @@ struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *se
 	}
 	return slice_from_start(s, ptr - s->str);
 }
-
-int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub)
-{
-	const char *ptr = strstr(s->str, sub->str);
-	if (!ptr)
-		return -1;
-	return ptr - s->str;
-}

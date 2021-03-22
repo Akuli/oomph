@@ -19,20 +19,14 @@ func get_op(PrecedenceItem item) -> Str:
         case *:
             assert(false)
 
-# TODO: should become string method
-func find_last(Str s, Str what2find) -> Optional[Int]:
-    for let i = s.length() - what2find.length(); i >= 0; i = i-1:
-        if (not s.has_continuation_byte_at(i)) and s.slice(i, s.length()).starts_with(what2find):
-            return i
-    return null
-
 # TODO: should move to stdlib
 func path_parent(Str path) -> Str:
-    if path.contains("/"):
-        return path.slice(0, find_last(path, "/").get())
-
-    # TODO: this is a bit broken, although python's pathlib is broken in the same way
-    return "."
+    let parts = path.split("/")
+    if parts == []:
+        # TODO: this is a bit broken, although python's pathlib is broken in the same way
+        return "."
+    parts.pop()
+    return parts.join("/")
 
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
