@@ -33,15 +33,15 @@ noreturn void panic_printf_errno(const char *fmt, ...);
 int64_t argv_count(void);
 struct class_Str *argv_get(int64_t i);
 
+int64_t subprocess_run(void *args);
 struct class_Str *io_read_file(const struct class_Str *path);
+struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *sep);
+struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre);
+struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf);
 void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
 void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
-struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre);
-struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf);
-struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *sep);
-int64_t subprocess_run(void *args);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
 #define meth_Float_equals(a, b) ((a)==(b))
