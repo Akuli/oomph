@@ -86,8 +86,8 @@ func __Str_right_trim(Str self) -> Str:
 func __Str_trim(Str self) -> Str:
     return self.left_trim().right_trim()
 
-func __Str_replace(Str self, Str old, Str neww) -> Str:
-    return self.split(old).join(neww)
+func __Str_replace(Str self, Str old, Str n3w) -> Str:
+    return self.split(old).join(n3w)
 
 func __Str_split(Str self, Str sep) -> List[Str]:
     let result = []
