@@ -155,7 +155,7 @@ class ForeachLoopHeader:
 
 @dataclass(eq=False)
 class Loop(Statement):
-    header: Union[ForLoopHeader, ForeachLoopHeader]  # TODO: rename to loop_header
+    loop_header: Union[ForLoopHeader, ForeachLoopHeader]
     body: List[Statement]
 
 

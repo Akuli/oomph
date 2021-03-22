@@ -15,12 +15,12 @@ class _AstTransformer:
         return f"<var{self.varname_counter}>"
 
     def foreach_loop_to_for_loop(self, loop: ast.Loop) -> ast.Loop:
-        assert isinstance(loop.header, ast.ForeachLoopHeader)
+        assert isinstance(loop.loop_header, ast.ForeachLoopHeader)
         list_var = self.get_var_name()
         index_var = self.get_var_name()
 
         let: ast.Statement = ast.Let(
-            loop.header.varname,
+            loop.loop_header.varname,
             ast.Call(
                 ast.GetAttribute(ast.GetVar(list_var), "get"),
                 [ast.GetVar(index_var)],
@@ -30,7 +30,7 @@ class _AstTransformer:
             ast.ForLoopHeader(
                 [
                     ast.Let(index_var, ast.IntConstant(0)),
-                    ast.Let(list_var, loop.header.list),
+                    ast.Let(list_var, loop.loop_header.list),
                 ],
                 ast.BinaryOperator(
                     ast.GetVar(index_var),
@@ -69,7 +69,7 @@ class _AstTransformer:
             )
 
         if isinstance(ast_thing, ast.Loop) and isinstance(
-            ast_thing.header, ast.ForeachLoopHeader
+            ast_thing.loop_header, ast.ForeachLoopHeader
         ):
             ast_thing = self.foreach_loop_to_for_loop(ast_thing)
 
