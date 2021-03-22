@@ -25,8 +25,7 @@ func path_parent(Str path) -> Str:
     if parts == []:
         # TODO: this is a bit broken, although python's pathlib is broken in the same way
         return "."
-    parts.pop()
-    return parts.join("/")
+    return parts.slice(0, parts.length() - 1).join("/")
 
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
@@ -59,19 +58,16 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         let name = self.get_token_by_type("id").value
         self.get_token("op", "\n")
 
-        assert(string.starts_with("\""))
-        assert(string.ends_with("\""))
+        string = string.remove_prefix("\"").get().remove_suffix("\"").get()
+        assert(not string.contains("\""))
         assert(not string.contains("\\"))
         assert(not string.contains("\{"))
         assert(not string.contains("\}"))
 
-        if string.starts_with("\"<stdlib>/"):
-            let start = "\"<stdlib>/".length()
-            let end = string.length() - 1
-            let path = "{stdlib_path}/{string.slice(start, end)}"
+        if string.starts_with("<stdlib>/"):
+            let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/").get()
         else:
-            let no_quotes = string.slice(1, string.length() - 1)
-            path = "{path_parent(path_of_this_file)}/{no_quotes}"
+            path = "{path_parent(path_of_this_file)}/{string}"
         return new ast::Import(path, name)
 
     # TODO: these are a bit copy/pasta
@@ -148,10 +144,14 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
     meth parse_simple_expression() -> ast::Expression:
         if self.peek().type == "oneline_string":
             let value = self.get_token_by_type("oneline_string").value
-            let result = self.do_string_formatting(value.slice(1, value.length() - 1))
+            let result = self.do_string_formatting(
+                value.remove_prefix("\"").get()
+                     .remove_suffix("\"").get())
         elif self.peek().type == "multiline_string":
             let value = self.get_token_by_type("multiline_string").value
-            result = self.do_string_formatting(value.slice(3, value.length() - 3))
+            result = self.do_string_formatting(
+                value.remove_prefix("\"\"\"").get()
+                     .remove_suffix("\"\"\"").get())
         elif self.peek().type == "id":
             result = new ast::GetVar(self.get_token_by_type("id").value)
         elif self.peek().type == "int":
