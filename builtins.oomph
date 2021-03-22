@@ -87,20 +87,8 @@ func __Str_right_trim(Str self) -> Str:
 func __Str_trim(Str self) -> Str:
     return self.left_trim().right_trim()
 
-func __Str_replace(Str self, Str old, Str neuw) -> Str:
-    if old == "":
-        # TODO: error
-        return self
-
-    let result = ""
-    let remaining = self
-
-    while true:
-        let index = remaining.find_first(old)
-        if index == null:
-            return result + remaining
-        result = result + remaining.slice(0, index.get()) + neuw
-        remaining = remaining.slice(index.get() + old.length(), remaining.length())
+func __Str_replace(Str self, Str old, Str neww) -> Str:
+    return self.split(old).join(neww)
 
 func __Str_split(Str self, Str sep) -> List[Str]:
     let result = new List[Str]()
