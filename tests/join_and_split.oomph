@@ -11,4 +11,6 @@ export func main():
     print("hello world".split("x").join("x"))
     print("hello world".split("").join(""))
 
+    # special cases
     print(new List[Str]().join("a"))
+    print("hellö".split(""))
