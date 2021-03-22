@@ -41,6 +41,7 @@ void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
 int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub);
 struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre);
 struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf);
+struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *sep);
 int64_t subprocess_run(void *args);
 
 #define meth_Bool_equals(a, b) ((a)==(b))

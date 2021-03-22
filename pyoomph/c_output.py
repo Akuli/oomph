@@ -252,6 +252,7 @@ _specially_emitted_variables: Dict[ir.Variable, str] = {
     ir.visible_builtins["__remove_prefix"]: "string_remove_prefix",
     ir.visible_builtins["__remove_suffix"]: "string_remove_suffix",
     ir.visible_builtins["__string_find_internal"]: "string_find_internal",
+    ir.visible_builtins["__string_from_start_to"]: "string_from_start_to",
     ir.visible_builtins["__subprocess_run"]: "subprocess_run",
     ir.visible_builtins["assert"]: "oomph_assert",
     ir.visible_builtins["false"]: "false",
@@ -337,12 +338,14 @@ class _FilePair:
         if isinstance(var, ir.FileVariable) and var.name == "main":
             c_name = "oomph_main"
         elif var.name in {
+            "__Bool_to_string",
             "__List_Str_join",
             "__Str_center_pad",
             "__Str_contains",
             "__Str_count",
             "__Str_ends_with",
             "__Str_find_first",
+            "__Str_from_start_to",
             "__Str_left_pad",
             "__Str_left_trim",
             "__Str_remove_prefix",
@@ -354,7 +357,6 @@ class _FilePair:
             "__Str_split",
             "__Str_starts_with",
             "__Str_trim",
-            "__Bool_to_string",
         }:
             # Class implemented in C, method implemented in builtins.oomph
             # TODO: check if this file is builtins.oomph

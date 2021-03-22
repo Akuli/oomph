@@ -148,6 +148,19 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 	return res;
 }
 
+static struct class_Str *slice_from_start(struct class_Str *s, size_t len)
+{
+	assert(strlen(s->str) >= len);
+	// TODO: avoid temporary allocation
+	char *tmp = malloc(len + 1);
+	assert(tmp);
+	memcpy(tmp, s->str, len);
+	tmp[len] = '\0';
+	struct class_Str *res = cstr_to_string(tmp);
+	free(tmp);
+	return res;
+}
+
 struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre)
 {
 	size_t n = strlen(pre->str);
@@ -160,19 +173,21 @@ struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pr
 struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf)
 {
 	size_t slen=strlen(s->str), suflen=strlen(suf->str);
-	if (slen >= suflen && memcmp(s->str + slen - suflen, suf->str, suflen) == 0) {
-		// TODO: avoid temporary allocation
-		char *tmp = malloc(slen - suflen + 1);
-		assert(tmp);
-		memcpy(tmp, s->str, slen - suflen);
-		tmp[slen - suflen] = '\0';
-		struct class_Str *res = cstr_to_string(tmp);
-		free(tmp);
-		return res;
-	}
-
+	if (slen >= suflen && memcmp(s->str + slen - suflen, suf->str, suflen) == 0)
+		return slice_from_start(s, slen - suflen);
 	incref(s);
 	return s;
+}
+
+// python's string.split(sep)[0]
+struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *sep)
+{
+	char *ptr = strstr(s->str, sep->str);
+	if (!ptr) {
+		incref(s);
+		return s;
+	}
+	return slice_from_start(s, ptr - s->str);
 }
 
 int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub)
