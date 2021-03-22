@@ -67,8 +67,7 @@ func __Str_count(Str self, Str substring) -> Int:
 
 func __Str_left_trim(Str self) -> Str:
     # TODO: all ascii whitespace?
-    while self.starts_with(" ") or self.starts_with("\n"):  # TODO: all ascii whitespaces?
-        # TODO: something like self = self.starts_with(" ").or_if_null_then(self)
+    while self.starts_with(" ") or self.starts_with("\n"):
         if self.starts_with(" "):
             self = self.remove_prefix(" ").get()
         if self.starts_with("\n"):
@@ -108,7 +107,7 @@ func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self == []:
         return ""
 
-    let result = self.get(0)
+    let result = self.first()
     for let i = 1; i < self.length(); i = i+1:
         result = result + sep + self.get(i)
     return result
