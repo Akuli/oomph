@@ -24,11 +24,11 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
         if line == "":
             continue
         if line.starts_with("cc="):
-            cc = line.remove_prefix("cc=").get()
+            cc = line.remove_prefix("cc=")
         elif line.starts_with("cflags="):
-            cflags = line.remove_prefix("cflags=").get()
+            cflags = line.remove_prefix("cflags=")
         elif line.starts_with("ldflags="):
-            ldflags = line.remove_prefix("ldflags=").get()
+            ldflags = line.remove_prefix("ldflags=")
         else:
             assert(false)   # TODO: error
 
@@ -68,7 +68,7 @@ export func main():
         elif args.first() == "--ast":
             ast_only = true
         elif args.first().starts_with("--valgrind="):
-            valgrind = args.first().remove_prefix("--valgrind=").get()
+            valgrind = args.first().remove_prefix("--valgrind=")
         else:
             print("bad arg: {args.first()}")
             assert(false)  # TODO: error

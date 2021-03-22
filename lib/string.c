@@ -133,7 +133,7 @@ struct class_Str *string_get_first_char(struct class_Str *s)
 }
 
 // TODO: for most uses, it is inefficient to allocate a new object
-struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre)
+struct class_Str *meth_Str_remove_prefix(struct class_Str *s, struct class_Str *pre)
 {
 	size_t n = strlen(pre->str);
 	if (strlen(s->str) >= n && memcmp(s->str, pre->str, n) == 0)
@@ -142,7 +142,7 @@ struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pr
 	return s;
 }
 
-struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf)
+struct class_Str *meth_Str_remove_suffix(struct class_Str *s, struct class_Str *suf)
 {
 	size_t slen=strlen(s->str), suflen=strlen(suf->str);
 	if (slen >= suflen && strcmp(s->str + slen - suflen, suf->str) == 0)

@@ -1,5 +1,5 @@
 func foo(Str s):
-    s = s.remove_prefix("a").get()
+    s = s.remove_prefix("a")
 
 export func main():
     # Joining to create reference-counted string (exposes bugs)

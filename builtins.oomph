@@ -20,23 +20,11 @@ func __Str_repeat(Str self, Int n) -> Str:
         doubling = doubling + doubling
     return result
 
-func __Str_remove_prefix(Str self, Str prefix) -> Optional[Str]:
-    let result = __remove_prefix(self, prefix)
-    if result == self and prefix != "":
-        return null
-    return result
-
-func __Str_remove_suffix(Str self, Str suffix) -> Optional[Str]:
-    let result = __remove_suffix(self, suffix)
-    if result == self and suffix != "":
-        return null
-    return result
-
 func __Str_starts_with(Str self, Str prefix) -> Bool:
-    return (self.remove_prefix(prefix) != null)
+    return prefix == "" or self.remove_prefix(prefix) != self
 
 func __Str_ends_with(Str self, Str suffix) -> Bool:
-    return (self.remove_suffix(suffix) != null)
+    return suffix == "" or self.remove_suffix(suffix) != self
 
 func __Str_contains(Str self, Str substring) -> Bool:
     return (self == "" and substring == "") or __slice_until_substring(self, substring) != self
@@ -63,24 +51,18 @@ func __Str_count(Str self, Str substring) -> Int:
         if before_substring == self:
             return count
         count = count + 1
-        self = self.remove_prefix(before_substring).get().remove_prefix(substring).get()
+        self = self.remove_prefix(before_substring).remove_prefix(substring)
 
 func __Str_left_trim(Str self) -> Str:
     # TODO: all ascii whitespace?
     while self.starts_with(" ") or self.starts_with("\n"):
-        if self.starts_with(" "):
-            self = self.remove_prefix(" ").get()
-        if self.starts_with("\n"):
-            self = self.remove_prefix("\n").get()
+        self = self.remove_prefix(" ").remove_prefix("\n")
     return self
 
 func __Str_right_trim(Str self) -> Str:
     # TODO: left_trim copy/pasta
     while self.ends_with(" ") or self.ends_with("\n"):
-        if self.ends_with(" "):
-            self = self.remove_suffix(" ").get()
-        if self.ends_with("\n"):
-            self = self.remove_suffix("\n").get()
+        self = self.remove_suffix(" ").remove_suffix("\n")
     return self
 
 func __Str_trim(Str self) -> Str:
@@ -95,16 +77,16 @@ func __Str_split(Str self, Str sep) -> List[Str]:
         # get list of unicode characters
         while self != "":
             result.push(__string_get_first_char(self))
-            self = self.remove_prefix(result.last()).get()
+            self = self.remove_prefix(result.last())
         return result
     else:
         while true:
             let part = __slice_until_substring(self, sep)
             result.push(part)
-            self = self.remove_prefix(part).get()
+            self = self.remove_prefix(part)
             if self == "":
                 return result
-            self = self.remove_prefix(sep).get()
+            self = self.remove_prefix(sep)
 
 func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self == []:

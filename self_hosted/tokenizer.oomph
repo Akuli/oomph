@@ -14,7 +14,7 @@ func get_simple_identifier(Str code) -> Optional[Str]:
 
     let result = match.get()
     while true:
-        let match = starts_with_any(code.remove_prefix(result).get(), continue_chars.split(""))
+        let match = starts_with_any(code.remove_prefix(result), continue_chars.split(""))
         if match == null:
             return result
         result = result + match.get()
@@ -22,10 +22,10 @@ func get_simple_identifier(Str code) -> Optional[Str]:
 func get_identifier(Str code) -> Optional[Str]:
     switch get_simple_identifier(code):
         case Str s:
-            let remaining = code.remove_prefix(s).get()
+            let remaining = code.remove_prefix(s)
             if remaining.starts_with("::"):
                 # TODO: better error handling for foo::123
-                return s + "::" + get_simple_identifier(remaining.remove_prefix("::").get()).get()
+                return s + "::" + get_simple_identifier(remaining.remove_prefix("::")).get()
             return s
         case *:
             return null
@@ -42,7 +42,7 @@ func get_int(Str code) -> Str:
         # TODO: this is ugly
         let did_something = false
         for let digit = 0; digit <= 9; digit = digit + 1:
-            if code.remove_prefix(result).get().starts_with(digit.to_string()):
+            if code.remove_prefix(result).starts_with(digit.to_string()):
                 result = result + digit.to_string()
                 did_something = true
         if not did_something:
@@ -52,17 +52,17 @@ func extract_string(Str code, Str quotes) -> Str:
     let result = quotes
 
     while true:
-        if code.remove_prefix(result).get().starts_with(quotes):
+        if code.remove_prefix(result).starts_with(quotes):
             return result + quotes
 
         # Ignore backslash-escaped quotes, and actually, any backslash-escaped char
-        if code.remove_prefix(result).get().starts_with("\\"):
+        if code.remove_prefix(result).starts_with("\\"):
             result = result + "\\"
 
         if code == result:
             print("string does not terminate: {code}")
             assert(false)  # TODO: error
-        result = result + code.remove_prefix(result).get().split("").first()
+        result = result + code.remove_prefix(result).split("").first()
         if code == result:
             print("string does not terminate: {code}")
             assert(false)  # TODO: error
@@ -71,7 +71,7 @@ func get_prefix_spaces(Str string) -> Str:
     let result = 0
     while string.starts_with(" "):
         result = result + 1
-        string = string.remove_prefix(" ").get()
+        string = string.remove_prefix(" ")
     return " ".repeat(result)
 
 func raw_tokenize(Str code) -> List[Token]:
@@ -109,12 +109,11 @@ func raw_tokenize(Str code) -> List[Token]:
             token = new Token("op", op.get())
 
         elif int_value != "":
-            let remaining = code.remove_prefix(int_value).get()
+            let remaining = code.remove_prefix(int_value)
             if remaining.starts_with("."):
                 # this may set digit_after_dot to null
                 let digit_after_dot = starts_with_any(
-                    remaining.remove_prefix(".").get(),
-                    "0123456789".split(""))
+                    remaining.remove_prefix("."), "0123456789".split(""))
             else:
                 digit_after_dot = null
 
@@ -124,14 +123,14 @@ func raw_tokenize(Str code) -> List[Token]:
                 token = new Token("int", int_value)
             else:
                 # float
-                let float_value = int_value + "." + get_int(remaining.remove_prefix(".").get())
+                let float_value = int_value + "." + get_int(remaining.remove_prefix("."))
                 token = new Token("float", float_value)
 
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
                 let spaces = get_prefix_spaces(code)
-                let after_indent = code.remove_prefix(spaces).get()
+                let after_indent = code.remove_prefix(spaces)
                 if after_indent.starts_with("#") or after_indent.starts_with("\n"):
                     # This line doesn't actually contain any code, ignore the indent
                     code = after_indent
@@ -140,11 +139,11 @@ func raw_tokenize(Str code) -> List[Token]:
             else:
                 # Space to be ignored
                 # TODO: error for indents in beginning of file
-                code = code.remove_prefix(" ").get()
+                code = code.remove_prefix(" ")
                 continue
 
         elif code.starts_with("#"):
-            code = code.remove_prefix(code.split("\n").first()).get()
+            code = code.remove_prefix(code.split("\n").first())
             continue
 
         elif code.starts_with("\"\"\""):
@@ -160,7 +159,7 @@ func raw_tokenize(Str code) -> List[Token]:
             print("Invalid syntax: {code}")
             assert(false)  # TODO: error
 
-        code = code.remove_prefix(token.value).get()
+        code = code.remove_prefix(token.value)
         result.push(token)
 
     return result

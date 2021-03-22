@@ -58,14 +58,14 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         let name = self.get_token_by_type("id").value
         self.get_token("op", "\n")
 
-        string = string.remove_prefix("\"").get().remove_suffix("\"").get()
+        string = string.remove_prefix("\"").remove_suffix("\"")
         assert(not string.contains("\""))
         assert(not string.contains("\\"))
         assert(not string.contains("\{"))
         assert(not string.contains("\}"))
 
         if string.starts_with("<stdlib>/"):
-            let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/").get()
+            let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/")
         else:
             path = path_parent(path_of_this_file) + "/" + string
         return new ast::Import(path, name)
@@ -146,13 +146,13 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
         if self.peek().type == "oneline_string":
             let value = self.get_token_by_type("oneline_string").value
             let result = self.do_string_formatting(
-                value.remove_prefix("\"").get()
-                     .remove_suffix("\"").get())
+                value.remove_prefix("\"")
+                     .remove_suffix("\""))
         elif self.peek().type == "multiline_string":
             let value = self.get_token_by_type("multiline_string").value
             result = self.do_string_formatting(
-                value.remove_prefix("\"\"\"").get()
-                     .remove_suffix("\"\"\"").get())
+                value.remove_prefix("\"\"\"")
+                     .remove_suffix("\"\"\""))
         elif self.peek().type == "id":
             result = new ast::GetVar(self.get_token_by_type("id").value)
         elif self.peek().type == "int":
