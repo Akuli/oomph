@@ -150,7 +150,7 @@ struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pr
 struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf)
 {
 	size_t slen=strlen(s->str), suflen=strlen(suf->str);
-	if (slen >= suflen && memcmp(s->str + slen - suflen, suf->str, suflen) == 0)
+	if (slen >= suflen && strcmp(s->str + slen - suflen, suf->str) == 0)
 		return slice_from_start(s, slen - suflen);
 	incref(s);
 	return s;
