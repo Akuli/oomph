@@ -634,15 +634,16 @@ class _FunctionOrMethodConverter:
             continue_label = ir.GotoLabel()
             break_label = ir.GotoLabel()
 
-            if stmt.init is not None:
-                self.do_statement(stmt.init)
+            assert isinstance(stmt.header, ast.ForLoopHeader)
+            if stmt.header.init is not None:
+                self.do_statement(stmt.header.init)
 
             self.code.append(cond_label)
-            if stmt.cond is None:
+            if stmt.header.cond is None:
                 cond_var = self.create_var(BOOL)
                 self.code.append(ir.VarCpy(cond_var, ir.visible_builtins["true"]))
             else:
-                cond_var = self.do_expression(stmt.cond)
+                cond_var = self.do_expression(stmt.header.cond)
             self.code.append(ir.Goto(break_label, self._not(cond_var)))
 
             self.loop_stack.append((continue_label, break_label))
@@ -651,13 +652,13 @@ class _FunctionOrMethodConverter:
             assert popped == (continue_label, break_label)
 
             self.code.append(continue_label)
-            if stmt.incr is not None:
-                self.do_statement(stmt.incr)
+            if stmt.header.incr is not None:
+                self.do_statement(stmt.header.incr)
             self.code.append(ir.Goto(cond_label, ir.visible_builtins["true"]))
             self.code.append(break_label)
 
-            if isinstance(stmt.init, ast.Let):
-                del self.variables[stmt.init.varname]
+            if isinstance(stmt.header.init, ast.Let):
+                del self.variables[stmt.header.init.varname]
 
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)

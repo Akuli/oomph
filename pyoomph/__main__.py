@@ -12,7 +12,7 @@ import sys
 import traceback
 from typing import Dict, List
 
-from pyoomph import ast, ast2ir, c_output, ir, parser
+from pyoomph import ast, ast2ir, c_output, ir, parser, loops
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
@@ -33,9 +33,9 @@ class CompilationUnit:
     def create_untyped_ast(self) -> None:
         try:
             source_code = self.source_path.read_text(encoding="utf-8")
-            self.ast = parser.parse_file(
+            self.ast = loops.transform_file(parser.parse_file(
                 source_code, self.source_path, project_root / "stdlib"
-            )
+            ))
         except Exception:
             self._handle_error()
 

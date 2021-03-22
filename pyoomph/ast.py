@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 
 @dataclass(eq=False)
@@ -133,12 +133,22 @@ class If(Statement):
 
 
 # for init; cond; incr:
-#    body
 @dataclass(eq=False)
-class Loop(Statement):
+class ForLoopHeader:
     init: Optional[Statement]
     cond: Optional[Expression]
     incr: Optional[Statement]
+
+
+@dataclass(eq=False)
+class ForeachLoopHeader:
+    varname: str
+    list: Expression
+
+
+@dataclass(eq=False)
+class Loop(Statement):
+    header: Union[ForLoopHeader, ForeachLoopHeader]
     body: List[Statement]
 
 
