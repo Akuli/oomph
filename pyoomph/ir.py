@@ -63,7 +63,7 @@ visible_builtins = {
         ),
         BuiltinVariable("__string_get_first_char", FunctionType([STRING], STRING)),
         BuiltinVariable("__string_get_utf8_byte", FunctionType([STRING, INT], INT)),
-        BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
+        BuiltinVariable("__run_subprocess", FunctionType([LIST.get_type(STRING)], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("null", NULL_TYPE),

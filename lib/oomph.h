@@ -34,7 +34,7 @@ int64_t argv_count(void);
 struct class_Str *argv_get(int64_t i);
 
 int64_t string_get_utf8_byte(struct class_Str *s, int64_t i);
-int64_t subprocess_run(void *args);
+int64_t run_subprocess(void *args);
 struct class_Str *io_read_file(const struct class_Str *path);
 struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep);
 struct class_Str *string_get_first_char(struct class_Str *s);

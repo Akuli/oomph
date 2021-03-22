@@ -13,7 +13,7 @@ struct class_List_Str {
 	struct class_Str * *data;
 };
 
-int64_t subprocess_run(void *args)
+int64_t run_subprocess(void *args)
 {
 	struct class_List_Str *arglst = args;
 

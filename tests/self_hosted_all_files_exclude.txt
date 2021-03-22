@@ -14,5 +14,5 @@ self_hosted/parser.oomph
 self_hosted/tokenizer.oomph
 tests/escape.oomph
 tests/io.oomph
-tests/subprocess.oomph
+tests/process.oomph
 tests/union.oomph

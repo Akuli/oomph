@@ -1,5 +1,5 @@
 import "<stdlib>/io.oomph" as io
-import "<stdlib>/subprocess.oomph" as subproc
+import "<stdlib>/process.oomph" as subproc
 
 export func main():
     let args = new List[Str]()

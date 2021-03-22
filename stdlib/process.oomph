@@ -1,7 +1,6 @@
 export func run(List[Str] command) -> Int:
-    return __subprocess_run(command)
+    return __run_subprocess(command)
 
-# TODO: this is in a weird place, maybe rename this file to process.oomph?
 export func get_args() -> List[Str]:
     let n = __argv_count()
     let args = new List[Str]()

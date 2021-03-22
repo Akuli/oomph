@@ -1,5 +1,5 @@
 import "<stdlib>/io.oomph" as io
-import "<stdlib>/subprocess.oomph" as process
+import "<stdlib>/process.oomph" as process
 import "ast2ir.oomph" as ast2ir
 import "c_output.oomph" as c_output
 import "ir.oomph" as ir
@@ -41,7 +41,7 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
         "obj/numbers.o",
         "obj/ref.o",
         "obj/string.o",
-        "obj/subprocess.o",
+        "obj/process.o",
     ])
     result.push(c_path)
     result.push("-o")
