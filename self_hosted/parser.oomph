@@ -139,6 +139,7 @@ class Parser(List[tokenizer::Token] tokens, Int foreach_counter):
 
     meth do_string_formatting(Str string) -> ast::Expression:
         # TODO
+        assert(not string.contains("\\"))
         return new ast::StringConstant(string)
 
     meth parse_simple_expression() -> ast::Expression:
