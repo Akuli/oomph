@@ -85,6 +85,10 @@ class _AstTransformer:
         elif isinstance(expr, ast.Call):
             expr.func = self.visit_expression(expr.func)
             expr.args = list(map(self.visit_expression, expr.args))
+        elif isinstance(expr, ast.Constructor):
+            pass
+        elif isinstance(expr, ast.UnaryOperator):
+            expr.obj = self.visit_expression(expr.obj)
         else:
             raise NotImplementedError(expr)
 
@@ -102,7 +106,7 @@ class _AstTransformer:
                 for cond, body in stmt.ifs_and_elifs
             ]
             stmt.else_block = self.visit_block(stmt.else_block)
-        elif isinstance(stmt, ast.Let):
+        elif isinstance(stmt, (ast.Let, ast.SetVar)):
             stmt.value = self.visit_expression(stmt.value)
         elif isinstance(stmt, ast.Call):
             stmt.func = self.visit_expression(stmt.func)
@@ -117,8 +121,11 @@ class _AstTransformer:
                 stmt.header.cond = self.visit_expression(stmt.header.cond)
             stmt.header.incr = self.visit_block(stmt.header.incr)
             stmt.body = self.visit_block(stmt.body)
-        elif isinstance(stmt, ast.SetVar):
+        elif isinstance(stmt, ast.SetAttribute):
+            stmt.obj = self.visit_expression(stmt.obj)
             stmt.value = self.visit_expression(stmt.value)
+        elif isinstance(stmt, ast.Pass):
+            pass
         else:
             raise NotImplementedError(stmt)
 
