@@ -1,0 +1,6 @@
+export func main():
+    print("lllol".remove_prefix("l"))
+    print("lllol".remove_prefix("x"))
+
+    print("lolll".remove_suffix("l"))
+    print("lolll".remove_suffix("x"))
