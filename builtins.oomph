@@ -94,10 +94,7 @@ func __Str_split(Str self, Str sep) -> List[Str]:
     if sep == "":
         # get list of unicode characters
         while self != "":
-            let i = 1
-            while self.has_continuation_byte_at(i):
-                i = i + 1
-            result.push(self.slice(0, i))
+            result.push(__string_get_first_char(self))
             self = self.remove_prefix(result.last()).get()
         return result
     else:

@@ -161,6 +161,16 @@ static struct class_Str *slice_from_start(struct class_Str *s, size_t len)
 	return res;
 }
 
+// TODO: avoid allocations
+struct class_Str *string_get_first_char(struct class_Str *s)
+{
+	assert(s->str[0] != '\0');
+	size_t n = 1;
+	while (is_utf8_continuation_byte(s->str[n]))
+		n++;
+	return slice_from_start(s, n);
+}
+
 struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre)
 {
 	size_t n = strlen(pre->str);

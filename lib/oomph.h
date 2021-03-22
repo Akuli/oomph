@@ -37,6 +37,7 @@ int64_t string_get_utf8_byte(struct class_Str *s, int64_t i);
 int64_t subprocess_run(void *args);
 struct class_Str *io_read_file(const struct class_Str *path);
 struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *sep);
+struct class_Str *string_get_first_char(struct class_Str *s);
 struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre);
 struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf);
 void io_mkdir(const struct class_Str *path);
