@@ -91,19 +91,18 @@ func __Str_replace(Str self, Str old, Str neww) -> Str:
     return self.split(old).join(neww)
 
 func __Str_split(Str self, Str sep) -> List[Str]:
-    let result = new List[Str]()
     if sep == "":
-        result.push(self)
-        return result
+        # doesn't make much sense, but at least .split(s).join(s) will do nothing
+        return [self]
 
+    let result = []
     while true:
-        let i = self.find_first(sep)
-        if i == null:
-            result.push(self)
+        let part = __string_from_start_to(self, sep)
+        result.push(part)
+        self = self.remove_prefix(part).get()
+        if self == "":
             return result
-
-        result.push(self.slice(0, i.get()))
-        self = self.slice(i.get() + sep.length(), self.length())
+        self = self.remove_prefix(sep).get()
 
 func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self == []:
