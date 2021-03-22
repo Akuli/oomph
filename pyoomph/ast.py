@@ -139,7 +139,7 @@ class If(Statement):
     else_block: List[Statement]
 
 
-# for init; cond; incr:
+# for init; cond; incr
 @dataclass(eq=False)
 class ForLoopHeader:
     init: List[Statement]
