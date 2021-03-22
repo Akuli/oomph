@@ -1,2 +1,0 @@
-can't slice string in the middle of continuation byte
-Program exited with status 1

@@ -3,28 +3,31 @@ func __Bool_to_string(Bool self) -> Str:
         return "true"
     return "false"
 
-func __Str_find_first(Str self, Str substring) -> Optional[Int]:
-    let result = __string_find_internal(self, substring)
-    if result == -1:   # Currently it's difficult to have optionals in C code
-        return null
+func __Str_get_utf8(Str self) -> List[Int]:
+    let result = []
+    for let i = 0; __string_get_utf8_byte(self, i) != 0; i = i+1:
+        result.push(__string_get_utf8_byte(self, i))
     return result
 
 func __Str_repeat(Str self, Int n) -> Str:
-    let result = self
-    while result.length() < n*self.length():
-        result = result + result
-    return result.slice(0, n*self.length())
+    # Square and multiply algorithm
+    let result = ""
+    let doubling = self
+    while n > 0:
+        if n mod 2 == 1:
+            result = result + doubling
+        n = (n / 2).floor()
+        doubling = doubling + doubling
+    return result
 
 func __Str_starts_with(Str self, Str prefix) -> Bool:
-    let end = prefix.length()
-    return (not self.has_continuation_byte_at(end)) and self.slice(0, end) == prefix
+    return prefix == "" or self.remove_prefix(prefix) != self
 
 func __Str_ends_with(Str self, Str suffix) -> Bool:
-    let start = self.length() - suffix.length()
-    return (not self.has_continuation_byte_at(start)) and self.slice(start, self.length()) == suffix
+    return suffix == "" or self.remove_suffix(suffix) != self
 
 func __Str_contains(Str self, Str substring) -> Bool:
-    return self.find_first(substring) != null
+    return (self == "" and substring == "") or __slice_until_substring(self, substring) != self
 
 # No need to use a third party library for this, lol
 func __Str_left_pad(Str self, Int len, Str pad_char) -> Str:
@@ -38,70 +41,58 @@ func __Str_center_pad(Str self, Int len, Str pad_char) -> Str:
     return self.left_pad(average, pad_char).right_pad(len, pad_char)
 
 func __Str_count(Str self, Str substring) -> Int:
-
     if substring == "":
-        # Same as what Python does
-        return self.length() + 1
+        # Consistent with .split("")
+        return self.length() - 1
 
-    # TODO: this loop isn't elegant, ideally condition could be 'i := self.find_first(...)'
-    for let count = 0; ; count = count + 1:
-        let i = self.find_first(substring)
-        if i == null:
+    let count = 0
+    while true:
+        let before_substring = __slice_until_substring(self, substring)
+        if before_substring == self:
             return count
-        self = self.slice(i.get() + substring.length(), self.length())
-
-func starts_with_space(Str s) -> Bool:
-    # TODO: all ascii whitespace
-    return s.starts_with(" ") or s.starts_with("\n")
+        count = count + 1
+        self = self.remove_prefix(before_substring).remove_prefix(substring)
 
 func __Str_left_trim(Str self) -> Str:
-    while starts_with_space(self):
-        self = self.slice(1, self.length())
+    # TODO: all ascii whitespace?
+    while self.starts_with(" ") or self.starts_with("\n"):
+        self = self.remove_prefix(" ").remove_prefix("\n")
     return self
 
 func __Str_right_trim(Str self) -> Str:
-    while self.ends_with(" "):   # FIXME: something like starts_with_space
-        self = self.slice(0, self.length() - 1)
+    # TODO: left_trim copy/pasta
+    while self.ends_with(" ") or self.ends_with("\n"):
+        self = self.remove_suffix(" ").remove_suffix("\n")
     return self
 
 func __Str_trim(Str self) -> Str:
     return self.left_trim().right_trim()
 
-func __Str_replace(Str self, Str old, Str neuw) -> Str:
-    if old == "":
-        # TODO: error
-        return self
-
-    let result = ""
-    let remaining = self
-
-    while true:
-        let index = remaining.find_first(old)
-        if index == null:
-            return result + remaining
-        result = result + remaining.slice(0, index.get()) + neuw
-        remaining = remaining.slice(index.get() + old.length(), remaining.length())
+func __Str_replace(Str self, Str old, Str n3w) -> Str:
+    return self.split(old).join(n3w)
 
 func __Str_split(Str self, Str sep) -> List[Str]:
-    let result = new List[Str]()
+    let result = []
     if sep == "":
-        result.push(self)
+        # get list of unicode characters
+        while self != "":
+            result.push(__string_get_first_char(self))
+            self = self.remove_prefix(result.last())
         return result
-
-    while true:
-        let i = self.find_first(sep)
-        if i == null:
-            result.push(self)
-            return result
-
-        result.push(self.slice(0, i.get()))
-        self = self.slice(i.get() + sep.length(), self.length())
+    else:
+        while true:
+            let part = __slice_until_substring(self, sep)
+            result.push(part)
+            self = self.remove_prefix(part)
+            if self == "":
+                return result
+            self = self.remove_prefix(sep)
 
 func __List_Str_join(List[Str] self, Str sep) -> Str:
     if self == []:
         return ""
 
-    let result = self.get(0)
+    let result = self.first()
     for let i = 1; i < self.length(); i = i+1:
         result = result + sep + self.get(i)
     return result

@@ -33,6 +33,7 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
+- `or_if_null_then` method: `optional.or_if_null_then(default)`
 - safe and unsafe (user-input) strings: would prevent a lot of security problems
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - `[first_foo, ...other_foos]` syntax
@@ -48,13 +49,14 @@ Missing features:
 - better ternary than in python: `if cond then a else b`
 - named arguments
 - default values of arguments
+- find element from list (with custom callback to specify what matches):
+    - first occurence
+    - last occurrence
+    - all occurrences
+    - only occurrence, failing if multiple are found
 - string methods
-    - find occurrence of substring
-        - last occurrence
-        - all occurrences
-        - only occurrence, failing if multiple are found
-        - same for lists?
     - upper and lower (need unicode lib?)
+    - grep self-hosted compiler for more string method ideas
 - should `self` be a keyword?
 - chained equalities `a == b == c`
 - `x++`
@@ -80,7 +82,6 @@ Missing features:
     - rename `Optional.get()` to `.get_not_null_value()` to make it stand out
       in code reviews as possible bug
 - defining non-ref-counted pass-by-value classes
-- `starts_with` + `slice` string method
 - exceptions (easiest to implement similar to union?)
 - compilation errors or warnings for bad/unconventional/complicated style
     - `string.length() == 0` is more complicated than `string == ""`, same for lists
@@ -138,12 +139,14 @@ Optimization ideas:
 - avoiding allocations when an object isn't passed around and no reference
   counting is actually needed
     - In particular, `thing == []` does not have to allocate
+- strings: some kind of string views, so that `foo.remove_prefix(bar)` does not have to copy many characters of data
 - concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
     - `List[Str].join` and various other functions
 - caching `strlen` result
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
 - streams, as an alternative to lists
     - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
+- `(a / b).floor()` with integers `a` and `b` doesn't have to involve floats at runtime
 
 
 ## Self-hosted compiler

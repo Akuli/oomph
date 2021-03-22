@@ -33,20 +33,23 @@ noreturn void panic_printf_errno(const char *fmt, ...);
 int64_t argv_count(void);
 struct class_Str *argv_get(int64_t i);
 
+int64_t string_get_utf8_byte(struct class_Str *s, int64_t i);
+int64_t subprocess_run(void *args);
 struct class_Str *io_read_file(const struct class_Str *path);
+struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep);
+struct class_Str *string_get_first_char(struct class_Str *s);
+struct class_Str *meth_Str_remove_prefix(struct class_Str *s, struct class_Str *pre);
+struct class_Str *meth_Str_remove_suffix(struct class_Str *s, struct class_Str *suf);
 void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
 void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
-int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub);
-int64_t subprocess_run(void *args);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
 #define meth_Float_equals(a, b) ((a)==(b))
 #define meth_Int_equals(a, b) ((a)==(b))
 #define meth_Str_equals(a, b) (strcmp((a)->str, (b)->str) == 0)
 #define meth_null_to_string(n) cstr_to_string("null")
-bool meth_Str_has_continuation_byte_at(const struct class_Str *s, int64_t i);
 double meth_Str_to_float(const struct class_Str *s);
 int64_t meth_Float_ceil(double d);
 int64_t meth_Float_floor(double d);
@@ -54,10 +57,8 @@ int64_t meth_Float_round(double d);
 int64_t meth_Float_truncate(double d);
 int64_t meth_Str_length(const struct class_Str *s);
 int64_t meth_Str_to_int(const struct class_Str *s);
-int64_t meth_Str_unicode_length(const struct class_Str *s);
 struct class_Str *meth_Float_to_string(double d);
 struct class_Str *meth_Int_to_string(int64_t n);
-struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end);
 struct class_Str *meth_Str_to_string(struct class_Str *s);
 
 /*

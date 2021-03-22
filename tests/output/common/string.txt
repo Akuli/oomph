@@ -3,20 +3,14 @@ true
 false
 false
 '
-Lengths:
+Length:
 5
-5
-6
 5
 0
-0
-Slices:
-
-
-hello
-he
-llo
-hello
+UTF-8:
+[104, 101, 108, 108, 111]
+[104, 101, 108, 108, 195, 182]
+[]
 Repeats:
 
 
@@ -26,6 +20,8 @@ abcabcabc
 abcabcabcabc
 abcabcabcabcabc
 Contains:
+true
+false
 true
 false
 true
@@ -50,15 +46,11 @@ Pad:
 abc**
 *abc*
 *abc**
-Find first:
-Optional[Int](3)
-Optional[Int](null)
-Optional[Int](0)
 Count:
 2
 2
 0
-5
+3
 Trim:
 a 
  a
@@ -68,4 +60,4 @@ xcx
 xxa
 xx
 xxxxxxxx
-asdf
+axsxdxf

@@ -30,15 +30,13 @@ class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
         self.declared_strings.push(value)
 
         let content_chars = []
-        for let i = 0; i < value.length(); i = i+1:
-            # FIXME: escaping
-            # FIXME: non-ascii chars
-            content_chars.push("'" + value.slice(i, i+1) + "'")
+        foreach c of value.get_utf8():
+            content_chars.push(c.to_string())
         content_chars.push("'\\0'")
 
         self.string_defs = self.string_defs + """
         static {self.emit_type(self.builtins.STR)} {varname}
-        = (void*)(unsigned char[])\{
+        = (void*)(unsigned char[]) \{
             // TODO: is this insanity cross-platform enough?
             0xff, 0xff, 0xff, 0xff,
             0xff, 0xff, 0xff, 0xff,

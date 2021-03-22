@@ -6,22 +6,15 @@ export func main():
 
     print("'")
 
-    print("Lengths:")
+    print("Length:")
     print("hello".length())
-    print("hello".unicode_length())
     print("hellö".length())
-    print("hellö".unicode_length())
     print("".length())
-    print("".unicode_length())
 
-    print("Slices:")
-    print("hello".slice(9, -6))
-    print("hello".slice(2, 2))
-
-    print("hello".slice(0, 5))
-    print("hello".slice(0, 2))
-    print("hello".slice(2, 5))
-    print("hello".slice(-6, 9))
+    print("UTF-8:")
+    print("hello".get_utf8())
+    print("hellö".get_utf8())
+    print("".get_utf8())
 
     print("Repeats:")
     print("abc".repeat(-5))    # TODO: should negative repeats be disallowed?
@@ -38,6 +31,8 @@ export func main():
     print("abc".contains("abc"))
     print("abc".contains("abcd"))
     print("abc".contains(""))
+    print("".contains("a"))
+    print("".contains(""))
 
     print("Starts with:")
     print("abc".starts_with("ab"))
@@ -60,11 +55,6 @@ export func main():
     print("abc".right_pad(5, "*"))
     print("abc".center_pad(5, "*"))
     print("abc".center_pad(6, "*"))
-
-    print("Find first:")
-    print("abclolwatlolabc".find_first("lol"))
-    print("abclolwatlolabc".find_first("x"))
-    print("abclolwatlolabc".find_first(""))
 
     print("Count:")
     print("abclolwatlolabc".count("lol"))

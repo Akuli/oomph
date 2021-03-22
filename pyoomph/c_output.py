@@ -243,12 +243,17 @@ _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generi
 _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
+    # TODO: why is this so difficult?
     ir.visible_builtins["__argv_count"]: "argv_count",
     ir.visible_builtins["__argv_get"]: "argv_get",
     ir.visible_builtins["__io_mkdir"]: "io_mkdir",
     ir.visible_builtins["__io_read_file"]: "io_read_file",
     ir.visible_builtins["__io_write_file"]: "io_write_file",
-    ir.visible_builtins["__string_find_internal"]: "string_find_internal",
+    ir.visible_builtins["__remove_prefix"]: "string_remove_prefix",
+    ir.visible_builtins["__remove_suffix"]: "string_remove_suffix",
+    ir.visible_builtins["__slice_until_substring"]: "slice_until_substring",
+    ir.visible_builtins["__string_get_first_char"]: "string_get_first_char",
+    ir.visible_builtins["__string_get_utf8_byte"]: "string_get_utf8_byte",
     ir.visible_builtins["__subprocess_run"]: "subprocess_run",
     ir.visible_builtins["assert"]: "oomph_assert",
     ir.visible_builtins["false"]: "false",
@@ -334,14 +339,18 @@ class _FilePair:
         if isinstance(var, ir.FileVariable) and var.name == "main":
             c_name = "oomph_main"
         elif var.name in {
+            "__Bool_to_string",
             "__List_Str_join",
             "__Str_center_pad",
             "__Str_contains",
             "__Str_count",
             "__Str_ends_with",
-            "__Str_find_first",
+            "__Str_from_start_to_substring",
+            "__Str_get_utf8",
             "__Str_left_pad",
             "__Str_left_trim",
+            "__Str_remove_prefix",
+            "__Str_remove_suffix",
             "__Str_repeat",
             "__Str_replace",
             "__Str_right_pad",
@@ -349,7 +358,6 @@ class _FilePair:
             "__Str_split",
             "__Str_starts_with",
             "__Str_trim",
-            "__Bool_to_string",
         }:
             # Class implemented in C, method implemented in builtins.oomph
             # TODO: check if this file is builtins.oomph

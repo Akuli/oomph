@@ -49,12 +49,6 @@ struct class_Str *meth_Str_to_string(struct class_Str *s)
 	return res;
 }
 
-int64_t meth_Str_length(const struct class_Str *s)
-{
-	// TODO: optimize
-	return strlen(s->str);
-}
-
 // example: ONES(6) is 111111 in binary
 #define ONES(n) ((1<<(n))-1)
 
@@ -103,12 +97,8 @@ bool string_validate_utf8(const char *s)
 	return true;
 }
 
-bool meth_Str_has_continuation_byte_at(const struct class_Str *s, int64_t i)
-{
-	return (0 <= i && i < (int64_t)strlen(s->str) && is_utf8_continuation_byte(s->str[i]));
-}
-
-int64_t meth_Str_unicode_length(const struct class_Str *s)
+// this counts unicode chars, strlen counts utf8 chars
+int64_t meth_Str_length(const struct class_Str *s)
 {
 	const char *str = s->str;
 	int64_t res = 0;
@@ -119,39 +109,62 @@ int64_t meth_Str_unicode_length(const struct class_Str *s)
 	return res;
 }
 
-// TODO: for most uses, it is inefficient to allocate a new object
-struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end)
+static struct class_Str *slice_from_start(struct class_Str *s, size_t len)
 {
-	int64_t len = strlen(s->str);
-	if (start < 0)
-		start = 0;
-	if (start > len)
-		start = len;
-	if (end < 0)
-		end = 0;
-	if (end > len)
-		end = len;
-
-	if (start >= end)
-		return cstr_to_string("");
-	if (is_utf8_continuation_byte(s->str[start]))
-		panic_printf("can't slice string in the middle of continuation byte");
-
-	if (end == len)
-		return cstr_to_string(&s->str[start]);
-	if (is_utf8_continuation_byte(s->str[end]))
-		panic_printf("can't slice string in the middle of continuation byte");
-
-	struct class_Str *res = alloc_string(end - start);
-	memcpy(res->str, &s->str[start], end - start);
-	res->str[end - start] = '\0';
+	assert(strlen(s->str) >= len);
+	// TODO: avoid temporary allocation
+	char *tmp = malloc(len + 1);
+	assert(tmp);
+	memcpy(tmp, s->str, len);
+	tmp[len] = '\0';
+	struct class_Str *res = cstr_to_string(tmp);
+	free(tmp);
 	return res;
 }
 
-int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub)
+// TODO: avoid allocations
+struct class_Str *string_get_first_char(struct class_Str *s)
 {
-	const char *ptr = strstr(s->str, sub->str);
-	if (!ptr)
-		return -1;
-	return ptr - s->str;
+	assert(s->str[0] != '\0');
+	size_t n = 1;
+	while (is_utf8_continuation_byte(s->str[n]))
+		n++;
+	return slice_from_start(s, n);
+}
+
+// TODO: for most uses, it is inefficient to allocate a new object
+struct class_Str *meth_Str_remove_prefix(struct class_Str *s, struct class_Str *pre)
+{
+	size_t n = strlen(pre->str);
+	if (strlen(s->str) >= n && memcmp(s->str, pre->str, n) == 0)
+		return cstr_to_string(s->str + strlen(pre->str));
+	incref(s);
+	return s;
+}
+
+struct class_Str *meth_Str_remove_suffix(struct class_Str *s, struct class_Str *suf)
+{
+	size_t slen=strlen(s->str), suflen=strlen(suf->str);
+	if (slen >= suflen && strcmp(s->str + slen - suflen, suf->str) == 0)
+		return slice_from_start(s, slen - suflen);
+	incref(s);
+	return s;
+}
+
+// python's string.split(sep)[0]
+struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep)
+{
+	char *ptr = strstr(s->str, sep->str);
+	if (!ptr) {
+		incref(s);
+		return s;
+	}
+	return slice_from_start(s, ptr - s->str);
+}
+
+int64_t string_get_utf8_byte(struct class_Str *s, int64_t i)
+{
+	// Include trailing zero byte
+	assert(0 <= i && i <= (int64_t)strlen(s->str));
+	return (unsigned char) s->str[i];
 }

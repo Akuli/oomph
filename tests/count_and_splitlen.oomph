@@ -1,0 +1,9 @@
+export func main():
+    print("abcb".count("b"))
+    print("abcb".split("b").length())
+
+    print("abcb".count(""))
+    print("abcb".split("").length())
+
+    print("".count("b"))
+    print("".split("b").length())
