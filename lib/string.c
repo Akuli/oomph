@@ -189,3 +189,11 @@ struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *se
 	}
 	return slice_from_start(s, ptr - s->str);
 }
+
+int64_t string_get_utf8_byte(struct class_Str *s, int64_t i)
+{
+	// Include trailing zero byte
+	if (i < 0 || i > (int64_t)strlen(s->str))
+		panic_printf("utf8 index %lld out of range for string \"%s\"", (long long)i, s->str);
+	return (unsigned char) s->str[i];
+}

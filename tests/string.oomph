@@ -14,6 +14,11 @@ export func main():
     print("".length())
     print("".unicode_length())
 
+    print("UTF-8:")
+    print("hello".get_utf8())
+    print("hellö".get_utf8())
+    print("".get_utf8())
+
     print("Slices:")
     print("hello".slice(9, -6))
     print("hello".slice(2, 2))
