@@ -59,7 +59,7 @@ visible_builtins = {
         BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable(
-            "__string_from_start_to_substring", FunctionType([STRING, STRING], STRING)
+            "__slice_until_substring", FunctionType([STRING, STRING], STRING)
         ),
         BuiltinVariable("__string_get_first_char", FunctionType([STRING], STRING)),
         BuiltinVariable("__string_get_utf8_byte", FunctionType([STRING, INT], INT)),

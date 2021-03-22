@@ -39,7 +39,7 @@ func __Str_ends_with(Str self, Str suffix) -> Bool:
     return (self.remove_suffix(suffix) != null)
 
 func __Str_contains(Str self, Str substring) -> Bool:
-    return (self == "" and substring == "") or __string_from_start_to_substring(self, substring) != self
+    return (self == "" and substring == "") or __slice_until_substring(self, substring) != self
 
 # No need to use a third party library for this, lol
 func __Str_left_pad(Str self, Int len, Str pad_char) -> Str:
@@ -59,7 +59,7 @@ func __Str_count(Str self, Str substring) -> Int:
 
     let count = 0
     while true:
-        let before_substring = __string_from_start_to_substring(self, substring)
+        let before_substring = __slice_until_substring(self, substring)
         if before_substring == self:
             return count
         count = count + 1
@@ -99,7 +99,7 @@ func __Str_split(Str self, Str sep) -> List[Str]:
         return result
     else:
         while true:
-            let part = __string_from_start_to_substring(self, sep)
+            let part = __slice_until_substring(self, sep)
             result.push(part)
             self = self.remove_prefix(part).get()
             if self == "":
