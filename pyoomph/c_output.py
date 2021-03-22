@@ -251,7 +251,9 @@ _specially_emitted_variables: Dict[ir.Variable, str] = {
     ir.visible_builtins["__io_write_file"]: "io_write_file",
     ir.visible_builtins["__remove_prefix"]: "string_remove_prefix",
     ir.visible_builtins["__remove_suffix"]: "string_remove_suffix",
-    ir.visible_builtins["__string_from_start_to_substring"]: "string_from_start_to_substring",
+    ir.visible_builtins[
+        "__string_from_start_to_substring"
+    ]: "string_from_start_to_substring",
     ir.visible_builtins["__string_get_first_char"]: "string_get_first_char",
     ir.visible_builtins["__string_get_utf8_byte"]: "string_get_utf8_byte",
     ir.visible_builtins["__subprocess_run"]: "subprocess_run",
