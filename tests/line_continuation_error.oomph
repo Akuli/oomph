@@ -1,0 +1,4 @@
+export func main():
+    # oomph does not support this
+    print("Hello \
+World!")

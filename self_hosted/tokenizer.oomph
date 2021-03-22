@@ -59,7 +59,6 @@ func extract_string(Str code, Str quotes) -> Str:
         if code.remove_prefix(result).get().starts_with("\\"):
             result = result + "\\"
 
-        # TODO: copy/pasta, only one case tested i think
         if code == result:
             print("string does not terminate: {code}")
             assert(false)  # TODO: error
