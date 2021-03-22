@@ -6,13 +6,10 @@ export func main():
 
     print("'")
 
-    print("Lengths:")
+    print("Length:")
     print("hello".length())
-    print("hello".unicode_length())
     print("hellö".length())
-    print("hellö".unicode_length())
     print("".length())
-    print("".unicode_length())
 
     print("UTF-8:")
     print("hello".get_utf8())

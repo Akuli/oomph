@@ -187,7 +187,6 @@ STRING.methods["to_float"] = FunctionType([STRING], FLOAT)
 STRING.methods["to_int"] = FunctionType([STRING], INT)
 STRING.methods["to_string"] = FunctionType([STRING], STRING)  # does nothing
 STRING.methods["trim"] = FunctionType([STRING], STRING)
-STRING.methods["unicode_length"] = FunctionType([STRING], INT)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
 builtin_generic_types = {gen.name: gen for gen in [OPTIONAL, LIST]}

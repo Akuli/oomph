@@ -57,7 +57,6 @@ int64_t meth_Float_round(double d);
 int64_t meth_Float_truncate(double d);
 int64_t meth_Str_length(const struct class_Str *s);
 int64_t meth_Str_to_int(const struct class_Str *s);
-int64_t meth_Str_unicode_length(const struct class_Str *s);
 struct class_Str *meth_Float_to_string(double d);
 struct class_Str *meth_Int_to_string(int64_t n);
 struct class_Str *meth_Str_to_string(struct class_Str *s);

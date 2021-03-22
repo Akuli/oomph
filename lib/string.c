@@ -49,12 +49,6 @@ struct class_Str *meth_Str_to_string(struct class_Str *s)
 	return res;
 }
 
-int64_t meth_Str_length(const struct class_Str *s)
-{
-	// TODO: optimize
-	return strlen(s->str);
-}
-
 // example: ONES(6) is 111111 in binary
 #define ONES(n) ((1<<(n))-1)
 
@@ -103,7 +97,8 @@ bool string_validate_utf8(const char *s)
 	return true;
 }
 
-int64_t meth_Str_unicode_length(const struct class_Str *s)
+// this counts unicode chars, strlen counts utf8 chars
+int64_t meth_Str_length(const struct class_Str *s)
 {
 	const char *str = s->str;
 	int64_t res = 0;
