@@ -104,18 +104,29 @@ func raw_tokenize(Str code) -> List[Token]:
                 let token = new Token("keyword", id.get())
             else:
                 token = new Token("id", id.get())
+
         elif op != null:
             token = new Token("op", op.get())
+
         elif int_value != "":
             let remaining = code.remove_prefix(int_value).get()
-            if (remaining.starts_with(".")
-            and remaining != "."
-            and "0123456789".contains(remaining.remove_prefix(".").get().split("").first())):
-                let float_value = int_value + "." + get_int(remaining.remove_prefix(".").get())
-                token = new Token("float", float_value)
+            if remaining.starts_with("."):
+                # this may set digit_after_dot to null
+                let digit_after_dot = starts_with_any(
+                    remaining.remove_prefix(".").get(),
+                    "0123456789".split(""))
             else:
+                digit_after_dot = null
+
+            if digit_after_dot == null:
+                # int
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
                 token = new Token("int", int_value)
+            else:
+                # float
+                let float_value = int_value + "." + get_int(remaining.remove_prefix(".").get())
+                token = new Token("float", float_value)
+
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
@@ -128,19 +139,22 @@ func raw_tokenize(Str code) -> List[Token]:
                 token = new Token("indent", spaces)
             else:
                 # Space to be ignored
-                # TODO: don't ignore indents in beginning of file
+                # TODO: error for indents in beginning of file
                 code = code.remove_prefix(" ").get()
                 continue
+
         elif code.starts_with("#"):
             code = code.remove_prefix(code.split("\n").first()).get()
             continue
+
         elif code.starts_with("\"\"\""):
             let content = extract_string(code, "\"\"\"")
             token = new Token("multiline_string", content)
-        # TODO: multiline strings
+
         elif code.starts_with("\""):
             let content = extract_string(code.split("\n").first(), "\"")
             token = new Token("oneline_string", content)
+
         else:
             print(result)
             print("Invalid syntax: {code}")
