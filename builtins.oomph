@@ -53,17 +53,17 @@ func __Str_center_pad(Str self, Int len, Str pad_char) -> Str:
     return self.left_pad(average, pad_char).right_pad(len, pad_char)
 
 func __Str_count(Str self, Str substring) -> Int:
-
     if substring == "":
         # Same as what Python does
         return self.length() + 1
 
-    # TODO: this loop isn't elegant, ideally condition could be 'i := self.find_first(...)'
-    for let count = 0; ; count = count + 1:
-        let i = self.find_first(substring)
-        if i == null:
+    let count = 0
+    while true:
+        let before_substring = __string_from_start_to(self, substring)
+        if before_substring == self:
             return count
-        self = self.slice(i.get() + substring.length(), self.length())
+        count = count + 1
+        self = self.remove_prefix(before_substring).get().remove_prefix(substring).get()
 
 func starts_with_space(Str s) -> Bool:
     # TODO: all ascii whitespace
