@@ -19,15 +19,6 @@ export func main():
     print("hellö".get_utf8())
     print("".get_utf8())
 
-    print("Slices:")
-    print("hello".slice(9, -6))
-    print("hello".slice(2, 2))
-
-    print("hello".slice(0, 5))
-    print("hello".slice(0, 2))
-    print("hello".slice(2, 5))
-    print("hello".slice(-6, 9))
-
     print("Repeats:")
     print("abc".repeat(-5))    # TODO: should negative repeats be disallowed?
     print("abc".repeat(0))

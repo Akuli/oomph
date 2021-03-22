@@ -119,35 +119,6 @@ int64_t meth_Str_unicode_length(const struct class_Str *s)
 	return res;
 }
 
-// TODO: for most uses, it is inefficient to allocate a new object
-struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64_t end)
-{
-	int64_t len = strlen(s->str);
-	if (start < 0)
-		start = 0;
-	if (start > len)
-		start = len;
-	if (end < 0)
-		end = 0;
-	if (end > len)
-		end = len;
-
-	if (start >= end)
-		return cstr_to_string("");
-	if (is_utf8_continuation_byte(s->str[start]))
-		panic_printf("can't slice string in the middle of continuation byte");
-
-	if (end == len)
-		return cstr_to_string(&s->str[start]);
-	if (is_utf8_continuation_byte(s->str[end]))
-		panic_printf("can't slice string in the middle of continuation byte");
-
-	struct class_Str *res = alloc_string(end - start);
-	memcpy(res->str, &s->str[start], end - start);
-	res->str[end - start] = '\0';
-	return res;
-}
-
 static struct class_Str *slice_from_start(struct class_Str *s, size_t len)
 {
 	assert(strlen(s->str) >= len);
@@ -171,6 +142,7 @@ struct class_Str *string_get_first_char(struct class_Str *s)
 	return slice_from_start(s, n);
 }
 
+// TODO: for most uses, it is inefficient to allocate a new object
 struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre)
 {
 	size_t n = strlen(pre->str);

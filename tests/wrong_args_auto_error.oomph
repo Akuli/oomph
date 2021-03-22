@@ -1,5 +1,5 @@
 export func main():
     let foo = []
     foreach lel of foo:
-        lel.slice(0, 1, 2)
+        lel.remove_prefix("foo", "bar")
     foo.push("asdf")

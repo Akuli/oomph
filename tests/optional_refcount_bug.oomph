@@ -1,5 +1,5 @@
 func foo() -> Optional[Str]:
-    return new Optional[Str]("aaa".slice(0, 1))
+    return new Optional[Str]("aaa".split("").first())
 
 export func main():
     print(foo())

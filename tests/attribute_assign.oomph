@@ -1,10 +1,10 @@
 class Foo(Str s)
 
 export func main():
-    # Slicing to create reference-counted strings (exposes bugs)
-    let foo = new Foo("lol".slice(0, 3))
+    # Joining to create reference-counted strings (exposes bugs)
+    let foo = new Foo(["l", "o", "l"].join(""))
     print(foo)
-    foo.s = "wuttt".slice(0, 5)
+    foo.s = ["w", "u", "t", "t", "t"].join("")
     print(foo)
 
     for let i = 0; i < 10; i = i+1:

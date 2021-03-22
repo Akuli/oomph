@@ -1,6 +1,6 @@
 func foo(Str s):
-    s = s.slice(1, s.length())
+    s = s.remove_prefix("a").get()
 
 export func main():
-    # Slicing to create reference-counted string
-    foo("abc".slice(0, 3))
+    # Joining to create reference-counted string (exposes bugs)
+    foo(["a", "b", "c"].join(""))

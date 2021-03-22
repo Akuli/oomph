@@ -2,7 +2,8 @@ export func main():
     let cc = ""
 
     for let i = 0; i < 2; i = i+1:
-        let value = "cc".slice(0, 2)
+        # joining makes refcounted string, exposes bugs
+        let value = ["c", "c"].join("")
         if i == 0:
             cc = value
 
