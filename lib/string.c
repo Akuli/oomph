@@ -157,7 +157,7 @@ struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *su
 }
 
 // python's string.split(sep)[0]
-struct class_Str *string_from_start_to(struct class_Str *s, struct class_Str *sep)
+struct class_Str *string_from_start_to_substring(struct class_Str *s, struct class_Str *sep)
 {
 	char *ptr = strstr(s->str, sep->str);
 	if (!ptr) {
