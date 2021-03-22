@@ -132,9 +132,17 @@ class _Parser:
             result = self.parse_expression()
             self.get_token("op", ")")
         elif self.token_iter.peek() == ("op", "["):
-            result = ast.ListLiteral(
-                self.parse_commasep_in_parens(self.parse_expression, parens="[]")
-            )
+            if self.token_iter[1] in {("keyword", "while"), ("keyword", "for"), ("keyword", "foreach")}:
+                # list comprehension
+                loop_header = self.parse_loop_header()
+                self.get_token("op", ":")
+                value = self.parse_expression()
+                self.get_token("op", "]")
+                result = ast.ListComprehension(loop_header, value)
+            else:
+                result = ast.ListLiteral(
+                    self.parse_commasep_in_parens(self.parse_expression, parens="[]")
+                )
         else:
             raise NotImplementedError(self.token_iter.peek())
 
