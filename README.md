@@ -82,7 +82,6 @@ Missing features:
     - rename `Optional.get()` to `.get_not_null_value()` to make it stand out
       in code reviews as possible bug
 - defining non-ref-counted pass-by-value classes
-- `starts_with` + `slice` string method
 - exceptions (easiest to implement similar to union?)
 - compilation errors or warnings for bad/unconventional/complicated style
     - `string.length() == 0` is more complicated than `string == ""`, same for lists
