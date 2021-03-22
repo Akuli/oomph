@@ -12,7 +12,7 @@ import sys
 import traceback
 from typing import Dict, List
 
-from pyoomph import ast, ast2ir, c_output, ir, ast_transformer, parser
+from pyoomph import ast, ast2ir, ast_transformer, c_output, ir, parser
 
 python_code_dir = pathlib.Path(__file__).absolute().parent
 project_root = python_code_dir.parent
