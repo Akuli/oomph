@@ -34,7 +34,7 @@ func __Str_ends_with(Str self, Str suffix) -> Bool:
     return (self.remove_suffix(suffix) != null)
 
 func __Str_contains(Str self, Str substring) -> Bool:
-    return self.find_first(substring) != null
+    return (self == "" and substring == "") or __string_from_start_to(self, substring) != self
 
 # No need to use a third party library for this, lol
 func __Str_left_pad(Str self, Int len, Str pad_char) -> Str:

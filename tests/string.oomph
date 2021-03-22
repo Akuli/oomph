@@ -38,6 +38,8 @@ export func main():
     print("abc".contains("abc"))
     print("abc".contains("abcd"))
     print("abc".contains(""))
+    print("".contains("a"))
+    print("".contains(""))
 
     print("Starts with:")
     print("abc".starts_with("ab"))
