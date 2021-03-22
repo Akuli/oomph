@@ -39,6 +39,8 @@ void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);
 void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
 int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub);
+struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre);
+struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf);
 int64_t subprocess_run(void *args);
 
 #define meth_Bool_equals(a, b) ((a)==(b))

@@ -243,11 +243,14 @@ _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generi
 _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
+    # TODO: why is this so difficult?
     ir.visible_builtins["__argv_count"]: "argv_count",
     ir.visible_builtins["__argv_get"]: "argv_get",
     ir.visible_builtins["__io_mkdir"]: "io_mkdir",
     ir.visible_builtins["__io_read_file"]: "io_read_file",
     ir.visible_builtins["__io_write_file"]: "io_write_file",
+    ir.visible_builtins["__remove_prefix"]: "string_remove_prefix",
+    ir.visible_builtins["__remove_suffix"]: "string_remove_suffix",
     ir.visible_builtins["__string_find_internal"]: "string_find_internal",
     ir.visible_builtins["__subprocess_run"]: "subprocess_run",
     ir.visible_builtins["assert"]: "oomph_assert",
@@ -342,6 +345,8 @@ class _FilePair:
             "__Str_find_first",
             "__Str_left_pad",
             "__Str_left_trim",
+            "__Str_remove_prefix",
+            "__Str_remove_suffix",
             "__Str_repeat",
             "__Str_replace",
             "__Str_right_pad",

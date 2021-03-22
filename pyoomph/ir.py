@@ -56,6 +56,8 @@ visible_builtins = {
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
+        BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
+        BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__string_find_internal", FunctionType([STRING, STRING], INT)),
         BuiltinVariable("__subprocess_run", FunctionType([LIST.get_type(STRING)], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),

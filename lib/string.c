@@ -148,6 +148,33 @@ struct class_Str *meth_Str_slice(const struct class_Str *s, int64_t start, int64
 	return res;
 }
 
+struct class_Str *string_remove_prefix(struct class_Str *s, struct class_Str *pre)
+{
+	size_t n = strlen(pre->str);
+	if (strlen(s->str) >= n && memcmp(s->str, pre->str, n) == 0)
+		return cstr_to_string(s->str + strlen(pre->str));
+	incref(s);
+	return s;
+}
+
+struct class_Str *string_remove_suffix(struct class_Str *s, struct class_Str *suf)
+{
+	size_t slen=strlen(s->str), suflen=strlen(suf->str);
+	if (slen >= suflen && memcmp(s->str + slen - suflen, suf->str, suflen) == 0) {
+		// TODO: avoid temporary allocation
+		char *tmp = malloc(slen - suflen + 1);
+		assert(tmp);
+		memcpy(tmp, s->str, slen - suflen);
+		tmp[slen - suflen] = '\0';
+		struct class_Str *res = cstr_to_string(tmp);
+		free(tmp);
+		return res;
+	}
+
+	incref(s);
+	return s;
+}
+
 int64_t string_find_internal(const struct class_Str *s, const struct class_Str *sub)
 {
 	const char *ptr = strstr(s->str, sub->str);

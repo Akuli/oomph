@@ -15,13 +15,23 @@ func __Str_repeat(Str self, Int n) -> Str:
         result = result + result
     return result.slice(0, n*self.length())
 
+func __Str_remove_prefix(Str self, Str prefix) -> Optional[Str]:
+    let result = __remove_prefix(self, prefix)
+    if result == self and prefix != "":
+        return null
+    return result
+
+func __Str_remove_suffix(Str self, Str suffix) -> Optional[Str]:
+    let result = __remove_suffix(self, suffix)
+    if result == self and suffix != "":
+        return null
+    return result
+
 func __Str_starts_with(Str self, Str prefix) -> Bool:
-    let end = prefix.length()
-    return (not self.has_continuation_byte_at(end)) and self.slice(0, end) == prefix
+    return (self.remove_prefix(prefix) != null)
 
 func __Str_ends_with(Str self, Str suffix) -> Bool:
-    let start = self.length() - suffix.length()
-    return (not self.has_continuation_byte_at(start)) and self.slice(start, self.length()) == suffix
+    return (self.remove_suffix(suffix) != null)
 
 func __Str_contains(Str self, Str substring) -> Bool:
     return self.find_first(substring) != null
