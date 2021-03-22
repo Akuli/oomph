@@ -65,18 +65,23 @@ func __Str_count(Str self, Str substring) -> Int:
         count = count + 1
         self = self.remove_prefix(before_substring).get().remove_prefix(substring).get()
 
-func starts_with_space(Str s) -> Bool:
-    # TODO: all ascii whitespace
-    return s.starts_with(" ") or s.starts_with("\n")
-
 func __Str_left_trim(Str self) -> Str:
-    while starts_with_space(self):
-        self = self.slice(1, self.length())
+    # TODO: all ascii whitespace?
+    while self.starts_with(" ") or self.starts_with("\n"):  # TODO: all ascii whitespaces?
+        # TODO: something like self = self.starts_with(" ").or_if_null_then(self)
+        if self.starts_with(" "):
+            self = self.remove_prefix(" ").get()
+        if self.starts_with("\n"):
+            self = self.remove_prefix("\n").get()
     return self
 
 func __Str_right_trim(Str self) -> Str:
-    while self.ends_with(" "):   # FIXME: something like starts_with_space
-        self = self.slice(0, self.length() - 1)
+    # TODO: left_trim copy/pasta
+    while self.ends_with(" ") or self.ends_with("\n"):
+        if self.ends_with(" "):
+            self = self.remove_suffix(" ").get()
+        if self.ends_with("\n"):
+            self = self.remove_suffix("\n").get()
     return self
 
 func __Str_trim(Str self) -> Str:
