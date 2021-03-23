@@ -62,8 +62,10 @@ Missing features:
 - `x++`
 - `+=`
 - lists:
-    - js-style methods (needs lambdas) or list comprehensions
+    - `if` in list comprehensions
+    - js-style methods (needs lambdas)
         - idea: `foo.map(.to_string())` would be same as `foo.map(item => item.to_string())`
+        - list comprehensions still needed?
     - `list + list`
 - generics
     - defining generic classes or functions
