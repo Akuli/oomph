@@ -1,0 +1,8 @@
+export func main():
+    print([for let i = 0; i < 10; i = i+1: i])
+    print([foreach thing of ["a", "b", "c"]: "lol {thing}"])
+
+    let foo = [1, 2, 3]
+    print([while foo != []: foo.pop()])
+
+    print([for let y = 0; y < 3; y = y+1: [for let x = 0; x <= 5; x = x+1: x]])

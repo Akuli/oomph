@@ -10,7 +10,9 @@ export union Expression:
     GetAttribute
     GetVar
     IntConstant
+    ListComprehension
     ListLiteral
+    StatementsAndExpression
     StringConstant
     StringFormatJoin
     UnaryOperator
@@ -34,11 +36,19 @@ export union ToplevelDeclaration:
     Import
     UnionDef
 
+export union LoopHeader:
+    ForLoopHeader
+    ForeachLoopHeader
+
 export class TypeAndName(Type type, Str name)
 
 # 'case *' means that type_and_varname is null
 export class Case(Optional[TypeAndName] type_and_name, List[Statement] body)
 export class ConditionAndBody(Expression cond, List[Statement] body)
+
+# for init; cond; incr
+export class ForLoopHeader(List[Statement] init, Optional[Expression] cond, List[Statement] incr)
+export class ForeachLoopHeader(Str varname, Expression list)
 
 export class BinaryOperator(Expression lhs, Str op, Expression rhs)
 export class Call(Expression function, List[Expression] args)
@@ -47,7 +57,9 @@ export class FloatConstant(Str value)  # value not converted to float in case we
 export class GetAttribute(Expression obj, Str attribute)
 export class GetVar(Str varname)
 export class IntConstant(Int value)
+export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(List[Expression] content)
+export class StatementsAndExpression(List[Statement] statements, Expression expression)
 export class StringConstant(Str value)
 export class StringFormatJoin(List[Expression] parts)  # always >=2 parts
 export class UnaryOperator(Str op, Expression obj)
@@ -56,7 +68,7 @@ export class Break()
 export class Continue()
 export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
 export class Let(Str varname, Expression value)
-export class Loop(Optional[Statement] init, Optional[Expression] cond, Optional[Statement] incr, List[Statement] body)
+export class Loop(LoopHeader loop_header, List[Statement] body)
 export class Pass()
 export class Return(Optional[Expression] value)
 export class SetAttribute(Expression obj, Str attribute, Expression value)

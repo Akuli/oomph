@@ -12,7 +12,6 @@ _T = TypeVar("_T")
 class _Parser:
     def __init__(self, token_iter: Iterator[Tuple[str, str]]):
         self.token_iter = more_itertools.peekable(token_iter)
-        self.foreach_counter = 0
 
     def get_token(
         self,
@@ -105,6 +104,40 @@ class _Parser:
             return parts[0]
         return ast.StringFormatJoin(parts)
 
+    def parse_loop_header(self) -> Union[ast.ForLoopHeader, ast.ForeachLoopHeader]:
+        if self.token_iter.peek() == ("keyword", "while"):
+            self.get_token("keyword", "while")
+            return ast.ForLoopHeader([], self.parse_expression(), [])
+
+        if self.token_iter.peek() == ("keyword", "for"):
+            self.get_token("keyword", "for")
+            init = (
+                []
+                if self.token_iter.peek() == ("op", ";")
+                else [self.parse_oneline_ish_statement()]
+            )
+            self.get_token("op", ";")
+            cond = (
+                None
+                if self.token_iter.peek() == ("op", ";")
+                else self.parse_expression()
+            )
+            self.get_token("op", ";")
+            incr = (
+                []
+                if self.token_iter.peek() == ("begin_block", ":")
+                else [self.parse_oneline_ish_statement()]
+            )
+            return ast.ForLoopHeader(init, cond, incr)
+
+        if self.token_iter.peek() == ("keyword", "foreach"):
+            self.get_token("keyword", "foreach")
+            varname = self.get_token("identifier")[1]
+            self.get_token("keyword", "of")
+            return ast.ForeachLoopHeader(varname, self.parse_expression())
+
+        raise NotImplementedError(self.token_iter.peek())
+
     def parse_simple_expression(self) -> ast.Expression:
         result: ast.Expression
         if self.token_iter.peek()[0] == "oneline_string":
@@ -132,9 +165,22 @@ class _Parser:
             result = self.parse_expression()
             self.get_token("op", ")")
         elif self.token_iter.peek() == ("op", "["):
-            result = ast.ListLiteral(
-                self.parse_commasep_in_parens(self.parse_expression, parens="[]")
-            )
+            if self.token_iter[1] in {
+                ("keyword", "while"),
+                ("keyword", "for"),
+                ("keyword", "foreach"),
+            }:
+                # list comprehension
+                self.get_token("op", "[")
+                loop_header = self.parse_loop_header()
+                self.get_token("op", ":")
+                value = self.parse_expression()
+                self.get_token("op", "]")
+                result = ast.ListComprehension(loop_header, value)
+            else:
+                result = ast.ListLiteral(
+                    self.parse_commasep_in_parens(self.parse_expression, parens="[]")
+                )
         else:
             raise NotImplementedError(self.token_iter.peek())
 
@@ -309,41 +355,6 @@ class _Parser:
         body = self.parse_block_of_statements()
         return ast.Case(type_and_varname, body)
 
-    def foreach_loop_to_for_loop(
-        self, varname: str, the_list: ast.Expression, body: List[ast.Statement]
-    ) -> List[ast.Statement]:
-        list_var = f"__foreach_list_{self.foreach_counter}"
-        index_var = f"__foreach_index_{self.foreach_counter}"
-        self.foreach_counter += 1
-
-        let: ast.Statement = ast.Let(
-            varname,
-            ast.Call(
-                ast.GetAttribute(ast.GetVar(list_var), "get"),
-                [ast.GetVar(index_var)],
-            ),
-        )
-        return [
-            ast.Let(index_var, ast.IntConstant(0)),
-            ast.Let(list_var, the_list),
-            ast.Loop(
-                None,
-                ast.BinaryOperator(
-                    ast.GetVar(index_var),
-                    "<",
-                    ast.Call(
-                        ast.GetAttribute(ast.GetVar(list_var), "length"),
-                        [],
-                    ),
-                ),
-                ast.SetVar(
-                    index_var,
-                    ast.BinaryOperator(ast.GetVar(index_var), "+", ast.IntConstant(1)),
-                ),
-                [let] + body,
-            ),
-        ]
-
     def parse_statement(self) -> List[ast.Statement]:
         if self.token_iter.peek() == ("keyword", "if"):
             self.get_token("keyword", "if")
@@ -365,41 +376,14 @@ class _Parser:
 
             return [ast.If(ifs, else_body)]
 
-        if self.token_iter.peek() == ("keyword", "while"):
-            self.get_token("keyword", "while")
-            cond: Optional[ast.Expression] = self.parse_expression()
+        if self.token_iter.peek() in {
+            ("keyword", "while"),
+            ("keyword", "for"),
+            ("keyword", "foreach"),
+        }:
+            header = self.parse_loop_header()
             body = self.parse_block_of_statements()
-            return [ast.Loop(None, cond, None, body)]
-
-        if self.token_iter.peek() == ("keyword", "for"):
-            self.get_token("keyword", "for")
-            init = (
-                None
-                if self.token_iter.peek() == ("op", ";")
-                else self.parse_oneline_ish_statement()
-            )
-            self.get_token("op", ";")
-            cond = (
-                None
-                if self.token_iter.peek() == ("op", ";")
-                else self.parse_expression()
-            )
-            self.get_token("op", ";")
-            incr = (
-                None
-                if self.token_iter.peek() == ("begin_block", ":")
-                else self.parse_oneline_ish_statement()
-            )
-            body = self.parse_block_of_statements()
-            return [ast.Loop(init, cond, incr, body)]
-
-        if self.token_iter.peek() == ("keyword", "foreach"):
-            self.get_token("keyword", "foreach")
-            varname = self.get_token("identifier")[1]
-            self.get_token("keyword", "of")
-            the_list = self.parse_expression()
-            body = self.parse_block_of_statements()
-            return self.foreach_loop_to_for_loop(varname, the_list, body)
+            return [ast.Loop(header, body)]
 
         if self.token_iter.peek() == ("keyword", "switch"):
             self.get_token("keyword", "switch")

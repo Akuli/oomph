@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 
 @dataclass(eq=False)
@@ -89,6 +89,13 @@ class BinaryOperator(Expression):
     rhs: Expression
 
 
+# Run statements and evaluate expression. Useful for list comprehensions.
+@dataclass(eq=False)
+class StatementsAndExpression(Expression):
+    statements: List[Statement]
+    expression: Expression
+
+
 @dataclass(eq=False)
 class Constructor(Expression):
     type: Type
@@ -132,14 +139,30 @@ class If(Statement):
     else_block: List[Statement]
 
 
-# for init; cond; incr:
-#    body
+# for init; cond; incr
+@dataclass(eq=False)
+class ForLoopHeader:
+    init: List[Statement]
+    cond: Optional[Expression]
+    incr: List[Statement]
+
+
+@dataclass(eq=False)
+class ForeachLoopHeader:
+    varname: str
+    list: Expression
+
+
 @dataclass(eq=False)
 class Loop(Statement):
-    init: Optional[Statement]
-    cond: Optional[Expression]
-    incr: Optional[Statement]
+    loop_header: Union[ForLoopHeader, ForeachLoopHeader]
     body: List[Statement]
+
+
+@dataclass(eq=False)
+class ListComprehension(Expression):
+    loop_header: Union[ForLoopHeader, ForeachLoopHeader]
+    value: Expression
 
 
 @dataclass(eq=False)
