@@ -29,9 +29,7 @@ class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
         let varname = "string{self.declared_strings.length()}"
         self.declared_strings.push(value)
 
-        let content_chars = []
-        foreach c of value.get_utf8():
-            content_chars.push(c.to_string())
+        let content_chars = [foreach c of value.get_utf8(): c.to_string()]
         content_chars.push("'\\0'")
 
         self.string_defs = self.string_defs + """
@@ -69,9 +67,7 @@ class FunctionEmitter(
                 assert(false)
 
     meth emit_call(Str c_func, List[ir::LocalVariable] args, Optional[ir::LocalVariable] result):
-        let arg_strings = []
-        foreach arg of args:
-            arg_strings.push(self.emit_var(arg))
+        let arg_strings = [foreach arg of args: self.emit_var(arg)]
         if result == null:
             let assignment = ""
         else:

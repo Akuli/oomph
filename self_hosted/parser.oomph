@@ -107,17 +107,19 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_block_of_methods() -> List[ast::FuncOrMethodDef]:
         self.get_token("begin_block", ":")
-        let result = []
-        while self.tokens != [] and not self.peek().matches("end_block", ""):
-            result.push(self.parse_method())
+        let result = [
+            while self.tokens != [] and not self.peek().matches("end_block", ""):
+                self.parse_method()
+        ]
         self.get_token("end_block", "")
         return result
 
     meth parse_block_of_cases() -> List[ast::Case]:
         self.get_token("begin_block", ":")
-        let result = []
-        while self.tokens != [] and not self.peek().matches("end_block", ""):
-            result.push(self.parse_case())
+        let result = [
+            while self.tokens != [] and not self.peek().matches("end_block", ""):
+                self.parse_case()
+        ]
         self.get_token("end_block", "")
         return result
 
@@ -146,13 +148,11 @@ class Parser(List[tokenizer::Token] tokens):
         if self.peek().type == "oneline_string":
             let value = self.get_token_by_type("oneline_string").value
             let result = self.do_string_formatting(
-                value.remove_prefix("\"")
-                     .remove_suffix("\""))
+                value.remove_prefix("\"").remove_suffix("\""))
         elif self.peek().type == "multiline_string":
             let value = self.get_token_by_type("multiline_string").value
             result = self.do_string_formatting(
-                value.remove_prefix("\"\"\"")
-                     .remove_suffix("\"\"\""))
+                value.remove_prefix("\"\"\"").remove_suffix("\"\"\""))
         elif self.peek().type == "id":
             result = new ast::GetVar(self.get_token_by_type("id").value)
         elif self.peek().type == "int":
@@ -268,12 +268,12 @@ class Parser(List[tokenizer::Token] tokens):
                 break
 
     meth get_unary_operators() -> List[PrecedenceItem]:
-        let result = new List[PrecedenceItem]()
-        while (self.peek().matches("keyword", "not")
-               or self.peek().matches("keyword", "not in")
-               or self.peek().matches("op", "-")):
-            result.push(self.tokens.pop().value)
-        return result
+        return [
+            while (self.peek().matches("keyword", "not")
+                   or self.peek().matches("keyword", "not in")
+                   or self.peek().matches("op", "-")):
+                new PrecedenceItem(self.tokens.pop().value)
+        ]
 
     meth parse_expression() -> ast::Expression:
         let binary_ops = [
