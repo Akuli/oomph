@@ -5,8 +5,9 @@ export union Type:
     UnionType
 
 export class AutoType(Int id)
-export class BasicType(Str name, Bool refcounted)
 export class FunctionType(List[Type] argtypes, Optional[Type] returntype)
+export class Method(Str name, FunctionType functype)  # TODO: mapping
+export class BasicType(Str name, Bool refcounted, List[Method] methods)
 # type_members can be temporarily null, allows nested unions
 export class UnionType(Str name, Optional[List[Type]] type_members)
 
@@ -58,11 +59,18 @@ export class Builtins(
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
-    let BOOL = new Type(new BasicType("Bool", false))
-    let FLOAT = new Type(new BasicType("Float", false))
-    let INT = new Type(new BasicType("Int", false))
-    let NULL_TYPE = new Type(new BasicType("Bool", false))
-    let STR = new Type(new BasicType("Str", true))
+    # TODO: these cause reference cycles, do something about it
+    let bool_methods = []
+    let float_methods = []
+    let int_methods = []
+    let null_methods = []
+    let str_methods = []
+
+    let BOOL = new Type(new BasicType("Bool", false, bool_methods))
+    let FLOAT = new Type(new BasicType("Float", false, float_methods))
+    let INT = new Type(new BasicType("Int", false, int_methods))
+    let NULL_TYPE = new Type(new BasicType("Bool", false, null_methods))
+    let STR = new Type(new BasicType("Str", true, str_methods))
 
     let visible_vars = [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
@@ -107,7 +115,72 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
     ]
 
+    bool_methods.push_all([
+        new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
+        new Method("to_string", new FunctionType([BOOL], STR)),
+    ])
+    float_methods.push_all([
+        new Method("ceil", new FunctionType([FLOAT], INT)),
+        new Method("equals", new FunctionType([FLOAT, FLOAT], BOOL)),
+        new Method("floor", new FunctionType([FLOAT], INT)),
+        new Method("round", new FunctionType([FLOAT], INT)),
+        new Method("to_string", new FunctionType([FLOAT], STR)),
+        new Method("truncate", new FunctionType([FLOAT], INT)),
+    ])
+    int_methods.push_all([
+        new Method("equals", new FunctionType([INT, INT], BOOL)),
+        new Method("to_string", new FunctionType([INT], STR)),
+    ])
+    null_methods.push_all([
+        new Method("to_string", new FunctionType([NULL_TYPE], STR)),
+    ])
+    str_methods.push_all([
+        new Method("center_pad", new FunctionType([STR, INT, STR], STR)),
+        new Method("contains", new FunctionType([STR, STR], BOOL)),
+        new Method("count", new FunctionType([STR, STR], INT)),
+        new Method("ends_with", new FunctionType([STR, STR], BOOL)),
+        new Method("equals", new FunctionType([STR, STR], BOOL)),
+        #new Method("get_utf8", new FunctionType([STR], LIST.get_type(INT))),
+        new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
+        new Method("left_trim", new FunctionType([STR], STR)),
+        new Method("length", new FunctionType([STR], INT)),
+        new Method("remove_prefix", new FunctionType([STR, STR], STR)),
+        new Method("remove_suffix", new FunctionType([STR, STR], STR)),
+        new Method("repeat", new FunctionType([STR, INT], STR)),
+        new Method("replace", new FunctionType([STR, STR, STR], STR)),
+        new Method("right_pad", new FunctionType([STR, INT, STR], STR)),
+        new Method("right_trim", new FunctionType([STR], STR)),
+        #new Method("split", new FunctionType([STR, STR], LIST.get_type(STR))),
+        new Method("starts_with", new FunctionType([STR, STR], BOOL)),
+        new Method("to_float", new FunctionType([STR], FLOAT)),
+        new Method("to_int", new FunctionType([STR], INT)),
+        new Method("to_string", new FunctionType([STR], STR)),  # does nothing
+        new Method("trim", new FunctionType([STR], STR)),
+    ])
+
     return new Builtins(BOOL, FLOAT, INT, NULL_TYPE, STR, visible_vars, hidden_vars)
+
+
+export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
+    switch type:
+        case AutoType a:
+            assert(false)
+        case BasicType basictype:
+            let methods = basictype.methods
+        case FunctionType functype:
+            methods = []
+        case UnionType uniontype:
+            methods = [
+                new Method("equals", new FunctionType([type, type], builtins.BOOL)),
+                new Method("to_string", new FunctionType([type], builtins.STR)),
+            ]
+
+    foreach method of methods:
+        if method.name == name:
+            return method.functype
+
+    print("type {type_name(type)} has no method named {name}")
+    assert(false)   # TODO: error
 
 
 export union Instruction:
