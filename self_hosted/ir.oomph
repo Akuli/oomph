@@ -64,18 +64,12 @@ export class Builtins(
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
-    # TODO: these cause reference cycles, do something about it
-    let bool_methods = []
-    let float_methods = []
-    let int_methods = []
-    let null_methods = []
-    let str_methods = []
-
-    let BOOL = new Type(new BasicType("Bool", false, bool_methods, []))
-    let FLOAT = new Type(new BasicType("Float", false, float_methods, []))
-    let INT = new Type(new BasicType("Int", false, int_methods, []))
-    let NULL_TYPE = new Type(new BasicType("Bool", false, null_methods, []))
-    let STR = new Type(new BasicType("Str", true, str_methods, []))
+    # Methods are empty and special to prevent reference cycles
+    let BOOL = new Type(new BasicType("Bool", false, [], []))
+    let FLOAT = new Type(new BasicType("Float", false, [], []))
+    let INT = new Type(new BasicType("Int", false, [], []))
+    let NULL_TYPE = new Type(new BasicType("Bool", false, [], []))
+    let STR = new Type(new BasicType("Str", true, [], []))
 
     let visible_vars = [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
