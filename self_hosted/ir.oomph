@@ -40,29 +40,53 @@ export class Builtins(
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
-    let BOOL = new ObjectType("Bool", true)
-    let FLOAT = new ObjectType("Float", true)
-    let INT = new ObjectType("Int", true)
+    let BOOL = new ObjectType("Bool", false)
+    let FLOAT = new ObjectType("Float", false)
+    let INT = new ObjectType("Int", false)
+    let NULL_TYPE = new ObjectType("Bool", false)
     let STR = new ObjectType("Str", true)
 
     let visible_vars = [
+        new BuiltinVariable("__argv_count", new FunctionType([], INT)),
+        new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
+        new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
+        new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
+        new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
+        new BuiltinVariable("__remove_prefix", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__string_get_first_char", new FunctionType([STR], STR)),
+        new BuiltinVariable("__string_get_utf8_byte", new FunctionType([STR, INT], INT)),
+        #new BuiltinVariable("__run_subprocess", new FunctionType([LIST.get_type(STR)], INT)),
+        new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
         new BuiltinVariable("false", BOOL),
+        new BuiltinVariable("null", NULL_TYPE),
         new BuiltinVariable("print", new FunctionType([STR], null)),
         new BuiltinVariable("true", BOOL),
     ]
 
     # These variables are not exposed in oomph
     let hidden_vars = [
+        new BuiltinVariable("bool_eq", new FunctionType([BOOL, BOOL], BOOL)),
         new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)),
         new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)),
         new BuiltinVariable("float_div", new FunctionType([FLOAT, FLOAT], FLOAT)),
+        new BuiltinVariable("float_eq", new FunctionType([FLOAT, FLOAT], BOOL)),
+        new BuiltinVariable("float_gt", new FunctionType([FLOAT, FLOAT], BOOL)),
+        new BuiltinVariable("float_mod", new FunctionType([FLOAT, FLOAT], FLOAT)),
         new BuiltinVariable("float_mul", new FunctionType([FLOAT, FLOAT], FLOAT)),
         new BuiltinVariable("float_neg", new FunctionType([FLOAT], FLOAT)),
         new BuiltinVariable("float_sub", new FunctionType([FLOAT, FLOAT], FLOAT)),
+        new BuiltinVariable("int2float", new FunctionType([INT], FLOAT)),
         new BuiltinVariable("int_add", new FunctionType([INT, INT], INT)),
+        new BuiltinVariable("int_eq", new FunctionType([INT, INT], BOOL)),
+        new BuiltinVariable("int_gt", new FunctionType([INT, INT], BOOL)),
+        new BuiltinVariable("int_mod", new FunctionType([INT, INT], INT)),
         new BuiltinVariable("int_mul", new FunctionType([INT, INT], INT)),
         new BuiltinVariable("int_neg", new FunctionType([INT], INT)),
         new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)),
+        new BuiltinVariable("string_concat", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
     ]
 
     return new Builtins(BOOL, FLOAT, INT, STR, visible_vars, hidden_vars)
