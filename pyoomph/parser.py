@@ -76,27 +76,30 @@ class _Parser:
 
     def do_string_formatting(self, string: str) -> ast.Expression:
         parts = []
-        # FIXME: corner cases
         while string:
             if string[0] == "{":
                 end = string.index("}")
                 parts.append(self.tokenize_and_parse_expression(string[1:end]))
                 string = string[end + 1 :]
-            else:
-                match = re.search(r"(?<!\\)\{", string)
-                text_end = len(string) if match is None else match.start()
+            elif string.startswith("\\"):
                 parts.append(
                     ast.StringConstant(
-                        string[:text_end]
-                        .replace("\\n", "\n")
-                        .replace("\\t", "\t")
-                        .replace("\\{", "{")
-                        .replace("\\}", "}")
-                        .replace('\\"', '"')
-                        .replace("\\\\", "\\")
+                        {
+                            r"\n": "\n",
+                            r"\t": "\t",
+                            r"\{": "{",
+                            r"\}": "}",
+                            r"\"": '"',
+                            r"\\": "\\",
+                        }[string[:2]]
                     )
                 )
-                string = string[text_end:]
+                string = string[2:]
+            else:
+                match = re.match(r"[^{}\\]+", string)
+                assert match is not None
+                parts.append(ast.StringConstant(match.group(0)))
+                string = string[len(match.group(0)) :]
 
         if len(parts) == 0:
             return ast.StringConstant("")

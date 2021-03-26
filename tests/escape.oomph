@@ -2,3 +2,4 @@ export func main():
     print("a\\b")
     print("a\{b\}c\\d\ne\tf\"g")
     print("\"")
+    print("\\n")
