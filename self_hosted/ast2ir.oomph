@@ -178,7 +178,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
         assert(funcdef.args == [])
         let functype = new ir::FunctionType([], null)
         assert(funcdef.name == "main")
-        let func_var = new ir::ThisFileVariable(funcdef.name, functype)
+        let func_var = new ir::FileVariable(funcdef.name, functype)
         let body = self.do_block(funcdef.body)
         return new ir::FuncDef(func_var, [], body)
 

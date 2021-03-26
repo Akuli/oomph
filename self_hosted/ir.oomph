@@ -21,13 +21,13 @@ export func type_name(Type type) -> Str:
         case UnionType uniontype:
             return uniontype.name
 
-export class LocalVariable(Type type, Int id)
 export class BuiltinVariable(Str name, Type type)
-export class ThisFileVariable(Str name, Type type)
+export class FileVariable(Str name, Type type)
+export class LocalVariable(Type type, Int id)
 export union Variable:
     BuiltinVariable
+    FileVariable
     LocalVariable
-    ThisFileVariable
 
 
 # TODO: global (but const) variables
@@ -134,5 +134,11 @@ export union ToplevelDeclaration:
     FuncDef
     MethodDef
 
-export class FuncDef(ThisFileVariable var, List[LocalVariable] argvars, List[Instruction] body)
+export class FuncDef(FileVariable var, List[LocalVariable] argvars, List[Instruction] body)
 export class MethodDef(Str name, FunctionType type, List[LocalVariable] argvars, List[Instruction] body)
+
+# Symbol represents anything that might need to be shared between different .c files
+export union SymbolValue:
+    FileVariable
+    Type
+export class Symbol(Str path, Str name, SymbolValue value)
