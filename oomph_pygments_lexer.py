@@ -44,7 +44,7 @@ keywords_but_not_really = ["true", "false", "null"]
 builtins = ["Bool", "Int", "List", "Optional", "Str", "assert", "print", "main"]
 
 oneline_string_content = r'([^"{}\\]|\\[{}tn"\\])*'
-multiline_string_content = oneline_string_content.replace('n"', '')  # no \n or \"
+multiline_string_content = oneline_string_content.replace('n"', "")  # no \n or \"
 
 
 class CustomLexer(RegexLexer):
