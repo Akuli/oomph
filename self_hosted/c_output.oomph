@@ -131,24 +131,28 @@ class FunctionEmitter(
                     goto label{goto.label.id};
                 """
 
-export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
+export func create_code(ir::Builtins builtins, List[ir::ToplevelDeclaration] ir) -> Str:
     let file = new File(builtins, [], "")
 
     let code = ""
-    foreach funcdef of ir:
-        assert(funcdef.var.name == "main")
-        assert(funcdef.argvars == [])
+    foreach top_decl of ir:
+        switch top_decl:
+            case ir::FuncDef funcdef:
+                assert(funcdef.var.name == "main")
+                assert(funcdef.argvars == [])
 
-        let emitter = new FunctionEmitter(file, [], "", "", "")
-        foreach ins of funcdef.body:
-            emitter.emit_instruction(ins)
-        code = code + """
-        void oomph_main(void)
-        \{
-            {emitter.before_body}
-            {emitter.body}
-            {emitter.after_body}
-        \}
-        """
+                let emitter = new FunctionEmitter(file, [], "", "", "")
+                foreach ins of funcdef.body:
+                    emitter.emit_instruction(ins)
+                code = code + """
+                void oomph_main(void)
+                \{
+                    {emitter.before_body}
+                    {emitter.body}
+                    {emitter.after_body}
+                \}
+                """
+            case *:
+                assert(false)
 
     return "#define SELF_HOSTED\n#include <lib/oomph.h>\n" + file.string_defs + code

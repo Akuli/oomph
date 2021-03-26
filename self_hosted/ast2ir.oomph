@@ -182,8 +182,8 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
         let body = self.do_block(funcdef.body)
         return new ir::FuncDef(func_var, [], body)
 
-export func convert_program(ir::Builtins builtins, List[ast::ToplevelDeclaration] program) -> List[ir::FuncDef]:
-    let result = []
+export func convert_program(ir::Builtins builtins, List[ast::ToplevelDeclaration] program) -> List[ir::ToplevelDeclaration]:
+    let result = new List[ir::ToplevelDeclaration]()  # https://github.com/Akuli/oomph/issues/54
     foreach top_decl of program:
         switch top_decl:
             case ast::FuncOrMethodDef funcdef:

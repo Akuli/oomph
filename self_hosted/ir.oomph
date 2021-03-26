@@ -130,4 +130,9 @@ export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] 
 export class StringConstant(Str value, LocalVariable var)
 export class VarCpy(LocalVariable dest, Variable source)  # same argument order as memcpy
 
+export union ToplevelDeclaration:
+    FuncDef
+    MethodDef
+
 export class FuncDef(ThisFileVariable var, List[LocalVariable] argvars, List[Instruction] body)
+export class MethodDef(Str name, FunctionType type, List[LocalVariable] argvars, List[Instruction] body)
