@@ -6,6 +6,7 @@ import more_itertools
 TOKEN_REGEX = r'''
 (?P<keyword>
     \b (
+        # Please keep oomph_pygments_lexer.py up to date with this list
         let
         | import
         | as
