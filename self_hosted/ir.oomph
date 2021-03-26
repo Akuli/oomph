@@ -1,12 +1,29 @@
-export class ObjectType(Str name, Bool refcounted)
-export class FunctionType(List[ObjectType] argtypes, Optional[ObjectType] returntype)
 export union Type:
-    ObjectType
+    AutoType
+    BasicType
     FunctionType
+    UnionType
 
-export class LocalVariable(ObjectType type, Int id)
+export class AutoType(Int id)
+export class BasicType(Str name, Bool refcounted)
+export class FunctionType(List[Type] argtypes, Optional[Type] returntype)
+# type_members can be temporarily null, allows nested unions
+export class UnionType(Str name, Optional[List[Type]] type_members)
+
+export func type_name(Type type) -> Str:
+    switch type:
+        case AutoType autotype:
+            return "auto{autotype.id}"
+        case BasicType basic:
+            return basic.name
+        case FunctionType functype:
+            return "<function type>"
+        case UnionType uniontype:
+            return uniontype.name
+
+export class LocalVariable(Type type, Int id)
 export class BuiltinVariable(Str name, Type type)
-export class ThisFileVariable(Str name, FunctionType type)
+export class ThisFileVariable(Str name, Type type)
 export union Variable:
     BuiltinVariable
     LocalVariable
@@ -15,10 +32,10 @@ export union Variable:
 
 # TODO: global (but const) variables
 export class Builtins(
-    ObjectType BOOL,
-    ObjectType FLOAT,
-    ObjectType INT,
-    ObjectType STR,
+    Type BOOL,
+    Type FLOAT,
+    Type INT,
+    Type STR,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
 ):
@@ -40,11 +57,11 @@ export class Builtins(
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
-    let BOOL = new ObjectType("Bool", false)
-    let FLOAT = new ObjectType("Float", false)
-    let INT = new ObjectType("Int", false)
-    let NULL_TYPE = new ObjectType("Bool", false)
-    let STR = new ObjectType("Str", true)
+    let BOOL = new Type(new BasicType("Bool", false))
+    let FLOAT = new Type(new BasicType("Float", false))
+    let INT = new Type(new BasicType("Int", false))
+    let NULL_TYPE = new Type(new BasicType("Bool", false))
+    let STR = new Type(new BasicType("Str", true))
 
     let visible_vars = [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),

@@ -1,21 +1,29 @@
 import "ir.oomph" as ir
 
 class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
-    meth get_type_c_name(ir::ObjectType type) -> Str:
-        return type.name
+    meth get_type_c_name(ir::Type type) -> Str:
+        switch type:
+            case ir::BasicType basic:
+                return basic.name
+            case *:
+                assert(false)
 
-    meth emit_type(ir::ObjectType type) -> Str:
+    meth emit_type(ir::Type type) -> Str:
         if type == self.builtins.INT:
             return "int64_t"
         if type == self.builtins.BOOL:
             return "bool"
         if type == self.builtins.FLOAT:
             return "double"
-        if type.refcounted:
-            return "struct class_{self.get_type_c_name(type)} *"
+        switch type:
+            case ir::BasicType basic:
+                if basic.refcounted:
+                    return "struct class_{self.get_type_c_name(type)} *"
+            case *:
+                pass
         return "struct class_{self.get_type_c_name(type)}"
 
-    meth emit_declaration(ir::ObjectType type, Str varname) -> Str:
+    meth emit_declaration(ir::Type type, Str varname) -> Str:
         if type == self.builtins.INT or type == self.builtins.FLOAT:
             return "{self.emit_type(type)} {varname};"
         return "{self.emit_type(type)} {varname} = NULL;"
