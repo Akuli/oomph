@@ -6,8 +6,12 @@ export union Type:
 
 export class AutoType(Int id)
 export class FunctionType(List[Type] argtypes, Optional[Type] returntype)
-export class Method(Str name, FunctionType functype)  # TODO: mapping
-export class BasicType(Str name, Bool refcounted, List[Method] methods)
+
+# TODO: mappings
+export class Method(Str name, FunctionType functype)
+export class Member(Str name, Type type)
+export class BasicType(Str name, Bool refcounted, List[Method] methods, List[Member] members)
+
 # type_members can be temporarily null, allows nested unions
 export class UnionType(Str name, Optional[List[Type]] type_members)
 
@@ -66,11 +70,11 @@ export func create_builtins() -> Builtins:
     let null_methods = []
     let str_methods = []
 
-    let BOOL = new Type(new BasicType("Bool", false, bool_methods))
-    let FLOAT = new Type(new BasicType("Float", false, float_methods))
-    let INT = new Type(new BasicType("Int", false, int_methods))
-    let NULL_TYPE = new Type(new BasicType("Bool", false, null_methods))
-    let STR = new Type(new BasicType("Str", true, str_methods))
+    let BOOL = new Type(new BasicType("Bool", false, bool_methods, []))
+    let FLOAT = new Type(new BasicType("Float", false, float_methods, []))
+    let INT = new Type(new BasicType("Int", false, int_methods, []))
+    let NULL_TYPE = new Type(new BasicType("Bool", false, null_methods, []))
+    let STR = new Type(new BasicType("Str", true, str_methods, []))
 
     let visible_vars = [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
