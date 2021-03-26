@@ -35,6 +35,7 @@ export class Builtins(
     Type BOOL,
     Type FLOAT,
     Type INT,
+    Type NULL_TYPE,
     Type STR,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
@@ -106,7 +107,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
     ]
 
-    return new Builtins(BOOL, FLOAT, INT, STR, visible_vars, hidden_vars)
+    return new Builtins(BOOL, FLOAT, INT, NULL_TYPE, STR, visible_vars, hidden_vars)
 
 
 export union Instruction:
