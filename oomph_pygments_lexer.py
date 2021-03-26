@@ -6,7 +6,6 @@
 from pygments.lexer import RegexLexer
 from pygments.token import Comment, Keyword, Name, String, Text
 
-
 # Keep up to date with oomph compiler tokenizers
 keywords = [
     "let",
