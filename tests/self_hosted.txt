@@ -4,6 +4,7 @@ tests/1plus2.oomph
 tests/bool.oomph
 tests/call_whitespace.oomph
 tests/comments.oomph
+tests/escape.oomph
 tests/hello.oomph
 tests/no_trailing_newline.oomph
 tests/operators.oomph

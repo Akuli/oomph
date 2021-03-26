@@ -27,6 +27,19 @@ func path_parent(Str path) -> Str:
         return "."
     return parts.slice(0, parts.length() - 1).join("/")
 
+func add_string(List[ast::Expression] parts, Str suffix):
+    if parts != []:
+        switch parts.last():
+            case ast::StringConstant old:
+                # String concat can be done at compile time
+                parts.pop()
+                parts.push(new ast::StringConstant(old.value + suffix))
+                return
+            case *:    # TODO: this sucks
+                pass
+
+    parts.push(new ast::StringConstant(suffix))
+
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
     meth peek() -> tokenizer::Token:
@@ -139,19 +152,54 @@ class Parser(List[tokenizer::Token] tokens):
         assert(parser.tokens == [])
         return result
 
-    meth do_string_formatting(Str string) -> ast::Expression:
-        # TODO
-        assert(not string.contains("\\"))
-        return new ast::StringConstant(string)
+    meth do_string_contents(Str string) -> ast::Expression:
+        let result = []
+        let escapes = [
+            ["\\n", "\n"],
+            ["\\t", "\t"],
+            ["\\\{", "\{"],
+            ["\\\}", "\}"],
+            ["\\\"", "\""],
+            ["\\\\", "\\"],
+        ]
+
+        while string != "":
+            if string.starts_with("\\"):
+                let found_escape = false  # TODO: this sucks
+                foreach pair of escapes:
+                    if string.starts_with(pair.first()):
+                        add_string(result, pair.last())
+                        string = string.remove_prefix(pair.first())
+                        found_escape = true
+                        break
+                assert(found_escape)
+            elif string.starts_with("\{"):
+                assert(string.contains("\}"))
+                let code = string.split("\}").first().remove_prefix("\{")
+                assert(not code.contains("\{"))
+                assert(not code.contains("\}"))
+                assert(not code.contains("\\"))
+                result.push(self.tokenize_and_parse_expression(code))
+                string = string.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
+            else:
+                let char = string.split("").first()
+                add_string(result, char)
+                string = string.remove_prefix(char)
+
+        if result == []:
+            return new ast::StringConstant("")
+        if result.length() == 1:
+            return result.first()
+        return new ast::StringFormatJoin(result)
 
     meth parse_simple_expression() -> ast::Expression:
         if self.peek().type == "oneline_string":
             let value = self.get_token_by_type("oneline_string").value
-            let result = self.do_string_formatting(
+            let result = self.do_string_contents(
                 value.remove_prefix("\"").remove_suffix("\""))
         elif self.peek().type == "multiline_string":
             let value = self.get_token_by_type("multiline_string").value
-            result = self.do_string_formatting(
+            result = self.do_string_contents(
                 value.remove_prefix("\"\"\"").remove_suffix("\"\"\""))
         elif self.peek().type == "id":
             result = new ast::GetVar(self.get_token_by_type("id").value)
