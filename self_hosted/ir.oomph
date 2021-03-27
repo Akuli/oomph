@@ -69,8 +69,18 @@ export class Builtins(
     Generic OPTIONAL,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
-    List[Method] methods,  # to prevent reference cycles
 ):
+    meth destroy():
+        # get rid of reference cycles
+        # TODO: syntax sucks
+        foreach type of [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]:
+            switch type:
+                case BasicType basictype:
+                    # TODO: 'basictype.methods = []' doesn't work
+                    while basictype.methods != []:
+                        basictype.methods.pop()
+                case *:
+                    assert(false)
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
@@ -100,6 +110,14 @@ export class Builtins(
         print(generik)
         assert(false)
 
+
+# TODO: shouldn't be needed
+func get_the_methods(Type type) -> List[Method]:
+    switch type:
+        case BasicType basictype:
+            return basictype.methods
+        case *:
+            assert(false)
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
@@ -156,17 +174,23 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
     ]
 
-    let methods = [
+    get_the_methods(FLOAT).push_all([
         new Method("ceil", new FunctionType([FLOAT], INT)),
+        new Method("equals", new FunctionType([FLOAT, FLOAT], BOOL)),
+        new Method("floor", new FunctionType([FLOAT], INT)),
+        new Method("round", new FunctionType([FLOAT], INT)),
+        new Method("to_string", new FunctionType([FLOAT], STR)),
+        new Method("truncate", new FunctionType([FLOAT], INT)),
+    ])
+
+    get_the_methods(STR).push_all([
+        #new Method("split", new FunctionType([STR, STR], LIST.get_type(STR))),
+        #new Method("get_utf8", new FunctionType([STR], builtins.generic2type(LIST, INT))),
         new Method("center_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("contains", new FunctionType([STR, STR], BOOL)),
         new Method("count", new FunctionType([STR, STR], INT)),
         new Method("ends_with", new FunctionType([STR, STR], BOOL)),
-        new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
-        new Method("equals", new FunctionType([FLOAT, FLOAT], BOOL)),
-        new Method("equals", new FunctionType([INT, INT], BOOL)),
         new Method("equals", new FunctionType([STR, STR], BOOL)),
-        new Method("floor", new FunctionType([FLOAT], INT)),
         new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("left_trim", new FunctionType([STR], STR)),
         new Method("length", new FunctionType([STR], INT)),
@@ -176,32 +200,33 @@ export func create_builtins() -> Builtins:
         new Method("replace", new FunctionType([STR, STR, STR], STR)),
         new Method("right_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("right_trim", new FunctionType([STR], STR)),
-        new Method("round", new FunctionType([FLOAT], INT)),
-        #new Method("split", new FunctionType([STR, STR], LIST.get_type(STR))),
         new Method("starts_with", new FunctionType([STR, STR], BOOL)),
         new Method("to_float", new FunctionType([STR], FLOAT)),
         new Method("to_int", new FunctionType([STR], INT)),
-        new Method("to_string", new FunctionType([BOOL], STR)),
-        new Method("to_string", new FunctionType([FLOAT], STR)),
-        new Method("to_string", new FunctionType([INT], STR)),
-        new Method("to_string", new FunctionType([NULL_TYPE], STR)),
         new Method("to_string", new FunctionType([STR], STR)),  # does nothing
         new Method("trim", new FunctionType([STR], STR)),
-        new Method("truncate", new FunctionType([FLOAT], INT)),
-    ]
+    ])
 
-    let builtins = new Builtins(
+    get_the_methods(BOOL).push_all([
+        new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
+        new Method("to_string", new FunctionType([BOOL], STR)),
+    ])
+
+    get_the_methods(INT).push_all([
+        new Method("equals", new FunctionType([INT, INT], BOOL)),
+        new Method("to_string", new FunctionType([INT], STR)),
+    ])
+
+    get_the_methods(NULL_TYPE).push_all([
+        new Method("to_string", new FunctionType([NULL_TYPE], STR)),
+    ])
+
+    return new Builtins(
         BOOL, FLOAT, INT, NULL_TYPE, STR, LIST, OPTIONAL,
-        visible_vars, hidden_vars, methods)
-    #builtins.methods.push(new Method("get_utf8", new FunctionType([STR], builtins.generic2type(LIST, INT))))
-    return builtins
+        visible_vars, hidden_vars)
 
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
-    foreach method of builtins.methods:
-        if method.functype.argtypes.first() == type and method.name == name:
-            return method.functype
-
     switch type:
         case AutoType a:
             assert(false)
