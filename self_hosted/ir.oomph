@@ -4,16 +4,27 @@ export union Type:
     FunctionType
     UnionType
 
+
+export class Generic(Str name)
+
 export class AutoType(Int id)
 export class FunctionType(List[Type] argtypes, Optional[Type] returntype)
 
 # TODO: mappings
 export class Method(Str name, FunctionType functype)
 export class Member(Str name, Type type)
-export class BasicType(Str name, Bool refcounted, List[Method] methods, List[Member] members)
+
+export class GenericSource(Generic generik, Type arg)
+export class BasicType(
+    Str name,
+    Bool refcounted,
+    List[Method] methods,  # TODO: get rid of this
+    List[Member] members,  # TODO: get rid of this
+    Optional[GenericSource] generic_source,
+)
 
 # type_members can be temporarily null, allows nested unions
-export class UnionType(Str name, Optional[List[Type]] type_members)
+export class UnionType(Str name, Optional[List[Type]] type_members, Optional[GenericSource] generic_source)
 
 export func type_name(Type type) -> Str:
     switch type:
@@ -25,6 +36,18 @@ export func type_name(Type type) -> Str:
             return "<function type>"
         case UnionType uniontype:
             return uniontype.name
+
+export func get_generic_source(Type type) -> Optional[GenericSource]:
+    switch type:
+        case AutoType autotype:
+            assert(false)
+        case BasicType basictype:
+            return basictype.generic_source
+        case FunctionType functype:
+            return null
+        case UnionType uniontype:
+            return uniontype.generic_source
+
 
 export class BuiltinVariable(Str name, Type type)
 export class FileVariable(Str name, Type type)
@@ -42,6 +65,8 @@ export class Builtins(
     Type INT,
     Type NULL_TYPE,
     Type STR,
+    Generic LIST,
+    Generic OPTIONAL,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
     List[Method] methods,  # to prevent reference cycles
@@ -61,15 +86,32 @@ export class Builtins(
         print("INTERNAL ERROR: hidden variable {name} not found")
         assert(false)
 
+    # TODO: this is in a weird place
+    meth generic2type(Generic generik, Type arg) -> Type:
+        if generik == self.OPTIONAL:
+            # TODO: equals() and get() methods
+            return new UnionType(
+                "Optional[{type_name(arg)}]",
+                [arg, self.NULL_TYPE],
+                new GenericSource(generik, arg),
+            )
+        # TODO: List
+
+        print(generik)
+        assert(false)
+
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     # Methods are empty and special to prevent reference cycles
-    let BOOL = new Type(new BasicType("Bool", false, [], []))
-    let FLOAT = new Type(new BasicType("Float", false, [], []))
-    let INT = new Type(new BasicType("Int", false, [], []))
-    let NULL_TYPE = new Type(new BasicType("Bool", false, [], []))
-    let STR = new Type(new BasicType("Str", true, [], []))
+    let BOOL = new Type(new BasicType("Bool", false, [], [], null))
+    let FLOAT = new Type(new BasicType("Float", false, [], [], null))
+    let INT = new Type(new BasicType("Int", false, [], [], null))
+    let NULL_TYPE = new Type(new BasicType("Bool", false, [], [], null))
+    let STR = new Type(new BasicType("Str", true, [], [], null))
+
+    let LIST = new Generic("List")
+    let OPTIONAL = new Generic("Optional")
 
     let visible_vars = [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
@@ -125,7 +167,6 @@ export func create_builtins() -> Builtins:
         new Method("equals", new FunctionType([INT, INT], BOOL)),
         new Method("equals", new FunctionType([STR, STR], BOOL)),
         new Method("floor", new FunctionType([FLOAT], INT)),
-        #new Method("get_utf8", new FunctionType([STR], LIST.get_type(INT))),
         new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("left_trim", new FunctionType([STR], STR)),
         new Method("length", new FunctionType([STR], INT)),
@@ -149,7 +190,11 @@ export func create_builtins() -> Builtins:
         new Method("truncate", new FunctionType([FLOAT], INT)),
     ]
 
-    return new Builtins(BOOL, FLOAT, INT, NULL_TYPE, STR, visible_vars, hidden_vars, methods)
+    let builtins = new Builtins(
+        BOOL, FLOAT, INT, NULL_TYPE, STR, LIST, OPTIONAL,
+        visible_vars, hidden_vars, methods)
+    #builtins.methods.push(new Method("get_utf8", new FunctionType([STR], builtins.generic2type(LIST, INT))))
+    return builtins
 
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
