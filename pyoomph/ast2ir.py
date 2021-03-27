@@ -485,6 +485,7 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.ListLiteral):
             content = [self.do_expression(item) for item in expr.content]
             if content:
+                assert len({var.type for var in content}) == 1, {var.type for var in content}
                 [content_type] = {var.type for var in content}
             else:
                 content_type = AutoType()
