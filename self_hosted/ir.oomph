@@ -69,11 +69,12 @@ export class Builtins(
     Generic OPTIONAL,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
+    List[Type] cleanup_list,
 ):
     meth destroy():
         # get rid of reference cycles
         # TODO: syntax sucks
-        foreach type of [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]:
+        foreach type of self.cleanup_list:
             switch type:
                 case BasicType basictype:
                     # TODO: 'basictype.methods = []' doesn't work
@@ -133,6 +134,7 @@ export class Builtins(
                 # if arg is STR:
                 new Method("join", new FunctionType([r, self.STR], self.STR)),
             ])
+            self.cleanup_list.push(result)
             return result
 
         # TODO: List
@@ -161,25 +163,6 @@ export func create_builtins() -> Builtins:
     let LIST = new Generic("List")
     let OPTIONAL = new Generic("Optional")
 
-    let visible_vars = [
-        new BuiltinVariable("__argv_count", new FunctionType([], INT)),
-        new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
-        new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
-        new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
-        new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
-        new BuiltinVariable("__remove_prefix", new FunctionType([STR, STR], STR)),
-        new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
-        new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
-        new BuiltinVariable("__string_get_first_char", new FunctionType([STR], STR)),
-        new BuiltinVariable("__string_get_utf8_byte", new FunctionType([STR, INT], INT)),
-        #new BuiltinVariable("__run_subprocess", new FunctionType([LIST.get_type(STR)], INT)),
-        new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
-        new BuiltinVariable("false", BOOL),
-        new BuiltinVariable("null", NULL_TYPE),
-        new BuiltinVariable("print", new FunctionType([STR], null)),
-        new BuiltinVariable("true", BOOL),
-    ]
-
     # These variables are not exposed in oomph
     let hidden_vars = [
         new BuiltinVariable("bool_eq", new FunctionType([BOOL, BOOL], BOOL)),
@@ -204,6 +187,32 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
     ]
 
+    let visible_vars = []
+    let result = new Builtins(
+        BOOL, FLOAT, INT, NULL_TYPE, STR, LIST, OPTIONAL,
+        visible_vars, hidden_vars,
+        [BOOL, FLOAT, INT, NULL_TYPE, STR],
+    )
+
+    visible_vars.push_all([
+        new BuiltinVariable("__argv_count", new FunctionType([], INT)),
+        new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
+        new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
+        new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
+        new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
+        new BuiltinVariable("__remove_prefix", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, STR)], INT)),
+        new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__string_get_first_char", new FunctionType([STR], STR)),
+        new BuiltinVariable("__string_get_utf8_byte", new FunctionType([STR, INT], INT)),
+        new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
+        new BuiltinVariable("false", BOOL),
+        new BuiltinVariable("null", NULL_TYPE),
+        new BuiltinVariable("print", new FunctionType([STR], null)),
+        new BuiltinVariable("true", BOOL),
+    ])
+
     get_the_methods(FLOAT).push_all([
         new Method("ceil", new FunctionType([FLOAT], INT)),
         new Method("equals", new FunctionType([FLOAT, FLOAT], BOOL)),
@@ -214,13 +223,12 @@ export func create_builtins() -> Builtins:
     ])
 
     get_the_methods(STR).push_all([
-        #new Method("split", new FunctionType([STR, STR], LIST.get_type(STR))),
-        #new Method("get_utf8", new FunctionType([STR], builtins.generic2type(LIST, INT))),
         new Method("center_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("contains", new FunctionType([STR, STR], BOOL)),
         new Method("count", new FunctionType([STR, STR], INT)),
         new Method("ends_with", new FunctionType([STR, STR], BOOL)),
         new Method("equals", new FunctionType([STR, STR], BOOL)),
+        new Method("get_utf8", new FunctionType([STR], result.generic2type(LIST, INT))),
         new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("left_trim", new FunctionType([STR], STR)),
         new Method("length", new FunctionType([STR], INT)),
@@ -230,6 +238,7 @@ export func create_builtins() -> Builtins:
         new Method("replace", new FunctionType([STR, STR, STR], STR)),
         new Method("right_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("right_trim", new FunctionType([STR], STR)),
+        new Method("split", new FunctionType([STR, STR], result.generic2type(LIST, STR))),
         new Method("starts_with", new FunctionType([STR, STR], BOOL)),
         new Method("to_float", new FunctionType([STR], FLOAT)),
         new Method("to_int", new FunctionType([STR], INT)),
@@ -251,9 +260,7 @@ export func create_builtins() -> Builtins:
         new Method("to_string", new FunctionType([NULL_TYPE], STR)),
     ])
 
-    return new Builtins(
-        BOOL, FLOAT, INT, NULL_TYPE, STR, LIST, OPTIONAL,
-        visible_vars, hidden_vars)
+    return result
 
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
