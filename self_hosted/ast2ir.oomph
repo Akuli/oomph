@@ -3,12 +3,8 @@ import "ir.oomph" as ir
 
 class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counter):
     meth create_var(ir::Type type) -> ir::LocalVariable:
-        switch type:
-            case ir::FunctionType functype:
-                assert(false)
-            case ir::ObjectType objtype:
-                self.id_counter = self.id_counter + 1
-                return new ir::LocalVariable(objtype, self.id_counter)
+        self.id_counter = self.id_counter + 1
+        return new ir::LocalVariable(type, self.id_counter)
 
     meth create_goto_label() -> ir::GotoLabel:
         self.id_counter = self.id_counter + 1
@@ -20,7 +16,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
                 let result_var = self.create_var(functype.returntype.get())
                 self.code.push(new ir::FunctionCall(function, args, result_var))
                 return result_var
-            case ir::ObjectType ot:
+            case *:
                 assert(false)
 
     meth int_to_float(ir::LocalVariable int_var) -> ir::LocalVariable:
@@ -104,7 +100,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
                 if lhs_var.type == self.builtins.FLOAT and bin_op.op == "/" and rhs_var.type == self.builtins.FLOAT:
                     return self.builtin_call(self.builtins.get_hidden_var("float_div"), [lhs_var, rhs_var])
 
-                print("bad bin op: {lhs_var.type.name} {bin_op.op} {rhs_var.type.name}")
+                print("bad bin op: {ir::type_name(lhs_var.type)} {bin_op.op} {ir::type_name(rhs_var.type)}")
                 assert(false)   # TODO: error
 
             case ast::UnaryOperator unary_op:
@@ -116,7 +112,7 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
                 if var.type == self.builtins.BOOL and unary_op.op == "not":
                     return self.builtin_call(self.builtins.get_hidden_var("bool_not"), [var])
 
-                print("bad unary op: {unary_op.op} {var.type.name}")
+                print("bad unary op: {unary_op.op} {ir::type_name(var.type)}")
                 assert(false)  # TODO: error
 
             case ast::GetVar getvar:
@@ -182,12 +178,12 @@ class Converter(ir::Builtins builtins, List[ir::Instruction] code, Int id_counte
         assert(funcdef.args == [])
         let functype = new ir::FunctionType([], null)
         assert(funcdef.name == "main")
-        let func_var = new ir::ThisFileVariable(funcdef.name, functype)
+        let func_var = new ir::FileVariable(funcdef.name, functype)
         let body = self.do_block(funcdef.body)
         return new ir::FuncDef(func_var, [], body)
 
-export func convert_program(ir::Builtins builtins, List[ast::ToplevelDeclaration] program) -> List[ir::FuncDef]:
-    let result = []
+export func convert_program(ir::Builtins builtins, List[ast::ToplevelDeclaration] program) -> List[ir::ToplevelDeclaration]:
+    let result = new List[ir::ToplevelDeclaration]()  # https://github.com/Akuli/oomph/issues/54
     foreach top_decl of program:
         switch top_decl:
             case ast::FuncOrMethodDef funcdef:

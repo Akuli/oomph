@@ -1,21 +1,29 @@
 import "ir.oomph" as ir
 
 class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
-    meth get_type_c_name(ir::ObjectType type) -> Str:
-        return type.name
+    meth get_type_c_name(ir::Type type) -> Str:
+        switch type:
+            case ir::BasicType basic:
+                return basic.name
+            case *:
+                assert(false)
 
-    meth emit_type(ir::ObjectType type) -> Str:
+    meth emit_type(ir::Type type) -> Str:
         if type == self.builtins.INT:
             return "int64_t"
         if type == self.builtins.BOOL:
             return "bool"
         if type == self.builtins.FLOAT:
             return "double"
-        if type.refcounted:
-            return "struct class_{self.get_type_c_name(type)} *"
+        switch type:
+            case ir::BasicType basic:
+                if basic.refcounted:
+                    return "struct class_{self.get_type_c_name(type)} *"
+            case *:
+                pass
         return "struct class_{self.get_type_c_name(type)}"
 
-    meth emit_declaration(ir::ObjectType type, Str varname) -> Str:
+    meth emit_declaration(ir::Type type, Str varname) -> Str:
         if type == self.builtins.INT or type == self.builtins.FLOAT:
             return "{self.emit_type(type)} {varname};"
         return "{self.emit_type(type)} {varname} = NULL;"
@@ -63,7 +71,7 @@ class FunctionEmitter(
                 return "var{local_var.id}"
             case ir::BuiltinVariable builtin_var:
                 return builtin_var.name
-            case ir::ThisFileVariable this_file_var:
+            case ir::FileVariable this_file_var:
                 assert(false)
 
     meth emit_call(Str c_func, List[ir::LocalVariable] args, Optional[ir::LocalVariable] result):
@@ -123,24 +131,28 @@ class FunctionEmitter(
                     goto label{goto.label.id};
                 """
 
-export func create_code(ir::Builtins builtins, List[ir::FuncDef] ir) -> Str:
+export func create_code(ir::Builtins builtins, List[ir::ToplevelDeclaration] ir) -> Str:
     let file = new File(builtins, [], "")
 
     let code = ""
-    foreach funcdef of ir:
-        assert(funcdef.var.name == "main")
-        assert(funcdef.argvars == [])
+    foreach top_decl of ir:
+        switch top_decl:
+            case ir::FuncDef funcdef:
+                assert(funcdef.var.name == "main")
+                assert(funcdef.argvars == [])
 
-        let emitter = new FunctionEmitter(file, [], "", "", "")
-        foreach ins of funcdef.body:
-            emitter.emit_instruction(ins)
-        code = code + """
-        void oomph_main(void)
-        \{
-            {emitter.before_body}
-            {emitter.body}
-            {emitter.after_body}
-        \}
-        """
+                let emitter = new FunctionEmitter(file, [], "", "", "")
+                foreach ins of funcdef.body:
+                    emitter.emit_instruction(ins)
+                code = code + """
+                void oomph_main(void)
+                \{
+                    {emitter.before_body}
+                    {emitter.body}
+                    {emitter.after_body}
+                \}
+                """
+            case *:
+                assert(false)
 
     return "#define SELF_HOSTED\n#include <lib/oomph.h>\n" + file.string_defs + code

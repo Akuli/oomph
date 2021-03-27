@@ -485,6 +485,9 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.ListLiteral):
             content = [self.do_expression(item) for item in expr.content]
             if content:
+                assert len({var.type for var in content}) == 1, {
+                    var.type for var in content
+                }
                 [content_type] = {var.type for var in content}
             else:
                 content_type = AutoType()
@@ -586,7 +589,10 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.SetAttribute):
             obj = self.do_expression(stmt.obj)
             new_value_var = self.do_expression(stmt.value)
-            assert (new_value_var.type, stmt.attribute) in obj.type.members
+            assert (new_value_var.type, stmt.attribute) in obj.type.members, (
+                f"attribute not found in class {obj.type.name}: "
+                f"{new_value_var.type.name} {stmt.attribute}"
+            )
 
             # Copy old value into local var, so that it will be decreffed
             old_value_var = self.create_var(new_value_var.type)
