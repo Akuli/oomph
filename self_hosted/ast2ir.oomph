@@ -787,7 +787,9 @@ class FunctionOrMethodConverter(
                         cases.push(new ir::GetFromUnion(case_var, union_var))
                         cases.push(new ir::IncRef(case_var))
 
-                    let body = self.do_block(chase.body)
+                    cases.push_all(self.do_block(chase.body))
+                    cases.push(new ir::GotoIf(done_label, self.bool_constant("true")))
+
                     if chase.type_and_name != null:
                         assert(self.get_var(varname) == case_var)
                         # TODO: better way to find and remove from list
@@ -795,9 +797,6 @@ class FunctionOrMethodConverter(
                             if self.variables.get(i).name == varname and self.variables.get(i).var == case_var:
                                 self.variables.delete_at_index(i)
                                 break
-
-                    cases.push_all(body)
-                    cases.push(new ir::GotoIf(done_label, self.bool_constant("true")))
 
                     foreach type of nice_types:
                         self.code.push(new ir::UnionMemberCheck(member_check, union_var, type))

@@ -668,13 +668,12 @@ class _FunctionOrMethodConverter:
                     cases.append(ir.GetFromUnion(case_var, union_var))
                     cases.append(ir.IncRef(case_var))
 
-                body = self.do_block(case.body)
+                cases.extend(self.do_block(case.body))
+                cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
+
                 if case.type_and_varname is not None:
                     assert self.variables[varname] is case_var
                     del self.variables[varname]
-
-                cases.extend(body)
-                cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
 
                 for typ in nice_types:
                     self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
