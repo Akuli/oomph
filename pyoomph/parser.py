@@ -203,7 +203,7 @@ class _Parser:
             yield (1, self.get_token()[1])
 
     def parse_expression(self) -> ast.Expression:
-        magic_list: List[Union[Tuple[int, str], ast.Expression]] = []
+        magic_list: List[Union[Tuple[int, str], ast.Expression, ast.Type]] = []
         magic_list.extend(self.get_unary_operators())
         magic_list.append(self.parse_simple_expression())
 
@@ -286,14 +286,12 @@ class _Parser:
                     if op_string == "as":
                         assert isinstance(lhs, ast.Expression)
                         assert isinstance(rhs, ast.Type)
-                        result = ast.As(lhs, rhs)
+                        result: ast.Expression = ast.As(lhs, rhs)
                     else:
                         assert isinstance(lhs, ast.Expression)
                         assert isinstance(rhs, ast.Expression)
                         result = ast.BinaryOperator(lhs, op_string, rhs)
-                    magic_list[where - 1 : where + 2] = [result
-                        
-                    ]
+                    magic_list[where - 1 : where + 2] = [result]
                 else:
                     raise NotImplementedError(op_kind)
 
