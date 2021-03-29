@@ -112,7 +112,7 @@ class FunctionEmitter(
                 else:
                     switch call.function:
                         case ir::BuiltinVariable funcvar:
-                            self.emit_call(funcvar.name, call.args, call.result_var)
+                            self.emit_call(funcvar.name, call.args, call.result)
                         case *:
                             assert(false)
 
@@ -147,7 +147,7 @@ class FunctionEmitter(
 
             case ir::GotoIf goto:
                 self.body = self.body + """
-                if ({self.emit_var(goto.condition)})
+                if ({self.emit_var(goto.cond)})
                     goto label{goto.label.id};
                 """
 

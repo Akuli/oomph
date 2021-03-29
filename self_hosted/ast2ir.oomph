@@ -897,8 +897,8 @@ class FunctionOrMethodConverter(
                         self.get_rid_of_auto_in_var(arg)
 
                 case ir::FunctionCall call:
-                    if call.result_var != null:
-                        self.get_rid_of_auto_in_var(call.result_var.get())
+                    if call.result != null:
+                        self.get_rid_of_auto_in_var(call.result.get())
                     self.get_rid_of_auto_in_var(call.function)
                     foreach arg of call.args:
                         self.get_rid_of_auto_in_var(arg)
@@ -908,7 +908,7 @@ class FunctionOrMethodConverter(
                     self.get_rid_of_auto_in_var(varcpy.source)
 
                 case ir::GotoIf goto:
-                    self.get_rid_of_auto_in_var(goto.condition)
+                    self.get_rid_of_auto_in_var(goto.cond)
 
                 case ir::Return ret:
                     if ret.value != null:

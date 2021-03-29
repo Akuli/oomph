@@ -361,16 +361,14 @@ export union Instruction:
     UnionMemberCheck
     VarCpy
 
-# TODO: FunctionCall: rename result_var --> result (pyoomph consistency)
-# TODO: GotoIf: rename condition --> cond (pyoomph consistency)
 export class ConstructorCall(LocalVariable result, List[LocalVariable] args)
 export class DecRef(LocalVariable var)
 export class FloatConstant(Str value, LocalVariable var)
-export class FunctionCall(Variable function, List[LocalVariable] args, Optional[LocalVariable] result_var)
+export class FunctionCall(Variable function, List[LocalVariable] args, Optional[LocalVariable] result)
 export class GetAttribute(LocalVariable obj, LocalVariable result, Str attribute)
 export class GetFromUnion(LocalVariable result, LocalVariable union_var)
 export class GotoLabel(Int id)
-export class GotoIf(GotoLabel label, LocalVariable condition)
+export class GotoIf(GotoLabel label, LocalVariable cond)
 export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
