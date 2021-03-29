@@ -89,6 +89,12 @@ class BinaryOperator(Expression):
     rhs: Expression
 
 
+@dataclass(eq=False)
+class As(Expression):
+    expr: Expression
+    type: Type
+
+
 # Run statements and evaluate expression. Useful for list comprehensions.
 @dataclass(eq=False)
 class StatementsAndExpression(Expression):
