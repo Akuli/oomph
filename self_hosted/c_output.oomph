@@ -96,14 +96,14 @@ class FunctionEmitter(
                 if call.function == self.file.builtins.get_visible_var("print"):
                     self.emit_call("io_print", call.args, null)
                 else:
-                    self.emit_call(call.function.name, call.args, call.result_var)
+                    switch call.function:
+                        case ir::BuiltinVariable funcvar:
+                            self.emit_call(funcvar.name, call.args, call.result_var)
+                        case *:
+                            assert(false)
             case ir::IntConstant intconst:
                 self.body = self.body + """
                 {self.emit_var(intconst.var)} = {intconst.value}LL;
-                """
-            case ir::IntToFloat cast:
-                self.body = self.body + """
-                {self.emit_var(cast.float_var)} = (double){self.emit_var(cast.int_var)};
                 """
             case ir::MethodCall call:
                 let args = [call.obj]
@@ -130,6 +130,9 @@ class FunctionEmitter(
                 if ({self.emit_var(goto.condition)})
                     goto label{goto.label.id};
                 """
+            case *:
+                print(ins)
+                assert(false)
 
 export func create_code(ir::Builtins builtins, List[ir::ToplevelDeclaration] ir) -> Str:
     let file = new File(builtins, [], "")

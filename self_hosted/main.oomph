@@ -93,7 +93,7 @@ export func main():
         print(ast)
         return
 
-    let ir = ast2ir::convert_program(builtins, ast)
+    let ir = ast2ir::convert_program(builtins, ast, source_path, [])
     let c_code = c_output::create_code(builtins, ir)
     io::write_file("{cache_dir}/out.c", c_code)
     assert(process::run(

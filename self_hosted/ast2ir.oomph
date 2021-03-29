@@ -1287,7 +1287,3 @@ export func convert_program(
     foreach top of program:
         result.push_all(converter.do_toplevel_declaration_pass2(top))
     return result
-
-
-export func main():
-    print("Hello World!")
