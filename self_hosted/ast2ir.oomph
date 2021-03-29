@@ -608,6 +608,12 @@ class FunctionOrMethodConverter(
                     self.do_statement(s)
                 return self.do_expression(sae.expression)
 
+            case ast::As ass:
+                let lhs = self.do_expression(ass.expr)
+                let result = self.create_var(self.get_type(ass.type))
+                self.code.push(new ir::GetFromUnion(result, lhs))
+                return result
+
             case ast::Constructor c:
                 # TODO: constructor functions as first-class objects
                 assert(false)

@@ -3,13 +3,20 @@ import "tokenizer.oomph" as tokenizer
 
 union PrecedenceItem:
     ast::Expression
-    Str
+    Str   # operator, such as "+"
+    ast::Type
 
 # TODO: add a convenient way to do this without util funcs
 func get_expr(PrecedenceItem item) -> ast::Expression:
     switch item:
         case ast::Expression expr:
             return expr
+        case *:
+            assert(false)
+func get_type(PrecedenceItem item) -> ast::Type:
+    switch item:
+        case ast::Type type:
+            return type
         case *:
             assert(false)
 func get_op(PrecedenceItem item) -> Str:
@@ -315,6 +322,18 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 break
 
+    meth eliminate_as(List[PrecedenceItem] magic_list):
+        while "as" in magic_list:
+            for let i = 0; i < magic_list.length(); i = i+1:
+                if magic_list.get(i) == "as":
+                    # TODO: improve errors
+                    assert(0 <= i-1 and i+1 < magic_list.length())
+                    let expr = get_expr(magic_list.get(i-1))
+                    let type = get_type(magic_list.get(i+1))
+                    magic_list.delete_slice(i-1, i+2)
+                    magic_list.insert(i-1, new ast::As(expr, type))
+                    break
+
     meth get_unary_operators() -> List[PrecedenceItem]:
         return [
             while (self.peek().matches("keyword", "not")
@@ -327,26 +346,34 @@ class Parser(List[tokenizer::Token] tokens):
         let binary_ops = [
             "+", "-", "*", "/",
             "==", "!=", "<", ">", "<=", ">=",
-            "in", "not in", "and", "or", "mod",
+            "mod", "as", "in", "not in", "and", "or",
         ]
 
         let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
         while self.peek().value in binary_ops:
-            magic_list.push(self.tokens.pop().value)
-            magic_list.push_all(self.get_unary_operators())
-            magic_list.push(self.parse_simple_expression())
+            let op = self.tokens.pop().value
+            magic_list.push(op)
+            if op == "as":
+                magic_list.push(self.parse_type())
+            else:
+                magic_list.push_all(self.get_unary_operators())
+                magic_list.push(self.parse_simple_expression())
 
         self.eliminate_operators(magic_list, [], ["*", "/"])
         self.eliminate_operators(magic_list, ["-"], ["+", "-"])
         self.eliminate_operators(magic_list, [], ["mod"])
         self.eliminate_operators(magic_list, [], ["==", "!="])
         self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="])
+        self.eliminate_as(magic_list)
         self.eliminate_operators(magic_list, [], ["in", "not in"])
         self.eliminate_operators(magic_list, ["not"], [])
         self.eliminate_operators(magic_list, [], ["and", "or"])
 
-        assert(magic_list.length() == 1)
+        if magic_list.length() != 1:
+            print(magic_list)
+            assert(false)
+
         switch magic_list.first():
             case ast::Expression expr:
                 return expr
