@@ -752,6 +752,8 @@ class _FunctionOrMethodConverter:
                     self._get_rid_of_auto_in_var(ins.result)
                 if isinstance(ins, ir.CallFunction):
                     self._get_rid_of_auto_in_var(ins.func)
+                # fucking mypy
+                assert isinstance(ins, (ir.CallConstructor, ir.CallFunction))
                 for arg in ins.args:
                     self._get_rid_of_auto_in_var(arg)
             elif isinstance(ins, ir.VarCpy):
