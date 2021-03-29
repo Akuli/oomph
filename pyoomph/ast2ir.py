@@ -992,6 +992,7 @@ class _FileConverter:
                     ir.Symbol(self.path, top_declaration.name, union_type)
                 )
 
+            # Union methods are implemented in c_output
             return []
 
         raise NotImplementedError(top_declaration)
