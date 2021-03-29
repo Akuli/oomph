@@ -9,7 +9,7 @@ class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
 class AutoTypeResolve(ir::AutoType autotype, ir::Type actual)
 class AutoTypePair(ir::AutoType first, ir::AutoType second)
 class TypePair(ir::Type first, ir::Type second)
-class UnionTypeAndTypeList(ir::UnionType union_type, List[ir::Type] types)
+class UnionTypeAndAstTypeList(ir::UnionType union_type, List[ast::Type] types)
 
 
 # TODO: shouldn't be needed
@@ -931,7 +931,7 @@ class FileConverter(
     List[NamedType] types,
     List[NamedGeneric] generics,
     List[NamedVariable] variables,
-    List[UnionTypeAndTypeList] union_laziness,  # TODO: this still needed?
+    List[UnionTypeAndAstTypeList] union_laziness,  # TODO: this still needed?
 ):
 
     meth add_var(ir::Variable var, Str name):
@@ -965,10 +965,10 @@ class FileConverter(
         if def.returntype == null:
             let returntype = new Optional[auto](null)
         else:
-            returntype = self.get_type(def.returntype).get()
+            returntype = self.get_type(def.returntype, null).get()
 
         let functype = new FunctionType(
-            [foreach arg of def.args: self.get_type(arg.type)],
+            [foreach arg of def.args: self.get_type(arg.type, null)],
             returntype
         )
         if classtype == null:
@@ -1043,118 +1043,162 @@ class FileConverter(
             #assert not def.export
             return new ir::MethodDef(def.name, functype, argvars, body)
 
-    def _create_pointers_equal_method(self, classtype: Type) -> ir.MethodDef:
-        self_var = ir.LocalVariable(classtype)
-        other_var = ir.LocalVariable(classtype)
-        result_var = ir.LocalVariable(BOOL)
-        return ir.MethodDef(
+    # TODO: do this in c?
+    meth create_pointers_equal_method(Type classtype) -> ir::MethodDef:
+        let self_var = new ir::LocalVariable(classtype)
+        let other_var = new ir::LocalVariable(classtype)
+        let result_var = new ir::LocalVariable(self.builtins.BOOL)
+        return new ir::MethodDef(
             "equals",
             classtype.methods["equals"],
             [self_var, other_var],
-            [ir.PointersEqual(self_var, other_var, result_var), ir.Return(result_var)],
+            [
+                new ir::Instruction(new ir::PointersEqual(self_var, other_var, result_var)),
+                new ir::Instruction(new ir::Return(result_var)),
+            ]
         )
 
-    def do_toplevel_declaration_pass1(
-        self, top_declaration: ast.ToplevelDeclaration
-    ) -> None:
-        if isinstance(top_declaration, ast.Import):
-            for symbol in self.symbols:
-                if symbol.path != top_declaration.path:
-                    continue
+    meth delete_type_if_exists(Str name):
+        # TODO: better way to remove all matches from list
+        for let i = self.types.length() - 1; i >= 0; i = i-1:
+            if self.types.get(i).name == name:
+                self.types.delete_by_index(i)
 
-                name = top_declaration.name + "::" + symbol.name
-                if isinstance(symbol.value, ir.FileVariable):
-                    self.add_var(symbol.value, name)
-                else:
-                    self._types[name] = symbol.value
+    meth do_toplevel_declaration_pass1(ast::ToplevelDeclaration top_decl):
+        switch top_decl:
+            case ast::Import imp:
+                foreach symbol of self.symbols:
+                    if symbol.path != imp.path:
+                        continue
 
-        elif isinstance(top_declaration, ast.FuncOrMethodDef):
-            self.do_func_or_method_def_pass1(top_declaration, classtype=None)
+                    let name = imp.name + "::" + symbol.name
+                    switch symbol.value:
+                        case ir::FileVariable var:
+                            self.add_var(var, name)
+                        case ir::Type type:
+                            self.delete_type_if_exists(name)
+                            self.types.push(new NamedType(name, type))
 
-        elif isinstance(top_declaration, ast.ClassDef):
-            classtype = Type(top_declaration.name, True, self.path)
-            assert top_declaration.name not in self._types
-            self._types[top_declaration.name] = classtype
-            classtype.members.extend(
-                (self.get_type(typ), nam) for typ, nam in top_declaration.members
-            )
-            classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+            case ast::FuncOrMethodDef funcdef:
+                self.do_func_or_method_def_pass1(funcdef, null)
 
-            if "to_string" not in (method.name for method in top_declaration.body):
-                top_declaration.body.insert(0, create_to_string_method(classtype))
-            if "equals" not in (method.name for method in top_declaration.body):
-                classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
-
-            for method_def in top_declaration.body:
-                method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
-                self.do_func_or_method_def_pass1(method_def, classtype)
-
-        elif isinstance(top_declaration, ast.UnionDef):
-            union_type = UnionType(top_declaration.name, self.path)
-            self._types[top_declaration.name] = union_type
-            self.union_laziness[union_type] = top_declaration.type_members
-
-        else:
-            raise NotImplementedError(top_declaration)
-
-    def do_toplevel_declaration_pass2(
-        self,
-        top_declaration: ast.ToplevelDeclaration,
-    ) -> List[ir.ToplevelDeclaration]:
-        if isinstance(top_declaration, ast.Import):
-            return []
-
-        if isinstance(top_declaration, ast.FuncOrMethodDef):
-            result = self.do_func_or_method_def_pass2(top_declaration, classtype=None)
-            assert isinstance(result, ir.FuncDef)
-            return [result]
-
-        if isinstance(top_declaration, ast.ClassDef):
-            classtype = self._types[top_declaration.name]
-
-            typed_method_defs: List[ir.ToplevelDeclaration] = []
-            if "equals" not in (method.name for method in top_declaration.body):
-                typed_method_defs.push(self._create_pointers_equal_method(classtype))
-
-            for method_def in top_declaration.body:
-                typed_def = self.do_func_or_method_def_pass2(method_def, classtype)
-                assert isinstance(typed_def, ir.MethodDef)
-                typed_method_defs.push(typed_def)
-
-            # TODO: use top_declaration.export
-            self.symbols.push(ir.Symbol(self.path, top_declaration.name, classtype))
-            return typed_method_defs
-
-        if isinstance(top_declaration, ast.UnionDef):
-            union_type = self._types[top_declaration.name]
-            assert isinstance(union_type, UnionType)
-            if top_declaration.export:
-                self.symbols.push(
-                    ir.Symbol(self.path, top_declaration.name, union_type)
+            case ast::ClassDef classdef:
+                let classtype = new ir::BasicType(classdef.name, true, [], [], null)
+                foreach named_type of self.types:
+                    assert named_type.name != classdef.name
+                self.types.push(new NamedType(classdef.name, classtype))
+                classdef.members.push_all(
+                    foreach member of classdef.members:
+                    new ir::Member(member.name, self.get_type(member.type, null))
                 )
+                classtype.constructor_argtypes = [foreach member of classdef.members: member.type]
 
-            # Union methods are implemented in c_output
-            return []
+                if "to_string" not in [foreach method of classdef.body: method.name]:
+                    classdef.body.push(create_to_string_method(classtype))
+                if "equals" not in [foreach method of classdef.body: method.name]:
+                    classtype.methods.push(new ir::Method(
+                        "equals", new ir::FunctionType(
+                            [classtype, classtype], self.builtins.BOOL
+                        )
+                    ))
 
-        raise NotImplementedError(top_declaration)
+                foreach method_def of classdef.body:
+                    method_def.args.insert(0, new ast::TypeAndName(
+                        new ast::Type(classtype.name, null), "self"
+                    ))
+                    self.do_func_or_method_def_pass1(method_def, classtype)
 
-    def post_process_union(self, union: UnionType) -> None:
-        if union.type_members is None:
-            types = self.union_laziness.pop(union)
-            union.set_type_members([self.get_type(t) for t in types])
+            case ast::UnionDef uniondef:
+                let union_type = new ir::UnionType(top_decl.name, self.path)
+                self.delete_type_if_exists(name)
+                self.types.push(new NamedType(name, union_type))
+                self.union_laziness.push(new UnionTypeAndAstTypeList(union_type, uniondef.type_members))
+
+    meth do_toplevel_declaration_pass2(ast::ToplevelDeclaration top_decl) -> List[ir::ToplevelDeclaration]:
+        switch top_decl:
+            case ast::Import imp:
+                return []
+
+            case ast::FuncOrMethodDef funcdef:
+                let result = self.do_func_or_method_def_pass2(funcdef, null)
+                switch result:
+                    case ir::FuncDef ir_funcdef:
+                        return [new ir::ToplevelDeclaration(ir_funcdef)]
+                    case *:
+                        assert(false)
+
+            case ast::ClassDef classdef:
+                let classtype = self.get_type(classdef.name, null)
+
+                let typed_method_defs = []
+                if "equals" not in [method.name foreach method of classdef.body]:
+                    typed_method_defs.push(new ir::ToplevelDeclaration(
+                        self.create_pointers_equal_method(classtype)
+                    ))
+
+                foreach method_def of classdef.body:
+                    switch self.do_func_or_method_def_pass2(method_def, classtype):
+                        case ir::MethodDef def:
+                            typed_method_defs.push(def)
+                        case *:
+                            assert(false)
+
+                # TODO: use classdef.export
+                self.symbols.push(new ir::Symbol(self.path, top_decl.name, classtype))
+                return typed_method_defs
+
+            case ast::UnionDef uniondef:
+                switch self.get_type(top_decl.name, null):
+                    case ir::UnionType union_type:
+                        #TODO: if uniondef.export:
+                        self.symbols.push(
+                            new ir::Symbol(self.path, top_decl.name, union_type)
+                        )
+                    case *:
+                        assert(false)
+
+                # Union methods are implemented in c_output
+                return []
+
+    meth post_process_union(self, ir::UnionType union_type):
+        if union_type.type_members == null:
+            for let i = 0; ; i = i+1:
+                let pair = self.union_laziness.get(i)
+                if pair.union_type == union_type:
+                    union_type.type_members = [foreach t of pair.types: self.get_type(t, null)]
+                    break
 
 
-def convert_program(
-    program: List[ast.ToplevelDeclaration], path: pathlib.Path, symbols: List[ir.Symbol]
+func convert_program(
+    List[ast::ToplevelDeclaration] program,
+    Str path,
+    List[ir::Symbol] symbols,
 ) -> List[ir.ToplevelDeclaration]:
-    converter = FileConverter(path, symbols)
-    for top in program:
+
+    converter = new FileConverter(
+        path,
+        symbols,
+        [
+            # NULL_TYPE not exposed
+            new NamedType("Bool", self.builtins.BOOL),
+            new NamedType("Float", self.builtins.FLOAT),
+            new NamedType("Int", self.builtins.INT),
+            new NamedType("Str", self.builtins.STR),
+        ],
+        [
+            new NamedGeneric("List", self.builtins.LIST),
+            new NamedGeneric("Optional", self.builtins.OPTIONAL),
+        ],
+        [foreach var of self.builtins.visible_vars: new NamedVariable(var.name, var)],
+        [],
+    )
+
+    foreach top of program:
         converter.do_toplevel_declaration_pass1(top)
-    for key in list(converter.union_laziness):
-        converter.post_process_union(key)
+    foreach pair of converter.union_laziness.reversed().reversed():  # TODO: better way to copy list
+        converter.post_process_union(pair.union_type)
 
-    result = []
-    for top in program:
-        result.extend(converter.do_toplevel_declaration_pass2(top))
-
+    let result = []
+    foreach top of program:
+        result.push_all(converter.do_toplevel_declaration_pass2(top))
     return result

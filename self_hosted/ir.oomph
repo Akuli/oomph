@@ -16,6 +16,7 @@ export class Member(Str name, Type type)
 
 export class GenericSource(Generic generik, Type arg)
 export class BasicType(
+    # TODO: definition path
     Str name,
     Bool refcounted,
     List[Method] methods,  # TODO: get rid of this
