@@ -1,0 +1,4 @@
+export func main():
+    let foo = []
+    foreach item of foo:
+        print(not item)  # foo becomes list of bools
