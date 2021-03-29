@@ -256,6 +256,7 @@ export func create_builtins() -> Builtins:
     ])
 
     get_the_methods(NULL_TYPE).push_all([
+        new Method("equals", new FunctionType([NULL_TYPE, NULL_TYPE], BOOL)),
         new Method("to_string", new FunctionType([NULL_TYPE], STR)),
     ])
 
