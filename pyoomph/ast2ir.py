@@ -10,7 +10,6 @@ from pyoomph.types import (
     FLOAT,
     INT,
     LIST,
-    OPTIONAL,
     STRING,
     AutoType,
     FunctionType,
