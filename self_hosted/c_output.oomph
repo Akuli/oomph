@@ -130,6 +130,16 @@ class FunctionEmitter(
                 if ({self.emit_var(goto.condition)})
                     goto label{goto.label.id};
                 """
+            case ir::DecRef decref:
+                assert(decref.var.type == self.file.builtins.STR)
+                self.body = self.body + """
+                decref({self.emit_var(decref.var)}, dtor_Str);
+                """
+            case ir::UnSet unset:
+                assert(unset.var.type == self.file.builtins.STR)
+                self.body = self.body + """
+                {self.emit_var(unset.var)} = NULL;
+                """
             case *:
                 print(ins)
                 assert(false)

@@ -339,7 +339,7 @@ class FunctionOrMethodConverter(
                     assert(args.length() == 1)
                 else:
                     # TODO: special-casing of assert
-                    let args = self.do_args(
+                    args = self.do_args(
                         [foreach arg of call.args: self.do_expression(arg)],
                         functype.argtypes,
                         null,
