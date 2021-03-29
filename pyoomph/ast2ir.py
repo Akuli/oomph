@@ -10,7 +10,6 @@ from pyoomph.types import (
     FLOAT,
     INT,
     LIST,
-    OPTIONAL,
     STRING,
     AutoType,
     FunctionType,
@@ -302,15 +301,6 @@ class _FunctionOrMethodConverter:
     def _not(self, obj: ir.LocalVariable) -> ir.LocalVariable:
         return self.create_special_call("bool_not", [obj])
 
-    def _get_value_of_optional(self, obj: ir.LocalVariable) -> ir.LocalVariable:
-        assert (
-            obj.type.generic_origin is not None
-            and obj.type.generic_origin.generic is OPTIONAL
-        )
-        result_var = self.create_var(obj.type.generic_origin.arg)
-        self.code.append(ir.CallMethod(obj, "get", [], result_var))
-        return result_var
-
     def _do_binary_op_typed(
         self, lhs: ir.LocalVariable, op: str, rhs: ir.LocalVariable
     ) -> ir.LocalVariable:
@@ -359,31 +349,6 @@ class _FunctionOrMethodConverter:
         if the_type == STRING and op == "+":
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            result_var = self.create_var(BOOL)
-            with self.code_to_separate_list() as neither_null_code:
-                lhs_value = self._get_value_of_optional(lhs)
-                rhs_value = self._get_value_of_optional(rhs)
-                equal_value = self._do_binary_op_typed(lhs_value, "==", rhs_value)
-                self.code.append(ir.VarCpy(result_var, equal_value))
-
-            lhs_null = self.create_var(BOOL)
-            rhs_null = self.create_var(BOOL)
-            self.code.append(ir.IsNull(lhs, lhs_null))
-            self.code.append(ir.IsNull(rhs, rhs_null))
-
-            with self.code_to_separate_list() as lhs_not_null_code:
-                self.do_if(
-                    rhs_null,
-                    [ir.VarCpy(result_var, ir.visible_builtins["false"])],
-                    neither_null_code,
-                )
-            self.do_if(lhs_null, [ir.VarCpy(result_var, rhs_null)], lhs_not_null_code)
-
-            return result_var
 
         if the_type == INT and op in {"+", "-", "*", "mod", ">"}:
             return self.create_special_call(
@@ -948,46 +913,6 @@ class _FileConverter:
             [ir.PointersEqual(self_var, other_var, result_var), ir.Return(result_var)],
         )
 
-    def _create_union_equals_method(self, union_type: UnionType) -> ir.MethodDef:
-        assert union_type.type_members
-        functype = FunctionType(argtypes=[union_type, union_type], returntype=BOOL)
-        self_var = ir.LocalVariable(union_type)
-        other_var = ir.LocalVariable(union_type)
-        self_matches_var = ir.LocalVariable(BOOL)
-        other_matches_var = ir.LocalVariable(BOOL)
-        result_var = ir.LocalVariable(BOOL)
-        converter = _FunctionOrMethodConverter(
-            self, self.variables.copy(), functype.returntype
-        )
-
-        for member_type in union_type.type_members:
-            converter.code.append(
-                ir.UnionMemberCheck(self_matches_var, self_var, member_type)
-            )
-            converter.code.append(
-                ir.UnionMemberCheck(other_matches_var, other_var, member_type)
-            )
-            specific_self_var = ir.LocalVariable(member_type)
-            specific_other_var = ir.LocalVariable(member_type)
-            when_both_match = [
-                ir.GetFromUnion(specific_self_var, self_var),
-                ir.GetFromUnion(specific_other_var, other_var),
-                ir.IncRef(specific_self_var),
-                ir.IncRef(specific_other_var),
-                ir.CallMethod(
-                    specific_self_var, "equals", [specific_other_var], result_var
-                ),
-                ir.Return(result_var),
-            ]
-
-            with converter.code_to_separate_list() as inner_if:
-                converter.do_if(other_matches_var, when_both_match, [])
-            converter.do_if(self_matches_var, inner_if, [])
-
-        converter.code.append(ir.VarCpy(result_var, ir.visible_builtins["false"]))
-        converter.code.append(ir.Return(result_var))
-        return ir.MethodDef("equals", functype, [self_var, other_var], converter.code)
-
     def do_toplevel_declaration_pass1(
         self, top_declaration: ast.ToplevelDeclaration
     ) -> None:
@@ -1067,8 +992,8 @@ class _FileConverter:
                     ir.Symbol(self.path, top_declaration.name, union_type)
                 )
 
-            equals = self._create_union_equals_method(union_type)
-            return [equals]
+            # Union methods are implemented in c_output
+            return []
 
         raise NotImplementedError(top_declaration)
 
