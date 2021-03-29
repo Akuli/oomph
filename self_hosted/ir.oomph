@@ -1,8 +1,8 @@
 export union Type:
     AutoType
-    BasicType
-    FunctionType
-    UnionType
+    BasicType       # FIXME: missing equals method
+    FunctionType    # FIXME: missing equals method
+    UnionType       # FIXME: missing equals method
 
 
 export class Generic(Str name)
@@ -108,7 +108,6 @@ export class Builtins(
                 new GenericSource(generik, arg),
             )
         if generik == self.LIST:
-            # TODO: fix reference cycles
             let methods = []
             let result = new BasicType("List[{type_name(arg)}]", true, methods, [], new GenericSource(generik, arg))
             let r = new Type(result)  # TODO: get rid of this
@@ -282,6 +281,22 @@ export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
             return method.functype
 
     print("type {type_name(type)} has no method named {name}")
+    assert(false)   # TODO: error
+
+export func get_member(Type type, Str name) -> FunctionType:
+    switch type:
+        case AutoType a:
+            assert(false)
+        case BasicType basictype:
+            let members = basictype.members
+        case *:
+            members = []
+
+    foreach member of members:
+        if member.name == name:
+            return member.type
+
+    print("type {type_name(type)} has no member named {name}")
     assert(false)   # TODO: error
 
 
