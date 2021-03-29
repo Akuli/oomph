@@ -649,6 +649,9 @@ class _FunctionOrMethodConverter:
 
             cases: List[ir.Instruction] = []
             for case in stmt.cases:
+                label = ir.GotoLabel()
+                cases.append(label)
+
                 if case.type_and_varname is None:
                     assert types_to_do
                     nice_types = types_to_do.copy()
@@ -658,22 +661,19 @@ class _FunctionOrMethodConverter:
                     nice_type = self.get_type(ugly_type)
                     nice_types = [nice_type]
                     types_to_do.remove(nice_type)
+
                     case_var = self.create_var(nice_type)
                     assert varname not in self.variables
                     self.variables[varname] = case_var
+                    cases.append(ir.GetFromUnion(case_var, union_var))
+                    cases.append(ir.IncRef(case_var))
 
-                body = self.do_block(case.body)
+                cases.extend(self.do_block(case.body))
+                cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
+
                 if case.type_and_varname is not None:
                     assert self.variables[varname] is case_var
                     del self.variables[varname]
-
-                # FIXME: how does this work for 'case *' ????
-                label = ir.GotoLabel()
-                cases.append(label)
-                cases.append(ir.GetFromUnion(case_var, union_var))
-                cases.append(ir.IncRef(case_var))
-                cases.extend(body)
-                cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
 
                 for typ in nice_types:
                     self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
