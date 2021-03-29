@@ -10,7 +10,7 @@ import signal
 import subprocess
 import sys
 import traceback
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 from pyoomph import ast, ast2ir, ast_transformer, c_output, ir, parser
 
@@ -51,27 +51,38 @@ class CompilationUnit:
 
 def get_c_compiler_command(
     c_paths: List[pathlib.Path], exepath: pathlib.Path
-) -> List[str]:
+) -> Tuple[List[str], str]:
     compile_info = {}
     with (project_root / "obj" / "compile_info.txt").open() as file:
         for line in file:
             key, value = line.rstrip("\n").split("=", maxsplit=1)
             compile_info[key] = value
 
-    return (
+    before_files = (
         [compile_info["cc"]]
         + shlex.split(compile_info["cflags"])
         + [str(path) for path in project_root.glob("obj/*.o")]
-        + [str(path) for path in c_paths]
-        + ["-o", str(exepath)]
+    )
+    after_files = (
+        ["-o", str(exepath)]
         + shlex.split(compile_info["ldflags"])
         + ["-I", str(project_root)]
     )
+    return (
+        before_files + [str(path) for path in c_paths] + after_files,
+        " ".join(
+            [shlex.quote(arg) for arg in before_files]
+            + [f"<{len(c_paths)} files>"]
+            + [shlex.quote(arg) for arg in after_files]
+        ),
+    )
 
 
-def run(command: List[str], verbose: bool) -> int:
+def run(command: List[str], verbose: bool, human_readable: Optional[str] = None) -> int:
     if verbose:
-        print("Running:", " ".join(map(shlex.quote, command)), file=sys.stderr)
+        if human_readable is None:
+            human_readable = " ".join(map(shlex.quote, command))
+        print("Running:", human_readable, file=sys.stderr)
     return subprocess.run(command).returncode
 
 
@@ -167,9 +178,9 @@ def main() -> None:
 
     c_paths = session.write_everything(project_root / "builtins.oomph")
     exe_path = session.compilation_dir / compiler_args.infile.stem
-    command = get_c_compiler_command(c_paths, exe_path)
+    command, human_readable_command = get_c_compiler_command(c_paths, exe_path)
 
-    result = run(command, compiler_args.verbose)
+    result = run(command, compiler_args.verbose, human_readable_command)
     if result != 0:
         sys.exit(result)
 
