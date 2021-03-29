@@ -73,12 +73,12 @@ export func main():
             print("bad arg: {args.first()}")
             assert(false)  # TODO: error
 
-        args.delete_by_index(0)
+        args.delete_at_index(0)
 
     assert(not (ast_only and tokens_only))
     assert(args != [])  # TODO: error
     let source_path = args.first()
-    args.delete_by_index(0)
+    args.delete_at_index(0)
 
     let builtins = ir::create_builtins()
     let code = io::read_file(source_path)

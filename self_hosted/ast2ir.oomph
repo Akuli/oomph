@@ -745,7 +745,7 @@ class FunctionOrMethodConverter(
                             # TODO: better way to remove from list
                             for let i = 0; ; i = i+1:
                                 if self.variables.get(i).name == leet.varname:
-                                    self.variables.delete_by_index(i)
+                                    self.variables.delete_at_index(i)
                                     break
                         case *:
                             pass
@@ -776,7 +776,7 @@ class FunctionOrMethodConverter(
                         let nice_types = [nice_type]
                         for let i = 0; ; i = i+1:
                             if types_to_do.get(i) == nice_type:
-                                types_to_do.delete_by_index(i)
+                                types_to_do.delete_at_index(i)
                                 break
                         let case_var = self.create_var(nice_type)
                         # TODO: assert varname not in self.variables
@@ -788,7 +788,7 @@ class FunctionOrMethodConverter(
                         # TODO: better way to find and remove from list
                         for let i = 0; ; i = i + 1:
                             if self.variables.get(i).name == varname and self.variables.get(i).var == case_var:
-                                self.variables.delete_by_index(i)
+                                self.variables.delete_at_index(i)
                                 break
 
                     let label = self.create_goto_label()
@@ -1122,7 +1122,7 @@ class FileConverter(
         # TODO: better way to remove all matches from list
         for let i = self.types.length() - 1; i >= 0; i = i-1:
             if self.types.get(i).name == name:
-                self.types.delete_by_index(i)
+                self.types.delete_at_index(i)
 
     meth do_toplevel_declaration_pass1(ast::ToplevelDeclaration top_decl):
         switch top_decl:

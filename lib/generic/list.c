@@ -108,7 +108,7 @@ ITEMTYPE METHOD(get)(TYPE self, int64_t i)
 	return self->data[i];
 }
 
-void METHOD(delete_by_index)(TYPE self, int64_t i)
+void METHOD(delete_at_index)(TYPE self, int64_t i)
 {
 	validate_index(self, i);
 	DECREF_ITEM(self->data[i]);
