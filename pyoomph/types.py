@@ -93,6 +93,7 @@ class Generic:
             result.constructor_argtypes = []
             # TODO: hide __contains better?
             result.methods["__contains"] = FunctionType([result, generic_arg], BOOL)
+            # TODO: rename delete_by_index --> delete_at_index
             result.methods["delete_by_index"] = FunctionType([result, INT], None)
             result.methods["delete_slice"] = FunctionType([result, INT, INT], result)
             result.methods["ends_with"] = FunctionType([result, result], BOOL)
