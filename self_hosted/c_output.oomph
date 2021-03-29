@@ -85,51 +85,96 @@ class FunctionEmitter(
         {assignment} {c_func}({arg_strings.join(",")});
         """
 
+    # FIXME
+    meth is_refcounted(ir::Type type) -> Bool:
+        if type == self.file.builtins.STR:
+            return true
+        if (
+            type == self.file.builtins.INT
+            or type == self.file.builtins.BOOL
+            or type == self.file.builtins.FLOAT
+        ):
+            return false
+        print("is_refcounted dunno about {type}")
+        assert(false)
+
     meth emit_instruction(ir::Instruction ins):
         switch ins:
             case ir::FloatConstant floatconst:
                 self.body = self.body + """
                 {self.emit_var(floatconst.var)} = {floatconst.value};
                 """
+
             case ir::FunctionCall call:
                 # TODO: use emit_var
                 if call.function == self.file.builtins.get_visible_var("print"):
                     self.emit_call("io_print", call.args, null)
                 else:
-                    self.emit_call(call.function.name, call.args, call.result_var)
+                    switch call.function:
+                        case ir::BuiltinVariable funcvar:
+                            self.emit_call(funcvar.name, call.args, call.result)
+                        case *:
+                            assert(false)
+
             case ir::IntConstant intconst:
                 self.body = self.body + """
                 {self.emit_var(intconst.var)} = {intconst.value}LL;
                 """
-            case ir::IntToFloat cast:
-                self.body = self.body + """
-                {self.emit_var(cast.float_var)} = (double){self.emit_var(cast.int_var)};
-                """
+
             case ir::MethodCall call:
                 let args = [call.obj]
                 args.push_all(call.args)
                 self.emit_call(
                     "meth_{self.file.get_type_c_name(call.obj.type)}_{call.method_name}",
                     args, call.result)
+
             case ir::StringConstant strconst:
                 self.body = self.body + """
                 {self.emit_var(strconst.var)} = {self.file.emit_string(strconst.value)};
                 """
+
             case ir::VarCpy varcpy:
                 self.body = self.body + """
                 {self.emit_var(varcpy.dest)} = {self.emit_var(varcpy.source)};
                 """
+
             case ir::GotoLabel label:
                 # (void)0 needed when label is last thing in function
                 self.body = self.body + """
                 label{label.id}:
                     (void)0;
                 """
+
             case ir::GotoIf goto:
                 self.body = self.body + """
-                if ({self.emit_var(goto.condition)})
+                if ({self.emit_var(goto.cond)})
                     goto label{goto.label.id};
                 """
+
+            case ir::IncRef incref:
+                if self.is_refcounted(incref.var.type):
+                    assert(incref.var.type == self.file.builtins.INT)
+                    self.body = self.body + """
+                    incref({self.emit_var(incref.var)});
+                    """
+
+            case ir::DecRef decref:
+                if self.is_refcounted(decref.var.type):
+                    assert(decref.var.type == self.file.builtins.STR)
+                    self.body = self.body + """
+                    decref({self.emit_var(decref.var)}, dtor_Str);
+                    """
+
+            case ir::UnSet unset:
+                if self.is_refcounted(unset.var.type):
+                    assert(unset.var.type == self.file.builtins.STR)
+                    self.body = self.body + """
+                    {self.emit_var(unset.var)} = NULL;
+                    """
+
+            case *:
+                print(ins)
+                assert(false)
 
 export func create_code(ir::Builtins builtins, List[ir::ToplevelDeclaration] ir) -> Str:
     let file = new File(builtins, [], "")

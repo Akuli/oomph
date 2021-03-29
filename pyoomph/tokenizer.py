@@ -103,6 +103,8 @@ def raw_tokenize(code: str) -> Iterator[Tuple[str, str]]:
             if tokentype == "identifier" and value == "assert":
                 lineno = code[: match.start()].count("\n") + 1
                 tokentype = f"assert_{lineno}"
+            # Add this for very verbose tokenizing or parsing debugging:
+            # print(repr(match.group()))
             yield (tokentype, match.group())
 
 

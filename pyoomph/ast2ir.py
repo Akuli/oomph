@@ -667,6 +667,7 @@ class _FunctionOrMethodConverter:
                     assert self.variables[varname] is case_var
                     del self.variables[varname]
 
+                # FIXME: how does this work for 'case *' ????
                 label = ir.GotoLabel()
                 cases.append(label)
                 cases.append(ir.GetFromUnion(case_var, union_var))
