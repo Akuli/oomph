@@ -359,33 +359,6 @@ class _FunctionOrMethodConverter:
         if the_type == STRING and op == "+":
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
-        if (
-            op == "=="
-            and the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            # TODO: is this redundant? i think there's .equals() method?
-            result_var = self.create_var(BOOL)
-            with self.code_to_separate_list() as neither_null_code:
-                lhs_value = self._get_value_of_optional(lhs)
-                rhs_value = self._get_value_of_optional(rhs)
-                equal_value = self._do_binary_op_typed(lhs_value, "==", rhs_value)
-                self.code.append(ir.VarCpy(result_var, equal_value))
-
-            lhs_null = self.create_var(BOOL)
-            rhs_null = self.create_var(BOOL)
-            self.code.append(ir.IsNull(lhs, lhs_null))
-            self.code.append(ir.IsNull(rhs, rhs_null))
-
-            with self.code_to_separate_list() as lhs_not_null_code:
-                self.do_if(
-                    rhs_null,
-                    [ir.VarCpy(result_var, ir.visible_builtins["false"])],
-                    neither_null_code,
-                )
-            self.do_if(lhs_null, [ir.VarCpy(result_var, rhs_null)], lhs_not_null_code)
-
-            return result_var
 
         if the_type == INT and op in {"+", "-", "*", "mod", ">"}:
             return self.create_special_call(
