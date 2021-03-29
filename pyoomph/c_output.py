@@ -133,11 +133,6 @@ class _FunctionEmitter:
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};\n"
 
-        if isinstance(ins, ir.IsNull):
-            return (
-                f"{self.emit_var(ins.result)} = IS_NULL({self.emit_var(ins.value)});\n"
-            )
-
         if isinstance(ins, ir.UnSet):
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"

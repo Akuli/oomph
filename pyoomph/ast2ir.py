@@ -765,7 +765,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.Return):
                 if ins.value is not None:
                     self._get_rid_of_auto_in_var(ins.value)
-            elif isinstance(ins, (ir.InstantiateUnion, ir.IsNull)):
+            elif isinstance(ins, ir.InstantiateUnion):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.value)
             elif isinstance(ins, ir.GetAttribute):

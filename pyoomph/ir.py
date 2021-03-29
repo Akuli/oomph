@@ -228,19 +228,6 @@ class UnSet(Instruction):
     var: LocalVariable
 
 
-# Can't be a function call because argument can be many different types
-# For optionals only
-@dataclass(eq=False)
-class IsNull(Instruction):
-    value: LocalVariable
-    result: LocalVariable
-
-    def __post_init__(self) -> None:
-        assert self.result.type == BOOL
-        assert self.value.type.generic_origin is not None
-        assert self.value.type.generic_origin.generic is OPTIONAL
-
-
 # TODO: replace Return with gotos?
 @dataclass(eq=False)
 class Return(Instruction):
