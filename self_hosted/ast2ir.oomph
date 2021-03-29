@@ -766,6 +766,9 @@ class FunctionOrMethodConverter(
                 let cases = new List[ir::Instruction]()
 
                 foreach chase of switchie.cases:
+                    let label = self.create_goto_label()
+                    cases.push(label)
+
                     if chase.type_and_name == null:
                         assert(types_to_do != [])
                         let nice_types = types_to_do
@@ -781,6 +784,8 @@ class FunctionOrMethodConverter(
                         let case_var = self.create_var(nice_type)
                         # TODO: assert varname not in self.variables
                         self.variables.push(new NamedVariable(varname, case_var))
+                        cases.push(new ir::GetFromUnion(case_var, union_var))
+                        cases.push(new ir::IncRef(case_var))
 
                     let body = self.do_block(chase.body)
                     if chase.type_and_name != null:
@@ -791,10 +796,6 @@ class FunctionOrMethodConverter(
                                 self.variables.delete_at_index(i)
                                 break
 
-                    let label = self.create_goto_label()
-                    cases.push(label)
-                    cases.push(new ir::GetFromUnion(case_var, union_var))
-                    cases.push(new ir::IncRef(case_var))
                     cases.push_all(body)
                     cases.push(new ir::GotoIf(done_label, self.bool_constant("true")))
 
