@@ -21,11 +21,26 @@ export class BasicType(
     Bool refcounted,
     List[Method] methods,  # TODO: get rid of this
     List[Member] members,  # TODO: get rid of this
+    Optional[List[Type]] constructor_argtypes,
     Optional[GenericSource] generic_source,
 )
 
 # type_members can be temporarily null, allows nested unions
 export class UnionType(Str name, Optional[List[Type]] type_members, Optional[GenericSource] generic_source)
+
+
+export func get_constructor_argtypes(Type type) -> Optional[List[Type]]:
+    switch type:
+        case AutoType autotype:
+            assert(false)
+        case BasicType basictype:
+            return basictype.constructor_argtypes
+        case FunctionType functype:
+            return null
+        case UnionType uniontype:
+            # Special-cased in ast2ir because multiple possibilities
+            # TODO: rely on implicit conversions and return [type] maybe?
+            assert(false)
 
 export func type_name(Type type) -> Str:
     switch type:
@@ -57,6 +72,16 @@ export union Variable:
     BuiltinVariable
     FileVariable
     LocalVariable
+
+# TODO: this sucks
+export func var_type(Variable var) -> Type:
+    switch var:
+        case BuiltinVariable builtin_var:
+            return builtin_var.type
+        case FileVariable file_var:
+            return file_var.type
+        case LocalVariable local_var:
+            return local_var.type
 
 
 # TODO: global (but const) variables
@@ -110,7 +135,14 @@ export class Builtins(
             )
         if generik == self.LIST:
             let methods = []
-            let result = new BasicType("List[{type_name(arg)}]", true, methods, [], new GenericSource(generik, arg))
+            let result = new BasicType(
+                "List[{type_name(arg)}]",
+                true,
+                methods,
+                [],
+                new List[Type](),  # FIXME: [] doesn't work
+                new GenericSource(generik, arg),
+            )
             let r = new Type(result)  # TODO: get rid of this
             methods.push_all([
                 # TODO: hide __contains better?
@@ -154,11 +186,11 @@ func get_the_methods(Type type) -> List[Method]:
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     # Methods are empty and special to prevent reference cycles
-    let BOOL = new Type(new BasicType("Bool", false, [], [], null))
-    let FLOAT = new Type(new BasicType("Float", false, [], [], null))
-    let INT = new Type(new BasicType("Int", false, [], [], null))
-    let NULL_TYPE = new Type(new BasicType("Bool", false, [], [], null))
-    let STR = new Type(new BasicType("Str", true, [], [], null))
+    let BOOL = new Type(new BasicType("Bool", false, [], [], null, null))
+    let FLOAT = new Type(new BasicType("Float", false, [], [], null, null))
+    let INT = new Type(new BasicType("Int", false, [], [], null, null))
+    let NULL_TYPE = new Type(new BasicType("Bool", false, [], [], null, null))
+    let STR = new Type(new BasicType("Str", true, [], [], null, null))
 
     let LIST = new Generic("List")
     let OPTIONAL = new Generic("Optional")
@@ -285,7 +317,7 @@ export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
     print("type {type_name(type)} has no method named {name}")
     assert(false)   # TODO: error
 
-export func get_member(Type type, Str name) -> FunctionType:
+export func get_member(Type type, Str name) -> Type:
     switch type:
         case AutoType a:
             assert(false)
@@ -303,24 +335,46 @@ export func get_member(Type type, Str name) -> FunctionType:
 
 
 export union Instruction:
+    ConstructorCall
+    DecRef
     FloatConstant
     FunctionCall
+    GetAttribute
+    GetFromUnion
     GotoIf
     GotoLabel
+    IncRef
+    InstantiateUnion
     IntConstant
-    IntToFloat
     MethodCall
+    PointersEqual
+    Return
+    SetAttribute
     StringConstant
+    UnSet
+    UnionMemberCheck
     VarCpy
 
+# TODO: FunctionCall: rename result_var --> result (pyoomph consistency)
+# TODO: GotoIf: rename condition --> cond (pyoomph consistency)
+export class ConstructorCall(LocalVariable result, List[LocalVariable] args)
+export class DecRef(LocalVariable var)
 export class FloatConstant(Str value, LocalVariable var)
-export class FunctionCall(BuiltinVariable function, List[LocalVariable] args, Optional[LocalVariable] result_var)
+export class FunctionCall(Variable function, List[LocalVariable] args, Optional[LocalVariable] result_var)
+export class GetAttribute(LocalVariable obj, LocalVariable result, Str attribute)
+export class GetFromUnion(LocalVariable result, LocalVariable union_var)
 export class GotoLabel(Int id)
 export class GotoIf(GotoLabel label, LocalVariable condition)
+export class IncRef(LocalVariable var)
+export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
-export class IntToFloat(LocalVariable int_var, LocalVariable float_var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, Optional[LocalVariable] result)
+export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
+export class Return(Optional[LocalVariable] value)
+export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)
 export class StringConstant(Str value, LocalVariable var)
+export class UnSet(LocalVariable var)
+export class UnionMemberCheck(LocalVariable result, LocalVariable union_var, Type member_type)
 export class VarCpy(LocalVariable dest, Variable source)  # same argument order as memcpy
 
 export union ToplevelDeclaration:
