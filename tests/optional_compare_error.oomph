@@ -1,0 +1,2 @@
+export func main():
+    print(new Optional[Int](1) < new Optional[Int](2))

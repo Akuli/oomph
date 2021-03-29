@@ -360,9 +360,11 @@ class _FunctionOrMethodConverter:
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
         if (
-            the_type.generic_origin is not None
+            op == "=="
+            and the_type.generic_origin is not None
             and the_type.generic_origin.generic is OPTIONAL
         ):
+            # TODO: is this redundant? i think there's .equals() method?
             result_var = self.create_var(BOOL)
             with self.code_to_separate_list() as neither_null_code:
                 lhs_value = self._get_value_of_optional(lhs)
