@@ -302,16 +302,6 @@ class _FunctionOrMethodConverter:
     def _not(self, obj: ir.LocalVariable) -> ir.LocalVariable:
         return self.create_special_call("bool_not", [obj])
 
-    # TODO: this still needed?
-    def _get_value_of_optional(self, obj: ir.LocalVariable) -> ir.LocalVariable:
-        assert (
-            obj.type.generic_origin is not None
-            and obj.type.generic_origin.generic is OPTIONAL
-        )
-        result_var = self.create_var(obj.type.generic_origin.arg)
-        self.code.append(ir.CallMethod(obj, "get", [], result_var))
-        return result_var
-
     def _do_binary_op_typed(
         self, lhs: ir.LocalVariable, op: str, rhs: ir.LocalVariable
     ) -> ir.LocalVariable:
