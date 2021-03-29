@@ -164,6 +164,7 @@ FLOAT.methods["truncate"] = FunctionType([FLOAT], INT)
 INT.methods["equals"] = FunctionType([INT, INT], BOOL)
 INT.methods["to_string"] = FunctionType([INT], STRING)
 
+NULL_TYPE.methods["equals"] = FunctionType([NULL_TYPE, NULL_TYPE], BOOL)
 NULL_TYPE.methods["to_string"] = FunctionType([NULL_TYPE], STRING)
 
 STRING.methods["center_pad"] = FunctionType([STRING, INT, STRING], STRING)
