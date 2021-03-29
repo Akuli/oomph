@@ -30,7 +30,7 @@ obj/compile_info.txt: Makefile
 
 # self-hosted compiler
 oomphc: $(OBJ) obj/compile_info.txt $(wildcard pyoomph/*.py self_hosted/*.oomph)
-	python3 -m pyoomph self_hosted/main.oomph -o $@
+	python3 -m pyoomph --verbose self_hosted/main.oomph -o $@
 
 clean:
 	rm -rvf obj test_out oomphc
