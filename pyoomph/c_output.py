@@ -425,7 +425,20 @@ class _FilePair:
                 """
                 for num, typ in enumerate(the_type.type_members)
             )
-            self.function_decls += f"struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);"
+            equals_cases = "".join(
+                f"""
+                case {num}:
+                    return meth_{self.session.get_type_c_name(typ)}_equals(
+                        a.val.item{num}, b.val.item{num});
+                """
+                for num, typ in enumerate(the_type.type_members)
+            )
+            # TODO: can decls be emitted automatically?
+            self.function_decls += f"""
+            struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);
+            bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
+            """
+            type_name_code = self.emit_string(the_type.name) + "->str"
             self.function_defs += f"""
             struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj)
             {{
@@ -433,7 +446,9 @@ class _FilePair:
                 switch(obj.membernum) {{
                     {to_string_cases}
                     default:
-                        assert(0);
+                        panic_printf(
+                            "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                            {type_name_code}, (int)obj.membernum);
                 }}
 
                 struct class_Str *res = {self.emit_string(the_type.name)};
@@ -444,6 +459,19 @@ class _FilePair:
                 string_concat_inplace(&res, ")");
                 decref(valstr, dtor_Str);
                 return res;
+            }}
+
+            bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
+            {{
+                if (a.membernum != b.membernum)
+                    return false;
+                switch(a.membernum) {{
+                    {equals_cases}
+                    default:
+                        panic_printf(
+                            "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                            {type_name_code}, (int)a.membernum);
+                }}
             }}
             """
 
