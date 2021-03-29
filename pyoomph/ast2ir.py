@@ -497,7 +497,7 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.UnaryOperator):
             obj = self.do_expression(expr.obj)
-            if obj.type is BOOL and expr.op == "not":
+            if expr.op == "not":
                 return self.create_special_call(
                     "bool_not", [self.implicit_conversion(obj, BOOL)]
                 )
