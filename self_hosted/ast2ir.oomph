@@ -37,6 +37,13 @@ class _FunctionOrMethodConverter(
     List[AutoTypePair] matching_autotypes,
     Int autotype_counter,
 ):
+    meth get_var(Str name) -> ir::Variable:
+        foreach named_var of self.variables:
+            if named_var.name == name:
+                return named_var.var
+        # TODO: error
+        print("no variable named {name}")
+        assert(false)
 
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
         # TODO: transitivity? if (A,B) and (B,C) in matching_autotypes then A --> [A,B,C]
@@ -82,11 +89,14 @@ class _FunctionOrMethodConverter(
         let arg = self.substitute_autotypes(source.get().arg, must_succeed)
         return self.builtins.generic2type(source.get().generik, arg)
 
+    meth create_autotype() -> ir::AutoType:
+        self.autotype_counter = self.autotype_counter + 1
+        return new ir::AutoType(self.autotype_counter)
+
     meth get_type(ast::Type raw_type) -> ir::Type:
         if raw_type.name == "auto":
             assert(raw_type.generic_arg == null)  # TODO: error
-            self.autotype_counter = self.autotype_counter + 1
-            return new ir::AutoType(self.autotype_counter)
+            return self.create_autotype()
         return self.file_converter.get_type(raw_type, self)
 
     meth create_var(ast::Type the_type) -> ir::LocalVariable:
@@ -370,168 +380,166 @@ class _FunctionOrMethodConverter(
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
 
-=========================================================================================
-=========================================================================================
-=========================================================================================
-=========================================================================================
+        if the_type == self.builtins.INT and op == "+":
+            return self.create_special_call("int_add", [lhs, rhs])
+        if the_type == self.builtins.INT and op == "-":
+            return self.create_special_call("int_sub", [lhs, rhs])
+        if the_type == self.builtins.INT and op == "*":
+            return self.create_special_call("int_mul", [lhs, rhs])
+        if the_type == self.builtins.INT and op == "mod":
+            return self.create_special_call("int_mod", [lhs, rhs])
+        if the_type == self.builtins.INT and op == ">":
+            return self.create_special_call("int_gt", [lhs, rhs])
 
-        if the_type == INT and op in ["+", "-", "*", "mod", ">"]:
-            return self.create_special_call(
-                {
-                    "+": "int_add",
-                    "-": "int_sub",
-                    "*": "int_mul",
-                    "mod": "int_mod",
-                    ">": "int_gt",
-                }[op],
-                [lhs, rhs],
-            )
-
-        if the_type == INT and op == "/":
+        if the_type == self.builtins.INT and op == "/":
             lhs = self.create_special_call("int2float", [lhs])
             rhs = self.create_special_call("int2float", [rhs])
-            the_type = FLOAT
+            the_type = self.builtins.FLOAT
 
-        if the_type == FLOAT and op in {"+", "-", "*", "/", "mod", ">"}:
-            return self.create_special_call(
-                {
-                    "+": "float_add",
-                    "-": "float_sub",
-                    "*": "float_mul",
-                    "/": "float_div",
-                    "mod": "float_mod",
-                    ">": "float_gt",
-                }[op],
-                [lhs, rhs],
-            )
+        if the_type == self.builtins.FLOAT and op == "+":
+            return self.create_special_call("float_add", [lhs, rhs])
+        if the_type == self.builtins.FLOAT and op == "-":
+            return self.create_special_call("float_sub", [lhs, rhs])
+        if the_type == self.builtins.FLOAT and op == "*":
+            return self.create_special_call("float_mul", [lhs, rhs])
+        if the_type == self.builtins.FLOAT and op == "/":
+            return self.create_special_call("float_div", [lhs, rhs])
+        if the_type == self.builtins.FLOAT and op == "mod":
+            return self.create_special_call("float_mod", [lhs, rhs])
+        if the_type == self.builtins.FLOAT and op == ">":
+            return self.create_special_call("float_gt", [lhs, rhs])
 
         if op == "==":
-            result_var = self.create_var(BOOL)
-            self.code.push(ir.CallMethod(lhs, "equals", [rhs], result_var))
+            result_var = self.create_var(self.builtins.BOOL)
+            self.code.push(new ir::CallMethod(lhs, "equals", [rhs], result_var))
             return result_var
 
-        raise TypeError(f"{the_type.name} {op} {the_type.name}")
+        print("wrong types: {the_type.name} {op} {the_type.name}")
+        assert(false)  # TODO: error
 
-    def do_if(
-        self,
-        cond: ir.LocalVariable,
-        then: List[ir.Instruction],
-        otherwise: List[ir.Instruction],
-    ) -> None:
-        then_label = ir.GotoLabel()
-        done_label = ir.GotoLabel()
-        self.code.push(ir.Goto(then_label, cond))
-        self.code.extend(otherwise)
-        self.code.push(ir.Goto(done_label, ir.visible_builtins["true"]))
+    meth do_if(ir::LocalVariable cond, List[ir.Instruction] then, List[ir.Instruction] otherwise):
+        let then_label = ir.GotoLabel()
+        let done_label = ir.GotoLabel()
+        self.code.push(new ir::Goto(then_label, cond))
+        self.code.push_all(otherwise)
+        self.code.push(new ir::Goto(done_label, self.builtins.get_visible_var("true")))
         self.code.push(then_label)
-        self.code.extend(then)
+        self.code.push_all(then)
         self.code.push(done_label)
 
-    def do_binary_op(self, op_ast: ast.BinaryOperator) -> ir.LocalVariable:
+    meth do_binary_op(ast::BinaryOperator op_ast) -> ir::LocalVariable:
         # Avoid evaluating right side when not needed
         # TODO: mention this in docs
-        if op_ast.op in {"and", "or"}:
-            lhs_var = self.implicit_conversion(self.do_expression(op_ast.lhs), BOOL)
-            result_var = self.create_var(BOOL)
-            with self.code_to_separate_list() as rhs_evaluation:
-                rhs_var = self.implicit_conversion(self.do_expression(op_ast.rhs), BOOL)
+        if op_ast.op in ["and", "or"]:
+            let lhs_var = self.implicit_conversion(self.do_expression(op_ast.lhs), self.builtins.BOOL)
+            let result_var = self.create_var(self.builtins.BOOL)
+
+            self.push_code()
+            let rhs_var = self.implicit_conversion(self.do_expression(op_ast.rhs), BOOL)
+            let rhs_evaluation = self.pop_code()
+            rhs_evaluation.push(new ir::VarCpy(result_var, rhs_var))
 
             if op_ast.op == "and":
                 self.do_if(
                     lhs_var,
-                    rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
-                    [ir.VarCpy(result_var, ir.visible_builtins["false"])],
+                    rhs_evaluation,
+                    [new ir::VarCpy(result_var, self.builtins.get_visible_var("false"))],
                 )
             else:
                 self.do_if(
                     lhs_var,
-                    [ir.VarCpy(result_var, ir.visible_builtins["true"])],
-                    rhs_evaluation + [ir.VarCpy(result_var, rhs_var)],
+                    [new ir::VarCpy(result_var, self.builtins.get_visible_var("true"))],
+                    rhs_evaluation,
                 )
             return result_var
 
-        lhs = self.do_expression(op_ast.lhs)
-        rhs = self.do_expression(op_ast.rhs)
+        let lhs = self.do_expression(op_ast.lhs)
+        let rhs = self.do_expression(op_ast.rhs)
         return self.do_binary_op_typed(lhs, op_ast.op, rhs)
 
     # Always returns new variable
-    def do_expression(self, expr: ast.Expression) -> ir.LocalVariable:
-        if isinstance(expr, ast.IntConstant):
-            assert -(2 ** 63) <= expr.value < 2 ** 63
-            var = self.create_var(INT)
-            self.code.push(ir.IntConstant(var, expr.value))
-            return var
+    meth do_expression(ast::Expression expr) -> ir::LocalVariable:
+        switch expr:
+            case ast::IntConstant int:
+                # This accepts int64_t values only, because the value has already been converted to int
+                let var = self.create_var(self.builtins.INT)
+                self.code.push(new ir::IntConstant(var, int.value))
+                return var
 
-        if isinstance(expr, ast.FloatConstant):
-            var = self.create_var(FLOAT)
-            self.code.push(ir.FloatConstant(var, expr.value))
-            return var
+            case ast::FloatConstant float:
+                let var = self.create_var(self.builtins.FLOAT)
+                self.code.push(ir.FloatConstant(var, float.value))
+                return var
 
-        if isinstance(expr, ast.StringConstant):
-            var = self.create_var(STRING)
-            self.code.push(ir.StringConstant(var, expr.value))
-            return var
+            case ast::StringConstant string:
+                let var = self.create_var(self.builtins.STR)
+                self.code.push(ir.StringConstant(var, string.value))
+                return var
 
-        if isinstance(expr, ast.ListLiteral):
-            content = [self.do_expression(item) for item in expr.content]
-            if content:
-                assert len({var.type for var in content}) == 1, {
-                    var.type for var in content
-                }
-                [content_type] = {var.type for var in content}
-            else:
-                content_type = ir::AutoType()
-            list_var = self.create_var(LIST.get_type(content_type))
-            self.code.push(ir.CallConstructor(list_var, []))
-            for item_var in content:
-                self.code.push(ir.CallMethod(list_var, "push", [item_var], None))
-            return list_var
+            case ast::ListLiteral list:
+                let content = [foreach expr of list.content: self.do_expression(expr)]
+                if content != []:
+                    let content_type = content.first().type
+                    foreach member of content:
+                        assert(member.type == content_type)  # TODO: error
+                else:
+                    content_type = self.create_autotype()
 
-        if isinstance(expr, ast.StringFormatJoin):
-            assert len(expr.parts) >= 2
-            result = self.stringify(self.do_expression(expr.parts[0]))
-            for part in expr.parts[1:]:
-                # TODO: this results in slow nested code
-                result = self.create_special_call(
-                    "string_concat", [result, self.stringify(self.do_expression(part))]
-                )
-            return result
+                let list_var = self.create_var(LIST.get_type(content_type))
+                self.code.push(new ir::CallConstructor(list_var, []))
+                foreach item_var of content:
+                    self.code.push(new ir::CallMethod(list_var, "push", [item_var], None))
+                return list_var
 
-        if isinstance(expr, ast.Call):
-            if isinstance(expr.func, ast.Constructor):
-                union_type = self.get_type(expr.func.type)
-                if isinstance(union_type, UnionType):
-                    var = self.create_var(union_type)
-                    assert len(expr.args) == 1
-                    obj = self.do_expression(expr.args[0])
-                    self.code.push(ir.IncRef(obj))
-                    self.code.push(ir.InstantiateUnion(var, obj))
-                    return var
+            case ast::StringFormatJoin join:
+                assert(join.parts.length() >= 2)
+                let result = self.stringify(self.do_expression(join.parts.first()))
+                foreach part of join.parts.slice(1, join.parts.length()):
+                    # TODO: this results in slow nested code
+                    result = self.create_special_call(
+                        "string_concat", [result, self.stringify(self.do_expression(part))]
+                    )
+                return result
 
-            call = self.do_call(expr, True)
-            assert call is not None, f"return value of void function {expr.func} used"
-            return call
+            case ast::Call call:
+                # FIXME: nested switches suck
+                switch call.function:
+                    case ast::Constructor constructor:
+                        switch self.get_type(constructor.function.type):
+                            case ast::UnionType union_type:
+                                let var = self.create_var(union_type)
+                                assert(call.args.length() == 1)
+                                let obj = self.do_expression(call.args.first())
+                                self.code.push(ir.IncRef(obj))
+                                self.code.push(ir.InstantiateUnion(var, obj))
+                                return var
+                            case *:
+                                pass
+                    case *:
+                        pass
 
-        if isinstance(expr, ast.GetVar):
-            # Don't return the same variable, otherwise 'a = a' decrefs too much
-            old_var = self.variables[expr.varname]
-            new_var = self.create_var(old_var.type)
-            self.code.push(ir.VarCpy(new_var, old_var))
-            self.code.push(ir.IncRef(new_var))
-            return new_var
+                return self.do_call(call, true).get()
 
-        if isinstance(expr, ast.UnaryOperator):
-            obj = self.do_expression(expr.obj)
-            if obj.type is BOOL and expr.op == "not":
-                return self.create_special_call(
-                    "bool_not", [self.implicit_conversion(obj, BOOL)]
-                )
-            # TODO: auto type support (remember docs)
-            if obj.type is INT and expr.op == "-":
-                return self.create_special_call("int_neg", [obj])
-            if obj.type is FLOAT and expr.op == "-":
-                return self.create_special_call("float_neg", [obj])
-            raise NotImplementedError(f"{expr.op} {obj.type}")
+            case ast::GetVar getvar:
+                # Don't return the same variable, otherwise 'a = a' decrefs too much
+                let old_var = self.get_var(getvar.varname)
+                let new_var = self.create_var(old_var.type)
+                self.code.push(new ir::VarCpy(new_var, old_var))
+                self.code.push(new ir::IncRef(new_var))
+                return new_var
+
+            case ast::UnaryOperator unary:
+                let obj = self.do_expression(unary.obj)
+                if unary.op == "not":
+                    return self.create_special_call(
+                        "bool_not", [self.implicit_conversion(obj, self.builtins.BOOL)]
+                    )
+                # TODO: auto type support (remember docs)
+                if obj.type is INT and expr.op == "-":
+                    return self.create_special_call("int_neg", [obj])
+                if obj.type is FLOAT and expr.op == "-":
+                    return self.create_special_call("float_neg", [obj])
+                raise NotImplementedError(f"{expr.op} {obj.type}")
 
         if isinstance(expr, ast.BinaryOperator):
             return self.do_binary_op(expr)
