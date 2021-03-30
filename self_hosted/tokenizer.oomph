@@ -163,13 +163,13 @@ func raw_tokenize(Str code, Str path) -> List[Token]:
         else:
             new error::Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")
 
-        lineno = lineno + token_value.count("\n")
-        line_prefix = (line_prefix + token_value).split("\n").last()
-        code = code.remove_prefix(token_value)
-
         if token_type != "skip":
             let location = new error::Location(path, lineno, line_prefix, token_value)
             result.push(new Token(token_type, token_value, location))
+
+        lineno = lineno + token_value.count("\n")
+        line_prefix = (line_prefix + token_value).split("\n").last()
+        code = code.remove_prefix(token_value)
 
     return result
 
@@ -219,6 +219,7 @@ func clean_newlines(List[Token] tokens) -> List[Token]:
     return result
 
 func find_blocks(List[Token] tokens) -> List[Token]:
+    let indent_error_msg = "indentation must be a multiple of 4 spaces"
     let indent_level = 0
     let result = []
     tokens = tokens.reversed()
@@ -230,7 +231,8 @@ func find_blocks(List[Token] tokens) -> List[Token]:
         and head.get(1).matches("op", "\n")
         and head.get(2).type == "indent"):
             indent_level = indent_level + 1
-            assert(head.get(2).value == " ".repeat(4*indent_level))  # TODO: error
+            if head.get(2).value != " ".repeat(4*indent_level):
+                head.get(2).location.get().error(indent_error_msg)
             result.push(new Token("begin_block", ":", null))
             tokens.pop()
             tokens.pop()
@@ -243,8 +245,9 @@ func find_blocks(List[Token] tokens) -> List[Token]:
         if head.first().matches("op", "\n"):
             if head.length() >= 2 and head.get(1).type == "indent":
                 let new_level = (head.get(1).value.length() / 4).round()
-                assert(head.get(1).value == " ".repeat(4*new_level))  # TODO: error
-                tokens.pop()   # skip indent token
+                let indent_token = tokens.pop()
+                if head.get(1).value != " ".repeat(4*new_level):
+                    indent_token.location.get().error(indent_error_msg)
             else:
                 new_level = 0
 

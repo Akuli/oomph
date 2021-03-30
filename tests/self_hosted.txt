@@ -9,6 +9,8 @@ tests/escape.oomph
 tests/float2int.oomph
 tests/hello.oomph
 tests/if.oomph
+tests/indent2_error.oomph
+tests/indent_error.oomph
 tests/invalid_token_error.oomph
 tests/mod.oomph
 tests/no_trailing_newline.oomph

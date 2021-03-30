@@ -1,0 +1,5 @@
+tests/indent_error.oomph:2: error: indentation must be a multiple of 4 spaces
+
+      print("js")
+    ^^
+

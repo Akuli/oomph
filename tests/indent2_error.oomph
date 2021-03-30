@@ -1,0 +1,4 @@
+export func main():
+    if foo:
+        print("js")
+      print("lol")
