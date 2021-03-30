@@ -1,4 +1,4 @@
-# TODO: replace this with a test involving an actual error
+# TODO: replace this with a test involving a compilation error
 import "../self_hosted/tokenizer.oomph" as tokenizer
 
 export func main():
