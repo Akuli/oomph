@@ -1,15 +1,13 @@
 # oomph
 This is yet another attempt at making a usable programming language.
 
-```shell
-git clone https://github.com/Akuli/oomph
-cd oomph
-python3 -m venv env
-. env/bin/activate
-pip install -r requirements.txt
-./test
-python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
-```
+    git clone https://github.com/Akuli/oomph
+    cd oomph
+    python3 -m venv env
+    . env/bin/activate
+    pip install -r requirements.txt
+    ./test
+    python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
 
 - If you delete or rename files in `lib/`, you may need to run `make clean`.
 - Run `./lint` and `./test` to check stuff e.g. before commit.
