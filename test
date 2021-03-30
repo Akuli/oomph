@@ -46,7 +46,12 @@ function check()
     if [ $file == tests/args.oomph ]; then
         command="$command hello world"
     fi
-    local outfile=$output_dir/$(basename $file | cut -d. -f1).txt
+    if [ "$output_dir" == "" ]; then
+        noise="$noise >/dev/null"
+        local outfile=/dev/null
+    else
+        local outfile=$output_dir/$(basename $file | cut -d. -f1).txt
+    fi
 
     if [ $keep_going == no ] && grep -q '^fail:' test_out/status; then
         echo "skip: $command" >> test_out/status
@@ -56,11 +61,11 @@ function check()
     local success
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
-    echo "$command"
+    echo "$command $noise"
     if [[ $file == tests/*_error.oomph ]] && eval "$command $noise" > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't: $command"
         success=no
-    elif [[ $file != tests/*_error.oomph ]] && ! eval "$command" > $out; then
+    elif [[ $file != tests/*_error.oomph ]] && ! eval "$command $noise" > $out; then
         echo "========== ERROR: $command"
         success=no
     else
@@ -125,7 +130,6 @@ if [ $check_pyoomph == yes ]; then
                 "" \
                 tests/output/common
         fi
-
     done
     wait
 fi
@@ -141,18 +145,13 @@ if [ $check_self_hosted == yes ] && (
     for file in tests/*.oomph; do
         if ! grep -q "^$file" tests/self_hosted_skip.txt; then
             if [[ $file == tests/*_error.oomph ]]; then
-                command="./oomphc $file"
-                noise="2>/dev/null"
-                check "$file" "$command" "$noise" tests/output/self_hosted
+                check "$file" "./oomphc $file" "2>/dev/null" tests/output/self_hosted
             else
                 command="$valgrind ./oomphc $compiler_valgrind_arg $file"
                 check "$file" "$command" "$noise" tests/output/common
             fi
         elif ! grep -q "^$file" tests/self_hosted_skip_ast.txt; then
-            # TODO: use check function
-            command="./oomphc --ast $file"
-            echo $command
-            $command >/dev/null
+            check "$file" "./oomphc --ast $file" "" ""
         fi
     done
 fi
