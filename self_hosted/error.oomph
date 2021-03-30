@@ -9,6 +9,7 @@ import "<stdlib>/io.oomph" as io
 # lineno starts at 1
 export class Location(Str path, Int lineno, Str line_prefix, Str code):
 
+    # TODO: what if a location points at a newline character?
     meth error(Str message):
         # TODO: print in color
         # TODO: print to stderr, not stdout
@@ -31,3 +32,21 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
         print("    {caret_line}")
         print("")
         assert(false)  # TODO: better way to exit process
+
+    meth combine(Location other) -> Location:
+        assert(self.path == other.path)
+
+        # Don't bother combining across several lines
+        if self.lineno < other.lineno:
+            return self
+        if self.lineno > other.lineno:
+            return other
+
+        if self.line_prefix.starts_with(other.line_prefix):
+            let prefix = other.line_prefix
+            let code = self.line_prefix.remove_prefix(other.line_prefix) + self.code
+        else:
+            prefix = self.line_prefix
+            code = other.line_prefix.remove_prefix(self.line_prefix) + other.code
+
+        return new Location(self.path, self.lineno, prefix, code)

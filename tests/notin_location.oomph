@@ -1,0 +1,5 @@
+# TODO: replace this with a test involving an actual error
+import "../self_hosted/tokenizer.oomph" as tokenizer
+
+export func main():
+    print(tokenizer::tokenize("foo not in bar", "filename.oomph").get(1))

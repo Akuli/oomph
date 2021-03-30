@@ -33,8 +33,7 @@ func get_identifier(Str code) -> Optional[Str]:
             return null
 
 # TODO: enums for type
-# TODO: location shouldn't be optional
-export class Token(Str type, Str value, Optional[error::Location] location):
+export class Token(Str type, Str value, error::Location location):
     meth matches(Str type, Str value) -> Bool:
         return self.type == type and self.value == value
 
@@ -193,8 +192,12 @@ func ignore_whitespace_in_parens(List[Token] tokens) -> List[Token]:
 func combine_not_in(List[Token] tokens) -> List[Token]:
     let result = []
     for let i = 0; i < tokens.length(); :
-        if i+1 < tokens.length() and tokens.get(i).matches("keyword", "not") and tokens.get(i+1).matches("keyword", "in"):
-            result.push(new Token("keyword", "not in", null))
+        if (i+1 < tokens.length()
+            and tokens.get(i).matches("keyword", "not")
+            and tokens.get(i+1).matches("keyword", "in")
+        ):
+            let combined_location = tokens.get(i).location.combine(tokens.get(i+1).location)
+            result.push(new Token("keyword", "not in", combined_location))
             i = i + 2
         else:
             result.push(tokens.get(i))
@@ -232,8 +235,8 @@ func find_blocks(List[Token] tokens) -> List[Token]:
         and head.get(2).type == "indent"):
             indent_level = indent_level + 1
             if head.get(2).value != " ".repeat(4*indent_level):
-                head.get(2).location.get().error(indent_error_msg)
-            result.push(new Token("begin_block", ":", null))
+                head.get(2).location.error(indent_error_msg)
+            result.push(new Token("begin_block", ":", head.first().location))
             tokens.pop()
             tokens.pop()
             tokens.pop()
@@ -247,13 +250,13 @@ func find_blocks(List[Token] tokens) -> List[Token]:
                 let new_level = (head.get(1).value.length() / 4).round()
                 let indent_token = tokens.pop()
                 if head.get(1).value != " ".repeat(4*new_level):
-                    indent_token.location.get().error(indent_error_msg)
+                    indent_token.location.error(indent_error_msg)
             else:
                 new_level = 0
 
             assert(new_level <= indent_level)   # TODO: error
             for ; new_level != indent_level; indent_level = indent_level - 1:
-                result.push(new Token("end_block", "", null))
+                result.push(new Token("end_block", "", head.first().location))
 
     return result
 

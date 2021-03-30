@@ -1,4 +1,5 @@
-All tokens: [Token("end_block", "", Optional[Location](null)), Token("op", "
-", Optional[Location](Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2)", "
-"))), Token("op", ")", Optional[Location](Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2", ")"))), Token("int", "2", Optional[Location](Location("tests/prefix_minus_error.oomph", 2, "    print(3*+", "2"))), Token("op", "+", Optional[Location](Location("tests/prefix_minus_error.oomph", 2, "    print(3*", "+")))]
+All tokens: [Token("end_block", "", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2)", "
+")), Token("op", "
+", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2)", "
+")), Token("op", ")", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2", ")")), Token("int", "2", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+", "2")), Token("op", "+", Location("tests/prefix_minus_error.oomph", 2, "    print(3*", "+"))]
 not a valid expression: +
