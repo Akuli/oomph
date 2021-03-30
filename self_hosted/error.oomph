@@ -29,10 +29,9 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
         else:
             caret_count = self.code.length()
 
-        let caret_line = " ".repeat(line_prefix.length()) + "^".repeat(caret_count)
         print("")
-        print("    {line}")
-        print("    {caret_line}")
+        print("    " + line)
+        print("    " + " ".repeat(line_prefix.length()) + "^".repeat(caret_count))
         print("")
 
     meth error(Str message):
