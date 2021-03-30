@@ -12,6 +12,8 @@ tests/if.oomph
 tests/indent2_error.oomph
 tests/indent_error.oomph
 tests/invalid_token_error.oomph
+tests/leading_indent_error.oomph
+tests/leading_indent_with_comment_error.oomph
 tests/mod.oomph
 tests/no_trailing_newline.oomph
 tests/operators.oomph

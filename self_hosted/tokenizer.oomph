@@ -74,6 +74,10 @@ func get_prefix_spaces(Str string) -> Str:
     return " ".repeat(result)
 
 func raw_tokenize(Str code, Str path) -> List[Token]:
+    # Make sure that files starting with space are error (weird special case)
+    code = "\n" + code
+
+    # Make sure that every statement ends with newline
     if not code.ends_with("\n"):
         code = code + "\n"
 
@@ -91,7 +95,7 @@ func raw_tokenize(Str code, Str path) -> List[Token]:
         "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
         "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
     ]
-    let lineno = 1
+    let lineno = 0  # actually starts at 1, because leading newline
     let line_prefix = ""
 
     let result = []
@@ -141,7 +145,6 @@ func raw_tokenize(Str code, Str path) -> List[Token]:
                     token_value = spaces
             else:
                 # Space to be ignored
-                # TODO: error for indents in beginning of file
                 token_type = "skip"
                 token_value = " "
 

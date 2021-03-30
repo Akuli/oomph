@@ -547,8 +547,9 @@ class Parser(List[tokenizer::Token] tokens):
             let types = self.parse_block_of_union_members()
             return new ast::UnionDef(name, types)
 
-        print("don't know what to do: {self.peek()}")
-        assert(false)
+        self.peek().location.error(
+            "should be function definition, class definition or union definition"
+        )
 
 
 export func parse_file(
