@@ -256,11 +256,12 @@ func find_blocks(List[Token] tokens) -> List[Token]:
                 let indent_token = tokens.pop()
                 if head.get(1).value != " ".repeat(4*new_level):
                     indent_token.location.error(indent_error_msg)
+                if new_level > indent_level:
+                    head.get(1).location.error("indent without ':' at end of previous line")
             else:
                 new_level = 0
 
-            assert(new_level <= indent_level)   # TODO: error
-            for ; new_level != indent_level; indent_level = indent_level - 1:
+            for ; indent_level > new_level; indent_level = indent_level - 1:
                 result.push(new Token("end_block", "", head.first().location))
 
     return result
