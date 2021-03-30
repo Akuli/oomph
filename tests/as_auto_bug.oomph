@@ -1,0 +1,9 @@
+union Foo:
+    Str
+    Int
+
+export func main():
+    let foos = []
+    foreach foo of foos:
+        print(foo as Str)
+    foos.push(new Foo("lol"))
