@@ -107,13 +107,9 @@ export class Builtins(
         # get rid of reference cycles
         # TODO: syntax sucks
         foreach type of self.cleanup_list:
-            switch type:
-                case BasicType basictype:
-                    # TODO: 'basictype.methods = []' doesn't work
-                    while basictype.methods != []:
-                        basictype.methods.pop()
-                case *:
-                    assert(false)
+            # TODO: 'thing.methods = []' doesn't work
+            while (type as BasicType).methods != []:
+                (type as BasicType).methods.pop()
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
@@ -175,19 +171,9 @@ export class Builtins(
             self.cleanup_list.push(result)
             return result
 
-        # TODO: List
-
         print(generik)
         assert(false)
 
-
-# TODO: shouldn't be needed
-func get_the_methods(Type type) -> List[Method]:
-    switch type:
-        case BasicType basictype:
-            return basictype.methods
-        case *:
-            assert(false)
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
@@ -251,7 +237,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("true", BOOL),
     ])
 
-    get_the_methods(FLOAT).push_all([
+    (FLOAT as BasicType).methods.push_all([
         new Method("ceil", new FunctionType([FLOAT], INT)),
         new Method("equals", new FunctionType([FLOAT, FLOAT], BOOL)),
         new Method("floor", new FunctionType([FLOAT], INT)),
@@ -260,7 +246,7 @@ export func create_builtins() -> Builtins:
         new Method("truncate", new FunctionType([FLOAT], INT)),
     ])
 
-    get_the_methods(STR).push_all([
+    (STR as BasicType).methods.push_all([
         new Method("center_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("contains", new FunctionType([STR, STR], BOOL)),
         new Method("count", new FunctionType([STR, STR], INT)),
@@ -284,17 +270,17 @@ export func create_builtins() -> Builtins:
         new Method("trim", new FunctionType([STR], STR)),
     ])
 
-    get_the_methods(BOOL).push_all([
+    (BOOL as BasicType).methods.push_all([
         new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
         new Method("to_string", new FunctionType([BOOL], STR)),
     ])
 
-    get_the_methods(INT).push_all([
+    (INT as BasicType).methods.push_all([
         new Method("equals", new FunctionType([INT, INT], BOOL)),
         new Method("to_string", new FunctionType([INT], STR)),
     ])
 
-    get_the_methods(NULL_TYPE).push_all([
+    (NULL_TYPE as BasicType).methods.push_all([
         new Method("equals", new FunctionType([NULL_TYPE, NULL_TYPE], BOOL)),
         new Method("to_string", new FunctionType([NULL_TYPE], STR)),
     ])

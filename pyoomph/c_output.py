@@ -131,7 +131,12 @@ class _FunctionEmitter:
             assert isinstance(ins.union.type, ir.UnionType)
             assert ins.union.type.type_members is not None
             membernum = ins.union.type.type_members.index(ins.result.type)
-            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};\n"
+            return f"""
+            if ({self.emit_var(ins.union)}.membernum != {membernum})
+                panic_printf("'as' failed");   // TODO: better message?
+
+            {self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};
+            """
 
         if isinstance(ins, ir.UnSet):
             if isinstance(ins.var.type, UnionType):

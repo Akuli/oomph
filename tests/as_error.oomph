@@ -1,0 +1,8 @@
+class Foo(Int value)
+
+union Bar:
+    Foo
+    Str
+
+export func main():
+    print(new Bar("lol") as Foo)

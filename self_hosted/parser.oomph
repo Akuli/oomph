@@ -3,21 +3,8 @@ import "tokenizer.oomph" as tokenizer
 
 union PrecedenceItem:
     ast::Expression
-    Str
-
-# TODO: add a convenient way to do this without util funcs
-func get_expr(PrecedenceItem item) -> ast::Expression:
-    switch item:
-        case ast::Expression expr:
-            return expr
-        case *:
-            assert(false)
-func get_op(PrecedenceItem item) -> Str:
-    switch item:
-        case Str op:
-            return op
-        case *:
-            assert(false)
+    Str   # operator, such as "+"
+    ast::Type
 
 # TODO: should move to stdlib
 func path_parent(Str path) -> Str:
@@ -302,18 +289,30 @@ class Parser(List[tokenizer::Token] tokens):
             if un_or_null != null:
                 let i = un_or_null.get()
                 let op_and_expr = magic_list.delete_slice(i, i+2)
-                let op = get_op(op_and_expr.first())
-                let expr = get_expr(op_and_expr.last())
+                let op = op_and_expr.first() as Str
+                let expr = op_and_expr.last() as ast::Expression
                 magic_list.insert(i, new ast::UnaryOperator(op, expr))
             elif bin_or_null != null:
                 let i = bin_or_null.get()
                 let lhs_op_rhs = magic_list.delete_slice(i, i+3)
-                let lhs = get_expr(lhs_op_rhs.first())
-                let op = get_op(lhs_op_rhs.get(1))
-                let rhs = get_expr(lhs_op_rhs.last())
+                let lhs = lhs_op_rhs.first() as ast::Expression
+                let op = lhs_op_rhs.get(1) as Str
+                let rhs = lhs_op_rhs.last() as ast::Expression
                 magic_list.insert(i, new ast::BinaryOperator(lhs, op, rhs))
             else:
                 break
+
+    meth eliminate_as(List[PrecedenceItem] magic_list):
+        while "as" in magic_list:
+            for let i = 0; i < magic_list.length(); i = i+1:
+                if magic_list.get(i) == "as":
+                    # TODO: improve errors
+                    assert(0 <= i-1 and i+1 < magic_list.length())
+                    let expr = magic_list.get(i-1) as ast::Expression
+                    let type = magic_list.get(i+1) as ast::Type
+                    magic_list.delete_slice(i-1, i+2)
+                    magic_list.insert(i-1, new ast::As(expr, type))
+                    break
 
     meth get_unary_operators() -> List[PrecedenceItem]:
         return [
@@ -327,31 +326,34 @@ class Parser(List[tokenizer::Token] tokens):
         let binary_ops = [
             "+", "-", "*", "/",
             "==", "!=", "<", ">", "<=", ">=",
-            "in", "not in", "and", "or", "mod",
+            "mod", "as", "in", "not in", "and", "or",
         ]
 
         let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
         while self.peek().value in binary_ops:
-            magic_list.push(self.tokens.pop().value)
-            magic_list.push_all(self.get_unary_operators())
-            magic_list.push(self.parse_simple_expression())
+            let op = self.tokens.pop().value
+            magic_list.push(op)
+            if op == "as":
+                magic_list.push(self.parse_type())
+            else:
+                magic_list.push_all(self.get_unary_operators())
+                magic_list.push(self.parse_simple_expression())
 
         self.eliminate_operators(magic_list, [], ["*", "/"])
         self.eliminate_operators(magic_list, ["-"], ["+", "-"])
         self.eliminate_operators(magic_list, [], ["mod"])
         self.eliminate_operators(magic_list, [], ["==", "!="])
         self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="])
+        self.eliminate_as(magic_list)
         self.eliminate_operators(magic_list, [], ["in", "not in"])
         self.eliminate_operators(magic_list, ["not"], [])
         self.eliminate_operators(magic_list, [], ["and", "or"])
 
-        assert(magic_list.length() == 1)
-        switch magic_list.first():
-            case ast::Expression expr:
-                return expr
-            case *:
-                assert(false)
+        if magic_list.length() != 1:
+            print(magic_list)
+            assert(false)
+        return magic_list.first() as ast::Expression
 
     meth parse_oneline_ish_statement() -> ast::Statement:
         if self.peek().matches("keyword", "let"):
@@ -395,11 +397,7 @@ class Parser(List[tokenizer::Token] tokens):
                     print("can't assing to {expr}")
                     assert(false)
 
-        switch expr:
-            case ast::Call call:
-                return call
-            case *:
-                assert(false)
+        return expr as ast::Call
 
     meth parse_case() -> ast::Case:
         self.get_token("keyword", "case")

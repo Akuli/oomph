@@ -203,7 +203,7 @@ class _Parser:
             yield (1, self.get_token()[1])
 
     def parse_expression(self) -> ast.Expression:
-        magic_list: List[Union[Tuple[int, str], ast.Expression]] = []
+        magic_list: List[Union[Tuple[int, str], ast.Expression, ast.Type]] = []
         magic_list.extend(self.get_unary_operators())
         magic_list.append(self.parse_simple_expression())
 
@@ -222,11 +222,16 @@ class _Parser:
             ("keyword", "not in"),
             ("keyword", "and"),
             ("keyword", "or"),
+            ("keyword", "as"),
             ("keyword", "mod"),
         }:
-            magic_list.append((2, self.get_token()[1]))
-            magic_list.extend(self.get_unary_operators())
-            magic_list.append(self.parse_simple_expression())
+            keyword = self.get_token()[1]
+            magic_list.append((2, keyword))
+            if keyword == "as":
+                magic_list.append(self.parse_type())
+            else:
+                magic_list.extend(self.get_unary_operators())
+                magic_list.append(self.parse_simple_expression())
 
         # A common python beginner mistake is writing "a and b or c", thinking it
         # means "a and (b or c)"
@@ -258,6 +263,7 @@ class _Parser:
             [(2, "mod")],
             [(2, "=="), (2, "!=")],
             [(2, "<"), (2, ">"), (2, "<="), (2, ">=")],
+            [(2, "as")],
             [(2, "in"), (2, "not in")],
             [(1, "not")],
             [(2, "and"), (2, "or")],
@@ -277,11 +283,15 @@ class _Parser:
                 elif op_kind == 2:  # Binary operator
                     lhs = magic_list[where - 1]
                     rhs = magic_list[where + 1]
-                    assert isinstance(lhs, ast.Expression)
-                    assert isinstance(rhs, ast.Expression)
-                    magic_list[where - 1 : where + 2] = [
-                        ast.BinaryOperator(lhs, op_string, rhs)
-                    ]
+                    if op_string == "as":
+                        assert isinstance(lhs, ast.Expression)
+                        assert isinstance(rhs, ast.Type)
+                        result: ast.Expression = ast.As(lhs, rhs)
+                    else:
+                        assert isinstance(lhs, ast.Expression)
+                        assert isinstance(rhs, ast.Expression)
+                        result = ast.BinaryOperator(lhs, op_string, rhs)
+                    magic_list[where - 1 : where + 2] = [result]
                 else:
                     raise NotImplementedError(op_kind)
 

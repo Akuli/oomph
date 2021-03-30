@@ -3,6 +3,7 @@
 class Type(Str name, Optional[Type] generic_arg)
 
 export union Expression:
+    As
     BinaryOperator
     Call
     Constructor
@@ -50,6 +51,7 @@ export class ConditionAndBody(Expression cond, List[Statement] body)
 export class ForLoopHeader(List[Statement] init, Optional[Expression] cond, List[Statement] incr)
 export class ForeachLoopHeader(Str varname, Expression list)
 
+export class As(Expression expr, Type type)
 export class BinaryOperator(Expression lhs, Str op, Expression rhs)
 export class Call(Expression function, List[Expression] args)
 export class Constructor(Type type)

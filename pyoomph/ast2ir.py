@@ -511,6 +511,13 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.BinaryOperator):
             return self.do_binary_op(expr)
 
+        if isinstance(expr, ast.As):
+            lhs = self.do_expression(expr.expr)
+            result = self.create_var(self.get_type(expr.type))
+            self.code.append(ir.GetFromUnion(result, lhs))
+            self.code.append(ir.IncRef(result))
+            return result
+
         if isinstance(expr, ast.Constructor):
             raise NotImplementedError(f"constructor as object: {expr}")
 

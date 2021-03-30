@@ -2,11 +2,7 @@ import "ir.oomph" as ir
 
 class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
     meth get_type_c_name(ir::Type type) -> Str:
-        switch type:
-            case ir::BasicType basic:
-                return basic.name
-            case *:
-                assert(false)
+        return (type as ir::BasicType).name
 
     meth emit_type(ir::Type type) -> Str:
         if type == self.builtins.INT:
@@ -110,11 +106,11 @@ class FunctionEmitter(
                 if call.function == self.file.builtins.get_visible_var("print"):
                     self.emit_call("io_print", call.args, null)
                 else:
-                    switch call.function:
-                        case ir::BuiltinVariable funcvar:
-                            self.emit_call(funcvar.name, call.args, call.result)
-                        case *:
-                            assert(false)
+                    self.emit_call(
+                        (call.function as ir::BuiltinVariable).name,
+                        call.args,
+                        call.result
+                    )
 
             case ir::IntConstant intconst:
                 self.body = self.body + """
@@ -181,23 +177,20 @@ export func create_code(ir::Builtins builtins, List[ir::ToplevelDeclaration] ir)
 
     let code = ""
     foreach top_decl of ir:
-        switch top_decl:
-            case ir::FuncDef funcdef:
-                assert(funcdef.var.name == "main")
-                assert(funcdef.argvars == [])
+        let funcdef = top_decl as ir::FuncDef
+        assert(funcdef.var.name == "main")
+        assert(funcdef.argvars == [])
 
-                let emitter = new FunctionEmitter(file, [], "", "", "")
-                foreach ins of funcdef.body:
-                    emitter.emit_instruction(ins)
-                code = code + """
-                void oomph_main(void)
-                \{
-                    {emitter.before_body}
-                    {emitter.body}
-                    {emitter.after_body}
-                \}
-                """
-            case *:
-                assert(false)
+        let emitter = new FunctionEmitter(file, [], "", "", "")
+        foreach ins of funcdef.body:
+            emitter.emit_instruction(ins)
+        code = code + """
+        void oomph_main(void)
+        \{
+            {emitter.before_body}
+            {emitter.body}
+            {emitter.after_body}
+        \}
+        """
 
     return "#define SELF_HOSTED\n#include <lib/oomph.h>\n" + file.string_defs + code
