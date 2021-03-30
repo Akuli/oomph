@@ -484,13 +484,12 @@ class _Parser:
 
 
 def parse_file(
-    code: str, path: Optional[pathlib.Path], stdlib: Optional[pathlib.Path]
+    code: str, path: pathlib.Path, stdlib: Optional[pathlib.Path]
 ) -> List[ast.ToplevelDeclaration]:
     parser = _Parser(tokenizer.tokenize(code))
 
     result: List[ast.ToplevelDeclaration] = []
     while parser.token_iter.peek(None) == ("keyword", "import"):
-        assert path is not None
         assert stdlib is not None
         result.append(parser.parse_import(path, stdlib))
     while parser.token_iter:
