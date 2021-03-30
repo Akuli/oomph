@@ -1,0 +1,11 @@
+#!/bin/bash
+# Find unnecessary lines of tests/self_hosted_skip.txt
+
+set -e
+make oomphc
+
+for file in $(cat tests/self_hosted_skip.txt); do
+    if [[ $file != tests/*_error.oomph ]] && ./oomphc $file >test_out/tmp 2>&1; then
+        echo $file
+    fi
+done

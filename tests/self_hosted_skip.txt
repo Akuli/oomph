@@ -71,7 +71,6 @@ tests/method.oomph
 tests/missing_case_error.oomph
 tests/mkdir_assert_error.oomph
 tests/mkdir_error.oomph
-tests/multiline_string.oomph
 tests/name_conflict_bug.oomph
 tests/nested_union.oomph
 tests/newline_location.oomph
@@ -90,7 +89,6 @@ tests/recurse.oomph
 tests/return_alloc_bug.oomph
 tests/return_int.oomph
 tests/return_type_error.oomph
-tests/scope.oomph
 tests/selfref.oomph
 tests/slice.oomph
 tests/string.oomph
