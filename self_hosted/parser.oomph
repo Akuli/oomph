@@ -177,6 +177,7 @@ class Parser(List[tokenizer::Token] tokens):
                 assert(not code.contains("\\"))
                 result.push(self.tokenize_and_parse_expression(code, code_location))
                 string = string.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
+                location = location.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
             else:
                 let char = string.split("").first()
                 add_string(result, char)
