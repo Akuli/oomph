@@ -133,7 +133,8 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     meth tokenize_and_parse_expression(Str code) -> ast::Expression:
-        let parser = new Parser(tokenizer::tokenize(code).reversed())
+        # TODO: proper path instead of <string>
+        let parser = new Parser(tokenizer::tokenize(code, "<string>").reversed())
         let result = parser.parse_expression()
         parser.get_token("op", "\n")
         assert(parser.tokens == [])
@@ -552,17 +553,16 @@ class Parser(List[tokenizer::Token] tokens):
 
 export func parse_file(
     Str code,
-    Optional[Str] path,
+    Str path,
     Optional[Str] stdlib_path,
 ) -> List[ast::ToplevelDeclaration]:
 
-    let parser = new Parser(tokenizer::tokenize(code).reversed())
+    let parser = new Parser(tokenizer::tokenize(code, path).reversed())
     let result = new List[ast::ToplevelDeclaration]()
 
     while parser.tokens != [] and parser.peek().matches("keyword", "import"):
-        assert(path != null)
         assert(stdlib_path != null)
-        result.push(parser.parse_import(path.get(), stdlib_path.get()))
+        result.push(parser.parse_import(path, stdlib_path.get()))
     while parser.tokens != []:
         result.push(parser.parse_toplevel())
 

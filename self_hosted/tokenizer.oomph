@@ -1,3 +1,5 @@
+import "error.oomph" as error
+
 func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
     foreach prefix of prefixes:
         if s.starts_with(prefix):
@@ -32,7 +34,7 @@ func get_identifier(Str code) -> Optional[Str]:
 
 # TODO: enums
 # TODO: keep track of line numbers
-export class Token(Str type, Str value):
+export class Token(Str type, Str value, error::Location location):
     meth matches(Str type, Str value) -> Bool:
         return self.type == type and self.value == value
 
@@ -74,7 +76,7 @@ func get_prefix_spaces(Str string) -> Str:
         string = string.remove_prefix(" ")
     return " ".repeat(result)
 
-func raw_tokenize(Str code) -> List[Token]:
+func raw_tokenize(Str code, Str path) -> List[Token]:
     if not code.ends_with("\n"):
         code = code + "\n"
 
@@ -92,6 +94,8 @@ func raw_tokenize(Str code) -> List[Token]:
         "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
         "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
     ]
+    let lineno = 1
+    let line_prefix = ""
 
     let result = []
     while code != "":
@@ -100,13 +104,15 @@ func raw_tokenize(Str code) -> List[Token]:
         let int_value = get_int(code)
 
         if id != null:
-            if id.get() in keyword_list:
-                let token = new Token("keyword", id.get())
+            let token_value = id.get()
+            if token_value in keyword_list:
+                let token_type = "keyword"
             else:
-                token = new Token("id", id.get())
+                token_type = "id"
 
         elif op != null:
-            token = new Token("op", op.get())
+            token_type = "op"
+            token_value = op.get()
 
         elif int_value != "":
             let remaining = code.remove_prefix(int_value)
@@ -118,49 +124,52 @@ func raw_tokenize(Str code) -> List[Token]:
                 digit_after_dot = null
 
             if digit_after_dot == null:
-                # int
                 assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
-                token = new Token("int", int_value)
+                token_type = "int"
+                token_value = int_value
             else:
-                # float
-                let float_value = int_value + "." + get_int(remaining.remove_prefix("."))
-                token = new Token("float", float_value)
+                token_type = "float"
+                token_value = int_value + "." + get_int(remaining.remove_prefix("."))
 
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
                 # Space after newline: indentation
                 let spaces = get_prefix_spaces(code)
-                let after_indent = code.remove_prefix(spaces)
-                if after_indent.starts_with("#") or after_indent.starts_with("\n"):
+                if code.remove_prefix(spaces).starts_with("#") or code.remove_prefix(spaces).starts_with("\n"):
                     # This line doesn't actually contain any code, ignore the indent
-                    code = after_indent
-                    continue
-                token = new Token("indent", spaces)
+                    token_type = "skip"
+                    token_value = spaces
+                else:
+                    token_type = "indent"
+                    token_value = spaces
             else:
                 # Space to be ignored
                 # TODO: error for indents in beginning of file
-                code = code.remove_prefix(" ")
-                continue
+                token_type = "skip"
+                token_value = " "
 
         elif code.starts_with("#"):
-            code = code.remove_prefix(code.split("\n").first())
-            continue
+            token_type = "skip"
+            token_value = code.split("\n").first()
 
         elif code.starts_with("\"\"\""):
-            let content = extract_string(code, "\"\"\"")
-            token = new Token("multiline_string", content)
+            token_type = "multiline_string"
+            token_value = extract_string(code, "\"\"\"")
 
         elif code.starts_with("\""):
-            let content = extract_string(code.split("\n").first(), "\"")
-            token = new Token("oneline_string", content)
+            token_type = "oneline_string"
+            token_value = extract_string(code.split("\n").first(), "\"")
 
         else:
-            print(result)
-            print("Invalid syntax: {code}")
-            assert(false)  # TODO: error
+            new error::Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")
 
-        code = code.remove_prefix(token.value)
-        result.push(token)
+        lineno = lineno + token_value.count("\n")
+        line_prefix = (line_prefix + token_value).split("\n").last()
+        code = code.remove_prefix(token_value)
+
+        if token_type != "skip":
+            let location = new error::Location(path, lineno, line_prefix, token_value)
+            result.push(new Token(token_type, token_value, location))
 
     return result
 
@@ -185,7 +194,8 @@ func combine_not_in(List[Token] tokens) -> List[Token]:
     let result = []
     for let i = 0; i < tokens.length(); :
         if i+1 < tokens.length() and tokens.get(i).matches("keyword", "not") and tokens.get(i+1).matches("keyword", "in"):
-            result.push(new Token("keyword", "not in"))
+            # FIXME
+            #result.push(new Token("keyword", "not in"))
             i = i + 2
         else:
             result.push(tokens.get(i))
@@ -222,7 +232,8 @@ func find_blocks(List[Token] tokens) -> List[Token]:
         and head.get(2).type == "indent"):
             indent_level = indent_level + 1
             assert(head.get(2).value == " ".repeat(4*indent_level))  # TODO: error
-            result.push(new Token("begin_block", ":"))
+            # FIXME
+            #result.push(new Token("begin_block", ":"))
             tokens.pop()
             tokens.pop()
             tokens.pop()
@@ -241,14 +252,15 @@ func find_blocks(List[Token] tokens) -> List[Token]:
 
             assert(new_level <= indent_level)   # TODO: error
             for ; new_level != indent_level; indent_level = indent_level - 1:
-                result.push(new Token("end_block", ""))
+                # FIXME
+                pass#result.push(new Token("end_block", ""))
 
     return result
 
-export func tokenize(Str code) -> List[Token]:
+export func tokenize(Str code, Str path) -> List[Token]:
     return clean_newlines(
         find_blocks(
         clean_newlines(
         combine_not_in(
         ignore_whitespace_in_parens(
-        raw_tokenize(code))))))
+        raw_tokenize(code, path))))))

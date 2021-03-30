@@ -1,0 +1,33 @@
+import "<stdlib>/io.oomph" as io
+
+# Line in file, with location pointing at BLAH:
+#
+#   blah blah blah BLAH blah blah
+#   |_____________||__|
+#     line_prefix  code
+#
+# lineno starts at 1
+export class Location(Str path, Int lineno, Str line_prefix, Str code):
+
+    meth error(Str message):
+        # TODO: print in color
+        # TODO: print to stderr, not stdout
+        print("{self.path}:{self.lineno}: error: {message}")
+
+        let line = io::read_file(self.path).split("\n").get(self.lineno - 1)
+        let line_prefix = self.line_prefix
+
+        # like .left_trim(), but remove same amount from both
+        while line.starts_with(" ") and line_prefix.starts_with(" "):
+            line = line.remove_prefix(" ")
+            line_prefix = line_prefix.remove_prefix(" ")
+
+        # If it spans multiple lines, show it on first line only (for sanity)
+        let code = self.code.split("\n").first()
+
+        let caret_line = " ".repeat(line_prefix.length()) + "^".repeat(code.length())
+        print("")
+        print("    {line}")
+        print("    {caret_line}")
+        print("")
+        assert(false)  # TODO: better way to exit process

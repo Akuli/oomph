@@ -84,7 +84,7 @@ export func main():
     let code = io::read_file(source_path)
 
     if tokens_only:
-        foreach token of tokenizer::tokenize(code):
+        foreach token of tokenizer::tokenize(code, source_path):
             print(token)
         return
 
