@@ -592,6 +592,7 @@ class FunctionOrMethodConverter(
                 let lhs = self.do_expression(ass.expr)
                 let result = self.create_var(self.get_type(ass.type))
                 self.code.push(new ir::GetFromUnion(result, lhs))
+                self.code.push(new ir::IncRef(result))
                 return result
 
             case ast::Constructor c:
