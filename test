@@ -108,7 +108,7 @@ function run()
 }
 
 mkdir -vp test_out
-rm -rvf test_out/status test_out/io_testing_dir oomphc
+rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
 echo "Running $(nproc) tests at a time in parallel"
 trap wait EXIT
