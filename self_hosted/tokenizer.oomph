@@ -175,21 +175,39 @@ func raw_tokenize(Str code, Str path) -> List[Token]:
 
     return result
 
+func flip_paren(Str paren) -> Str:
+    if paren == "(":
+        return ")"
+    if paren == ")":
+        return "("
+    if paren == "[":
+        return "]"
+    if paren == "]":
+        return "["
+    assert(false)
+
 func ignore_whitespace_in_parens(List[Token] tokens) -> List[Token]:
     let result = []
     let paren_stack = []
 
     foreach token of tokens:
-        if token.matches("op", "("):
-            paren_stack.push(")")
-        elif token.matches("op", "["):
-            paren_stack.push("]")
+        if token.matches("op", "(") or token.matches("op", "["):
+            paren_stack.push(token)
         elif token.matches("op", ")") or token.matches("op", "]"):
-            assert(paren_stack.pop() == token.value)
+            if paren_stack == []:
+                token.location.error("no matching '{flip_paren(token.value)}'")
+
+            let popped = paren_stack.pop()
+            if popped.value != flip_paren(token.value):
+                token.location.error("'{popped.value}' and '{token.value}' don't match")
 
         if paren_stack == [] or token.value.trim() != "":
             result.push(token)
 
+    if paren_stack != []:
+        paren_stack.first().location.error(
+            "missing '{flip_paren(paren_stack.first().value)}'"
+        )
     return result
 
 func combine_not_in(List[Token] tokens) -> List[Token]:

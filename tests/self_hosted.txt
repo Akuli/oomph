@@ -18,6 +18,9 @@ tests/leading_indent_with_comment_error.oomph
 tests/mod.oomph
 tests/no_trailing_newline.oomph
 tests/operators.oomph
+tests/paren_no_open_error.oomph
+tests/paren_unclosed_error.oomph
+tests/paren_wrong_close_error.oomph
 tests/prefix_minus.oomph
 tests/prefix_minus_bug.oomph
 tests/prefix_minus_error.oomph

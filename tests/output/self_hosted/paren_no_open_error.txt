@@ -1,0 +1,5 @@
+tests/paren_no_open_error.oomph:1: error: no matching '('
+
+    )
+    ^
+
