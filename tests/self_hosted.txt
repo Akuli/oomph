@@ -7,6 +7,7 @@ tests/comments.oomph
 tests/compare.oomph
 tests/escape.oomph
 tests/float2int.oomph
+tests/format_string_error.oomph
 tests/hello.oomph
 tests/if.oomph
 tests/indent2_error.oomph

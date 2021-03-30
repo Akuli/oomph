@@ -6,7 +6,7 @@ import "<stdlib>/io.oomph" as io
 #   |_____________||__|
 #     line_prefix  code
 #
-# lineno starts at 1
+# lineno starts at 1, and for multiline locations, points to start of location
 export class Location(Str path, Int lineno, Str line_prefix, Str code):
 
     # TODO: error() is split up for tests only, get rid of this when possible
@@ -37,6 +37,21 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
     meth error(Str message):
         self.print_error(message)
         assert(false)  # TODO: better way to exit process
+
+    meth remove_prefix(Str prefix) -> Location:
+        assert(self.code.starts_with(prefix))
+        return new Location(
+            self.path,
+            self.lineno + prefix.count("\n"),
+            self.line_prefix + prefix,
+            self.code.remove_prefix(prefix),
+        )
+
+    meth remove_suffix(Str suffix) -> Location:
+        assert(self.code.ends_with(suffix))
+        return new Location(
+            self.path, self.lineno, self.line_prefix, self.code.remove_suffix(suffix)
+        )
 
     meth combine(Location other) -> Location:
         assert(self.path == other.path)

@@ -1,4 +1,5 @@
 import "ast.oomph" as ast
+import "error.oomph" as error
 import "tokenizer.oomph" as tokenizer
 
 union PrecedenceItem:
@@ -132,7 +133,7 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("end_block", "")
         return result
 
-    meth tokenize_and_parse_expression(Str code) -> ast::Expression:
+    meth tokenize_and_parse_expression(Str code, error::Location location) -> ast::Expression:
         # TODO: proper path instead of <string>
         let parser = new Parser(tokenizer::tokenize(code, "<string>").reversed())
         let result = parser.parse_expression()
@@ -140,9 +141,10 @@ class Parser(List[tokenizer::Token] tokens):
         assert(parser.tokens == [])
         return result
 
-    meth do_string_contents(Str string) -> ast::Expression:
+    meth do_string_contents(Str string, error::Location location) -> ast::Expression:
         let result = []
         let escapes = [
+            # TODO: oneline and multiline strings should allow different escapes
             ["\\n", "\n"],
             ["\\t", "\t"],
             ["\\\{", "\{"],
@@ -158,21 +160,27 @@ class Parser(List[tokenizer::Token] tokens):
                     if string.starts_with(pair.first()):
                         add_string(result, pair.last())
                         string = string.remove_prefix(pair.first())
+                        location = location.remove_prefix(pair.first())
                         found_escape = true
                         break
                 assert(found_escape)
             elif string.starts_with("\{"):
                 assert(string.contains("\}"))
                 let code = string.split("\}").first().remove_prefix("\{")
+                let code_location = new error::Location(
+                    location.path, location.lineno, location.line_prefix + "\{", code
+                )
+                assert(not code.contains("\n"))  # TODO: reconsider? might be useful in multiline strings
                 assert(not code.contains("\{"))
                 assert(not code.contains("\}"))
                 assert(not code.contains("\\"))
-                result.push(self.tokenize_and_parse_expression(code))
+                result.push(self.tokenize_and_parse_expression(code, code_location))
                 string = string.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
             else:
                 let char = string.split("").first()
                 add_string(result, char)
                 string = string.remove_prefix(char)
+                location = location.remove_prefix(char)
 
         if result == []:
             return new ast::StringConstant("")
@@ -182,13 +190,18 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_simple_expression() -> ast::Expression:
         if self.peek().type == "oneline_string":
-            let value = self.get_token_by_type("oneline_string").value
+            let token = self.get_token_by_type("oneline_string")
             let result = self.do_string_contents(
-                value.remove_prefix("\"").remove_suffix("\""))
+                # TODO: just the Location would be enough
+                token.value.remove_prefix("\"").remove_suffix("\""),
+                token.location.remove_prefix("\"").remove_suffix("\""),
+            )
         elif self.peek().type == "multiline_string":
-            let value = self.get_token_by_type("multiline_string").value
-            result = self.do_string_contents(
-                value.remove_prefix("\"\"\"").remove_suffix("\"\"\""))
+            let token = self.get_token_by_type("multiline_string")
+            let result = self.do_string_contents(
+                token.value.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
+                token.location.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
+            )
         elif self.peek().type == "id":
             result = new ast::GetVar(self.get_token_by_type("id").value)
         elif self.peek().type == "int":
