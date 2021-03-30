@@ -86,11 +86,13 @@ export func main():
     if tokens_only:
         foreach token of tokenizer::tokenize(code, source_path, 1, ""):
             print(token)
+        builtins.destroy()
         return
 
     let ast = parser::parse_file(code, source_path, "{project_root}/stdlib.oomph")
     if ast_only:
         print(ast)
+        builtins.destroy()
         return
 
     let ir = ast2ir::convert_program(builtins, ast, source_path, [])
