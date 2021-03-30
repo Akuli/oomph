@@ -1,0 +1,5 @@
+tests/leading_zero_error.oomph:2: error: leading zeros are not allowed
+
+    print(0123)
+          ^^^^
+

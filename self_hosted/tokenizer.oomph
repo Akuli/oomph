@@ -122,7 +122,6 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
                 digit_after_dot = null
 
             if digit_after_dot == null:
-                assert(int_value == "0" or not int_value.starts_with("0"))  # TODO: error
                 token_type = "int"
                 token_value = int_value
             else:
@@ -164,6 +163,10 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
 
         if token_type != "skip":
             let location = new error::Location(path, lineno, line_prefix, token_value)
+
+            if token_type == "int" and token_value.starts_with("0") and token_value != "0":
+                location.error("leading zeros are not allowed")
+
             result.push(new Token(token_type, token_value, location))
 
         lineno = lineno + token_value.count("\n")
