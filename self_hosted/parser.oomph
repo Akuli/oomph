@@ -198,7 +198,7 @@ class Parser(List[tokenizer::Token] tokens):
             )
         elif self.peek().type == "multiline_string":
             let token = self.get_token_by_type("multiline_string")
-            let result = self.do_string_contents(
+            result = self.do_string_contents(
                 token.value.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
                 token.location.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
             )
