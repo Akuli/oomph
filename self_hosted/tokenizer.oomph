@@ -49,7 +49,7 @@ func get_int(Str code) -> Str:
         if not did_something:
             return result
 
-func extract_string(Str code, Str quotes) -> Str:
+func extract_string(Str code, Str quotes, error::Location location) -> Str:
     let result = quotes
 
     while true:
@@ -61,12 +61,10 @@ func extract_string(Str code, Str quotes) -> Str:
             result = result + "\\"
 
         if code == result:
-            print("string does not terminate: {code}")
-            assert(false)  # TODO: error
+            location.error("string does not terminate")
         result = result + code.remove_prefix(result).split("").first()
         if code == result:
-            print("string does not terminate: {code}")
-            assert(false)  # TODO: error
+            location.error("string does not terminate")
 
 func get_prefix_spaces(Str string) -> Str:
     let result = 0
@@ -151,13 +149,15 @@ func raw_tokenize(Str code, Str path) -> List[Token]:
             token_type = "skip"
             token_value = code.split("\n").first()
 
-        elif code.starts_with("\"\"\""):
-            token_type = "multiline_string"
-            token_value = extract_string(code, "\"\"\"")
-
         elif code.starts_with("\""):
-            token_type = "oneline_string"
-            token_value = extract_string(code.split("\n").first(), "\"")
+            let rest_of_line = code.split("\n").first()
+            let location = new error::Location(path, lineno, line_prefix, rest_of_line)
+            if code.starts_with("\"\"\""):
+                token_type = "multiline_string"
+                token_value = extract_string(code, "\"\"\"", location)
+            else:
+                token_type = "oneline_string"
+                token_value = extract_string(code.split("\n").first(), "\"", location)
 
         else:
             new error::Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")

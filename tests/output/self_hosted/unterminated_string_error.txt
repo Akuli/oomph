@@ -1,1 +1,5 @@
-string does not terminate: "hello)
+tests/unterminated_string_error.oomph:2: error: string does not terminate
+
+    print("hello)
+          ^^^^^^^
+

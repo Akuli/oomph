@@ -25,4 +25,5 @@ tests/string2float.oomph
 tests/string2int.oomph
 tests/to_string.oomph
 tests/trailing_ws.oomph
+tests/unterminated_multiline_string_error.oomph
 tests/unterminated_string_error.oomph

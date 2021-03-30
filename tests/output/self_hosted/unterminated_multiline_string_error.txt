@@ -1,0 +1,5 @@
+tests/unterminated_multiline_string_error.oomph:2: error: string does not terminate
+
+    print("""
+          ^^^
+
