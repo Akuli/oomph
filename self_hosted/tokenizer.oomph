@@ -73,7 +73,7 @@ func get_prefix_spaces(Str string) -> Str:
         string = string.remove_prefix(" ")
     return " ".repeat(result)
 
-func raw_tokenize(Str code, Str path) -> List[Token]:
+func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token]:
     # Make sure that every statement ends with newline
     if not code.ends_with("\n"):
         code = code + "\n"
@@ -92,8 +92,6 @@ func raw_tokenize(Str code, Str path) -> List[Token]:
         "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
         "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
     ]
-    let lineno = 1
-    let line_prefix = ""
 
     # Adding initial newline helps error when file starts with space (weird corner case)
     let result = [new Token("op", "\n", new error::Location(path, 1, "", ""))]
@@ -284,10 +282,10 @@ func find_blocks(List[Token] tokens) -> List[Token]:
 
     return result
 
-export func tokenize(Str code, Str path) -> List[Token]:
+export func tokenize(Str code, Str path, Int initial_lineno, Str initial_line_prefix) -> List[Token]:
     return clean_newlines(
         find_blocks(
         clean_newlines(
         combine_not_in(
         ignore_whitespace_in_parens(
-        raw_tokenize(code, path))))))
+        raw_tokenize(code, path, initial_lineno, initial_line_prefix))))))

@@ -1,2 +1,2 @@
 export func main():
-    print("{$}")
+    print("foo {$} bar")
