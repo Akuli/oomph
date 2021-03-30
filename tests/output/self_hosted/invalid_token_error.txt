@@ -1,0 +1,5 @@
+tests/invalid_token_error.oomph:2: error: invalid syntax
+
+    lol $
+        ^
+

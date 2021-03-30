@@ -32,9 +32,9 @@ func get_identifier(Str code) -> Optional[Str]:
         case *:
             return null
 
-# TODO: enums
-# TODO: keep track of line numbers
-export class Token(Str type, Str value, error::Location location):
+# TODO: enums for type
+# TODO: location shouldn't be optional
+export class Token(Str type, Str value, Optional[error::Location] location):
     meth matches(Str type, Str value) -> Bool:
         return self.type == type and self.value == value
 
@@ -194,8 +194,7 @@ func combine_not_in(List[Token] tokens) -> List[Token]:
     let result = []
     for let i = 0; i < tokens.length(); :
         if i+1 < tokens.length() and tokens.get(i).matches("keyword", "not") and tokens.get(i+1).matches("keyword", "in"):
-            # FIXME
-            #result.push(new Token("keyword", "not in"))
+            result.push(new Token("keyword", "not in", null))
             i = i + 2
         else:
             result.push(tokens.get(i))
@@ -232,8 +231,7 @@ func find_blocks(List[Token] tokens) -> List[Token]:
         and head.get(2).type == "indent"):
             indent_level = indent_level + 1
             assert(head.get(2).value == " ".repeat(4*indent_level))  # TODO: error
-            # FIXME
-            #result.push(new Token("begin_block", ":"))
+            result.push(new Token("begin_block", ":", null))
             tokens.pop()
             tokens.pop()
             tokens.pop()
@@ -252,8 +250,7 @@ func find_blocks(List[Token] tokens) -> List[Token]:
 
             assert(new_level <= indent_level)   # TODO: error
             for ; new_level != indent_level; indent_level = indent_level - 1:
-                # FIXME
-                pass#result.push(new Token("end_block", ""))
+                result.push(new Token("end_block", "", null))
 
     return result
 
