@@ -62,7 +62,7 @@ function check()
     local success
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
-    echo "$command $noise"
+    echo "$command"
     if [ $expected == should_fail ] && eval "$command $noise" > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't: $command"
         success=no
