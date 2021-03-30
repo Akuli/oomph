@@ -65,8 +65,10 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
         if self.line_prefix.starts_with(other.line_prefix):
             let prefix = other.line_prefix
             let code = self.line_prefix.remove_prefix(other.line_prefix) + self.code
-        else:
+        elif other.line_prefix.starts_with(self.line_prefix):
             prefix = self.line_prefix
             code = other.line_prefix.remove_prefix(self.line_prefix) + other.code
+        else:
+            assert(false)
 
         return new Location(self.path, self.lineno, prefix, code)
