@@ -154,7 +154,7 @@ if [ $check_self_hosted == yes ] && (
                 check "$file" "$command" "$noise" tests/output/common should_succeed
             fi
         elif ! grep -q "^$file" tests/self_hosted_skip_ast.txt; then
-            check "$file" "./oomphc --ast $file" "" "" should_succeed
+            check "$file" "$valgrind ./oomphc --ast $file" "" "" should_succeed
         fi
     done
 fi
