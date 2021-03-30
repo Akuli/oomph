@@ -8,7 +8,7 @@ echo "make oomphc"
 make oomphc
 
 for file in tests/*.oomph builtins.oomph self_hosted/*.oomph; do
-    if grep -q "^$file" tests/self_hosted_all_files_exclude.txt; then
+    if grep -q "^$file" tests/self_hosted_all_files_skip.txt; then
         continue
     fi
 

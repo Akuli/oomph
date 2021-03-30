@@ -142,7 +142,7 @@ if [ $check_self_hosted == yes ] && (
     echo "Compiling self-hosted compiler"
     make oomphc
     for file in tests/*.oomph; do
-        if ! grep -q "^$file" tests/self_hosted_exclude.txt; then
+        if ! grep -q "^$file" tests/self_hosted_skip.txt; then
             check $file self_hosted
         fi
     done
