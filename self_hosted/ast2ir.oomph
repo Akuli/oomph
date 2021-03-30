@@ -20,13 +20,6 @@ func is_autotype(ir::Type type) -> Bool:
         case *:
             return false
 
-func get_autotype(ir::Type type) -> ir::AutoType:
-    switch type:
-        case ir::AutoType autotype:
-            return autotype
-        case *:
-            assert(false)
-
 # Weird hack
 union FileConverterForwardReference:
     FileConverter
@@ -117,12 +110,7 @@ class FunctionOrMethodConverter(
         if raw_type.name == "auto":
             assert(raw_type.generic_arg == null)  # TODO: error
             return self.create_autotype()
-
-        switch self.file_converter:
-            case FileConverter file_converter:
-                return file_converter.get_type(raw_type, self)
-            case *:
-                assert(false)
+        return (self.file_converter as FileConverter).get_type(raw_type, self)
 
     meth create_var(ir::Type the_type) -> ir::LocalVariable:
         # Newly created variables must be decreffed, in case we are in a loop.
@@ -153,13 +141,10 @@ class FunctionOrMethodConverter(
 
     meth create_special_call(Str name, List[ir::LocalVariable] args) -> ir::LocalVariable:
         let function = self.builtins.get_hidden_var(name)
-        switch function.type:
-            case ir::FunctionType functype:
-                let result_var = self.create_var(functype.returntype.get())
-                self.code.push(new ir::FunctionCall(function, args, result_var))
-                return result_var
-            case *:
-                assert(false)
+        let functype = function.type as ir::FunctionType
+        let result_var = self.create_var(functype.returntype.get())
+        self.code.push(new ir::FunctionCall(function, args, result_var))
+        return result_var
 
     meth lookup_autotype(ir::AutoType autotype) -> Optional[ir::Type]:
         foreach resolve of self.resolved_autotypes:
@@ -173,8 +158,8 @@ class FunctionOrMethodConverter(
 
         if is_autotype(type1) and is_autotype(type2):
             if type1 != type2:
-                let actual_type1 = self.lookup_autotype(get_autotype(type1))
-                let actual_type2 = self.lookup_autotype(get_autotype(type2))
+                let actual_type1 = self.lookup_autotype(type1 as ir::AutoType)
+                let actual_type2 = self.lookup_autotype(type2 as ir::AutoType)
                 if actual_type1 != null and actual_type2 != null:
                     return new TypePair(actual_type1.get(), actual_type2.get())
                 if actual_type1 != null:
@@ -182,22 +167,22 @@ class FunctionOrMethodConverter(
                 if actual_type2 != null:
                     return new TypePair(type1, actual_type2.get())
 
-                self.matching_autotypes.push(new AutoTypePair(get_autotype(type1), get_autotype(type2)))
+                self.matching_autotypes.push(new AutoTypePair(type1 as ir::AutoType, type2 as ir::AutoType))
                 # TODO: should be consistent with substitute_autotypes?
                 return new TypePair(type1, type1)
 
         elif is_autotype(type1):
-            let resolved = self.lookup_autotype(get_autotype(type1))
+            let resolved = self.lookup_autotype(type1 as ir::AutoType)
             if resolved != null:
                 return new TypePair(resolved.get(), type2)
-            self.resolve_autotype(get_autotype(type1), type2)
+            self.resolve_autotype(type1 as ir::AutoType, type2)
             return new TypePair(type2, type2)
 
         elif is_autotype(type2):
-            let resolved = self.lookup_autotype(get_autotype(type2))
+            let resolved = self.lookup_autotype(type2 as ir::AutoType)
             if resolved != null:
                 return new TypePair(type1, resolved.get())
-            self.resolve_autotype(get_autotype(type2), type1)
+            self.resolve_autotype(type2 as ir::AutoType, type1)
             return new TypePair(type1, type1)
 
         elif (type1_source != null
@@ -323,12 +308,7 @@ class FunctionOrMethodConverter(
 
             case ast::GetVar ast_function:
                 let function = self.get_var(ast_function.varname)
-                switch ir::var_type(function):
-                    case ir::FunctionType functype2:
-                        let functype = functype2  # TODO: dis suck
-                    case *:
-                        assert(false)
-
+                let functype = ir::var_type(function) as ir::FunctionType
                 if functype.returntype == null:
                     let result_var = new Optional[ir::LocalVariable](null)
                 else:
@@ -637,18 +617,13 @@ class FunctionOrMethodConverter(
                         self.variables.push(named_var)
 
             case ast::SetVar setvar:
-                switch self.get_var(setvar.varname):
-                    case ir::LocalVariable var:
-                        let new_value_var = self.do_expression(setvar.value)
-                        self.code.push(new ir::DecRef(var))
-                        self.code.push(
-                            new ir::VarCpy(var, self.implicit_conversion(new_value_var, var.type).get())
-                        )
-                        self.code.push(new ir::IncRef(var))
-                    case *:
-                        # TODO: error
-                        print("cannot set non-local variable")
-                        assert(false)
+                let var = self.get_var(setvar.varname) as ir::LocalVariable
+                let new_value_var = self.do_expression(setvar.value)
+                self.code.push(new ir::DecRef(var))
+                self.code.push(
+                    new ir::VarCpy(var, self.implicit_conversion(new_value_var, var.type).get())
+                )
+                self.code.push(new ir::IncRef(var))
 
             case ast::SetAttribute setattr:
                 let obj = self.do_expression(setattr.obj)
@@ -711,12 +686,7 @@ class FunctionOrMethodConverter(
                 let continue_label = self.create_goto_label()
                 let break_label = self.create_goto_label()
 
-                # switches suck lolz
-                switch loop.loop_header:
-                    case ast::ForLoopHeader for_loop_header:
-                        let header = for_loop_header
-                    case *:
-                        assert(false)
+                let header = loop.loop_header as ast::ForLoopHeader
 
                 foreach init of header.init:
                     self.do_statement(init)
@@ -758,11 +728,7 @@ class FunctionOrMethodConverter(
 
             case ast::Switch switchie:
                 let union_var = self.do_expression(switchie.union_obj)
-                switch union_var.type:  # TODO: switch sucks
-                    case ir::UnionType u:
-                        let union_type = u
-                    case *:
-                        assert(false)
+                let union_type = union_var.type as ir::UnionType
 
                 # TODO: better way to copy list
                 let types_to_do = union_type.type_members.get().reversed().reversed()
@@ -1051,12 +1017,7 @@ class FileConverter(
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
             let funcvar = self.get_var(def.name)
-            # TODO: switch sucks
-            switch ir::var_type(funcvar):
-                case ir::FunctionType ft:
-                    let functype = ft
-                case *:
-                    assert(false)  # TODO: error
+            let functype = ir::var_type(funcvar) as ir::FunctionType
         else:
             functype = ir::get_method(classtype.get(), def.name, self.builtins)
 
@@ -1100,11 +1061,7 @@ class FileConverter(
         body.push_all(converter.code)
 
         if classtype == null:
-            switch funcvar:
-                case ir::FileVariable funcvar_filevar:
-                    return new ir::FuncDef(funcvar_filevar, argvars, body)
-                case *:
-                    assert(false)
+            return new ir::FuncDef(funcvar as ir::FileVariable, argvars, body)
         else:
             #assert not def.export
             return new ir::MethodDef(def.name, functype, argvars, body)
@@ -1192,12 +1149,9 @@ class FileConverter(
                 return []
 
             case ast::FuncOrMethodDef funcdef:
-                let result = self.do_func_or_method_def_pass2(funcdef, null)
-                switch result:
-                    case ir::FuncDef ir_funcdef:
-                        return [new ir::ToplevelDeclaration(ir_funcdef)]
-                    case *:
-                        assert(false)
+                return [new ir::ToplevelDeclaration(
+                    self.do_func_or_method_def_pass2(funcdef, null) as ir::FuncDef
+                )]
 
             case ast::ClassDef classdef:
                 let found = false
@@ -1215,36 +1169,22 @@ class FileConverter(
                     ))
 
                 foreach method_def of classdef.body:
-                    switch self.do_func_or_method_def_pass2(method_def, classtype):
-                        case ir::MethodDef def:
-                            typed_method_defs.push(def)
-                        case *:
-                            assert(false)
+                    typed_method_defs.push(self.do_func_or_method_def_pass2(method_def, classtype) as ir::MethodDef)
 
                 # TODO: use classdef.export
                 self.symbols.push(new ir::Symbol(self.path, classdef.name, classtype))
                 return typed_method_defs
 
             case ast::UnionDef uniondef:
-                let found = false
                 foreach named_type of self.types:
                     if named_type.name == uniondef.name:
-                        let union_type = named_type.type
-                        found = true
-                        break
-                assert(found)
+                        self.symbols.push(new ir::Symbol(
+                            self.path, uniondef.name, named_type.type as ir::UnionType
+                        ))
+                        # Union methods are implemented in c_output
+                        return []
 
-                switch union_type:
-                    case ir::UnionType actual_union_type:
-                        # TODO: if uniondef.export:
-                        self.symbols.push(
-                            new ir::Symbol(self.path, uniondef.name, actual_union_type)
-                        )
-                    case *:
-                        assert(false)
-
-                # Union methods are implemented in c_output
-                return []
+                assert(false)
 
     meth post_process_union(ir::UnionType union_type):
         if union_type.type_members == null:
