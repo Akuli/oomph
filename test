@@ -4,6 +4,8 @@ set -o pipefail
 
 keep_going=no
 fix=no
+check_self_hosted=yes
+check_pyoomph=yes
 
 while [[ "$1" == --* ]]; do
     case "$1" in
@@ -20,41 +22,36 @@ while [[ "$1" == --* ]]; do
             compiler_valgrind_arg="--valgrind='$valgrind'"
             shift
             ;;
+        --skip-self-hosted)
+            check_self_hosted=no
+            shift
+            ;;
+        --skip-pyoomph)
+            check_pyoomph=no
+            shift
+            ;;
         *)
             echo "$0: unknown argument: $1" 1>&2
             exit 2
     esac
 done
 
-make
-
 function check()
 {
-    local file=$1
-    local compiler=$2
+    local file="$1"
+    local command="$2"
+    local noise="$3"  # added to end of command, not echoed
+    local output_dir="$4"
+    local expected="$5"
 
-    if [[ $file == tests/*_error.oomph ]]; then
-        local expect_fail=yes
-        if [ $compiler == pyoomph ]; then
-            local outfile=tests/output/pyoomph/$(basename $file | cut -d. -f1).txt
-            local command="python3 -m pyoomph $file"
-            local noise="2>&1 | grep -v 'This happened while' | tail -2"
-        else
-            local outfile=tests/output/self_hosted/$(basename $file | cut -d. -f1).txt
-            local command="./oomphc $file"
-            local noise="2>/dev/null"
-        fi
+    if [ $file == tests/args.oomph ]; then
+        command="$command hello world"
+    fi
+    if [ "$output_dir" == "" ]; then
+        noise="$noise >/dev/null"
+        local outfile=/dev/null
     else
-        local expect_fail=no
-        local outfile=tests/output/common/$(basename $file | cut -d. -f1).txt
-        if [ $compiler == pyoomph ]; then
-            local command="python3 -m pyoomph $compiler_valgrind_arg $file"
-        else
-            local command="$valgrind ./oomphc $compiler_valgrind_arg $file"
-        fi
-        if [ $file == tests/args.oomph ]; then
-            command="$command hello world"
-        fi
+        local outfile=$output_dir/$(basename $file | cut -d. -f1).txt
     fi
 
     if [ $keep_going == no ] && grep -q '^fail:' test_out/status; then
@@ -66,10 +63,10 @@ function check()
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
     echo "$command"
-    if [ $expect_fail == yes ] && eval "$command $noise" > $out; then
+    if [ $expected == should_fail ] && eval "$command $noise" > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't: $command"
         success=no
-    elif [ $expect_fail == no ] && ! eval "$command" > $out; then
+    elif [ $expected == should_succeed ] && ! eval "$command $noise" > $out; then
         echo "========== ERROR: $command"
         success=no
     else
@@ -107,31 +104,60 @@ function run()
     "$@" &
 }
 
+make
 mkdir -vp test_out
-rm -rvf test_out/status test_out/io_testing_dir oomphc
+rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
-echo "Running $(nproc) tests at a time in parallel"
-trap wait EXIT
 
-for file in tests/*.oomph; do
-    if [[ $file == tests/*_lib.oomph ]]; then
-        # The file is meant to be imported
-        continue
-    fi
-    run check $file pyoomph
-done
-wait
+if [ $check_pyoomph == yes ]; then
+    echo "Running $(nproc) tests at a time in parallel"
+    trap wait EXIT
+    for file in tests/*.oomph; do
+        if [[ $file == tests/*_lib.oomph ]]; then
+            # The file is meant to be imported
+            continue
+        fi
 
-# Run all self-hosted tests with same compiler (speeds up a LOT)
-if [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status; then
-    echo "Compiling self-hosted compiler"
-    make oomphc
+        if [[ $file == tests/*_error.oomph ]]; then
+            run check \
+                "$file" \
+                "python3 -m pyoomph $file" \
+                "2>&1 | grep -v 'This happened while' | tail -2" \
+                tests/output/pyoomph \
+                should_fail
+        else
+            run check \
+                "$file" \
+                "python3 -m pyoomph $compiler_valgrind_arg $file" \
+                "" \
+                tests/output/common \
+                should_succeed
+        fi
+    done
+    wait
 fi
 
-for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
+# Run all self-hosted tests with same compiler (speeds up a LOT)
+if [ $check_self_hosted == yes ] && (
+    [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status
+); then
     # Currently self-hosted doesn't parallelize well, but is fast
-    check $file self_hosted
-done
+    echo "Compiling self-hosted compiler"
+    make oomphc
+
+    for file in tests/*.oomph; do
+        if ! grep -q "^$file" tests/self_hosted_skip.txt; then
+            if [[ $file == tests/*_error.oomph ]]; then
+                check "$file" "./oomphc $file" "2>/dev/null" tests/output/self_hosted should_fail
+            else
+                command="$valgrind ./oomphc $compiler_valgrind_arg $file"
+                check "$file" "$command" "$noise" tests/output/common should_succeed
+            fi
+        elif ! grep -q "^$file" tests/self_hosted_skip_ast.txt; then
+            check "$file" "$valgrind ./oomphc --ast $file" "" "" should_succeed
+        fi
+    done
+fi
 
 status=0
 msg="$(grep -c '^success:' test_out/status || true) succeeded"

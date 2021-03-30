@@ -12,6 +12,8 @@ This is yet another attempt at making a usable programming language.
 - If you delete or rename files in `lib/`, you may need to run `make clean`.
 - Run `./lint` and `./test` to check stuff e.g. before commit.
 - If `./test` fails because test output changes as expected, run `./test --fix`
+- If you changed only the self-hosted compiler, you can use `./test --skip-pyoomph`.
+    There's also `--skip-self-hosted`.
 - To valgrind-check everything, run `./test --valgrind`
 
 
