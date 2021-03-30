@@ -141,8 +141,10 @@ if [ $check_self_hosted == yes ] && (
     # Currently self-hosted doesn't parallelize well, but is fast
     echo "Compiling self-hosted compiler"
     make oomphc
-    for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
-        check $file self_hosted
+    for file in tests/*.oomph; do
+        if ! grep -q "^$file" tests/self_hosted_exclude.txt; then
+            check $file self_hosted
+        fi
     done
 fi
 
