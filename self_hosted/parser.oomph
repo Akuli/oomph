@@ -142,7 +142,8 @@ class Parser(List[tokenizer::Token] tokens):
         assert(parser.tokens == [])
         return result
 
-    meth do_string_contents(Str string, error::Location location) -> ast::Expression:
+    # the location contains all we need to know about the string
+    meth do_string_contents(error::Location location) -> ast::Expression:
         let result = []
         let escapes = [
             # TODO: oneline and multiline strings should allow different escapes
@@ -154,20 +155,19 @@ class Parser(List[tokenizer::Token] tokens):
             ["\\\\", "\\"],
         ]
 
-        while string != "":
-            if string.starts_with("\\"):
+        while location.code != "":
+            if location.code.starts_with("\\"):
                 let found_escape = false  # TODO: this sucks
                 foreach pair of escapes:
-                    if string.starts_with(pair.first()):
+                    if location.code.starts_with(pair.first()):
                         add_string(result, pair.last())
-                        string = string.remove_prefix(pair.first())
                         location = location.remove_prefix(pair.first())
                         found_escape = true
                         break
                 assert(found_escape)
-            elif string.starts_with("\{"):
-                assert(string.contains("\}"))
-                let code = string.split("\}").first().remove_prefix("\{")
+            elif location.code.starts_with("\{"):
+                assert(location.code.contains("\}"))
+                let code = location.code.split("\}").first().remove_prefix("\{")
                 let code_location = new error::Location(
                     location.path, location.lineno, location.line_prefix + "\{", code
                 )
@@ -176,12 +176,10 @@ class Parser(List[tokenizer::Token] tokens):
                 assert(not code.contains("\}"))
                 assert(not code.contains("\\"))
                 result.push(self.tokenize_and_parse_expression(code, code_location))
-                string = string.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
                 location = location.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
             else:
-                let char = string.split("").first()
+                let char = location.code.split("").first()
                 add_string(result, char)
-                string = string.remove_prefix(char)
                 location = location.remove_prefix(char)
 
         if result == []:
@@ -194,14 +192,11 @@ class Parser(List[tokenizer::Token] tokens):
         if self.peek().type == "oneline_string":
             let token = self.get_token_by_type("oneline_string")
             let result = self.do_string_contents(
-                # TODO: just the Location would be enough
-                token.value.remove_prefix("\"").remove_suffix("\""),
                 token.location.remove_prefix("\"").remove_suffix("\""),
             )
         elif self.peek().type == "multiline_string":
             let token = self.get_token_by_type("multiline_string")
             result = self.do_string_contents(
-                token.value.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
                 token.location.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
             )
         elif self.peek().type == "id":
