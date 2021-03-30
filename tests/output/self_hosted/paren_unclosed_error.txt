@@ -1,0 +1,5 @@
+tests/paren_unclosed_error.oomph:1: error: missing ')'
+
+    ([]
+    ^
+

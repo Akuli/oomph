@@ -1,0 +1,5 @@
+tests/leading_indent_error.oomph:1: error: should be function definition, class definition or union definition
+
+        export func main():
+    ^^^^
+

@@ -1,0 +1,5 @@
+tests/indent_increase_error.oomph:3: error: indent without ':' at end of previous line
+
+            print("wat")
+    ^^^^^^^^
+

@@ -1,0 +1,1 @@
+Token("keyword", "not in", Location("filename.oomph", 1, "foo ", "not in"))

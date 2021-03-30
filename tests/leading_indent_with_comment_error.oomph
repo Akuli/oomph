@@ -1,0 +1,3 @@
+# comment
+    export func main():
+    print(1)

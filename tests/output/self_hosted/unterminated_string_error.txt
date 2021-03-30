@@ -1,2 +1,5 @@
-string does not terminate: "hello)
-assert() failed in "self_hosted/tokenizer.oomph", line N
+tests/unterminated_string_error.oomph:2: error: string does not terminate
+
+    print("hello)
+          ^^^^^^^
+

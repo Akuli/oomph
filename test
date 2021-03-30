@@ -38,9 +38,11 @@ function check()
         if [ $compiler == pyoomph ]; then
             local outfile=tests/output/pyoomph/$(basename $file | cut -d. -f1).txt
             local command="python3 -m pyoomph $file"
+            local noise="2>&1 | grep -v 'This happened while' | tail -2"
         else
             local outfile=tests/output/self_hosted/$(basename $file | cut -d. -f1).txt
             local command="./oomphc $file"
+            local noise="2>/dev/null"
         fi
     else
         local expect_fail=no
@@ -64,7 +66,7 @@ function check()
     local out=test_out/$(echo $command | sed 's/[^a-z0-9]/-/g').txt
 
     echo "$command"
-    if [ $expect_fail == yes ] && eval "$command" 2>&1 | grep -v "This happened while" | tail -2 > $out; then
+    if [ $expect_fail == yes ] && eval "$command $noise" > $out; then
         echo "========== SHOULD HAVE ERRORED but it didn't: $command"
         success=no
     elif [ $expect_fail == no ] && ! eval "$command" > $out; then

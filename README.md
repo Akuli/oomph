@@ -143,6 +143,7 @@ Optimization ideas:
   counting is actually needed
     - In particular, `thing == []` does not have to allocate
 - strings: some kind of string views, so that `foo.remove_prefix(bar)` does not have to copy many characters of data
+    - basically #66 for strings
 - concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
     - `List[Str].join` and various other functions
 - caching `strlen` result
@@ -150,6 +151,8 @@ Optimization ideas:
 - streams, as an alternative to lists
     - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
 - `(a / b).floor()` with integers `a` and `b` doesn't have to involve floats at runtime
+- `foo.split(bar).first()` creates unnecessary list, e.g. with empty `bar` this is
+    linear time but could be optimized to constant time
 
 
 ## Self-hosted compiler

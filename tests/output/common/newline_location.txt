@@ -1,0 +1,5 @@
+tests/newline_location.oomph:1: error: this error is right where a newline is
+
+    # foo
+         ^^^^
+
