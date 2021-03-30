@@ -213,7 +213,8 @@ func ignore_whitespace_in_parens(List[Token] tokens) -> List[Token]:
 func combine_not_in(List[Token] tokens) -> List[Token]:
     let result = []
     for let i = 0; i < tokens.length(); :
-        if (i+1 < tokens.length()
+        if (
+            i+1 < tokens.length()
             and tokens.get(i).matches("keyword", "not")
             and tokens.get(i+1).matches("keyword", "in")
         ):
