@@ -50,6 +50,7 @@ class FunctionOrMethodConverter(
                 return named_var.var
         # TODO: error
         print("no variable named {name}")
+        print("all vars: {[foreach f of self.variables: f.name]}")
         assert(false)
 
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
@@ -613,7 +614,7 @@ class FunctionOrMethodConverter(
                 # TODO: document the shadowing/replacing behaviour
                 let old_vars = self.variables
                 self.variables = [new NamedVariable(leet.varname, self.do_expression(leet.value))]
-                foreach named_var of self.variables:
+                foreach named_var of old_vars:
                     if named_var.name != leet.varname:
                         self.variables.push(named_var)
 
