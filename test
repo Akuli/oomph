@@ -40,7 +40,7 @@ function check()
 {
     local file="$1"
     local command="$2"
-    local noise="$3"  # concatenated to end of command, not echoed
+    local noise="$3"  # added to end of command, not echoed
     local output_dir="$4"
     local expected="$5"
 
