@@ -618,7 +618,7 @@ class FunctionOrMethodConverter(
                         self.variables.push(named_var)
 
             case ast::SetVar setvar:
-                let var = self.get_var(setvar.varname) as ir::LocalVariable
+                let var = self.get_var(setvar.varname) as ir::LocalVariable  # TODO: error
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
