@@ -1018,7 +1018,7 @@ class FileConverter(
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
             let funcvar = self.get_var(def.name)
-            let functype = ir::var_type(funcvar) as ir::FunctionType
+            let functype = ir::var_type(funcvar) as ir::FunctionType  # TODO: error
         else:
             functype = ir::get_method(classtype.get(), def.name, self.builtins)
 
