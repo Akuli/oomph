@@ -199,8 +199,8 @@ func combine_not_in(List[Token] tokens) -> List[Token]:
             and tokens.get(i).matches("keyword", "not")
             and tokens.get(i+1).matches("keyword", "in")
         ):
-            let combined_location = tokens.get(i).location.combine(tokens.get(i+1).location)
-            result.push(new Token("keyword", "not in", combined_location))
+            let combined = tokens.get(i).location.combine(tokens.get(i+1).location)
+            result.push(new Token("keyword", "not in", combined))
             i = i + 2
         else:
             result.push(tokens.get(i))
@@ -219,7 +219,7 @@ func clean_newlines(List[Token] tokens) -> List[Token]:
     while tokens != []:
         let token = tokens.pop()
         result.push(token)
-        if token.matches("op", "\n") or token.type == "begin_block" or token.type == "end_block":
+        if token.matches("op", "\n") or token.type in ["begin_block", "end_block"]:
             skip_newlines(tokens)
 
     return result
@@ -232,10 +232,12 @@ func find_blocks(List[Token] tokens) -> List[Token]:
 
     while tokens != []:
         let head = tokens.reversed().slice(0, 3)
-        if (head.length() == 3
-        and head.get(0).matches("op", ":")
-        and head.get(1).matches("op", "\n")
-        and head.get(2).type == "indent"):
+        if (
+            head.length() == 3
+            and head.get(0).matches("op", ":")
+            and head.get(1).matches("op", "\n")
+            and head.get(2).type == "indent"
+        ):
             indent_level = indent_level + 1
             if head.get(2).value != " ".repeat(4*indent_level):
                 head.get(2).location.error(indent_error_msg)
