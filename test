@@ -144,7 +144,7 @@ if [ $check_self_hosted == yes ] && (
     for file in tests/*.oomph; do
         if ! grep -q "^$file" tests/self_hosted_skip.txt; then
             check $file self_hosted
-        elif ! grep -q "^$file" tests/self_hosted_all_files_skip.txt; then
+        elif ! grep -q "^$file" tests/self_hosted_skip_ast.txt; then
             # TODO: use check function
             command="./oomphc --ast $file"
             echo $command
