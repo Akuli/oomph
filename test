@@ -4,6 +4,8 @@ set -o pipefail
 
 keep_going=no
 fix=no
+check_self_hosted=yes
+check_pyoomph=yes
 
 while [[ "$1" == --* ]]; do
     case "$1" in
@@ -18,6 +20,14 @@ while [[ "$1" == --* ]]; do
         --valgrind)
             valgrind='valgrind -q --leak-check=full --show-leak-kinds=all'
             compiler_valgrind_arg="--valgrind='$valgrind'"
+            shift
+            ;;
+        --skip-self-hosted)
+            check_self_hosted=no
+            shift
+            ;;
+        --skip-pyoomph)
+            check_pyoomph=no
             shift
             ;;
         *)
@@ -110,28 +120,31 @@ function run()
 mkdir -vp test_out
 rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
-echo "Running $(nproc) tests at a time in parallel"
-trap wait EXIT
 
-for file in tests/*.oomph; do
-    if [[ $file == tests/*_lib.oomph ]]; then
-        # The file is meant to be imported
-        continue
-    fi
-    run check $file pyoomph
-done
-wait
-
-# Run all self-hosted tests with same compiler (speeds up a LOT)
-if [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status; then
-    echo "Compiling self-hosted compiler"
-    make oomphc
+if [ $check_pyoomph == yes ]; then
+    echo "Running $(nproc) tests at a time in parallel"
+    trap wait EXIT
+    for file in tests/*.oomph; do
+        if [[ $file == tests/*_lib.oomph ]]; then
+            # The file is meant to be imported
+            continue
+        fi
+        run check $file pyoomph
+    done
+    wait
 fi
 
-for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
+# Run all self-hosted tests with same compiler (speeds up a LOT)
+if [ $check_self_hosted == yes ] && (
+    [ $keep_going == yes ] || ! grep -q '^fail:' test_out/status
+); then
     # Currently self-hosted doesn't parallelize well, but is fast
-    check $file self_hosted
-done
+    echo "Compiling self-hosted compiler"
+    make oomphc
+    for file in $(sed 's/#.*//g' tests/self_hosted.txt); do
+        check $file self_hosted
+    done
+fi
 
 status=0
 msg="$(grep -c '^success:' test_out/status || true) succeeded"
