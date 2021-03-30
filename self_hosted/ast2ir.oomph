@@ -1140,8 +1140,8 @@ class FileConverter(
 
             case ast::UnionDef uniondef:
                 let union_type = new ir::UnionType(uniondef.name, null, null)
-                self.delete_type_if_exists(name)  # TODO: disallow overwriting
-                self.types.push(new NamedType(name, union_type))
+                self.delete_type_if_exists(uniondef.name)  # TODO: disallow overwriting?
+                self.types.push(new NamedType(uniondef.name, union_type))
                 self.union_laziness.push(new UnionTypeAndAstTypeList(union_type, uniondef.type_members))
 
     meth do_toplevel_declaration_pass2(ast::ToplevelDeclaration top_decl) -> List[ir::ToplevelDeclaration]:
