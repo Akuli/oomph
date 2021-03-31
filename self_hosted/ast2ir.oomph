@@ -139,7 +139,9 @@ class FunctionOrMethodConverter(
             return var
 
         let result_var = self.create_var(self.builtins.STR, var.location)
-        self.code.push(new ir::MethodCall(var, "to_string", [], result_var))
+        self.code.push(new ir::MethodCall(
+            var, "to_string", [], result_var, var.location
+        ))
         return result_var
 
     meth create_special_call(Str name, List[ir::LocalVariable] args) -> ir::LocalVariable:
@@ -325,11 +327,11 @@ class FunctionOrMethodConverter(
                         args = self.do_args(
                             args,
                             functype.argtypes.slice(1, functype.argtypes.length()),
-                            ast::locate_expression(method),
+                            call.location
                         )
-                self.code.push(
-                    new ir::MethodCall(self_var, method.attribute, args, result_var)
-                )
+                self.code.push(new ir::MethodCall(
+                    self_var, method.attribute, args, result_var, call.location
+                ))
                 return result_var
 
             case ast::GetVar ast_function:
@@ -383,13 +385,15 @@ class FunctionOrMethodConverter(
         let source = ir::get_generic_source(obj.type).get()
         assert(source.generik == self.builtins.OPTIONAL)
         let result_var = self.create_var(source.arg, obj.location)
-        self.code.push(new ir::MethodCall(obj, "get", [], result_var))
+        self.code.push(new ir::MethodCall(obj, "get", [], result_var, obj.location))
         return result_var
 
     meth do_binary_op_typed(ir::LocalVariable lhs, Str op, error::Location op_location, ir::LocalVariable rhs) -> ir::LocalVariable:
         if op in ["in", "not in"]:
             let result_var = self.create_var(self.builtins.BOOL, op_location)
-            self.code.push(new ir::MethodCall(rhs, "__contains", [lhs], result_var))
+            self.code.push(new ir::MethodCall(
+                rhs, "__contains", [lhs], result_var, op_location
+            ))
             if op == "not in":
                 return self.not_(result_var)
             return result_var
@@ -452,7 +456,7 @@ class FunctionOrMethodConverter(
 
         if op == "==":
             result_var = self.create_var(self.builtins.BOOL, op_location)
-            self.code.push(new ir::MethodCall(lhs, "equals", [rhs], result_var))
+            self.code.push(new ir::MethodCall(lhs, "equals", [rhs], result_var, op_location))
             return result_var
 
         print("wrong types: {ir::type_name(type)} {op} {ir::type_name(type)}")
@@ -548,7 +552,7 @@ class FunctionOrMethodConverter(
                 )
                 self.code.push(new ir::ConstructorCall(list_var, []))
                 foreach item_var of content:
-                    self.code.push(new ir::MethodCall(list_var, "push", [item_var], null))
+                    self.code.push(new ir::MethodCall(list_var, "push", [item_var], null, list.location))
                 return list_var
 
             case ast::StringFormatJoin join:
@@ -860,37 +864,37 @@ class FunctionOrMethodConverter(
         foreach ins of self.code.reversed().reversed():   # TODO: better way to copy list
             switch ins:
                 case ir::MethodCall call:
-                    # FIXME
-                    assert(false)
-#                    self.get_rid_of_auto_in_var(call.obj)
-#                    let functype = self.get_method_functype(call.obj.type, call.method_name)
-#
-#                    self.push_code()
-#                    let args = self.do_args(
-#                        call.args, functype.argtypes, call.obj, call.method_name
-#                    )
-#                    call.args = args.slice(1, args.length())
-#                    let front_code = self.pop_code()
-#
-#                    for let i = 0; ; i = i + 1:
-#                        if self.code.get(i) == call:
-#                            # TODO: insert_sublist method to handle this
-#                            foreach item of front_code.reversed():
-#                                self.code.insert(i, item)
-#                            break
-#
-#                    if functype.returntype == null:
-#                        # TODO: is this needed? when does it run?
-#                        assert(call.result == null)
-#                    elif call.result != null:
-#                        switch call.result.get().type:
-#                            case ir::AutoType autotype:
-#                                self.resolve_autotype(autotype, functype.returntype.get())
-#                            case *:
-#                                self.get_rid_of_auto_in_var(call.result.get())
-#
-#                    foreach arg of call.args:
-#                        self.get_rid_of_auto_in_var(arg)
+                    self.get_rid_of_auto_in_var(call.obj)
+                    let functype = self.get_method_functype(call.obj.type, call.method_name)
+
+                    self.push_code()
+                    let args = self.do_args(
+                        call.args,
+                        functype.argtypes.slice(1, functype.argtypes.length()),
+                        call.location
+                    )
+                    call.args = args.slice(1, args.length())
+                    let front_code = self.pop_code()
+
+                    for let i = 0; ; i = i + 1:
+                        if self.code.get(i) == call:
+                            # TODO: insert_sublist method to handle this
+                            foreach item of front_code.reversed():
+                                self.code.insert(i, item)
+                            break
+
+                    if functype.returntype == null:
+                        # TODO: is this needed? when does it run?
+                        assert(call.result == null)
+                    elif call.result != null:
+                        switch call.result.get().type:
+                            case ir::AutoType autotype:
+                                self.resolve_autotype(autotype, functype.returntype.get())
+                            case *:
+                                self.get_rid_of_auto_in_var(call.result.get())
+
+                    foreach arg of call.args:
+                        self.get_rid_of_auto_in_var(arg)
 
                 case ir::GetAttribute getattr:
                     # FIXME
