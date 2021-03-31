@@ -227,17 +227,17 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("op", ")")
         elif self.peek().matches("op", "["):
             let square_bracket = self.get_token("op", "[")
-            if (self.peek().matches("keyword", "while")
+            if (
+                self.peek().matches("keyword", "while")
                 or self.peek().matches("keyword", "for")
-                or self.peek().matches("keyword", "foreach")):
+                or self.peek().matches("keyword", "foreach")
+            ):
                 # list comprehension
-                let location = self.peek().location
                 let loop_header = self.parse_loop_header()
                 self.get_token("op", ":")
                 let value = self.parse_expression()
                 self.get_token("op", "]")
-                # TODO: do loop headers need location?
-                result = new ast::ListComprehension(location, loop_header, value)
+                result = new ast::ListComprehension(loop_header, value)
             else:
                 self.tokens.push(square_bracket)   # oops, didn't mean to pop
                 result = new ast::ListLiteral(
@@ -445,11 +445,11 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_loop_header() -> ast::LoopHeader:
         if self.peek().matches("keyword", "while"):
-            self.get_token("keyword", "while")
-            return new ast::ForLoopHeader([], self.parse_expression(), [])
+            let location = self.get_token("keyword", "while").location
+            return new ast::ForLoopHeader(location, [], self.parse_expression(), [])
 
         if self.peek().matches("keyword", "for"):
-            self.get_token("keyword", "for")
+            let location = self.get_token("keyword", "for").location
 
             if self.peek().matches("op", ";"):
                 let init = []
@@ -468,13 +468,13 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 incr = [self.parse_oneline_ish_statement()]
 
-            return new ast::ForLoopHeader(init, cond, incr)
+            return new ast::ForLoopHeader(location, init, cond, incr)
 
         if self.peek().matches("keyword", "foreach"):
-            self.get_token("keyword", "foreach")
+            let location = self.get_token("keyword", "foreach").location
             let varname = self.get_token_by_type("id").value
             self.get_token("keyword", "of")
-            return new ast::ForeachLoopHeader(varname, self.parse_expression())
+            return new ast::ForeachLoopHeader(location, varname, self.parse_expression())
 
         assert(false)
 
@@ -504,10 +504,9 @@ class Parser(List[tokenizer::Token] tokens):
             or self.peek().matches("keyword", "for")
             or self.peek().matches("keyword", "foreach")
         ):
-            let location = self.peek().location
             let header = self.parse_loop_header()
             let body = self.parse_block_of_statements()
-            return [new ast::Statement(new ast::Loop(location, header, body))]
+            return [new ast::Statement(new ast::Loop(header, body))]
 
         if self.peek().matches("keyword", "switch"):
             let location = self.get_token("keyword", "switch").location

@@ -48,8 +48,8 @@ export class Case(error::Location location, Optional[TypeAndName] type_and_name,
 export class ConditionAndBody(error::Location location, Expression cond, List[Statement] body)
 
 # for init; cond; incr
-export class ForLoopHeader(List[Statement] init, Optional[Expression] cond, List[Statement] incr)
-export class ForeachLoopHeader(Str varname, Expression list)
+export class ForLoopHeader(error::Location location, List[Statement] init, Optional[Expression] cond, List[Statement] incr)
+export class ForeachLoopHeader(error::Location location, Str varname, Expression list)
 
 # TODO: missing locations
 export class As(Expression expr, Type type)
@@ -60,7 +60,7 @@ export class FloatConstant(error::Location location, Str value)  # value not con
 export class GetAttribute(error::Location location, Expression obj, Str attribute)
 export class GetVar(error::Location location, Str varname)
 export class IntConstant(error::Location location, Int value)
-export class ListComprehension(error::Location location, LoopHeader loop_header, Expression value)
+export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(error::Location location, List[Expression] content)
 export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
 export class StringConstant(error::Location location, Str value)
@@ -71,7 +71,7 @@ export class Break(error::Location location)
 export class Continue(error::Location location)
 export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
 export class Let(error::Location location, Str varname, Expression value)
-export class Loop(error::Location location, LoopHeader loop_header, List[Statement] body)
+export class Loop(LoopHeader loop_header, List[Statement] body)
 export class Pass(error::Location location)
 export class Return(error::Location location, Optional[Expression] value)
 export class SetAttribute(error::Location location, Expression obj, Str attribute, Expression value)
