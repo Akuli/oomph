@@ -295,6 +295,7 @@ class FunctionOrMethodConverter(
 
     meth do_call(ast::Call call, Bool must_return_value) -> Optional[ir::LocalVariable]:
         let args = [foreach arg of call.args: self.do_expression(arg)]
+        let result_var = new Optional[ir::LocalVariable](null)
 
         switch call.function:
             case ast::GetAttribute method:
@@ -305,17 +306,11 @@ class FunctionOrMethodConverter(
                     case ir::AutoType self_autotype:
                         # Less type information available, do_args will be called later
                         if must_return_value:
-                            let result_var = new Optional[ir::LocalVariable](
-                                self.create_var(self.create_autotype(), call.location)
-                            )
-                        else:
-                            result_var = null
+                            result_var = self.create_var(self.create_autotype(), call.location)
                     case *:
                         let functype = self.get_method_functype(self_var.type, method.attribute)
                         assert(self_var.type == functype.argtypes.first())
-                        if functype.returntype == null:
-                            result_var = null
-                        else:
+                        if functype.returntype != null:
                             result_var = self.create_var(
                                 functype.returntype.get(), call.location
                             )
@@ -327,14 +322,11 @@ class FunctionOrMethodConverter(
                 self.code.push(new ir::MethodCall(
                     self_var, method.attribute, args, result_var, call.location
                 ))
-                return result_var
 
             case ast::GetVar ast_function:
                 let function = self.get_var(ast_function.varname, ast_function.location)
                 let functype = ir::var_type(function) as ir::FunctionType
-                if functype.returntype == null:
-                    let result_var = new Optional[ir::LocalVariable](null)
-                else:
+                if functype.returntype != null:
                     result_var = self.create_var(functype.returntype.get(), call.location)
 
                 if function == self.builtins.get_visible_var("print"):
@@ -349,7 +341,6 @@ class FunctionOrMethodConverter(
                         ast_function.location,
                     )
                 self.code.push(new ir::FunctionCall(function, args, result_var))
-                return result_var
 
             case ast::Constructor constructor:
                 # TODO: is this special-casing really needed?
@@ -359,12 +350,13 @@ class FunctionOrMethodConverter(
                     ir::get_constructor_argtypes(the_class).get(),  # TODO: error
                     constructor.location,
                 )
-                let result_var = self.create_var(the_class, call.location)
-                self.code.push(new ir::ConstructorCall(result_var, args))
-                return result_var
+                result_var = self.create_var(the_class, call.location)
+                self.code.push(new ir::ConstructorCall(result_var.get(), args))
 
             case *:
                 assert(false)
+
+        return result_var
 
 
     meth not_(ir::LocalVariable obj) -> ir::LocalVariable:
