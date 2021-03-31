@@ -7,6 +7,7 @@ import "<stdlib>/io.oomph" as io
 #     line_prefix  code
 #
 # lineno starts at 1, and for multiline locations, points to start of location
+# line_prefix should never contain newlines
 export class Location(Str path, Int lineno, Str line_prefix, Str code):
 
     # TODO: error() is split up for tests only, get rid of this when possible
@@ -43,7 +44,7 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
         return new Location(
             self.path,
             self.lineno + prefix.count("\n"),
-            self.line_prefix + prefix,
+            (self.line_prefix + prefix).split("\n").last(),
             self.code.remove_prefix(prefix),
         )
 
@@ -78,6 +79,9 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
             prefix = self.line_prefix
             code = other.line_prefix.remove_prefix(self.line_prefix) + other.code
         else:
+            print("Combine error:")
+            print("  self:  {self.line_prefix}|{self.code}")
+            print("  other: {other.line_prefix}|{other.code}")
             assert(false)
 
         return new Location(self.path, self.lineno, prefix, code)
