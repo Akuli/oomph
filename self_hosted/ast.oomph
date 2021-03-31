@@ -1,4 +1,4 @@
-# TODO: line number info everywhere
+import "error.oomph" as error
 
 class Type(Str name, Optional[Type] generic_arg)
 
@@ -48,11 +48,12 @@ export class Case(error::Location location, Optional[TypeAndName] type_and_name,
 export class ConditionAndBody(error::Location location, Expression cond, List[Statement] body)
 
 # for init; cond; incr
-export class ForLoopHeader(error::Location location, List[Statement] init, Optional[Expression] cond, List[Statement] incr)
-export class ForeachLoopHeader(error::Location location, Str varname, Expression list)
+export class ForLoopHeader(List[Statement] init, Optional[Expression] cond, List[Statement] incr)
+export class ForeachLoopHeader(Str varname, Expression list)
 
-export class As(error::Location location, Expression expr, Type type)
-export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs)
+# TODO: missing locations
+export class As(Expression expr, Type type)
+export class BinaryOperator(Expression lhs, Str op, Expression rhs)
 export class Call(error::Location location, Expression function, List[Expression] args)
 export class Constructor(error::Location location, Type type)
 export class FloatConstant(error::Location location, Str value)  # value not converted to float in case weirdness :D
@@ -64,11 +65,11 @@ export class ListLiteral(error::Location location, List[Expression] content)
 export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
 export class StringConstant(error::Location location, Str value)
 export class StringFormatJoin(error::Location location, List[Expression] parts)  # always >=2 parts
-export class UnaryOperator(error::Location location, Str op, Expression obj)
+export class UnaryOperator(Str op, Expression obj)
 
 export class Break(error::Location location)
 export class Continue(error::Location location)
-export class If(error::Location location, List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
+export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
 export class Let(error::Location location, Str varname, Expression value)
 export class Loop(error::Location location, LoopHeader loop_header, List[Statement] body)
 export class Pass(error::Location location)

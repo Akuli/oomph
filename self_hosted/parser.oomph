@@ -15,18 +15,20 @@ func path_parent(Str path) -> Str:
         return "."
     return parts.slice(0, parts.length() - 1).join("/")
 
-func add_string(List[ast::Expression] parts, Str suffix):
+func add_string(List[ast::Expression] parts, Str suffix, error::Location suffix_location):
     if parts != []:
         switch parts.last():
             case ast::StringConstant old:
                 # String concat can be done at compile time
                 parts.pop()
-                parts.push(new ast::StringConstant(old.value + suffix))
+                parts.push(new ast::StringConstant(
+                    old.location.combine(suffix_location), old.value + suffix
+                ))
                 return
             case *:    # TODO: this sucks
                 pass
 
-    parts.push(new ast::StringConstant(suffix))
+    parts.push(new ast::StringConstant(suffix_location, suffix))
 
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
@@ -53,7 +55,7 @@ class Parser(List[tokenizer::Token] tokens):
         return token
 
     meth parse_import(Str path_of_this_file, Str stdlib_path) -> ast::Import:
-        self.get_token("keyword", "import")
+        let import_token = self.get_token("keyword", "import")
         let string = self.get_token_by_type("oneline_string").value
         self.get_token("keyword", "as")
         let name = self.get_token_by_type("id").value
@@ -69,7 +71,7 @@ class Parser(List[tokenizer::Token] tokens):
             let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/")
         else:
             path = path_parent(path_of_this_file) + "/" + string
-        return new ast::Import(path, name)
+        return new ast::Import(import_token.location, path, name)
 
     # TODO: these are a bit copy/pasta
     meth parse_commasep_expression_in_parens(Str left, Str right) -> List[ast::Expression]:
@@ -143,7 +145,7 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     # the location contains all we need to know about the string
-    meth do_string_contents(error::Location location) -> ast::Expression:
+    meth do_string_contents(error::Location string_location) -> ast::Expression:
         let result = []
         let escapes = [
             # TODO: oneline and multiline strings should allow different escapes
@@ -155,12 +157,17 @@ class Parser(List[tokenizer::Token] tokens):
             ["\\\\", "\\"],
         ]
 
+        let location = string_location
         while location.code != "":
             if location.code.starts_with("\\"):
                 let found_escape = false  # TODO: this sucks
                 foreach pair of escapes:
                     if location.code.starts_with(pair.first()):
-                        add_string(result, pair.last())
+                        # TODO: location stuff can be simplified
+                        let escape_location = location.remove_suffix(
+                            location.code.remove_prefix(pair.first())
+                        )
+                        add_string(result, pair.last(), escape_location)
                         location = location.remove_prefix(pair.first())
                         found_escape = true
                         break
@@ -179,14 +186,17 @@ class Parser(List[tokenizer::Token] tokens):
                 location = location.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
             else:
                 let char = location.code.split("").first()
-                add_string(result, char)
+                let char_location = location.remove_suffix(
+                    location.code.remove_prefix(char)
+                )
+                add_string(result, char, char_location)
                 location = location.remove_prefix(char)
 
         if result == []:
-            return new ast::StringConstant("")
+            return new ast::StringConstant(string_location, "")
         if result.length() == 1:
             return result.first()
-        return new ast::StringFormatJoin(result)
+        return new ast::StringFormatJoin(string_location, result)
 
     meth parse_simple_expression() -> ast::Expression:
         if self.peek().type == "oneline_string":
@@ -200,14 +210,17 @@ class Parser(List[tokenizer::Token] tokens):
                 token.location.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
             )
         elif self.peek().type == "id":
-            result = new ast::GetVar(self.get_token_by_type("id").value)
+            let token = self.get_token_by_type("id")
+            result = new ast::GetVar(token.location, token.value)
         elif self.peek().type == "int":
-            result = new ast::IntConstant(self.get_token_by_type("int").value.to_int())
+            let token = self.get_token_by_type("int")
+            result = new ast::IntConstant(token.location, token.value.to_int())
         elif self.peek().type == "float":
-            result = new ast::FloatConstant(self.get_token_by_type("float").value)
+            let token = self.get_token_by_type("float")
+            result = new ast::FloatConstant(token.location, token.value)
         elif self.peek().matches("keyword", "new"):
-            self.get_token("keyword", "new")
-            result = new ast::Constructor(self.parse_type())
+            let new_keyword = self.get_token("keyword", "new")
+            result = new ast::Constructor(new_keyword.location, self.parse_type())
         elif self.peek().matches("op", "("):
             self.get_token("op", "(")
             result = self.parse_expression()
@@ -218,15 +231,19 @@ class Parser(List[tokenizer::Token] tokens):
                 or self.peek().matches("keyword", "for")
                 or self.peek().matches("keyword", "foreach")):
                 # list comprehension
+                let location = self.peek().location
                 let loop_header = self.parse_loop_header()
                 self.get_token("op", ":")
                 let value = self.parse_expression()
                 self.get_token("op", "]")
-                result = new ast::ListComprehension(loop_header, value)
+                # TODO: do loop headers need location?
+                result = new ast::ListComprehension(location, loop_header, value)
             else:
                 self.tokens.push(square_bracket)   # oops, didn't mean to pop
                 result = new ast::ListLiteral(
-                    self.parse_commasep_expression_in_parens("[", "]"))
+                    square_bracket.location,  # TODO: not best possible?
+                    self.parse_commasep_expression_in_parens("[", "]")
+                )
         else:
             print("All tokens: {self.tokens}")
             print("not a valid expression: {self.peek().value}")
@@ -234,11 +251,20 @@ class Parser(List[tokenizer::Token] tokens):
 
         while true:
             if self.peek().matches("op", "("):
+                let paren = self.peek()
                 result = new ast::Call(
-                    result, self.parse_commasep_expression_in_parens("(", ")"))
+                    paren.location,
+                    result,
+                    self.parse_commasep_expression_in_parens("(", ")")
+                )
             elif self.peek().matches("op", "."):
-                self.get_token("op", ".")
-                result = new ast::GetAttribute(result, self.get_token_by_type("id").value)
+                let dot = self.get_token("op", ".")
+                let attrib = self.get_token_by_type("id")
+                result = new ast::GetAttribute(
+                    dot.location.combine(attrib.location),
+                    result,
+                    attrib.value
+                )
             else:
                 return result
 
@@ -368,42 +394,39 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_oneline_ish_statement() -> ast::Statement:
         if self.peek().matches("keyword", "let"):
-            self.get_token("keyword", "let")
+            let leet = self.get_token("keyword", "let")
             let varname = self.get_token_by_type("id").value
             self.get_token("op", "=")
             let value = self.parse_expression()
-            return new ast::Let(varname, value)
+            return new ast::Let(leet.location, varname, value)
 
         if self.peek().matches("keyword", "return"):
-            self.get_token("keyword", "return")
+            let ret = self.get_token("keyword", "return")
             # This is a weird way to check whether an expression is coming up.
             # It doesn't work in e.g. first line of for loop, but if you think
             # that returning there is a good idea, then wtf lol.
             if self.peek().matches("op", "\n"):
-                return new ast::Return(null)
-            return new ast::Return(self.parse_expression())
+                return new ast::Return(ret.location, null)
+            return new ast::Return(ret.location, self.parse_expression())
 
         if self.peek().matches("keyword", "pass"):
-            self.get_token("keyword", "pass")
-            return new ast::Pass()
+            return new ast::Pass(self.get_token("keyword", "pass").location)
 
         if self.peek().matches("keyword", "continue"):
-            self.get_token("keyword", "continue")
-            return new ast::Continue()
+            return new ast::Continue(self.get_token("keyword", "continue").location)
 
         if self.peek().matches("keyword", "break"):
-            self.get_token("keyword", "break")
-            return new ast::Break()
+            return new ast::Break(self.get_token("keyword", "break").location)
 
         let expr = self.parse_expression()
         if self.peek().matches("op", "="):
-            self.get_token("op", "=")
+            let equals = self.get_token("op", "=")
             value = self.parse_expression()
             switch expr:
                 case ast::GetVar getvar:
-                    return new ast::SetVar(getvar.varname, value)
+                    return new ast::SetVar(equals.location, getvar.varname, value)
                 case ast::GetAttribute getattr:
-                    return new ast::SetAttribute(getattr.obj, getattr.attribute, value)
+                    return new ast::SetAttribute(equals.location, getattr.obj, getattr.attribute, value)
                 case *:
                     print("can't assing to {expr}")
                     assert(false)
@@ -411,14 +434,14 @@ class Parser(List[tokenizer::Token] tokens):
         return expr as ast::Call
 
     meth parse_case() -> ast::Case:
-        self.get_token("keyword", "case")
+        let case_keyword = self.get_token("keyword", "case")
         if self.peek().matches("op", "*"):
             self.get_token("op", "*")
             let type_and_varname = new Optional[ast::TypeAndName](null)
         else:
             type_and_varname = self.parse_type_and_name()
         let body = self.parse_block_of_statements()
-        return new ast::Case(type_and_varname, body)
+        return new ast::Case(case_keyword.location, type_and_varname, body)
 
     meth parse_loop_header() -> ast::LoopHeader:
         if self.peek().matches("keyword", "while"):
@@ -457,16 +480,16 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_statement() -> List[ast::Statement]:
         if self.peek().matches("keyword", "if"):
-            self.get_token("keyword", "if")
+            let if_keyword = self.get_token("keyword", "if")
             let condition = self.parse_expression()
             let body = self.parse_block_of_statements()
-            let ifs = [new ast::ConditionAndBody(condition, body)]
+            let ifs = [new ast::ConditionAndBody(if_keyword.location, condition, body)]
 
             while self.peek().matches("keyword", "elif"):
-                self.get_token("keyword", "elif")
+                let elif_keyword = self.get_token("keyword", "elif")
                 let condition = self.parse_expression()
                 let body = self.parse_block_of_statements()
-                ifs.push(new ast::ConditionAndBody(condition, body))
+                ifs.push(new ast::ConditionAndBody(elif_keyword.location, condition, body))
 
             if self.peek().matches("keyword", "else"):
                 self.get_token("keyword", "else")
@@ -476,18 +499,21 @@ class Parser(List[tokenizer::Token] tokens):
 
             return [new ast::Statement(new ast::If(ifs, else_body))]
 
-        if (self.peek().matches("keyword", "while")
+        if (
+            self.peek().matches("keyword", "while")
             or self.peek().matches("keyword", "for")
-            or self.peek().matches("keyword", "foreach")):
+            or self.peek().matches("keyword", "foreach")
+        ):
+            let location = self.peek().location
             let header = self.parse_loop_header()
             let body = self.parse_block_of_statements()
-            return [new ast::Statement(new ast::Loop(header, body))]
+            return [new ast::Statement(new ast::Loop(location, header, body))]
 
         if self.peek().matches("keyword", "switch"):
-            self.get_token("keyword", "switch")
+            let location = self.get_token("keyword", "switch").location
             let union_obj = self.parse_expression()
             let cases = self.parse_block_of_cases()
-            return [new ast::Statement(new ast::Switch(union_obj, cases))]
+            return [new ast::Statement(new ast::Switch(location, union_obj, cases))]
 
         let result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
@@ -514,7 +540,7 @@ class Parser(List[tokenizer::Token] tokens):
         let arg = self.get_token_by_type("id").value
         return new ast::TypeAndName(type, arg)
 
-    meth parse_function_or_method() -> ast::FuncOrMethodDef:
+    meth parse_function_or_method(error::Location func_or_meth_location) -> ast::FuncOrMethodDef:
         let name = self.get_token_by_type("id").value
         let args = self.parse_commasep_types_and_names_in_parens()
 
@@ -525,11 +551,15 @@ class Parser(List[tokenizer::Token] tokens):
             returntype = null
 
         return new ast::FuncOrMethodDef(
-            name, args, returntype, self.parse_block_of_statements())
+            func_or_meth_location,
+            name,
+            args,
+            returntype,
+            self.parse_block_of_statements()
+        )
 
     meth parse_method() -> ast::FuncOrMethodDef:
-        self.get_token("keyword", "meth")
-        return self.parse_function_or_method()
+        return self.parse_function_or_method(self.get_token("keyword", "meth").location)
 
     meth parse_toplevel() -> ast::ToplevelDeclaration:
         # TODO: don't export everything
@@ -537,11 +567,10 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("keyword", "export")
 
         if self.peek().matches("keyword", "func"):
-            self.get_token("keyword", "func")
-            return self.parse_function_or_method()
+            return self.parse_function_or_method(self.get_token("keyword", "func").location)
 
         if self.peek().matches("keyword", "class"):
-            self.get_token("keyword", "class")
+            let class_location = self.get_token("keyword", "class").location
             let name = self.get_token_by_type("id").value
             let args = self.parse_commasep_types_and_names_in_parens()
             if self.tokens != [] and self.peek().matches("begin_block", ":"):
@@ -549,13 +578,13 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 body = []
                 self.get_token("op", "\n")
-            return new ast::ClassDef(name, args, body)
+            return new ast::ClassDef(class_location, name, args, body)
 
         if self.peek().matches("keyword", "union"):
-            self.get_token("keyword", "union")
+            let union_location = self.get_token("keyword", "union").location
             let name = self.get_token_by_type("id").value
             let types = self.parse_block_of_union_members()
-            return new ast::UnionDef(name, types)
+            return new ast::UnionDef(union_location, name, types)
 
         self.peek().location.error(
             "should be function definition, class definition or union definition"
