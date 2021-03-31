@@ -520,39 +520,42 @@ class FunctionOrMethodConverter(
 
     # Always returns new variable
     meth do_expression(ast::Expression expr) -> ir::LocalVariable:
+        let location = ast::locate_expression(expr)
+
         switch expr:
             case ast::IntConstant int:
                 # This accepts int64_t values only, because the value has already been converted to int
-                let var = self.create_var(self.builtins.INT, int.location)
+                let var = self.create_var(self.builtins.INT, location)
                 self.code.push(new ir::IntConstant(int.value, var))
                 return var
 
             case ast::FloatConstant float:
-                let var = self.create_var(self.builtins.FLOAT, float.location)
+                let var = self.create_var(self.builtins.FLOAT, location)
                 self.code.push(new ir::FloatConstant(float.value, var))
                 return var
 
             case ast::StringConstant string:
-                let var = self.create_var(self.builtins.STR, string.location)
+                let var = self.create_var(self.builtins.STR, location)
                 self.code.push(new ir::StringConstant(string.value, var))
                 return var
 
             case ast::ListLiteral list:
                 let content = [foreach expr of list.content: self.do_expression(expr)]
-                if content != []:
-                    let content_type = content.first().type
+                if content == []:
+                    let content_type = new ir::Type(self.create_autotype())
+                else:
+                    content_type = content.first().type
                     foreach member of content:
                         assert(member.type == content_type)  # TODO: error
-                else:
-                    content_type = self.create_autotype()
 
                 let list_var = self.create_var(
-                    self.builtins.generic2type(self.builtins.LIST, content_type),
-                    list.location
+                    self.builtins.generic2type(self.builtins.LIST, content_type), location
                 )
                 self.code.push(new ir::ConstructorCall(list_var, []))
                 foreach item_var of content:
-                    self.code.push(new ir::MethodCall(list_var, "push", [item_var], null, list.location))
+                    self.code.push(new ir::MethodCall(
+                        list_var, "push", [item_var], null, location
+                    ))
                 return list_var
 
             case ast::StringFormatJoin join:
@@ -571,7 +574,7 @@ class FunctionOrMethodConverter(
                     case ast::Constructor constructor:
                         switch self.get_type(constructor.type):
                             case ir::UnionType union_type:
-                                let var = self.create_var(union_type, call.location)
+                                let var = self.create_var(union_type, location)
                                 assert(call.args.length() == 1)
                                 let obj = self.do_expression(call.args.first())
                                 self.code.push(new ir::IncRef(obj))
@@ -587,8 +590,8 @@ class FunctionOrMethodConverter(
             case ast::GetVar getvar:
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
                 # Also ensure we always return LocalVariable
-                let old_var = self.get_var(getvar.varname, getvar.location)
-                let new_var = self.create_var(ir::var_type(old_var), getvar.location)
+                let old_var = self.get_var(getvar.varname, location)
+                let new_var = self.create_var(ir::var_type(old_var), location)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))
                 return new_var
@@ -596,11 +599,9 @@ class FunctionOrMethodConverter(
             case ast::UnaryOperator unary:
                 let obj = self.do_expression(unary.obj)
                 if unary.op == "not":
-                    return self.create_special_call(
-                        "bool_not", [self.implicit_conversion(
-                            obj, self.builtins.BOOL, unary.location
-                        )]
-                    )
+                    return self.create_special_call("bool_not", [
+                        self.implicit_conversion(obj, self.builtins.BOOL, location)
+                    ])
                 # TODO: auto type support (remember docs)
                 if obj.type == self.builtins.INT and unary.op == "-":
                     return self.create_special_call("int_neg", [obj])
@@ -619,12 +620,12 @@ class FunctionOrMethodConverter(
                 switch obj.type:
                     case ir::AutoType autotype:
                         let result = self.create_var(
-                            self.create_autotype(), getattr.attribute_location
+                            self.create_autotype(), location
                         )
                     case *:
                         result = self.create_var(
                             self.get_attribute_type(obj.type, getattr.attribute),
-                            getattr.attribute_location
+                            location
                         )
                 self.code.push(new ir::GetAttribute(obj, result, getattr.attribute))
                 self.code.push(new ir::IncRef(result))
@@ -637,7 +638,7 @@ class FunctionOrMethodConverter(
 
             case ast::As ass:
                 let lhs = self.do_expression(ass.expr)
-                let result = self.create_var(self.get_type(ass.type), ass.location)
+                let result = self.create_var(self.get_type(ass.type), location)
                 self.code.push(new ir::GetFromUnion(result, lhs))
                 self.code.push(new ir::IncRef(result))
                 return result
