@@ -1103,7 +1103,7 @@ class FileConverter(
                     foreach member of classtype.members: member.type
                 ])
 
-                if add_to_string_method:
+                if classtype.create_to_string_method:
                     # TODO: do this in ir instead?
                     classtype.methods.push(new ir::Method(
                         "to_string",
