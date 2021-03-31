@@ -1,5 +1,5 @@
-All tokens: [Token("end_block", "", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2)", "
-")), Token("op", "
-", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2)", "
-")), Token("op", ")", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+2", ")")), Token("int", "2", Location("tests/prefix_minus_error.oomph", 2, "    print(3*+", "2")), Token("op", "+", Location("tests/prefix_minus_error.oomph", 2, "    print(3*", "+"))]
-not a valid expression: +
+tests/prefix_minus_error.oomph:2: error: should be an expression
+
+    print(3*+2)
+            ^
+

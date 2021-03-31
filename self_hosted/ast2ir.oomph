@@ -1118,8 +1118,11 @@ class FileConverter(
                     ))
 
                 foreach method_def of classdef.body:
+                    let self_location = classdef.location   # a bit weird
                     method_def.args.insert(0, new ast::TypeAndName(
-                        new ast::Type(classtype.name, null), "self"
+                        new ast::Type(self_location, classtype.name, null),
+                        "self",
+                        self_location
                     ))
                     self.do_func_or_method_def_pass1(method_def, classtype)
 
