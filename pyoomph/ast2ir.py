@@ -912,7 +912,7 @@ class _FileConverter:
                 top_declaration.name,
                 True,
                 self.path,
-                need_to_string_method=(
+                create_to_string_method=(
                     "to_string" not in (method.name for method in top_declaration.body)
                 ),
             )

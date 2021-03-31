@@ -631,7 +631,7 @@ class _FilePair:
             }}
             """
 
-            if the_type.need_to_string_method:
+            if the_type.create_to_string_method:
                 self.function_decls += f"""
                 struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} obj);
                 """
