@@ -1,0 +1,5 @@
+tests/ambiguous_union_error.oomph:16: error: wrong type: should be Outer, but it's Foo
+
+    blah(new Foo())
+         ^^^^^^^^
+
