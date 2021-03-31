@@ -1,3 +1,6 @@
+# How to update this list:
+# - Finding unnecessary non-_error lines: ./unnecessary_skips
+# - Finding unnecessary _error lines: make oomphc && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomphc $file; done
 tests/a_lib.oomph
 tests/andor_error.oomph
 tests/args.oomph
@@ -26,7 +29,6 @@ tests/autotype_not_enough_info_error.oomph
 tests/autotype.oomph
 tests/b_lib.oomph
 tests/class_basic.oomph
-tests/comma_error.oomph
 tests/count_and_splitlen.oomph
 tests/custom_eq.oomph
 tests/custom_tostring.oomph
@@ -34,7 +36,6 @@ tests/cyclic1_error.oomph
 tests/cyclic2_error.oomph
 tests/cyclic3_error.oomph
 tests/default_tostring.oomph
-tests/double_comma_error.oomph
 tests/double_loop_double_free_bug.oomph
 tests/early_return.oomph
 tests/elif.oomph
@@ -53,7 +54,6 @@ tests/int_eq_str_error.oomph
 tests/io.oomph
 tests/join_and_split.oomph
 tests/lazy_and.oomph
-tests/line_continuation_error.oomph
 tests/listcomp.oomph
 tests/list_delete.oomph
 tests/list_equal.oomph
@@ -64,7 +64,6 @@ tests/list_whitespace.oomph
 tests/loop_body_var_in_incr.oomph
 tests/loop.oomph
 tests/loop_reference_bug.oomph
-tests/loop_var_leak_error.oomph
 tests/method_implicit_convert.oomph
 tests/method.oomph
 tests/missing_case_error.oomph
