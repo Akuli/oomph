@@ -2,9 +2,12 @@ import "ast.oomph" as ast
 import "error.oomph" as error
 import "tokenizer.oomph" as tokenizer
 
+# op is e.g. "+"
+class OpAndLocation(Str op, error::Location location)
+
 union PrecedenceItem:
+    OpAndLocation
     ast::Expression
-    Str   # operator, such as "+"
     ast::Type
 
 # TODO: should move to stdlib
@@ -272,8 +275,8 @@ class Parser(List[tokenizer::Token] tokens):
     meth find_unary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
         for let i = 0; i < magic_list.length() - 1; i = i+1:
             switch magic_list.get(i):
-                case Str op:
-                    if op not in operators:
+                case OpAndLocation operator:
+                    if operator.op not in operators:
                         continue
                 case *:
                     continue
@@ -293,8 +296,8 @@ class Parser(List[tokenizer::Token] tokens):
                 case *:
                     continue
             switch magic_list.get(i+1):
-                case Str s:
-                    if s not in operators:
+                case OpAndLocation operator:
+                    if operator.op not in operators:
                         continue
                 case *:
                     continue
@@ -326,30 +329,38 @@ class Parser(List[tokenizer::Token] tokens):
             if un_or_null != null:
                 let i = un_or_null.get()
                 let op_and_expr = magic_list.delete_slice(i, i+2)
-                let op = op_and_expr.first() as Str
+                let op = op_and_expr.first() as OpAndLocation
                 let expr = op_and_expr.last() as ast::Expression
-                magic_list.insert(i, new ast::UnaryOperator(op, expr))
+                magic_list.insert(i, new ast::UnaryOperator(op.location, op.op, expr))
             elif bin_or_null != null:
                 let i = bin_or_null.get()
                 let lhs_op_rhs = magic_list.delete_slice(i, i+3)
                 let lhs = lhs_op_rhs.first() as ast::Expression
-                let op = lhs_op_rhs.get(1) as Str
+                let op = lhs_op_rhs.get(1) as OpAndLocation
                 let rhs = lhs_op_rhs.last() as ast::Expression
-                magic_list.insert(i, new ast::BinaryOperator(lhs, op, rhs))
+                magic_list.insert(i, new ast::BinaryOperator(op.location, lhs, op.op, rhs))
             else:
                 break
 
     meth eliminate_as(List[PrecedenceItem] magic_list):
-        while "as" in magic_list:
+        let keep_going = true  # TODO: this sucks
+        while keep_going:
+            keep_going = false
             for let i = 0; i < magic_list.length(); i = i+1:
-                if magic_list.get(i) == "as":
-                    # TODO: improve errors
-                    assert(0 <= i-1 and i+1 < magic_list.length())
-                    let expr = magic_list.get(i-1) as ast::Expression
-                    let type = magic_list.get(i+1) as ast::Type
-                    magic_list.delete_slice(i-1, i+2)
-                    magic_list.insert(i-1, new ast::As(expr, type))
-                    break
+                switch magic_list.get(i):
+                    case OpAndLocation op:
+                        if op.op == "as":
+                            # TODO: improve errors
+                            assert(0 <= i-1 and i+1 < magic_list.length())
+                            let expr = magic_list.get(i-1) as ast::Expression
+                            let type = magic_list.get(i+1) as ast::Type
+                            magic_list.delete_slice(i-1, i+2)
+                            magic_list.insert(i-1, new ast::As(op.location, expr, type))
+                            # Continue from beginning of list
+                            keep_going = true
+                            break
+                    case *:
+                        pass
 
     meth get_unary_operators() -> List[PrecedenceItem]:
         return [
@@ -369,9 +380,9 @@ class Parser(List[tokenizer::Token] tokens):
         let magic_list = self.get_unary_operators()
         magic_list.push(self.parse_simple_expression())
         while self.peek().value in binary_ops:
-            let op = self.tokens.pop().value
-            magic_list.push(op)
-            if op == "as":
+            let op_token = self.tokens.pop()
+            magic_list.push(new OpAndLocation(op_token.value, op_token.location))
+            if op_token.value == "as":
                 magic_list.push(self.parse_type())
             else:
                 magic_list.push_all(self.get_unary_operators())
