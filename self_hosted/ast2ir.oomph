@@ -272,7 +272,6 @@ class FunctionOrMethodConverter(
         List[ir::Type] target_types,
         error::Location func_location,
     ) -> List[ir::LocalVariable]:
-        # TODO: test this
         if args.length() != target_types.length():
             if target_types.length() == 1:
                 let s = ""
@@ -339,7 +338,6 @@ class FunctionOrMethodConverter(
                     result_var = self.create_var(functype.returntype.get(), call.location)
 
                 if function == self.builtins.get_visible_var("print"):
-                    # TODO: test this
                     if args.length() != 1:
                         ast_function.location.error("print must be called with 1 argument")
                     args = [foreach arg of args: self.stringify(arg)]
