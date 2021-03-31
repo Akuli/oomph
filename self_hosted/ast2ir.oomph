@@ -143,6 +143,7 @@ class FunctionOrMethodConverter(
         return result_var
 
     meth create_special_call(Str name, List[ir::LocalVariable] args) -> ir::LocalVariable:
+        # Not perfect, but doesn't matter much
         let location = args.first().location
         foreach arg of args.slice(1, args.length()):
             location = location.combine(arg.location)
