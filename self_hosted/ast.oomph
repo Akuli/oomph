@@ -114,7 +114,7 @@ export func locate_expression(Expression expression) -> error::Location:
             return expr.location
         case StatementsAndExpression expr:
             let result = locate_expression(expr.expression)
-            # TODO:
+            # TODO: uncomment once there's a way to find location of statement
 #            foreach stmt of expr.statements:
 #                result = result.combine(stmt.location)
             return result
