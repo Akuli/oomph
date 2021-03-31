@@ -537,8 +537,8 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth parse_type_and_name() -> ast::TypeAndName:
         let type = self.parse_type()
-        let arg = self.get_token_by_type("id").value
-        return new ast::TypeAndName(type, arg)
+        let arg = self.get_token_by_type("id")
+        return new ast::TypeAndName(type, arg.value, arg.location)
 
     meth parse_function_or_method(error::Location func_or_meth_location) -> ast::FuncOrMethodDef:
         let name = self.get_token_by_type("id").value

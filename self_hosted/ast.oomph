@@ -41,7 +41,7 @@ export union LoopHeader:
     ForLoopHeader
     ForeachLoopHeader
 
-export class TypeAndName(Type type, Str name)
+export class TypeAndName(Type type, Str name, error::Location name_location)
 
 # 'case *' means that type_and_varname is null
 export class Case(error::Location location, Optional[TypeAndName] type_and_name, List[Statement] body)
