@@ -33,11 +33,11 @@ class Type:
             self.methods["to_string"] = FunctionType([self], STRING)
 
     def get_id_string(self) -> str:
-        result = self.name + str(self.definition_path)
-        if self.generic_origin is not None:
-            result += self.generic_origin.generic.name
-            result += self.generic_origin.arg.get_id_string()
-        return result
+        if self.generic_origin is None:
+            return self.name + str(self.definition_path)
+        return (
+            self.generic_origin.generic.name + self.generic_origin.arg.get_id_string()
+        )
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
