@@ -790,36 +790,6 @@ class _FunctionOrMethodConverter:
                 raise NotImplementedError(ins)
 
 
-def _create_to_string_method(class_type: ir.Type) -> ast.FuncOrMethodDef:
-    strings: List[ast.Expression] = []
-    for typ, nam in class_type.members:
-        if strings:
-            strings.append(ast.StringConstant(", "))
-        # FIXME: properly support reference cycling types
-        if typ is class_type:
-            strings.append(ast.StringConstant(f"<{class_type.name}>"))
-        else:
-            strings.append(
-                ast.Call(
-                    ast.GetAttribute(
-                        ast.GetAttribute(ast.GetVar("self"), nam),
-                        "to_string",
-                    ),
-                    [],
-                )
-            )
-
-    strings.insert(0, ast.StringConstant(class_type.name + "("))
-    strings.append(ast.StringConstant(")"))
-
-    return ast.FuncOrMethodDef(
-        "to_string",
-        [],
-        ast.Type("Str", None),
-        [ast.Return(ast.StringFormatJoin(strings))],
-    )
-
-
 class _FileConverter:
     def __init__(self, path: pathlib.Path, symbols: List[ir.Symbol]) -> None:
         self.path = path
@@ -938,7 +908,14 @@ class _FileConverter:
             self._do_func_or_method_def_pass1(top_declaration, classtype=None)
 
         elif isinstance(top_declaration, ast.ClassDef):
-            classtype = Type(top_declaration.name, True, self.path)
+            classtype = Type(
+                top_declaration.name,
+                True,
+                self.path,
+                create_to_string_method=(
+                    "to_string" not in (method.name for method in top_declaration.body)
+                ),
+            )
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
             classtype.members.extend(
@@ -946,8 +923,6 @@ class _FileConverter:
             )
             classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
 
-            if "to_string" not in (method.name for method in top_declaration.body):
-                top_declaration.body.insert(0, _create_to_string_method(classtype))
             if "equals" not in (method.name for method in top_declaration.body):
                 classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
 
