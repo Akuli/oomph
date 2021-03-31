@@ -55,6 +55,15 @@ class FunctionOrMethodConverter(
         self.local_var_counter = self.local_var_counter + 1
         return new ir::LocalVariable(type, self.local_var_counter)
 
+    meth create_var(ir::Type the_type) -> ir::LocalVariable:
+        # Newly created variables must be decreffed, in case we are in a loop.
+        # Also, after decreffing, make sure that another iteration of loop
+        # won't decref the same variable again.
+        let result = self.create_local_var(the_type)
+        self.code.push(new ir::DecRef(result))
+        self.code.push(new ir::UnSet(result))
+        return result
+
     meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
@@ -117,15 +126,6 @@ class FunctionOrMethodConverter(
             assert(raw_type.generic_arg == null)  # TODO: error
             return self.create_autotype()
         return (self.file_converter as FileConverter).get_type(raw_type, self)
-
-    meth create_var(ir::Type the_type) -> ir::LocalVariable:
-        # Newly created variables must be decreffed, in case we are in a loop.
-        # Also, after decreffing, make sure that another iteration of loop
-        # won't decref the same variable again.
-        let result = self.create_local_var(the_type)
-        self.code.push(new ir::DecRef(result))
-        self.code.push(new ir::UnSet(result))
-        return result
 
     # TODO: something like @contextlib.contextmanager in python?
     meth push_code():
@@ -355,7 +355,7 @@ class FunctionOrMethodConverter(
         return self.create_special_call("bool_not", [obj])
 
     meth bool_constant(Str which) -> ir::LocalVariable:
-        let result = self.create_local_var(self.builtins.BOOL)
+        let result = self.create_var(self.builtins.BOOL)
         self.code.push(new ir::VarCpy(result, self.builtins.get_visible_var("true")))
         return result
 
