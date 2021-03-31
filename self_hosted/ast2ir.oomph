@@ -53,7 +53,7 @@ class FunctionOrMethodConverter(
 ):
     meth create_local_var(ir::Type type) -> ir::LocalVariable:
         self.local_var_counter = self.local_var_counter + 1
-        return new ir::LocalVariable(type, self.local_var_counter)
+        return new ir::LocalVariable(type, self.local_var_counter, null)
 
     meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
         return find_variable(self.variables, name, location)
@@ -1048,15 +1048,16 @@ class FileConverter(
         assert(def.args.length() == functype.argtypes.length())
         for let i = 0; i < def.args.length(); i = i+1:
             let argname = def.args.get(i).name
+            let arg_location = def.args.get(i).name_location
             let type = functype.argtypes.get(i)
 
             local_var_counter = local_var_counter + 1
-            let argvar = new ir::LocalVariable(type, local_var_counter)
+            let argvar = new ir::LocalVariable(type, local_var_counter, arg_location)
             argvars.push(argvar)
 
             # Copy arguments to separate local variables to allow assigning to arguments
             # TODO: is this necessary?
-            let copied_var = new ir::LocalVariable(type, local_var_counter)
+            let copied_var = new ir::LocalVariable(type, local_var_counter, arg_location)
             local_var_counter = local_var_counter + 1
             body.push(new ir::Instruction(new ir::VarCpy(copied_var, argvar)))
             body.push(new ir::IncRef(copied_var))
@@ -1085,11 +1086,11 @@ class FileConverter(
             #assert not def.export
             return new ir::MethodDef(def.name, functype, argvars, body)
 
-    # TODO: do this in c?
-    meth create_pointers_equal_method(ir::Type classtype) -> ir::MethodDef:
-        let self_var = new ir::LocalVariable(classtype, 0)
-        let other_var = new ir::LocalVariable(classtype, 1)
-        let result_var = new ir::LocalVariable(self.builtins.BOOL, 2)
+    # TODO: do this in c
+    meth create_pointers_equal_method(ir::Type classtype, error::Location location) -> ir::MethodDef:
+        let self_var = new ir::LocalVariable(classtype, 0, location)
+        let other_var = new ir::LocalVariable(classtype, 1, location)
+        let result_var = new ir::LocalVariable(self.builtins.BOOL, 2, location)
         return new ir::MethodDef(
             "equals",
             ir::get_method(classtype, "equals", self.builtins),
@@ -1194,7 +1195,7 @@ class FileConverter(
                 let typed_method_defs = []
                 if "equals" not in [foreach method of classdef.body: method.name]:
                     typed_method_defs.push(new ir::ToplevelDeclaration(
-                        self.create_pointers_equal_method(classtype)
+                        self.create_pointers_equal_method(classtype, classdef.location)
                     ))
 
                 foreach method_def of classdef.body:
