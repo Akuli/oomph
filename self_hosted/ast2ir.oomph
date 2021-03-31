@@ -209,7 +209,7 @@ class FunctionOrMethodConverter(
             )
         return new TypePair(type1, type2)
 
-    meth careful_implicit_conversion(
+    meth implicit_conversion_if_possible(
         ir::LocalVariable var,
         ir::Type target_type,
     ) -> Optional[ir::LocalVariable]:
@@ -259,7 +259,7 @@ class FunctionOrMethodConverter(
                 return null
 
     meth implicit_conversion(ir::LocalVariable var, ir::Type type) -> ir::LocalVariable:
-        let result = self.careful_implicit_conversion(var, type)
+        let result = self.implicit_conversion_if_possible(var, type)
         if result == null:
             var.location.error(
                 "wrong type: should be {ir::type_name(type)}, but it's {ir::type_name(var.type)}"
@@ -386,8 +386,8 @@ class FunctionOrMethodConverter(
 
         # See docs/implicit-conversions.md
         if lhs.type != rhs.type:
-            let new_lhs = self.careful_implicit_conversion(lhs, rhs.type)
-            let new_rhs = self.careful_implicit_conversion(rhs, lhs.type)
+            let new_lhs = self.implicit_conversion_if_possible(lhs, rhs.type)
+            let new_rhs = self.implicit_conversion_if_possible(rhs, lhs.type)
             if new_lhs == null and new_rhs != null:
                 rhs = new_rhs.get()
             elif new_lhs != null and new_rhs == null:
