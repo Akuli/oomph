@@ -1,6 +1,6 @@
 import "error.oomph" as error
 
-class Type(Str name, Optional[Type] generic_arg)
+class Type(error::Location location, Str name, Optional[Type] generic_arg)
 
 export union Expression:
     As

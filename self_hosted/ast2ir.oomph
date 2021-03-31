@@ -1119,7 +1119,8 @@ class FileConverter(
 
                 foreach method_def of classdef.body:
                     method_def.args.insert(0, new ast::TypeAndName(
-                        new ast::Type(classtype.name, null), "self"
+                        # "self" location is a bit weird here
+                        new ast::Type(classdef.location, classtype.name, null), "self"
                     ))
                     self.do_func_or_method_def_pass1(method_def, classtype)
 
