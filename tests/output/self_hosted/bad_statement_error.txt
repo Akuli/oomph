@@ -1,0 +1,5 @@
+tests/bad_statement_error.oomph:2: error: should be a statement
+
+    case
+    ^^^^
+
