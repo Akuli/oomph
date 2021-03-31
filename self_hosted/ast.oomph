@@ -48,20 +48,20 @@ export class Case(error::Location location, Optional[TypeAndName] type_and_name,
 export class ConditionAndBody(error::Location location, Expression cond, List[Statement] body)
 
 # for init; cond; incr
-export class ForLoopHeader(error::Location location, List[Statement] init, Optional[Expression] cond, List[Statement] incr)
-export class ForeachLoopHeader(error::Location location, Str varname, Expression list)
+export class ForLoopHeader(error::Location keyword_location, List[Statement] init, Optional[Expression] cond, List[Statement] incr)
+export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
 
 export class As(error::Location location, Expression expr, Type type)
 export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs)
 export class Call(error::Location location, Expression function, List[Expression] args)
 export class Constructor(error::Location location, Type type)
 export class FloatConstant(error::Location location, Str value)  # value not converted to float in case weirdness :D
-export class GetAttribute(error::Location location, Expression obj, Str attribute)
+export class GetAttribute(error::Location attribute_location, Expression obj, Str attribute)
 export class GetVar(error::Location location, Str varname)
 export class IntConstant(error::Location location, Int value)
 export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(error::Location location, List[Expression] content)
-export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
+export class StatementsAndExpression(List[Statement] statements, Expression expression)
 export class StringConstant(error::Location location, Str value)
 export class StringFormatJoin(error::Location location, List[Expression] parts)  # always >=2 parts
 export class UnaryOperator(error::Location location, Str op, Expression obj)
@@ -81,3 +81,43 @@ export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndNam
 export class ClassDef(error::Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(error::Location location, Str path, Str name)
 export class UnionDef(error::Location location, Str name, List[Type] type_members)
+
+func get_expression_location(Expression expression) -> error::Location:
+    switch expression:
+        case As expr:
+            return get_expression_location(expr.expr).combine(expr.type.location)
+        case BinaryOperator expr:
+            return get_expression_location(expr.lhs).combine(get_expression_location(expr.rhs))
+        case Call expr:
+            return get_expression_location(expr.function).combine(expr.location)
+        case Constructor expr:
+            return expr.location
+        case FloatConstant expr:
+            return expr.location
+        case GetAttribute expr:
+            return get_expression_location(expr.obj).combine(expr.attribute_location)
+        case GetVar expr:
+            return expr.location
+        case IntConstant expr:
+            return expr.location
+        case ListComprehension expr:
+            # TODO: should be the whole list comp?
+            switch expr.loop_header:
+                case ForLoopHeader header:
+                    return header.keyword_location
+                case ForeachLoopHeader header:
+                    return header.keyword_location
+        case ListLiteral expr:
+            return expr.location
+        case StatementsAndExpression expr:
+            let result = get_expression_location(expr.expression)
+            # TODO:
+#            foreach stmt of expr.statements:
+#                result = result.combine(stmt.location)
+            return result
+        case StringConstant expr:
+            return expr.location
+        case StringFormatJoin expr:
+            return expr.location
+        case UnaryOperator expr:
+            return expr.location
