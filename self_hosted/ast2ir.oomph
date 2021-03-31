@@ -51,15 +51,13 @@ class FunctionOrMethodConverter(
     Int goto_label_counter,
     Int local_var_counter,
 ):
-    meth create_local_var(ir::Type type) -> ir::LocalVariable:
+    meth create_var(ir::Type type) -> ir::LocalVariable:
         self.local_var_counter = self.local_var_counter + 1
-        return new ir::LocalVariable(type, self.local_var_counter)
+        let result = new ir::LocalVariable(type, self.local_var_counter)
 
-    meth create_var(ir::Type the_type) -> ir::LocalVariable:
         # Newly created variables must be decreffed, in case we are in a loop.
         # Also, after decreffing, make sure that another iteration of loop
         # won't decref the same variable again.
-        let result = self.create_local_var(the_type)
         self.code.push(new ir::DecRef(result))
         self.code.push(new ir::UnSet(result))
         return result
