@@ -632,14 +632,14 @@ class _FilePair:
             """
 
             if the_type.need_to_string_method:
-                self.function_decls += f'''
+                self.function_decls += f"""
                 struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} obj);
-                '''
+                """
                 to_string_calls = [
-                    f'meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam})'
+                    f"meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam})"
                     for typ, nam in the_type.members
                 ]
-                self.function_defs += f'''
+                self.function_defs += f"""
                 struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} self)
                 {{
                     struct class_Str *res = {self.emit_string(the_type.name)};
@@ -654,7 +654,7 @@ class _FilePair:
                     string_concat_inplace(&res, ")");
                     return res;
                 }}
-                '''
+                """
 
     def emit_toplevel_declaration(
         self, top_declaration: ir.ToplevelDeclaration

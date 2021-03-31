@@ -909,8 +909,12 @@ class _FileConverter:
 
         elif isinstance(top_declaration, ast.ClassDef):
             classtype = Type(
-                top_declaration.name, True, self.path,
-                need_to_string_method=("to_string" not in (method.name for method in top_declaration.body))
+                top_declaration.name,
+                True,
+                self.path,
+                need_to_string_method=(
+                    "to_string" not in (method.name for method in top_declaration.body)
+                ),
             )
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
