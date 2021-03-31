@@ -51,9 +51,16 @@ class FunctionOrMethodConverter(
     Int goto_label_counter,
     Int local_var_counter,
 ):
-    meth create_local_var(ir::Type type) -> ir::LocalVariable:
+    meth create_var(ir::Type type) -> ir::LocalVariable:
         self.local_var_counter = self.local_var_counter + 1
-        return new ir::LocalVariable(type, self.local_var_counter)
+        let result = new ir::LocalVariable(type, self.local_var_counter)
+
+        # Newly created variables must be decreffed, in case we are in a loop.
+        # Also, after decreffing, make sure that another iteration of loop
+        # won't decref the same variable again.
+        self.code.push(new ir::DecRef(result))
+        self.code.push(new ir::UnSet(result))
+        return result
 
     meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
         return find_variable(self.variables, name, location)
@@ -83,23 +90,22 @@ class FunctionOrMethodConverter(
         foreach matching of self.get_matching_autotype_list(autotype):
             self.resolved_autotypes.push(new AutoTypeResolve(matching, actual))
 
-    # TODO: rename the_type --> type, in the whole file
-    meth substitute_autotypes(ir::Type the_type, Bool must_succeed) -> ir::Type:
-        switch the_type:
+    meth substitute_autotypes(ir::Type type, Bool must_succeed) -> ir::Type:
+        switch type:
             case ir::AutoType autotype:
                 foreach resolve of self.resolved_autotypes:
                     if resolve.autotype == autotype:
                         return resolve.actual
                 assert(not must_succeed)
                 # TODO: Return exactly one of all matching autotypes consistently
-                #return min(self.get_matching_autotype_list(the_type), key=id)
-                return the_type
+                #return min(self.get_matching_autotype_list(type), key=id)
+                return type
             case *:
                 pass
 
-        let source = ir::get_generic_source(the_type)
+        let source = ir::get_generic_source(type)
         if source == null:
-            return the_type
+            return type
 
         let arg = self.substitute_autotypes(source.get().arg, must_succeed)
         return self.builtins.generic2type(source.get().generik, arg)
@@ -117,15 +123,6 @@ class FunctionOrMethodConverter(
             assert(raw_type.generic_arg == null)  # TODO: error
             return self.create_autotype()
         return (self.file_converter as FileConverter).get_type(raw_type, self)
-
-    meth create_var(ir::Type the_type) -> ir::LocalVariable:
-        # Newly created variables must be decreffed, in case we are in a loop.
-        # Also, after decreffing, make sure that another iteration of loop
-        # won't decref the same variable again.
-        let result = self.create_local_var(the_type)
-        self.code.push(new ir::DecRef(result))
-        self.code.push(new ir::UnSet(result))
-        return result
 
     # TODO: something like @contextlib.contextmanager in python?
     meth push_code():
@@ -275,12 +272,12 @@ class FunctionOrMethodConverter(
         ]
 
     # TODO: get rid of this
-    meth get_method_functype(ir::Type the_type, Str name) -> ir::FunctionType:
-        return ir::get_method(the_type, name, self.builtins)
+    meth get_method_functype(ir::Type type, Str name) -> ir::FunctionType:
+        return ir::get_method(type, name, self.builtins)
 
     # TODO: get rid of this
-    meth get_attribute_type(ir::Type the_type, Str attribute) -> ir::Type:
-        return ir::get_member(the_type, attribute)
+    meth get_attribute_type(ir::Type type, Str attribute) -> ir::Type:
+        return ir::get_member(type, attribute)
 
     meth do_call(ast::Call call, Bool must_return_value) -> Optional[ir::LocalVariable]:
         switch call.function:
@@ -355,7 +352,7 @@ class FunctionOrMethodConverter(
         return self.create_special_call("bool_not", [obj])
 
     meth bool_constant(Str which) -> ir::LocalVariable:
-        let result = self.create_local_var(self.builtins.BOOL)
+        let result = self.create_var(self.builtins.BOOL)
         self.code.push(new ir::VarCpy(result, self.builtins.get_visible_var("true")))
         return result
 
@@ -384,7 +381,7 @@ class FunctionOrMethodConverter(
                 lhs = new_lhs.get()
 
         assert(self.substitute_autotypes(lhs.type, false) == self.substitute_autotypes(rhs.type, false))
-        let the_type = self.substitute_autotypes(lhs.type, false)
+        let type = self.substitute_autotypes(lhs.type, false)
 
         if op == "!=":
             return self.not_(self.do_binary_op_typed(lhs, "==", rhs))
@@ -397,37 +394,37 @@ class FunctionOrMethodConverter(
         if op == ">=":
             return self.not_(self.do_binary_op_typed(lhs, "<", rhs))
 
-        if the_type == self.builtins.STR and op == "+":
+        if type == self.builtins.STR and op == "+":
             # TODO: add something to make a+b+c more efficient than (a+b)+c
             return self.create_special_call("string_concat", [lhs, rhs])
 
-        if the_type == self.builtins.INT and op == "+":
+        if type == self.builtins.INT and op == "+":
             return self.create_special_call("int_add", [lhs, rhs])
-        if the_type == self.builtins.INT and op == "-":
+        if type == self.builtins.INT and op == "-":
             return self.create_special_call("int_sub", [lhs, rhs])
-        if the_type == self.builtins.INT and op == "*":
+        if type == self.builtins.INT and op == "*":
             return self.create_special_call("int_mul", [lhs, rhs])
-        if the_type == self.builtins.INT and op == "mod":
+        if type == self.builtins.INT and op == "mod":
             return self.create_special_call("int_mod", [lhs, rhs])
-        if the_type == self.builtins.INT and op == ">":
+        if type == self.builtins.INT and op == ">":
             return self.create_special_call("int_gt", [lhs, rhs])
 
-        if the_type == self.builtins.INT and op == "/":
+        if type == self.builtins.INT and op == "/":
             lhs = self.create_special_call("int2float", [lhs])
             rhs = self.create_special_call("int2float", [rhs])
-            the_type = self.builtins.FLOAT
+            type = self.builtins.FLOAT
 
-        if the_type == self.builtins.FLOAT and op == "+":
+        if type == self.builtins.FLOAT and op == "+":
             return self.create_special_call("float_add", [lhs, rhs])
-        if the_type == self.builtins.FLOAT and op == "-":
+        if type == self.builtins.FLOAT and op == "-":
             return self.create_special_call("float_sub", [lhs, rhs])
-        if the_type == self.builtins.FLOAT and op == "*":
+        if type == self.builtins.FLOAT and op == "*":
             return self.create_special_call("float_mul", [lhs, rhs])
-        if the_type == self.builtins.FLOAT and op == "/":
+        if type == self.builtins.FLOAT and op == "/":
             return self.create_special_call("float_div", [lhs, rhs])
-        if the_type == self.builtins.FLOAT and op == "mod":
+        if type == self.builtins.FLOAT and op == "mod":
             return self.create_special_call("float_mod", [lhs, rhs])
-        if the_type == self.builtins.FLOAT and op == ">":
+        if type == self.builtins.FLOAT and op == ">":
             return self.create_special_call("float_gt", [lhs, rhs])
 
         if op == "==":
@@ -435,7 +432,7 @@ class FunctionOrMethodConverter(
             self.code.push(new ir::MethodCall(lhs, "equals", [rhs], result_var))
             return result_var
 
-        print("wrong types: {ir::type_name(the_type)} {op} {ir::type_name(the_type)}")
+        print("wrong types: {ir::type_name(type)} {op} {ir::type_name(type)}")
         assert(false)  # TODO: error
 
     meth do_if(ir::LocalVariable cond, List[ir::Instruction] then, List[ir::Instruction] otherwise):
