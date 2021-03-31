@@ -176,7 +176,10 @@ class _FunctionOrMethodConverter:
             for member in path[-1].type_members:
                 if member == var.type:
                     if result_path is not None:
-                        raise ConversionError("ambiguous implicit conversion")
+                        raise ConversionError(
+                            "ambiguous implicit conversion "
+                            f"from {var.type.name} to {target_type.name}"
+                        )
                     result_path = path
                 elif isinstance(member, UnionType):
                     todo_paths.append(path + [member])

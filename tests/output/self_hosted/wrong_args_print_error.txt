@@ -1,0 +1,5 @@
+tests/wrong_args_print_error.oomph:2: error: print must be called with 1 argument
+
+    print("a", "b")
+    ^^^^^
+

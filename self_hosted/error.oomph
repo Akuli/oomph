@@ -7,6 +7,7 @@ import "<stdlib>/io.oomph" as io
 #     line_prefix  code
 #
 # lineno starts at 1, and for multiline locations, points to start of location
+# line_prefix should never contain newlines
 export class Location(Str path, Int lineno, Str line_prefix, Str code):
 
     # TODO: error() is split up for tests only, get rid of this when possible
@@ -43,7 +44,7 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
         return new Location(
             self.path,
             self.lineno + prefix.count("\n"),
-            self.line_prefix + prefix,
+            (self.line_prefix + prefix).split("\n").last(),
             self.code.remove_prefix(prefix),
         )
 
@@ -62,13 +63,25 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
         if self.lineno > other.lineno:
             return other
 
-        if self.line_prefix.starts_with(other.line_prefix):
-            let prefix = other.line_prefix
-            let code = self.line_prefix.remove_prefix(other.line_prefix) + self.code
+        if self.line_prefix == other.line_prefix:
+            let prefix = self.line_prefix
+            # Choose longer code
+            if self.code.starts_with(other.code):
+                let code = self.code
+            elif other.code.starts_with(self.code):
+                code = other.code
+            else:
+                assert(false)
+        elif self.line_prefix.starts_with(other.line_prefix):
+            prefix = other.line_prefix
+            code = self.line_prefix.remove_prefix(other.line_prefix) + self.code
         elif other.line_prefix.starts_with(self.line_prefix):
             prefix = self.line_prefix
             code = other.line_prefix.remove_prefix(self.line_prefix) + other.code
         else:
+            print("Combine error:")
+            print("  self:  {self.line_prefix}|{self.code}")
+            print("  other: {other.line_prefix}|{other.code}")
             assert(false)
 
         return new Location(self.path, self.lineno, prefix, code)

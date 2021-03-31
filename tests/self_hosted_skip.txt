@@ -1,5 +1,4 @@
 tests/a_lib.oomph
-tests/ambiguous_union_error.oomph
 tests/andor_error.oomph
 tests/args.oomph
 tests/argument_order.oomph
