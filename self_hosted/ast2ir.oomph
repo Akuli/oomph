@@ -297,7 +297,7 @@ class FunctionOrMethodConverter(
 
     meth do_call(ast::Call call, Bool must_return_value) -> Optional[ir::LocalVariable]:
         let args = [foreach arg of call.args: self.do_expression(arg)]
-        let arg_locations = [foreach arg of call.args: ast::get_expression_location(arg)]
+        let arg_locations = [foreach arg of call.args: ast::locate_expression(arg)]
 
         switch call.function:
             case ast::GetAttribute method:
@@ -321,7 +321,7 @@ class FunctionOrMethodConverter(
                         args = self.do_args(
                             args,
                             functype.argtypes.slice(1, functype.argtypes.length()),
-                            ast::get_expression_location(method),
+                            ast::locate_expression(method),
                             arg_locations
                         )
                 self.code.push(
@@ -474,7 +474,7 @@ class FunctionOrMethodConverter(
             let lhs_var = self.implicit_conversion(
                 self.do_expression(op_ast.lhs),
                 self.builtins.BOOL,
-                ast::get_expression_location(op_ast.lhs)
+                ast::locate_expression(op_ast.lhs)
             )
             let result_var = self.create_var(self.builtins.BOOL)
 
@@ -482,7 +482,7 @@ class FunctionOrMethodConverter(
             let rhs_var = self.implicit_conversion(
                 self.do_expression(op_ast.rhs),
                 self.builtins.BOOL,
-                ast::get_expression_location(op_ast.rhs)
+                ast::locate_expression(op_ast.rhs)
             )
             let rhs_evaluation = self.pop_code()
             rhs_evaluation.push(new ir::VarCpy(result_var, rhs_var))
@@ -697,7 +697,7 @@ class FunctionOrMethodConverter(
                     self.code.push(new ir::Return(self.implicit_conversion(
                         self.do_expression(ret.value.get()),
                         self.returntype.get(),
-                        ast::get_expression_location(ret.value.get())
+                        ast::locate_expression(ret.value.get())
                     )))
 
             case ast::If if_statement:
@@ -708,7 +708,7 @@ class FunctionOrMethodConverter(
                     # convenient for doing them
                     self.do_expression(untyped_condition),
                     self.builtins.BOOL,
-                    ast::get_expression_location(untyped_condition)
+                    ast::locate_expression(untyped_condition)
                 )
                 let body = self.do_block(untyped_body)
 
@@ -743,7 +743,7 @@ class FunctionOrMethodConverter(
                     cond_var = self.implicit_conversion(
                         self.do_expression(header.cond.get()),
                         self.builtins.BOOL,
-                        ast::get_expression_location(header.cond.get())
+                        ast::locate_expression(header.cond.get())
                     )
                 self.code.push(new ir::GotoIf(break_label, self.not_(cond_var)))
 

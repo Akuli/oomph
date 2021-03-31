@@ -242,7 +242,7 @@ class Parser(List[tokenizer::Token] tokens):
             if self.peek().matches("op", "("):
                 let paren = self.peek()
                 result = new ast::Call(
-                    ast::get_expression_location(result).combine(paren.location),
+                    ast::locate_expression(result).combine(paren.location),
                     result,
                     self.parse_commasep_expression_in_parens("(", ")")
                 )
