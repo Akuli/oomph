@@ -1,4 +1,5 @@
 import "ast.oomph" as ast
+import "error.oomph" as error
 import "ir.oomph" as ir
 
 # TODO: mappings and tuples
@@ -25,6 +26,16 @@ union FileConverterForwardReference:
     FileConverter
     Str
 
+func find_variable(
+    List[NamedVariable] variables,
+    Str name,
+    Optional[error::Location] location,  # if user can make variable not found, then must be non-null
+) -> ir::Variable:
+    foreach named_var of variables:
+        if named_var.name == name:
+            return named_var.var
+    location.get().error("variable not found: {name}")
+
 
 class FunctionOrMethodConverter(
     ir::Builtins builtins,
@@ -44,14 +55,8 @@ class FunctionOrMethodConverter(
         self.local_var_counter = self.local_var_counter + 1
         return new ir::LocalVariable(type, self.local_var_counter)
 
-    meth get_var(Str name) -> ir::Variable:
-        foreach named_var of self.variables:
-            if named_var.name == name:
-                return named_var.var
-        # TODO: error
-        print("no variable named {name}")
-        print("all vars: {[foreach f of self.variables: f.name]}")
-        assert(false)
+    meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
+        return find_variable(self.variables, name, location)
 
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
         # TODO: transitivity? if (A,B) and (B,C) in matching_autotypes then A --> [A,B,C]
@@ -308,7 +313,7 @@ class FunctionOrMethodConverter(
                 return result_var
 
             case ast::GetVar ast_function:
-                let function = self.get_var(ast_function.varname)
+                let function = self.get_var(ast_function.varname, ast_function.location)
                 let functype = ir::var_type(function) as ir::FunctionType
                 if functype.returntype == null:
                     let result_var = new Optional[ir::LocalVariable](null)
@@ -548,7 +553,7 @@ class FunctionOrMethodConverter(
 
             case ast::GetVar getvar:
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
-                let old_var = self.get_var(getvar.varname)
+                let old_var = self.get_var(getvar.varname, getvar.location)
                 let new_var = self.create_var(ir::var_type(old_var))
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))
@@ -619,7 +624,7 @@ class FunctionOrMethodConverter(
                         self.variables.push(named_var)
 
             case ast::SetVar setvar:
-                let var = self.get_var(setvar.varname) as ir::LocalVariable  # TODO: error
+                let var = self.get_var(setvar.varname, setvar.location) as ir::LocalVariable  # TODO: error
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
@@ -765,7 +770,7 @@ class FunctionOrMethodConverter(
                     cases.push(new ir::GotoIf(done_label, self.bool_constant("true")))
 
                     if chase.type_and_name != null:
-                        assert(self.get_var(varname) == case_var)
+                        assert(self.get_var(varname, null) == case_var)
                         # TODO: better way to find and remove from list
                         for let i = 0; ; i = i + 1:
                             if self.variables.get(i).name == varname and self.variables.get(i).var == case_var:
@@ -931,14 +936,8 @@ class FileConverter(
             assert(named_var.name != name)
         self.variables.push(new NamedVariable(name, var))
 
-    # TODO: copy/pasta FileConverter
-    meth get_var(Str name) -> ir::Variable:
-        foreach named_var of self.variables:
-            if named_var.name == name:
-                return named_var.var
-        # TODO: error
-        print("no variable named {name}")
-        assert(false)
+    meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
+        return find_variable(self.variables, name, location)
 
     # TODO: simplify how2recurse stuff
     meth get_type(ast::Type raw_type, Optional[FunctionOrMethodConverter] how2recurse) -> ir::Type:
@@ -995,7 +994,7 @@ class FileConverter(
         ast::FuncOrMethodDef def, Optional[ir::Type] classtype
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
-            let funcvar = self.get_var(def.name)
+            let funcvar = self.get_var(def.name, null)
             let functype = ir::var_type(funcvar) as ir::FunctionType  # TODO: error
         else:
             functype = ir::get_method(classtype.get(), def.name, self.builtins)
