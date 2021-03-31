@@ -18,6 +18,8 @@ class Type:
         name: str,
         refcounted: bool,
         definition_path: Optional[pathlib.Path] = None,
+        *,
+        need_to_string_method: bool = False,
     ):
         self.name = name
         self.refcounted = refcounted
@@ -26,6 +28,9 @@ class Type:
         self.members: List[Tuple[Type, str]] = []
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
+        self.need_to_string_method = need_to_string_method
+        if need_to_string_method:
+            self.methods["to_string"] = FunctionType([self], STRING)
 
     def get_id_string(self) -> str:
         result = self.name + str(self.definition_path)

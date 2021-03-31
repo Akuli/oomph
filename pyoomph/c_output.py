@@ -631,6 +631,31 @@ class _FilePair:
             }}
             """
 
+            if the_type.need_to_string_method:
+                self.function_decls += f'''
+                struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} obj);
+                '''
+                to_string_calls = [
+                    f'meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam})'
+                    for typ, nam in the_type.members
+                ]
+                self.function_defs += f'''
+                struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} self)
+                {{
+                    struct class_Str *res = {self.emit_string(the_type.name)};
+                    string_concat_inplace(&res, "(");
+                    struct class_Str *strs[] = {{ {','.join(to_string_calls + ['NULL'])} }};
+                    for (size_t i = 0; strs[i]; i++) {{
+                        if (i != 0)
+                            string_concat_inplace(&res, ", ");
+                        string_concat_inplace(&res, strs[i]->str);
+                        decref(strs[i], dtor_Str);
+                    }}
+                    string_concat_inplace(&res, ")");
+                    return res;
+                }}
+                '''
+
     def emit_toplevel_declaration(
         self, top_declaration: ir.ToplevelDeclaration
     ) -> None:
