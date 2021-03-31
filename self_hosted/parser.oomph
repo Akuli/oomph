@@ -15,20 +15,18 @@ func path_parent(Str path) -> Str:
         return "."
     return parts.slice(0, parts.length() - 1).join("/")
 
-func add_string(List[ast::Expression] parts, Str suffix, error::Location suffix_location):
+func add_string(List[ast::Expression] parts, Str suffix, error::Location location):
     if parts != []:
         switch parts.last():
             case ast::StringConstant old:
                 # String concat can be done at compile time
                 parts.pop()
-                parts.push(new ast::StringConstant(
-                    old.location.combine(suffix_location), old.value + suffix
-                ))
+                parts.push(new ast::StringConstant(location, old.value + suffix))
                 return
             case *:    # TODO: this sucks
                 pass
 
-    parts.push(new ast::StringConstant(suffix_location, suffix))
+    parts.push(new ast::StringConstant(location, suffix))
 
 # tokens must be in reverse order
 class Parser(List[tokenizer::Token] tokens):
@@ -163,11 +161,7 @@ class Parser(List[tokenizer::Token] tokens):
                 let found_escape = false  # TODO: this sucks
                 foreach pair of escapes:
                     if location.code.starts_with(pair.first()):
-                        # TODO: location stuff can be simplified
-                        let escape_location = location.remove_suffix(
-                            location.code.remove_prefix(pair.first())
-                        )
-                        add_string(result, pair.last(), escape_location)
+                        add_string(result, pair.last(), string_location)
                         location = location.remove_prefix(pair.first())
                         found_escape = true
                         break
@@ -186,10 +180,7 @@ class Parser(List[tokenizer::Token] tokens):
                 location = location.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
             else:
                 let char = location.code.split("").first()
-                let char_location = location.remove_suffix(
-                    location.code.remove_prefix(char)
-                )
-                add_string(result, char, char_location)
+                add_string(result, char, string_location)
                 location = location.remove_prefix(char)
 
         if result == []:
