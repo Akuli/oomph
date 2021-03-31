@@ -363,10 +363,11 @@ class Parser(List[tokenizer::Token] tokens):
                         pass
 
     meth get_unary_operators() -> List[PrecedenceItem]:
-        return [
-            while self.peek().matches("keyword", "not") or self.peek().matches("op", "-"):
-                new PrecedenceItem(self.tokens.pop().value)
-        ]
+        let result = []
+        while self.peek().matches("keyword", "not") or self.peek().matches("op", "-"):
+            let token = self.tokens.pop()
+            result.push(new PrecedenceItem(new OpAndLocation(token.value, token.location)))
+        return result
 
     meth parse_expression() -> ast::Expression:
         let binary_ops = [
