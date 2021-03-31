@@ -868,12 +868,11 @@ class FunctionOrMethodConverter(
                     let functype = self.get_method_functype(call.obj.type, call.method_name)
 
                     self.push_code()
-                    let args = self.do_args(
+                    call.args = self.do_args(
                         call.args,
                         functype.argtypes.slice(1, functype.argtypes.length()),
                         call.location
                     )
-                    call.args = args.slice(1, args.length())
                     let front_code = self.pop_code()
 
                     for let i = 0; ; i = i + 1:
