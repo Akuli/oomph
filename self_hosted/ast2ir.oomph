@@ -917,29 +917,6 @@ class FunctionOrMethodConverter(
                     pass
 
 
-# TODO: do this in c_output instead? might be easier
-func create_to_string_method(ir::BasicType class_type) -> ast::FuncOrMethodDef:
-    let parts = []
-    foreach member of class_type.members:
-        if parts != []:
-            parts.push(new ast::Expression(new ast::StringConstant(", ")))
-        # FIXME: properly support reference cycling types
-        if member.type == class_type:
-            parts.push(new ast::StringConstant("<{class_type.name}>"))
-        else:
-            parts.push(new ast::GetAttribute(new ast::GetVar("self"), member.name))
-
-    parts.insert(0, new ast::StringConstant(class_type.name + "("))
-    parts.push(new ast::StringConstant(")"))
-
-    return new ast::FuncOrMethodDef(
-        "to_string",
-        [],
-        new ast::Type("Str", null),
-        [new ast::Statement(new ast::Return(new ast::StringFormatJoin(parts)))]
-    )
-
-
 class FileConverter(
     ir::Builtins builtins,
     Str path,
@@ -1108,7 +1085,10 @@ class FileConverter(
                 self.do_func_or_method_def_pass1(funcdef, null)
 
             case ast::ClassDef classdef:
-                let classtype = new ir::BasicType(classdef.name, true, [], [], null, null)
+                let add_to_string_method = "to_string" not in [foreach method of classdef.body: method.name]
+                let classtype = new ir::BasicType(
+                    classdef.name, true, [], [], null, null, add_to_string_method
+                )
                 foreach named_type of self.types:
                     assert(named_type.name != classdef.name)
                 self.types.push(new NamedType(classdef.name, classtype))
@@ -1123,8 +1103,12 @@ class FileConverter(
                     foreach member of classtype.members: member.type
                 ])
 
-                if "to_string" not in [foreach method of classdef.body: method.name]:
-                    classdef.body.push(create_to_string_method(classtype))
+                if add_to_string_method:
+                    # TODO: do this in ir instead?
+                    classtype.methods.push(new ir::Method(
+                        "to_string",
+                        new ir::FunctionType([new ir::Type(classtype)], self.builtins.STR)
+                    ))
                 if "equals" not in [foreach method of classdef.body: method.name]:
                     classtype.methods.push(new ir::Method(
                         "equals", new ir::FunctionType(
