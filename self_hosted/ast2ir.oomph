@@ -273,10 +273,7 @@ class FunctionOrMethodConverter(
         List[ir::LocalVariable] args,
         List[ir::Type] target_types,
         error::Location func_location,
-        List[error::Location] arg_locations,
     ) -> List[ir::LocalVariable]:
-        assert(arg_locations.length() == args.length())
-
         # TODO: test this
         if args.length() != target_types.length():
             if target_types.length() == 1:
@@ -288,7 +285,7 @@ class FunctionOrMethodConverter(
         # TODO: zip
         return [
             for let i = 0; i < args.length(); i = i+1:
-            self.implicit_conversion(args.get(i), target_types.get(i), arg_locations.get(i))
+            self.implicit_conversion(args.get(i), target_types.get(i), args.get(i).location)
         ]
 
     # TODO: get rid of this
@@ -301,7 +298,6 @@ class FunctionOrMethodConverter(
 
     meth do_call(ast::Call call, Bool must_return_value) -> Optional[ir::LocalVariable]:
         let args = [foreach arg of call.args: self.do_expression(arg)]
-        let arg_locations = [foreach arg of call.args: ast::locate_expression(arg)]
 
         switch call.function:
             case ast::GetAttribute method:
@@ -330,7 +326,6 @@ class FunctionOrMethodConverter(
                             args,
                             functype.argtypes.slice(1, functype.argtypes.length()),
                             ast::locate_expression(method),
-                            arg_locations
                         )
                 self.code.push(
                     new ir::MethodCall(self_var, method.attribute, args, result_var)
@@ -356,7 +351,6 @@ class FunctionOrMethodConverter(
                         args,
                         functype.argtypes,
                         ast_function.location,
-                        arg_locations
                     )
                 self.code.push(new ir::FunctionCall(function, args, result_var))
                 return result_var
@@ -368,7 +362,6 @@ class FunctionOrMethodConverter(
                     args,
                     ir::get_constructor_argtypes(the_class).get(),  # TODO: error
                     constructor.location,
-                    arg_locations
                 )
                 let result_var = self.create_var(the_class, call.location)
                 self.code.push(new ir::ConstructorCall(result_var, args))
