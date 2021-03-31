@@ -897,16 +897,14 @@ class FunctionOrMethodConverter(
                         self.get_rid_of_auto_in_var(arg)
 
                 case ir::GetAttribute getattr:
-                    # FIXME
-                    assert(false)
-#                    self.get_rid_of_auto_in_var(getattr.obj)
-#                    switch getattr.result.type:
-#                        case ir::AutoType autotype:
-#                            self.resolve_autotype(
-#                                autotype,
-#                                self.get_attribute_type(getattr.obj.type, getattr.attribute))
-#                        case *:
-#                            self.get_rid_of_auto_in_var(getattr.result)
+                    self.get_rid_of_auto_in_var(getattr.obj)
+                    switch getattr.result.type:
+                        case ir::AutoType autotype:
+                            self.resolve_autotype(
+                                autotype,
+                                self.get_attribute_type(getattr.obj.type, getattr.attribute))
+                        case *:
+                            self.get_rid_of_auto_in_var(getattr.result)
 
                 case *:
                     pass
