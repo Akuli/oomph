@@ -43,14 +43,10 @@ class Parser(List[tokenizer::Token] tokens):
         return token
 
     meth get_token(Str type, Str value) -> tokenizer::Token:
-        self.peek()   # Error if end of file
-        let token = self.tokens.pop()
-        if token.type != type or token.value != value:
-            print(self.tokens)
-            print("Above is list of tokens.")
-            print("Expected type '{type}' and value '{value}', got {token}")
-            assert(false)  # TODO: error
-        return token
+        if self.peek().value != value:
+            # TODO: doesn't print nicely with newlines in message
+            self.peek().location.error("should be '{value}'")
+        return self.get_token_by_type(type)
 
     meth parse_import(Str path_of_this_file, Str stdlib_path) -> ast::Import:
         let import_token = self.get_token("keyword", "import")
@@ -568,7 +564,7 @@ class Parser(List[tokenizer::Token] tokens):
             return self.parse_function_or_method(self.get_token("keyword", "func").location)
 
         if self.peek().matches("keyword", "class"):
-            let class_location = self.get_token("keyword", "class").location
+            let location = self.get_token("keyword", "class").location
             let name = self.get_token_by_type("id").value
             let args = self.parse_commasep_types_and_names_in_parens()
             if self.tokens != [] and self.peek().matches("begin_block", ":"):
@@ -576,17 +572,23 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 body = []
                 self.get_token("op", "\n")
-            return new ast::ClassDef(class_location, name, args, body)
+            return new ast::ClassDef(location, name, args, body)
 
         if self.peek().matches("keyword", "union"):
-            let union_location = self.get_token("keyword", "union").location
+            let location = self.get_token("keyword", "union").location
             let name = self.get_token_by_type("id").value
             let types = self.parse_block_of_union_members()
-            return new ast::UnionDef(union_location, name, types)
+            return new ast::UnionDef(location, name, types)
 
-        self.peek().location.error(
-            "should be function definition, class definition or union definition"
-        )
+        if self.peek().matches("keyword", "typedef"):
+            let location = self.get_token("keyword", "typedef").location
+            let name = self.get_token_by_type("id").value
+            self.get_token("op", "=")
+            let type = self.parse_type()
+            self.get_token("op", "\n")
+            return new ast::TypeDef(location, name, type)
+
+        self.peek().location.error("should be function, class, union or typedef")
 
 
 export func parse_file(

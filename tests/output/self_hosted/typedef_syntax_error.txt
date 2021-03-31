@@ -1,0 +1,5 @@
+tests/typedef_syntax_error.oomph:1: error: should be '='
+
+    typedef Foo Int
+                ^^^
+

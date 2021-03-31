@@ -1106,6 +1106,12 @@ class FileConverter(
                             self.delete_type_if_exists(name)
                             self.types.push(new NamedType(name, type))
 
+            case ast::TypeDef type_def:
+                foreach type of self.types:
+                    if type.name == type_def.name:
+                        type_def.location.error("type '{type_def.name}' already exists")
+                self.types.push(new NamedType(type_def.name, self.get_type(type_def.type, null)))
+
             case ast::FuncOrMethodDef funcdef:
                 self.do_func_or_method_def_pass1(funcdef, null)
 
@@ -1160,6 +1166,8 @@ class FileConverter(
     meth do_toplevel_declaration_pass2(ast::ToplevelDeclaration top_decl) -> List[ir::ToplevelDeclaration]:
         switch top_decl:
             case ast::Import imp:
+                return []
+            case ast::TypeDef type_def:
                 return []
 
             case ast::FuncOrMethodDef funcdef:

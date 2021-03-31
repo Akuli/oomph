@@ -1,4 +1,4 @@
-tests/leading_indent_with_comment_error.oomph:2: error: should be function definition, class definition or union definition
+tests/leading_indent_with_comment_error.oomph:2: error: should be function, class, union or typedef
 
         export func main():
     ^^^^

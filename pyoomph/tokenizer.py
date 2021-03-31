@@ -15,6 +15,7 @@ TOKEN_REGEX = r'''
         | meth
         | class
         | union
+        | typedef
         | switch
         | case
         | auto
