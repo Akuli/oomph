@@ -261,11 +261,10 @@ class FunctionOrMethodConverter(
     meth implicit_conversion(
         ir::LocalVariable var,
         ir::Type type,
-        error::Location location,
     ) -> ir::LocalVariable:
         let result = self.careful_implicit_conversion(var, type)
         if result == null:
-            location.error(
+            var.location.error(
                 "wrong type: should be {ir::type_name(type)}, but it's {ir::type_name(var.type)}"
             )
         return result.get()
@@ -287,7 +286,7 @@ class FunctionOrMethodConverter(
         # TODO: zip
         return [
             for let i = 0; i < args.length(); i = i+1:
-            self.implicit_conversion(args.get(i), target_types.get(i), args.get(i).location)
+            self.implicit_conversion(args.get(i), target_types.get(i))
         ]
 
     # TODO: get rid of this
@@ -477,17 +476,13 @@ class FunctionOrMethodConverter(
         # TODO: mention this in docs
         if op_ast.op in ["and", "or"]:
             let lhs_var = self.implicit_conversion(
-                self.do_expression(op_ast.lhs),
-                self.builtins.BOOL,
-                ast::locate_expression(op_ast.lhs)
+                self.do_expression(op_ast.lhs), self.builtins.BOOL
             )
             let result_var = self.create_var(self.builtins.BOOL, op_ast.location)
 
             self.push_code()
             let rhs_var = self.implicit_conversion(
-                self.do_expression(op_ast.rhs),
-                self.builtins.BOOL,
-                ast::locate_expression(op_ast.rhs)
+                self.do_expression(op_ast.rhs), self.builtins.BOOL
             )
             let rhs_evaluation = self.pop_code()
             rhs_evaluation.push(new ir::VarCpy(result_var, rhs_var))
@@ -600,7 +595,7 @@ class FunctionOrMethodConverter(
                 let obj = self.do_expression(unary.obj)
                 if unary.op == "not":
                     return self.create_special_call("bool_not", [
-                        self.implicit_conversion(obj, self.builtins.BOOL, location)
+                        self.implicit_conversion(obj, self.builtins.BOOL)
                     ])
                 # TODO: auto type support (remember docs)
                 if obj.type == self.builtins.INT and unary.op == "-":
@@ -670,9 +665,7 @@ class FunctionOrMethodConverter(
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
-                    new ir::VarCpy(var, self.implicit_conversion(
-                        new_value_var, var.type, setvar.location
-                    ))
+                    new ir::VarCpy(var, self.implicit_conversion(new_value_var, var.type))
                 )
                 self.code.push(new ir::IncRef(var))
 
@@ -708,20 +701,15 @@ class FunctionOrMethodConverter(
                     # TODO: improve error for missing return value
                     # TODO: error for missing return statement
                     self.code.push(new ir::Return(self.implicit_conversion(
-                        self.do_expression(ret.value.get()),
-                        self.returntype.get(),
-                        ast::locate_expression(ret.value.get())
+                        self.do_expression(ret.value.get()), self.returntype.get()
                     )))
 
             case ast::If if_statement:
                 let untyped_condition = if_statement.ifs_and_elifs.first().cond
                 let untyped_body = if_statement.ifs_and_elifs.first().body
                 let condition = self.implicit_conversion(
-                    # TODO: there are lots of calls like this, consider making something
-                    # convenient for doing them
-                    self.do_expression(untyped_condition),
-                    self.builtins.BOOL,
-                    ast::locate_expression(untyped_condition)
+                    # TODO: there are lots of calls with do_expression inside implicit_conv
+                    self.do_expression(untyped_condition), self.builtins.BOOL
                 )
                 let body = self.do_block(untyped_body)
 
@@ -756,9 +744,7 @@ class FunctionOrMethodConverter(
                     ))
                 else:
                     cond_var = self.implicit_conversion(
-                        self.do_expression(header.cond.get()),
-                        self.builtins.BOOL,
-                        ast::locate_expression(header.cond.get())
+                        self.do_expression(header.cond.get()), self.builtins.BOOL
                     )
                 self.code.push(new ir::GotoIf(break_label, self.not_(cond_var)))
 
