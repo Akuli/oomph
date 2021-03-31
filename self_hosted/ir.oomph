@@ -76,7 +76,7 @@ export func get_generic_source(Type type) -> Optional[GenericSource]:
 
 export class BuiltinVariable(Str name, Type type)
 export class FileVariable(Str name, Type type)
-export class LocalVariable(Type type, Int id, Optional[error::Location] location)
+export class LocalVariable(Type type, Int id, error::Location location)
 export union Variable:
     BuiltinVariable
     FileVariable

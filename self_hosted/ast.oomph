@@ -73,7 +73,7 @@ export class Let(error::Location location, Str varname, Expression value)
 export class Loop(LoopHeader loop_header, List[Statement] body)
 export class Pass(error::Location location)
 export class Return(error::Location location, Optional[Expression] value)
-export class SetAttribute(error::Location location, Expression obj, Str attribute, Expression value)
+export class SetAttribute(error::Location attribute_location, Expression obj, Str attribute, Expression value)
 export class SetVar(error::Location location, Str varname, Expression value)
 export class Switch(error::Location location, Expression union_obj, List[Case] cases)
 
@@ -82,7 +82,14 @@ export class ClassDef(error::Location location, Str name, List[TypeAndName] memb
 export class Import(error::Location location, Str path, Str name)
 export class UnionDef(error::Location location, Str name, List[Type] type_members)
 
-func locate_expression(Expression expression) -> error::Location:
+export func locate_loop_header(LoopHeader loop_header) -> error::Location:
+    switch loop_header:
+        case ForLoopHeader header:
+            return header.keyword_location
+        case ForeachLoopHeader header:
+            return header.keyword_location
+
+export func locate_expression(Expression expression) -> error::Location:
     switch expression:
         case As expr:
             return locate_expression(expr.expr).combine(expr.type.location)
@@ -102,11 +109,7 @@ func locate_expression(Expression expression) -> error::Location:
             return expr.location
         case ListComprehension expr:
             # TODO: should be the whole list comp?
-            switch expr.loop_header:
-                case ForLoopHeader header:
-                    return header.keyword_location
-                case ForeachLoopHeader header:
-                    return header.keyword_location
+            return locate_loop_header(expr.loop_header)
         case ListLiteral expr:
             return expr.location
         case StatementsAndExpression expr:
