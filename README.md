@@ -91,6 +91,7 @@ Missing features:
     - `for let i = 0; i < thing.length(); i = i+1: thing.get(i)` --> `foreach`
     - `not a in b` --> `a not in b`
     - using `foo` inside `switch foo:`
+    - `if a != b: ... else: ...` is more complicated than `a == b` with `...` swapped
 - disallow `not a and b`? i always write it as `(not a) and b`
 - warnings about unused things (unions, classes, functions, methods, variables, arguments)
 - `case Foo(Str x, Int y):`
