@@ -781,6 +781,7 @@ class _FunctionOrMethodConverter:
                                     ),
                                 )
                             )
+                            self.code.append(ir.IncRef(ins.result))
                             self.code.append(ir.VarCpy(ins.success_bool, ir.visible_builtins["true"]))
                             self.code.append(ir.Goto(done, ir.visible_builtins["true"]))
 
