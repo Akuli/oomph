@@ -192,7 +192,7 @@ Imports must be first, but otherwise,
 the order of toplevel declarations in an Oomph program usually doesn't matter.
 To make this work, the compiler processes the parsed code in the following steps:
 1. Make names of classes, typedefs, unions and imported files available for subsequent
-    steps. No more types are defined after this steps, although details about the types
+    steps. No more types are defined after this step, although details about the types
     are not made available yet; we don't know what methods are available in each class,
     for example.
 2. Process typedef contents and union contents. This is done in a separate step because
