@@ -172,7 +172,6 @@ class _FunctionOrMethodConverter:
         todo_paths = [[target_type]]
         while todo_paths:
             path = todo_paths.pop()
-            assert path[-1].type_members is not None
             for member in path[-1].type_members:
                 if member == var.type:
                     if result_path is not None:
@@ -651,7 +650,6 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
             assert isinstance(union_var.type, UnionType)
-            assert union_var.type.type_members is not None
             types_to_do = union_var.type.type_members.copy()
 
             done_label = ir.GotoLabel()
