@@ -268,6 +268,7 @@ class UnionMemberCheck(Instruction):
 class As(Instruction):
     source: LocalVariable
     result: LocalVariable
+    success_bool: LocalVariable
 
 
 @dataclass(eq=False)

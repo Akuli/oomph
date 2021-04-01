@@ -525,7 +525,10 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.As):
             lhs = self.do_expression(expr.expr)
             result_var = self.create_var(self.get_type(expr.type))
-            self.code.append(ir.As(lhs, result_var))
+            success_bool = self.create_var(BOOL)
+            self.code.append(ir.As(lhs, result_var, success_bool))
+            # TODO: better error message?
+            self.do_if(success_bool, [], [ir.Panic("'as' failed")])
             return result_var
 
         if isinstance(expr, ast.Constructor):
@@ -778,6 +781,7 @@ class _FunctionOrMethodConverter:
                                     ),
                                 )
                             )
+                            self.code.append(ir.VarCpy(ins.success_bool, ir.visible_builtins["true"]))
                             self.code.append(ir.Goto(done, ir.visible_builtins["true"]))
 
                         self.code.append(
@@ -787,8 +791,7 @@ class _FunctionOrMethodConverter:
                         )
                         self.do_if(member_check_var, if_it_matches, [])
 
-                    # TODO: better error message?
-                    self.code.append(ir.Panic("'as' failed"))
+                    self.code.append(ir.VarCpy(ins.success_bool, ir.visible_builtins["false"]))
                     self.code.append(done)
 
                 where = self.code.index(ins)
