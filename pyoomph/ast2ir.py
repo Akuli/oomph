@@ -662,48 +662,45 @@ class _FunctionOrMethodConverter:
             union_var = self.do_expression(stmt.union_obj)
             assert isinstance(union_var.type, UnionType)
             assert union_var.type.type_members is not None
+
             types_to_do = union_var.type.type_members.copy()
+            as_success_bool = self.create_var(BOOL)
+            done = ir.GotoLabel()
 
-            done_label = ir.GotoLabel()
-            member_check = self.create_var(BOOL)
-
-            cases: List[ir.Instruction] = []
             for case in stmt.cases:
-                label = ir.GotoLabel()
-                cases.append(label)
-
                 if case.type_and_varname is None:
                     assert types_to_do
-                    nice_types = types_to_do.copy()
+                    # TODO: improve type name
+                    if len(types_to_do) >= 2:
+                        the_type = ir.UnionType('<case *>')
+                        the_type.set_type_members(types_to_do)
+                    else:
+                        [the_type] = types_to_do
                     types_to_do.clear()
+                    varname = None
                 else:
-                    ugly_type, varname = case.type_and_varname
-                    nice_type = self.get_type(ugly_type)
-                    nice_types = {nice_type}
-                    types_to_do.remove(nice_type)
+                    raw_type, varname = case.type_and_varname
+                    the_type = self.get_type(raw_type)
+                    if isinstance(the_type, ir.UnionType):
+                        assert the_type.type_members is not None
+                        types_to_do -= the_type.type_members
+                    else:
+                        types_to_do.remove(the_type)
 
-                    case_var = self.create_var(nice_type)
-                    assert varname not in self.variables
-                    self.variables[varname] = case_var
-                    cases.append(ir.GetFromUnion(case_var, union_var))
-                    cases.append(ir.IncRef(case_var))
+                var = self.create_var(the_type)
+                self.code.append(ir.As(union_var, var, as_success_bool))
 
-                cases.extend(self.do_block(case.body))
-                cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
-
-                if case.type_and_varname is not None:
-                    assert self.variables[varname] is case_var
+                if varname is not None:
+                    self.variables[varname] = var
+                self.do_if(as_success_bool, self.do_block(case.body) + [ir.Goto(done, ir.visible_builtins['true'])], [])
+                if varname is not None:
+                    assert self.variables[varname] == var
                     del self.variables[varname]
-
-                for typ in nice_types:
-                    self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
-                    self.code.append(ir.Goto(label, member_check))
 
             assert not types_to_do, f"switch does not handle: {types_to_do}"
 
-            # TODO: add panic here (since no union members matched)
-            self.code.extend(cases)
-            self.code.append(done_label)
+            self.code.append(ir.Panic("internal switch error"))
+            self.code.append(done)
 
         else:
             raise NotImplementedError(stmt)
