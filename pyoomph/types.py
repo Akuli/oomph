@@ -62,22 +62,24 @@ class AutoType(Type):
 
 
 class UnionType(Type):
-    type_members: Optional[List[Type]]
+    type_members: List[Type]
 
-    def __init__(self, name: str, definition_path: Optional[pathlib.Path] = None):
+    # TODO: get rid of definition_path
+    def __init__(
+        self,
+        name: str,
+        type_members: List[Type],
+        definition_path: Optional[pathlib.Path] = None,
+    ):
         super().__init__(name, True, definition_path)
-        self.type_members = None  # to be set later
+        assert len(type_members) >= 2
+        assert len(type_members) == len(set(type_members))  # no duplicates
+        self.type_members = type_members
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
-
-    def set_type_members(self, type_members: List[Type]) -> None:
-        assert len(type_members) >= 2
-        assert len(type_members) == len(set(type_members))  # no duplicates
-        assert self.type_members is None
-        self.type_members = type_members
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
@@ -86,11 +88,10 @@ class Generic:
     name: str
 
     def get_type(self, generic_arg: Type) -> Type:
-        result: Type
         if self is OPTIONAL:
-            mypy_sucks = UnionType(f"{self.name}[{generic_arg.name}]")
-            mypy_sucks.set_type_members([generic_arg, NULL_TYPE])
-            result = mypy_sucks
+            result: Type = UnionType(
+                f"{self.name}[{generic_arg.name}]", [generic_arg, NULL_TYPE]
+            )
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
         elif self is LIST:
