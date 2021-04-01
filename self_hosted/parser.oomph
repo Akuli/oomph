@@ -44,7 +44,8 @@ class Parser(List[tokenizer::Token] tokens):
 
     meth get_token(Str type, Str value) -> tokenizer::Token:
         if self.peek().value != value:
-            # TODO: doesn't print nicely with newlines in message
+            if value == "\n":
+                self.peek().location.error("should be newline")
             self.peek().location.error("should be '{value}'")
         return self.get_token_by_type(type)
 

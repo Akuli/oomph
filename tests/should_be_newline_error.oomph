@@ -1,0 +1,4 @@
+typedef Foo = Bar Baz
+
+export func main():
+    pass
