@@ -582,11 +582,13 @@ class Parser(List[tokenizer::Token] tokens):
 
         if self.peek().matches("keyword", "typedef"):
             let location = self.get_token("keyword", "typedef").location
-            let name = self.get_token_by_type("id").value
+            let name_token = self.get_token_by_type("id")
+            if name_token.value.contains("::"):
+                name_token.location.error("typedef name must not contain '::'")
             self.get_token("op", "=")
             let type = self.parse_type()
             self.get_token("op", "\n")
-            return new ast::TypeDef(location, name, type)
+            return new ast::TypeDef(location, name_token.value, type)
 
         self.peek().location.error("should be function, class, union or typedef")
 

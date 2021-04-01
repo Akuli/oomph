@@ -483,6 +483,7 @@ class _Parser:
         if self.token_iter.peek() == ("keyword", "typedef"):
             self.get_token("keyword", "typedef")
             name = self.get_token("identifier")[1]
+            assert "::" not in name
             self.get_token("op", "=")
             the_type = self.parse_type()
             self.get_token("op", "\n")
