@@ -1035,6 +1035,12 @@ class FileConverter(
         ):
             location.error("type '{name}' already exists")
 
+    # See docs/syntax.md
+    # Step 1: available type names: imports, classes, typedefs, unions
+    # Step 2: typedef contents, union contents
+    # Step 3: function/method names and signatures, class constructor signatures
+    # Step 4: function and method bodies
+
     meth do_step1(ast::ToplevelDeclaration top_declaration):
         switch top_declaration:
             case ast::Import imp:
