@@ -867,7 +867,7 @@ class _FileConverter:
 
         # Union members don't need to exist when union is defined (allows nestedness)
         # TODO: is this still necessary?
-        self.union_laziness: Dict[UnionType, List[ast.Type]] = {}
+        self.union_laziness: List[Tuple[UnionType, List[ast.Type]]] = []
 
     def add_var(self, var: ir.Variable, name: str) -> None:
         assert name not in self.variables
@@ -891,11 +891,12 @@ class _FileConverter:
             and isinstance(generic_arg, UnionType)
             and generic_arg.type_members is None
         ):
+            [arg_members_lazy] = [value for key, value in self.union_laziness if key is generic_arg]
             result = generic.get_type(generic_arg, set_type_members=False)
             assert isinstance(result, UnionType)
-            self.union_laziness[result] = [
+            self.union_laziness.append((result, [
                 ast.Type("null", None)
-            ] + self.union_laziness[generic_arg]
+            ] + arg_members_lazy))
             return result
 
         return generic.get_type(generic_arg)
@@ -1017,7 +1018,7 @@ class _FileConverter:
         elif isinstance(top_declaration, ast.UnionDef):
             union_type = UnionType(top_declaration.name)
             self._types[top_declaration.name] = union_type
-            self.union_laziness[union_type] = top_declaration.type_members
+            self.union_laziness.append((union_type, top_declaration.type_members))
 
         else:
             raise NotImplementedError(top_declaration)
@@ -1073,8 +1074,12 @@ class _FileConverter:
 
     def post_process_union(self, union: UnionType) -> None:
         if union.type_members is None:
-            types = self.union_laziness.pop(union)
-            union.set_type_members([self.get_type(t) for t in types])
+            for index, (key, value) in enumerate(self.union_laziness):
+                if key is union:
+                    union.set_type_members([self.get_type(t) for t in value])
+                    del self.union_laziness[index]
+                    return
+            raise LookupError
 
 
 def convert_program(
@@ -1083,8 +1088,9 @@ def convert_program(
     converter = _FileConverter(path, symbols)
     for top in program:
         converter.do_toplevel_declaration_pass1(top)
-    for key in list(converter.union_laziness):
+    for key, value in list(converter.union_laziness):
         converter.post_process_union(key)
+    assert not converter.union_laziness
 
     result = []
     for top in program:
