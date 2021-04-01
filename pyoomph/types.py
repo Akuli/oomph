@@ -45,6 +45,12 @@ class Type:
     def __eq__(self, other: object) -> bool:
         if isinstance(self, AutoType) or isinstance(other, AutoType):
             return self is other
+        if isinstance(self, UnionType) or isinstance(other, UnionType):
+            return (
+                isinstance(self, UnionType)
+                and isinstance(other, UnionType)
+                and self.type_members == other.type_members
+            )
         return (
             isinstance(other, Type)
             and self.name == other.name
@@ -62,30 +68,22 @@ class AutoType(Type):
 
 
 class UnionType(Type):
-    type_members: Optional[Set[Type]]
+    type_members: Set[Type]
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, type_members: Set[Type]):
         super().__init__(name, True)
-        self.type_members = None  # to be set later
+        assert len(type_members) >= 2
+        self.type_members = type_members
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
-    def set_type_members(self, type_members: Union[List[Type], Set[Type]]) -> None:
-        assert self.type_members is None
-        self.type_members = set()
-
-        for member in type_members:
-            assert not isinstance(member, AutoType)
-            if isinstance(member, UnionType):
-                assert member.type_members is not None, (self, member)
-                self.type_members.update(member.type_members)
-            else:
-                self.type_members.add(member)
-
-        assert len(self.type_members) >= 2  # TODO
+    def get_id_string(self) -> str:
+        return self.name + "|".join(
+            member.get_id_string() for member in self.type_members
+        )
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
@@ -93,13 +91,11 @@ class UnionType(Type):
 class Generic:
     name: str
 
-    def get_type(self, generic_arg: Type, *, set_type_members: bool = True) -> Type:
-        result: Type
+    def get_type(self, generic_arg: Type) -> Type:
         if self is OPTIONAL:
-            mypy_sucks = UnionType(f"{self.name}[{generic_arg.name}]")
-            if set_type_members:
-                mypy_sucks.set_type_members([generic_arg, NULL_TYPE])
-            result = mypy_sucks
+            result: Type = UnionType(
+                f"{self.name}[{generic_arg.name}]", [generic_arg, NULL_TYPE]
+            )
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
         elif self is LIST:

@@ -170,12 +170,21 @@ class _FunctionOrMethodConverter:
             )
         assert target_type.type_members is not None
 
-        if not isinstance(var.type, UnionType):
-            if var.type in target_type.type_members:
-                union_var = self.create_var(target_type)
-                self.code.append(ir.InstantiateUnion(union_var, var))
-                self.code.append(ir.IncRef(var))
-                return union_var
+        # FIXME: cyclicly nested unions
+        result_path: Optional[List[UnionType]] = None
+        todo_paths = [[target_type]]
+        while todo_paths:
+            path = todo_paths.pop()
+            for member in path[-1].type_members:
+                if member == var.type:
+                    if result_path is not None:
+                        raise ConversionError(
+                            "ambiguous implicit conversion "
+                            f"from {var.type.name} to {target_type.name}"
+                        )
+                    result_path = path
+                elif isinstance(member, UnionType):
+                    todo_paths.append(path + [member])
 
             raise ConversionError(
                 f"can't implicitly convert from {var.type.name} to {target_type.name}"
@@ -661,7 +670,6 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
             assert isinstance(union_var.type, UnionType)
-            assert union_var.type.type_members is not None
 
             types_to_do = union_var.type.type_members.copy()
             as_success_bool = self.create_var(BOOL)
@@ -856,6 +864,18 @@ class _FunctionOrMethodConverter:
                 raise NotImplementedError(ins)
 
 
+def _create_pointers_equal_method(classtype: Type) -> ir.MethodDef:
+    self_var = ir.LocalVariable(classtype)
+    other_var = ir.LocalVariable(classtype)
+    result_var = ir.LocalVariable(BOOL)
+    return ir.MethodDef(
+        "equals",
+        classtype.methods["equals"],
+        [self_var, other_var],
+        [ir.PointersEqual(self_var, other_var, result_var), ir.Return(result_var)],
+    )
+
+
 class _FileConverter:
     def __init__(self, path: pathlib.Path, symbols: List[ir.Symbol]) -> None:
         self.path = path
@@ -865,13 +885,25 @@ class _FileConverter:
         # https://github.com/python/typeshed/issues/5089
         self.variables: Dict[str, ir.Variable] = ir.visible_builtins.copy()  # type: ignore
 
-        # Union members don't need to exist when union is defined (allows nestedness)
-        # TODO: is this still necessary?
-        self.union_laziness: List[Tuple[UnionType, List[ast.Type]]] = []
+        # Unions and typedefs are created in pass 1, but content isn't available until pass 2
+        self.union_laziness: Dict[str, List[ast.Type]] = {}
+        self.typedef_laziness: Dict[str, ast.Type] = {}
 
     def add_var(self, var: ir.Variable, name: str) -> None:
         assert name not in self.variables
         self.variables[name] = var
+
+    def get_non_generic_type(self, name: str) -> Type:
+        # Step 2 stuff
+        if name in self.typedef_laziness:
+            assert name not in self._types
+            self._types[name] = self.get_type(self.typedef_laziness.pop(name))
+        elif name in self.union_laziness:
+            assert name not in self._types
+            self._types[name] = UnionType(
+                name, [self.get_type(arg) for arg in self.union_laziness.pop(name)]
+            )
+        return self._types[name]
 
     def get_type(
         self,
@@ -880,28 +912,78 @@ class _FileConverter:
         recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
     ) -> ir.Type:
         assert raw_type.name != "auto", "can't use auto type here"
+        # TODO: handle Optional?
+#
+#        generic_arg = (recursing_callback or self.get_type)(raw_type.generic)
+#        generic = self._generic_types[raw_type.name]
+#
+#        if (
+#            generic is OPTIONAL
+#            and isinstance(generic_arg, UnionType)
+#            and generic_arg.type_members is None
+#        ):
+#            [arg_members_lazy] = [value for key, value in self.union_laziness if key is generic_arg]
+#            result = generic.get_type(generic_arg, set_type_members=False)
+#            assert isinstance(result, UnionType)
+#            self.union_laziness.append((result, [
+#                ast.Type("null", None)
+#            ] + arg_members_lazy))
+#            return result
+#
         if raw_type.generic is None:
-            return self._types[raw_type.name]
+            return self.get_non_generic_type(raw_type.name)
+        return self._generic_types[raw_type.name].get_type(
+            (recursing_callback or self.get_type)(raw_type.generic)
+        )
 
-        generic_arg = (recursing_callback or self.get_type)(raw_type.generic)
-        generic = self._generic_types[raw_type.name]
+    # See docs/syntax.md
+    # Step 1: available type names: imports, classes, typedefs, unions
+    # Step 2: typedef contents, union contents
+    # Step 3: function/method names and signatures, class constructor signatures
+    # Step 4: function and method bodies
 
-        if (
-            generic is OPTIONAL
-            and isinstance(generic_arg, UnionType)
-            and generic_arg.type_members is None
-        ):
-            [arg_members_lazy] = [value for key, value in self.union_laziness if key is generic_arg]
-            result = generic.get_type(generic_arg, set_type_members=False)
-            assert isinstance(result, UnionType)
-            self.union_laziness.append((result, [
-                ast.Type("null", None)
-            ] + arg_members_lazy))
-            return result
+    def do_step1(self, top_declaration: ast.ToplevelDeclaration) -> None:
+        if isinstance(top_declaration, ast.Import):
+            for symbol in self.symbols:
+                if symbol.path != top_declaration.path:
+                    continue
 
-        return generic.get_type(generic_arg)
+                name = top_declaration.name + "::" + symbol.name
+                if isinstance(symbol.value, ir.FileVariable):
+                    # Technically step 3, but adding it earlier doesn't matter
+                    self.add_var(symbol.value, name)
+                else:
+                    self._types[name] = symbol.value
 
-    def _do_func_or_method_def_pass1(
+        elif isinstance(top_declaration, ast.ClassDef):
+            classtype = Type(
+                top_declaration.name,
+                True,
+                self.path,
+                create_to_string_method=(
+                    "to_string" not in (method.name for method in top_declaration.body)
+                ),
+            )
+            assert top_declaration.name not in self._types
+            self._types[top_declaration.name] = classtype
+
+        elif isinstance(top_declaration, ast.TypeDef):
+            self.typedef_laziness[top_declaration.name] = top_declaration.type
+
+        elif isinstance(top_declaration, ast.UnionDef):
+            self.union_laziness[top_declaration.name] = top_declaration.type_members
+
+    def do_step2(self, top_declaration: ast.ToplevelDeclaration) -> None:
+        if isinstance(top_declaration, (ast.TypeDef, ast.UnionDef, ast.ClassDef)):
+            self.symbols.append(
+                ir.Symbol(
+                    self.path,
+                    top_declaration.name,
+                    self.get_non_generic_type(top_declaration.name),
+                )
+            )
+
+    def _func_or_meth_step3(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
     ) -> None:
         functype = FunctionType(
@@ -922,7 +1004,25 @@ class _FileConverter:
             assert funcdef.name not in classtype.methods
             classtype.methods[funcdef.name] = functype
 
-    def _do_func_or_method_def_pass2(
+    def do_step3(self, top_declaration: ast.ToplevelDeclaration) -> None:
+        if isinstance(top_declaration, ast.FuncOrMethodDef):
+            self._func_or_meth_step3(top_declaration, classtype=None)
+
+        elif isinstance(top_declaration, ast.ClassDef):
+            classtype = self._types[top_declaration.name]
+            classtype.members.extend(
+                (self.get_type(typ), nam) for typ, nam in top_declaration.members
+            )
+            classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+
+            if "equals" not in (method.name for method in top_declaration.body):
+                classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
+
+            for method_def in top_declaration.body:
+                method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
+                self._func_or_meth_step3(method_def, classtype)
+
+    def _func_or_meth_step4(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
     ) -> Union[ir.FuncDef, ir.MethodDef]:
         if classtype is None:
@@ -960,86 +1060,12 @@ class _FileConverter:
             assert not funcdef.export
             return ir.MethodDef(funcdef.name, functype, argvars, body)
 
-    def _create_pointers_equal_method(self, classtype: Type) -> ir.MethodDef:
-        self_var = ir.LocalVariable(classtype)
-        other_var = ir.LocalVariable(classtype)
-        result_var = ir.LocalVariable(BOOL)
-        return ir.MethodDef(
-            "equals",
-            classtype.methods["equals"],
-            [self_var, other_var],
-            [ir.PointersEqual(self_var, other_var, result_var), ir.Return(result_var)],
-        )
-
-    def do_toplevel_declaration_pass1(
-        self, top_declaration: ast.ToplevelDeclaration
-    ) -> None:
-        if isinstance(top_declaration, ast.Import):
-            for symbol in self.symbols:
-                if symbol.path != top_declaration.path:
-                    continue
-
-                name = top_declaration.name + "::" + symbol.name
-                if isinstance(symbol.value, ir.FileVariable):
-                    self.add_var(symbol.value, name)
-                else:
-                    self._types[name] = symbol.value
-
-        elif isinstance(top_declaration, ast.FuncOrMethodDef):
-            self._do_func_or_method_def_pass1(top_declaration, classtype=None)
-
-        elif isinstance(top_declaration, ast.ClassDef):
-            classtype = Type(
-                top_declaration.name,
-                True,
-                self.path,
-                create_to_string_method=(
-                    "to_string" not in (method.name for method in top_declaration.body)
-                ),
-            )
-            assert top_declaration.name not in self._types
-            self._types[top_declaration.name] = classtype
-            classtype.members.extend(
-                (self.get_type(typ), nam) for typ, nam in top_declaration.members
-            )
-            classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
-
-            if "equals" not in (method.name for method in top_declaration.body):
-                classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
-
-            for method_def in top_declaration.body:
-                method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
-                self._do_func_or_method_def_pass1(method_def, classtype)
-
-        elif isinstance(top_declaration, ast.TypeDef):
-            assert top_declaration.name not in self._types
-            self._types[top_declaration.name] = self.get_type(top_declaration.type)
-
-        elif isinstance(top_declaration, ast.UnionDef):
-            union_type = UnionType(top_declaration.name)
-            self._types[top_declaration.name] = union_type
-            self.union_laziness.append((union_type, top_declaration.type_members))
-
-        else:
-            raise NotImplementedError(top_declaration)
-
-    def do_toplevel_declaration_pass2(
+    def do_step4(
         self,
         top_declaration: ast.ToplevelDeclaration,
     ) -> List[ir.ToplevelDeclaration]:
-        if isinstance(top_declaration, ast.Import):
-            return []
-
-        if isinstance(top_declaration, ast.TypeDef):
-            self.symbols.append(
-                ir.Symbol(
-                    self.path, top_declaration.name, self._types[top_declaration.name]
-                )
-            )
-            return []
-
         if isinstance(top_declaration, ast.FuncOrMethodDef):
-            result = self._do_func_or_method_def_pass2(top_declaration, classtype=None)
+            result = self._func_or_meth_step4(top_declaration, classtype=None)
             assert isinstance(result, ir.FuncDef)
             return [result]
 
@@ -1048,10 +1074,10 @@ class _FileConverter:
 
             typed_method_defs: List[ir.ToplevelDeclaration] = []
             if "equals" not in (method.name for method in top_declaration.body):
-                typed_method_defs.append(self._create_pointers_equal_method(classtype))
+                typed_method_defs.append(_create_pointers_equal_method(classtype))
 
             for method_def in top_declaration.body:
-                typed_def = self._do_func_or_method_def_pass2(method_def, classtype)
+                typed_def = self._func_or_meth_step4(method_def, classtype)
                 assert isinstance(typed_def, ir.MethodDef)
                 typed_method_defs.append(typed_def)
 
@@ -1059,41 +1085,24 @@ class _FileConverter:
             self.symbols.append(ir.Symbol(self.path, top_declaration.name, classtype))
             return typed_method_defs
 
-        if isinstance(top_declaration, ast.UnionDef):
-            union_type = self._types[top_declaration.name]
-            assert isinstance(union_type, UnionType)
-            if top_declaration.export:
-                self.symbols.append(
-                    ir.Symbol(self.path, top_declaration.name, union_type)
-                )
-
-            # Union methods are implemented in c_output
-            return []
-
-        raise NotImplementedError(top_declaration)
-
-    def post_process_union(self, union: UnionType) -> None:
-        if union.type_members is None:
-            for index, (key, value) in enumerate(self.union_laziness):
-                if key is union:
-                    union.set_type_members([self.get_type(t) for t in value])
-                    del self.union_laziness[index]
-                    return
-            raise LookupError
+        return []
 
 
 def convert_program(
     program: List[ast.ToplevelDeclaration], path: pathlib.Path, symbols: List[ir.Symbol]
 ) -> List[ir.ToplevelDeclaration]:
     converter = _FileConverter(path, symbols)
+
     for top in program:
-        converter.do_toplevel_declaration_pass1(top)
-    for key, value in list(converter.union_laziness):
-        converter.post_process_union(key)
+        converter.do_step1(top)
+    for top in program:
+        converter.do_step2(top)
     assert not converter.union_laziness
+    assert not converter.typedef_laziness
+    for top in program:
+        converter.do_step3(top)
 
     result = []
     for top in program:
-        result.extend(converter.do_toplevel_declaration_pass2(top))
-
+        result.extend(converter.do_step4(top))
     return result

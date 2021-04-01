@@ -4,8 +4,8 @@ set -o pipefail
 
 keep_going=no
 fix=no
-check_self_hosted=yes
-check_pyoomph=yes
+check_self_hosted=no
+check_pyoomph=no
 
 while [[ "$1" == --* ]]; do
     case "$1" in
@@ -22,12 +22,12 @@ while [[ "$1" == --* ]]; do
             compiler_valgrind_arg="--valgrind='$valgrind'"
             shift
             ;;
-        --skip-self-hosted)
-            check_self_hosted=no
+        --self-hosted)
+            check_self_hosted=yes
             shift
             ;;
-        --skip-pyoomph)
-            check_pyoomph=no
+        --pyoomph)
+            check_pyoomph=yes
             shift
             ;;
         *)
@@ -35,6 +35,11 @@ while [[ "$1" == --* ]]; do
             exit 2
     esac
 done
+
+if [ $check_self_hosted == no ] && [ $check_pyoomph == no ]; then
+    check_self_hosted=yes
+    check_pyoomph=yes
+fi
 
 function check()
 {
@@ -116,9 +121,7 @@ if [ $check_pyoomph == yes ]; then
         if [[ $file == tests/*_lib.oomph ]]; then
             # The file is meant to be imported
             continue
-        fi
-
-        if [[ $file == tests/*_error.oomph ]]; then
+        elif [[ $file == tests/*_error.oomph ]]; then
             run check \
                 "$file" \
                 "python3 -m pyoomph $file" \
@@ -146,7 +149,9 @@ if [ $check_self_hosted == yes ] && (
     make oomphc
 
     for file in tests/*.oomph; do
-        if ! grep -q "^$file" tests/self_hosted_skip.txt; then
+        if [[ $file == tests/*_lib.oomph ]]; then
+            continue
+        elif ! grep -q "^$file" tests/self_hosted_skip.txt; then
             if [[ $file == tests/*_error.oomph ]]; then
                 check "$file" "./oomphc $file" "2>/dev/null" tests/output/self_hosted should_fail
             else

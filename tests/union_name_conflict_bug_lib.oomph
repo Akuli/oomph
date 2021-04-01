@@ -1,0 +1,3 @@
+export union Blah:
+    Int
+    Bool
