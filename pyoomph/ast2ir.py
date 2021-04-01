@@ -524,10 +524,9 @@ class _FunctionOrMethodConverter:
 
         if isinstance(expr, ast.As):
             lhs = self.do_expression(expr.expr)
-            result = self.create_var(self.get_type(expr.type))
-            self.code.append(ir.GetFromUnion(result, lhs))
-            self.code.append(ir.IncRef(result))
-            return result
+            result_var = self.create_var(self.get_type(expr.type))
+            self.code.append(ir.As(lhs, result_var))
+            return result_var
 
         if isinstance(expr, ast.Constructor):
             raise NotImplementedError(f"constructor as object: {expr}")
@@ -751,6 +750,38 @@ class _FunctionOrMethodConverter:
                 else:
                     self._get_rid_of_auto_in_var(ins.result)
 
+            elif isinstance(ins, ir.As):
+                self._get_rid_of_auto_in_var(ins.result)
+                self._get_rid_of_auto_in_var(ins.source)
+                assert isinstance(ins.source.type, ir.UnionType), ins.source
+
+                if isinstance(ins.result.type, UnionType):
+                    assert ins.result.type.type_members is not None
+                    target_members = ins.result.type.type_members
+                else:
+                    target_members = [ins.result.type]
+
+                member_check_var = self.create_var(BOOL)
+                done = ir.GotoLabel()
+
+                with self.code_to_separate_list() as as_code:
+                    for member_type in target_members:
+                        with self.code_to_separate_list() as if_it_matches:
+                            member_var = self.create_var(member_type)
+                            self.code.append(ir.GetFromUnion(member_var, ins.source))
+                            self.code.append(ir.IncRef(member_var))
+                            self.code.append(ir.VarCpy(ins.result, self.implicit_conversion(member_var, ins.result.type)))
+                            self.code.append(ir.Goto(done, ir.visible_builtins['true']))
+
+                        self.code.append(ir.UnionMemberCheck(member_check_var, ins.source, member_type))
+                        self.do_if(member_check_var, if_it_matches, [])
+
+                    self.code.append(ir.Panic("'as' failed"))  # TODO: better error message?
+                    self.code.append(done)
+
+                where = self.code.index(ins)
+                self.code[where:where+1] = as_code
+
         for ins in self.code:
             if isinstance(
                 ins,
@@ -764,7 +795,7 @@ class _FunctionOrMethodConverter:
                 ),
             ):
                 self._get_rid_of_auto_in_var(ins.var)
-            elif isinstance(ins, ir.CallMethod):
+            elif isinstance(ins, (ir.CallMethod, ir.As, ir.GetAttribute)):
                 pass  # done separately above
             elif isinstance(ins, (ir.CallConstructor, ir.CallFunction)):
                 if ins.result is not None:
@@ -786,16 +817,13 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.InstantiateUnion):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.value)
-            elif isinstance(ins, ir.GetAttribute):
-                self._get_rid_of_auto_in_var(ins.result)
-                self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, ir.SetAttribute):
                 self._get_rid_of_auto_in_var(ins.value)
                 self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.union)
-            elif isinstance(ins, ir.GotoLabel):
+            elif isinstance(ins, (ir.GotoLabel, ir.Panic)):
                 pass
             else:
                 raise NotImplementedError(ins)

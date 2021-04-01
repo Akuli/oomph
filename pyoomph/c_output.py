@@ -144,9 +144,7 @@ class _FunctionEmitter:
             assert isinstance(ins.union.type, ir.UnionType)
             membernum = _get_member_num(ins.union.type, ins.result.type)
             return f"""
-            if ({self.emit_var(ins.union)}.membernum != {membernum})
-                panic_printf("'as' failed");   // TODO: better message?
-
+            assert({self.emit_var(ins.union)}.membernum == {membernum});
             {self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};
             """
 
@@ -170,6 +168,11 @@ class _FunctionEmitter:
             {self.emit_var(ins.result)} = (
                 {self.emit_var(ins.union)}.membernum == {_get_member_num(ins.union.type, ins.member_type)}
             );
+            """
+
+        if isinstance(ins, ir.Panic):
+            return f"""
+            panic_printf("%s", {self.file_pair.emit_string(ins.message)}->str);
             """
 
         raise NotImplementedError(ins)

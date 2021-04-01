@@ -4,5 +4,13 @@ union Bar:
     Foo
     Str
 
+union ExtendedBar:
+    Foo
+    Str
+    Int
+
 export func main():
-    print(new Bar(new Foo(123)) as Foo)
+    let foo = new Foo(123)
+    print(new Bar(foo) as Foo)
+    print(new ExtendedBar(foo) as Foo)
+    print(new ExtendedBar(foo) as Bar)

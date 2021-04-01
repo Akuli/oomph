@@ -251,7 +251,7 @@ class Goto(Instruction):
 # think of it as VarCpy for unions
 @dataclass(eq=False)
 class GetFromUnion(Instruction):
-    result: LocalVariable
+    result: LocalVariable  # can have union type
     union: LocalVariable
 
 
@@ -261,6 +261,18 @@ class UnionMemberCheck(Instruction):
     result: LocalVariable
     union: LocalVariable
     member_type: Type
+
+
+# Removed before c_output
+@dataclass(eq=False)
+class As(Instruction):
+    source: LocalVariable
+    result: LocalVariable
+
+
+@dataclass(eq=False)
+class Panic(Instruction):
+    message: str
 
 
 @dataclass(eq=False)
