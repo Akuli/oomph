@@ -45,6 +45,12 @@ class Type:
     def __eq__(self, other: object) -> bool:
         if isinstance(self, AutoType) or isinstance(other, AutoType):
             return self is other
+        if isinstance(self, UnionType) or isinstance(other, UnionType):
+            return (
+                isinstance(self, UnionType)
+                and isinstance(other, UnionType)
+                and self.type_members == other.type_members
+            )
         return (
             isinstance(other, Type)
             and self.name == other.name
@@ -80,6 +86,11 @@ class UnionType(Type):
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
+
+    def get_id_string(self) -> str:
+        return self.name + "|".join(
+            member.get_id_string() for member in self.type_members
+        )
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
