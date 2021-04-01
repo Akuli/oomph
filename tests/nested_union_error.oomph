@@ -1,0 +1,10 @@
+union Foo:
+    Str
+    Bar
+
+union Bar:
+    Int
+    Foo
+
+export func main():
+    pass

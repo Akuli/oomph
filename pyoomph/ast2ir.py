@@ -6,7 +6,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
-    BOOL,
+    BOOL,OPTIONAL,
     FLOAT,
     INT,
     LIST,
@@ -152,6 +152,7 @@ class _FunctionOrMethodConverter:
             return (generic.get_type(type1_arg), generic.get_type(type2_arg))
         return (type1, type2)
 
+    # TODO: document how no recursive implicit conversions are used
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
@@ -166,35 +167,44 @@ class _FunctionOrMethodConverter:
             raise ConversionError(
                 f"can't implicitly convert {var.type.name} to {target_type.name}"
             )
+        assert target_type.type_members is not None
 
-        # FIXME: cyclicly nested unions
-        result_path: Optional[List[UnionType]] = None
-        todo_paths = [[target_type]]
-        while todo_paths:
-            path = todo_paths.pop()
-            assert path[-1].type_members is not None
-            for member in path[-1].type_members:
-                if member == var.type:
-                    if result_path is not None:
-                        raise ConversionError(
-                            "ambiguous implicit conversion "
-                            f"from {var.type.name} to {target_type.name}"
-                        )
-                    result_path = path
-                elif isinstance(member, UnionType):
-                    todo_paths.append(path + [member])
+        if not isinstance(var.type, UnionType):
+            if var.type in target_type.type_members:
+                union_var = self.create_var(target_type)
+                self.code.append(ir.InstantiateUnion(union_var, var))
+                self.code.append(ir.IncRef(var))
+                return union_var
 
-        if result_path is None:
             raise ConversionError(
                 f"can't implicitly convert from {var.type.name} to {target_type.name}"
             )
 
-        for union in reversed(result_path):
-            new_var = self.create_var(union)
-            self.code.append(ir.InstantiateUnion(new_var, var))
-            self.code.append(ir.IncRef(var))
-            var = new_var
-        return var
+        assert var.type.type_members is not None
+        if not var.type.type_members.issubset(target_type.type_members):
+            raise ConversionError(
+                f"can't implicitly convert from {var.type.name} to {target_type.name}"
+            )
+
+        result_var = self.create_var(target_type)
+        member_matches = self.create_var(BOOL)
+
+        done = ir.GotoLabel()
+        for member_type in var.type.type_members:
+            skip = ir.GotoLabel()
+            self.code.append(ir.UnionMemberCheck(member_matches, var, member_type))
+            self.code.append(ir.Goto(skip, self._not(member_matches)))
+            member_var = self.create_var(member_type)
+            self.code.append(ir.GetFromUnion(member_var, var))
+            self.code.append(ir.IncRef(member_var))
+            self.code.append(ir.InstantiateUnion(result_var, member_var))
+            self.code.append(ir.IncRef(member_var))
+            self.code.append(ir.Goto(done, ir.visible_builtins["true"]))
+            self.code.append(skip)
+
+        # TODO: add panic, no union member matched
+        self.code.append(done)
+        return result_var
 
     # Can be called multiple times, that doesn't matter
     def do_args(
@@ -479,12 +489,9 @@ class _FunctionOrMethodConverter:
             if isinstance(expr.func, ast.Constructor):
                 union_type = self.get_type(expr.func.type)
                 if isinstance(union_type, UnionType):
-                    var = self.create_var(union_type)
                     assert len(expr.args) == 1
                     obj = self.do_expression(expr.args[0])
-                    self.code.append(ir.IncRef(obj))
-                    self.code.append(ir.InstantiateUnion(var, obj))
-                    return var
+                    return self.implicit_conversion(obj, union_type)
 
             call = self.do_call(expr, True)
             assert call is not None, f"return value of void function {expr.func} used"
@@ -669,7 +676,7 @@ class _FunctionOrMethodConverter:
                 else:
                     ugly_type, varname = case.type_and_varname
                     nice_type = self.get_type(ugly_type)
-                    nice_types = [nice_type]
+                    nice_types = {nice_type}
                     types_to_do.remove(nice_type)
 
                     case_var = self.create_var(nice_type)
@@ -819,9 +826,16 @@ class _FileConverter:
         assert raw_type.name != "auto", "can't use auto type here"
         if raw_type.generic is None:
             return self._types[raw_type.name]
-        return self._generic_types[raw_type.name].get_type(
-            (recursing_callback or self.get_type)(raw_type.generic)
-        )
+
+        generic_arg = (recursing_callback or self.get_type)(raw_type.generic)
+        generic = self._generic_types[raw_type.name]
+
+        if generic is OPTIONAL and isinstance(generic_arg, UnionType) and generic_arg.type_members is None:
+            result = generic.get_type(generic_arg, set_type_members=False)
+            self.union_laziness[result] = [ast.Type('null', None)] + self.union_laziness[generic_arg]
+            return result
+
+        return generic.get_type(generic_arg)
 
     def _do_func_or_method_def_pass1(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]

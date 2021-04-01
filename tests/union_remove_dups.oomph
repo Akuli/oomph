@@ -1,0 +1,34 @@
+class Foo()
+class Bar()
+class Baz()
+
+union FooBar:
+    Foo
+    Bar
+
+union FooBaz:
+    Foo
+    Baz
+
+union FooBarBaz:
+    FooBar
+    FooBaz
+
+export func blah(FooBarBaz obj):
+    switch obj:
+        case Foo f:
+            print("Foo")
+        case Bar b:
+            print("Bar")
+        case Baz b:
+            print("Baz")
+
+export func main():
+    blah(new FooBar(new Foo()))
+    blah(new FooBaz(new Foo()))
+    blah(new FooBar(new Bar()))
+    blah(new FooBaz(new Baz()))
+    print("-----------")
+    blah(new Foo())
+    blah(new Bar())
+    blah(new Baz())

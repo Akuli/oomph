@@ -1,2 +1,2 @@
-AssertionError: switch does not handle: [<Type: Str>]
+AssertionError: switch does not handle: {<Type: Str>}
 

@@ -1,1 +1,1 @@
-Outer(Inner(Bar()))
+Outer(Bar())

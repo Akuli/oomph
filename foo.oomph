@@ -1,0 +1,2 @@
+export func main():
+    print(new Optional[Str]("a"))

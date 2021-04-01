@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 
 # Describes how exactly a type was created from a generic
@@ -62,7 +62,7 @@ class AutoType(Type):
 
 
 class UnionType(Type):
-    type_members: Optional[List[Type]]
+    type_members: Optional[Set[Type]]
 
     def __init__(self, name: str, definition_path: Optional[pathlib.Path] = None):
         super().__init__(name, True, definition_path)
@@ -74,10 +74,18 @@ class UnionType(Type):
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
     def set_type_members(self, type_members: List[Type]) -> None:
-        assert len(type_members) >= 2
-        assert len(type_members) == len(set(type_members))  # no duplicates
         assert self.type_members is None
-        self.type_members = type_members
+        self.type_members = set()
+
+        for member in type_members:
+            assert not isinstance(member, AutoType)
+            if isinstance(member, UnionType):
+                assert member.type_members is not None, (self, member)
+                self.type_members.update(member.type_members)
+            else:
+                self.type_members.add(member)
+
+        assert len(self.type_members) >= 2   # TODO
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
@@ -85,11 +93,12 @@ class UnionType(Type):
 class Generic:
     name: str
 
-    def get_type(self, generic_arg: Type) -> Type:
+    def get_type(self, generic_arg: Type, *, set_type_members=True) -> Type:
         result: Type
         if self is OPTIONAL:
             mypy_sucks = UnionType(f"{self.name}[{generic_arg.name}]")
-            mypy_sucks.set_type_members([generic_arg, NULL_TYPE])
+            if set_type_members:
+                mypy_sucks.set_type_members([generic_arg, NULL_TYPE])
             result = mypy_sucks
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
@@ -153,7 +162,7 @@ class FunctionType(Type):
 BOOL = Type("Bool", False)
 FLOAT = Type("Float", False)
 INT = Type("Int", False)
-NULL_TYPE = Type("<type of null>", False)
+NULL_TYPE = Type("null", False)  # TODO: consistent naming?
 STRING = Type("Str", True)
 
 BOOL.methods["equals"] = FunctionType([BOOL, BOOL], BOOL)
@@ -194,5 +203,5 @@ STRING.methods["to_int"] = FunctionType([STRING], INT)
 STRING.methods["to_string"] = FunctionType([STRING], STRING)  # does nothing
 STRING.methods["trim"] = FunctionType([STRING], STRING)
 
-builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
+builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING, NULL_TYPE]}
 builtin_generic_types = {gen.name: gen for gen in [OPTIONAL, LIST]}
