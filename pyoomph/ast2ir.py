@@ -954,7 +954,9 @@ class _FileConverter:
 
         if isinstance(top_declaration, ast.TypeDef):
             self.symbols.append(
-                ir.Symbol(self.path, top_declaration.name, self._types[top_declaration.name])
+                ir.Symbol(
+                    self.path, top_declaration.name, self._types[top_declaration.name]
+                )
             )
             return []
 
