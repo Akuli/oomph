@@ -31,8 +31,7 @@ export class BasicType(
     meth to_string() -> Str:
         return "<BasicType: {self.name}>"
 
-# type_members can be temporarily null, allows nested unions
-export class UnionType(Str name, Optional[List[Type]] type_members, Optional[GenericSource] generic_source):
+export class UnionType(Str name, List[Type] type_members, Optional[GenericSource] generic_source):
     # Helps with reference cycles
     meth to_string() -> Str:
         return "<UnionType: {self.name}>"

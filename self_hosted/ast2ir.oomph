@@ -10,7 +10,8 @@ class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
 class AutoTypeResolve(ir::AutoType autotype, ir::Type actual)
 class AutoTypePair(ir::AutoType first, ir::AutoType second)
 class TypePair(ir::Type first, ir::Type second)
-class UnionTypeAndAstTypeList(ir::UnionType union_type, List[ast::Type] types)
+class NamedAstType(Str name, ast::Type type)
+class NamedAstTypeList(Str name, List[ast::Type] types)
 
 
 # TODO: shouldn't be needed
@@ -22,6 +23,7 @@ func is_autotype(ir::Type type) -> Bool:
             return false
 
 # Weird hack
+# TODO: still needed?
 union FileConverterForwardReference:
     FileConverter
     Str
@@ -231,7 +233,7 @@ class FunctionOrMethodConverter(
                 let todo_paths = [[target_union]]
                 while todo_paths != []:
                     let path = todo_paths.pop()
-                    foreach member of path.last().type_members.get():
+                    foreach member of path.last().type_members:
                         if member == var.type:
                             if result_path != null:
                                 # ambiguous implicit conversion
@@ -760,7 +762,7 @@ class FunctionOrMethodConverter(
                 let union_type = union_var.type as ir::UnionType
 
                 # TODO: better way to copy list
-                let types_to_do = union_type.type_members.get().reversed().reversed()
+                let types_to_do = union_type.type_members.reversed().reversed()
 
                 let done_label = self.create_goto_label()
                 let member_check = self.create_var(self.builtins.BOOL, switchie.location)
@@ -947,6 +949,22 @@ class FunctionOrMethodConverter(
                     pass
 
 
+# TODO: do this in c
+func create_pointers_equal_method(ir::Builtins builtins, ir::Type classtype, error::Location location) -> ir::MethodDef:
+    let self_var = new ir::LocalVariable(classtype, 0, location)
+    let other_var = new ir::LocalVariable(classtype, 1, location)
+    let result_var = new ir::LocalVariable(builtins.BOOL, 2, location)
+    return new ir::MethodDef(
+        "equals",
+        ir::get_method(classtype, "equals", builtins),
+        [self_var, other_var],
+        [
+            new ir::Instruction(new ir::PointersEqual(self_var, other_var, result_var)),
+            new ir::Instruction(new ir::Return(result_var)),
+        ]
+    )
+
+
 class FileConverter(
     ir::Builtins builtins,
     Str path,
@@ -954,7 +972,8 @@ class FileConverter(
     List[NamedType] types,
     List[NamedGeneric] generics,
     List[NamedVariable] variables,
-    List[UnionTypeAndAstTypeList] union_laziness,  # TODO: this still needed?
+    List[NamedAstTypeList] union_laziness,
+    List[NamedAstType] typedef_laziness,
 ):
     meth add_var(ir::Variable var, Str name):
         foreach named_var of self.variables:
@@ -964,16 +983,38 @@ class FileConverter(
     meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
+    meth get_non_generic_type(Str name) -> ir::Type:
+        # step 2 stuff
+        for let i = 0; i < self.typedef_laziness.length(); i = i+1:
+            if self.typedef_laziness.get(i).name == name:
+                assert(name not in [foreach t of self.types: t.name])
+                let type = self.get_type(self.typedef_laziness.get(i).type, null)
+                self.types.push(new NamedType(name, type))
+                self.typedef_laziness.delete_at_index(i)
+                return type
+
+        for let i = 0; i < self.union_laziness.length(); i = i+1:
+            if self.union_laziness.get(i).name == name:
+                assert(name not in [foreach t of self.types: t.name])
+                let type = new ir::UnionType(
+                    name,
+                    [foreach t of self.union_laziness.get(i).types: self.get_type(t, null)],
+                    null,
+                )
+                self.types.push(new NamedType(name, type))
+                self.union_laziness.delete_at_index(i)
+                return type
+
+        foreach type of self.types:
+            if type.name == name:
+                return type.type
+        assert(false)   # TODO: error
+
     # TODO: simplify how2recurse stuff
     meth get_type(ast::Type raw_type, Optional[FunctionOrMethodConverter] how2recurse) -> ir::Type:
-        assert(raw_type.name != "auto")
+        assert(raw_type.name != "auto")  # TODO: error
         if raw_type.generic_arg == null:
-            foreach named_type of self.types:
-                if named_type.name == raw_type.name:
-                    return named_type.type
-            # TODO: error
-            print("no type named {raw_type.name}")
-            assert(false)
+            return self.get_non_generic_type(raw_type.name)
 
         foreach named_generic of self.generics:
             if named_generic.name == raw_type.name:
@@ -986,10 +1027,62 @@ class FileConverter(
         print("no generic type named {raw_type.name}")
         assert(false)  # TODO: error
 
-    meth do_func_or_method_def_pass1(
-        ast::FuncOrMethodDef def,
-        Optional[ir::BasicType] classtype,
-    ):
+    meth check_type_not_exists(Str name, error::Location location):
+        if (
+            name in [foreach t of self.types: t.name]
+            or name in [foreach t of self.typedef_laziness: t.name]
+            or name in [foreach t of self.union_laziness: t.name]
+        ):
+            location.error("type '{name}' already exists")
+
+    meth do_step1(ast::ToplevelDeclaration top_declaration):
+        switch top_declaration:
+            case ast::Import imp:
+                foreach symbol of self.symbols:
+                    if symbol.path == imp.path:
+                        let name = imp.name + "::" + symbol.name
+                        switch symbol.value:
+                            case ir::FileVariable var:
+                                # Technically step 3, but adding earlier doesn't matter
+                                self.add_var(var, name)
+                            case ir::Type type:
+                                assert(name not in [foreach t of self.types: t.name])
+                                self.types.push(new NamedType(name, type))
+
+            case ast::ClassDef classdef:
+                self.check_type_not_exists(classdef.name, classdef.location)
+                let add_to_string_method = "to_string" not in [foreach method of classdef.body: method.name]
+                let classtype = new ir::BasicType(
+                    classdef.name, true, [], [], null, null, add_to_string_method
+                )
+                assert(classdef.name not in [foreach t of self.types: t.name])
+                self.types.push(new NamedType(classdef.name, classtype))
+
+            case ast::TypeDef type_def:
+                self.check_type_not_exists(type_def.name, type_def.location)
+                self.typedef_laziness.push(new NamedAstType(type_def.name, type_def.type))
+
+            case ast::UnionDef union_def:
+                self.check_type_not_exists(union_def.name, union_def.location)
+                self.union_laziness.push(new NamedAstTypeList(union_def.name, union_def.type_members))
+
+            case ast::FuncOrMethodDef funcdef:
+                # TODO: check not exists
+                pass
+
+    meth do_step2(ast::ToplevelDeclaration top_declaration):
+        switch top_declaration:
+            # TODO: copy pasta
+            case ast::TypeDef def:
+                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_non_generic_type(def.name)))
+            case ast::ClassDef def:
+                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_non_generic_type(def.name)))
+            case ast::UnionDef def:
+                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_non_generic_type(def.name)))
+            case *:
+                pass
+
+    meth func_or_meth_step3(ast::FuncOrMethodDef def, Optional[ir::BasicType] classtype):
         if def.returntype == null:
             # FIXME: new Optional[auto](null) doesn't work here
             let returntype = new Optional[ir::Type](null)
@@ -1015,7 +1108,58 @@ class FileConverter(
 
             classtype.get().methods.push(new ir::Method(def.name, functype))
 
-    meth do_func_or_method_def_pass2(
+    meth do_step3(ast::ToplevelDeclaration top_declaration):
+        switch top_declaration:
+            case ast::FuncOrMethodDef funcdef:
+                self.func_or_meth_step3(funcdef, null)
+
+            case ast::ClassDef classdef:
+                let found = false   # TODO: this sucks
+                foreach t of self.types:
+                    if t.name == classdef.name:
+                        let classtype = t.type as ir::BasicType
+                        found = true
+                        break
+                assert(found)
+
+                classtype.members.push_all([
+                    foreach member of classdef.members:
+                    new ir::Member(member.name, self.get_type(member.type, null))
+                ])
+                # TODO: is it possible to specify this when creating classtype?
+                # TODO: auto types not working here at all
+                classtype.constructor_argtypes = new Optional[List[ir::Type]](new List[ir::Type]())
+                classtype.constructor_argtypes.get().push_all([
+                    foreach member of classtype.members: member.type
+                ])
+
+                if classtype.create_to_string_method:
+                    # TODO: do this in ir instead?
+                    classtype.methods.push(new ir::Method(
+                        "to_string",
+                        new ir::FunctionType([new ir::Type(classtype)], self.builtins.STR)
+                    ))
+                if "equals" not in [foreach method of classdef.body: method.name]:
+                    classtype.methods.push(new ir::Method(
+                        "equals", new ir::FunctionType(
+                            [new ir::Type(classtype), new ir::Type(classtype)],
+                            self.builtins.BOOL
+                        )
+                    ))
+
+                foreach method_def of classdef.body:
+                    let self_location = classdef.location   # a bit weird
+                    method_def.args.insert(0, new ast::TypeAndName(
+                        new ast::Type(self_location, classtype.name, null),
+                        "self",
+                        self_location
+                    ))
+                    self.func_or_meth_step3(method_def, classtype)
+
+            case *:
+                pass
+
+    meth func_or_meth_step4(
         ast::FuncOrMethodDef def, Optional[ir::Type] classtype
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
@@ -1070,116 +1214,8 @@ class FileConverter(
             #assert not def.export
             return new ir::MethodDef(def.name, functype, argvars, body)
 
-    # TODO: do this in c
-    meth create_pointers_equal_method(ir::Type classtype, error::Location location) -> ir::MethodDef:
-        let self_var = new ir::LocalVariable(classtype, 0, location)
-        let other_var = new ir::LocalVariable(classtype, 1, location)
-        let result_var = new ir::LocalVariable(self.builtins.BOOL, 2, location)
-        return new ir::MethodDef(
-            "equals",
-            ir::get_method(classtype, "equals", self.builtins),
-            [self_var, other_var],
-            [
-                new ir::Instruction(new ir::PointersEqual(self_var, other_var, result_var)),
-                new ir::Instruction(new ir::Return(result_var)),
-            ]
-        )
-
-    meth delete_type_if_exists(Str name):
-        # TODO: better way to remove all matches from list
-        for let i = self.types.length() - 1; i >= 0; i = i-1:
-            if self.types.get(i).name == name:
-                self.types.delete_at_index(i)
-
-    meth do_toplevel_declaration_pass1(ast::ToplevelDeclaration top_decl):
-        switch top_decl:
-            case ast::Import imp:
-                foreach symbol of self.symbols:
-                    if symbol.path != imp.path:
-                        continue
-
-                    let name = imp.name + "::" + symbol.name
-                    switch symbol.value:
-                        case ir::FileVariable var:
-                            self.add_var(var, name)
-                        case ir::Type type:
-                            self.delete_type_if_exists(name)
-                            self.types.push(new NamedType(name, type))
-
-            case ast::TypeDef type_def:
-                foreach type of self.types:
-                    if type.name == type_def.name:
-                        type_def.location.error("type '{type_def.name}' already exists")
-                self.types.push(new NamedType(type_def.name, self.get_type(type_def.type, null)))
-
-            case ast::FuncOrMethodDef funcdef:
-                self.do_func_or_method_def_pass1(funcdef, null)
-
-            case ast::ClassDef classdef:
-                let add_to_string_method = "to_string" not in [foreach method of classdef.body: method.name]
-                let classtype = new ir::BasicType(
-                    classdef.name, true, [], [], null, null, add_to_string_method
-                )
-                foreach named_type of self.types:
-                    assert(named_type.name != classdef.name)
-                self.types.push(new NamedType(classdef.name, classtype))
-                classtype.members.push_all([
-                    foreach member of classdef.members:
-                    new ir::Member(member.name, self.get_type(member.type, null))
-                ])
-                # TODO: is it possible to specify this when creating classtype?
-                # TODO: list comprehensions and auto types not working here
-                classtype.constructor_argtypes = new Optional[List[ir::Type]](new List[ir::Type]())
-                classtype.constructor_argtypes.get().push_all([
-                    foreach member of classtype.members: member.type
-                ])
-
-                if classtype.create_to_string_method:
-                    # TODO: do this in ir instead?
-                    classtype.methods.push(new ir::Method(
-                        "to_string",
-                        new ir::FunctionType([new ir::Type(classtype)], self.builtins.STR)
-                    ))
-                if "equals" not in [foreach method of classdef.body: method.name]:
-                    classtype.methods.push(new ir::Method(
-                        "equals", new ir::FunctionType(
-                            [new ir::Type(classtype), new ir::Type(classtype)],
-                            self.builtins.BOOL
-                        )
-                    ))
-
-                foreach method_def of classdef.body:
-                    let self_location = classdef.location   # a bit weird
-                    method_def.args.insert(0, new ast::TypeAndName(
-                        new ast::Type(self_location, classtype.name, null),
-                        "self",
-                        self_location
-                    ))
-                    self.do_func_or_method_def_pass1(method_def, classtype)
-
-            case ast::UnionDef uniondef:
-                let union_type = new ir::UnionType(uniondef.name, null, null)
-                self.delete_type_if_exists(uniondef.name)  # TODO: disallow overwriting?
-                self.types.push(new NamedType(uniondef.name, union_type))
-                self.union_laziness.push(new UnionTypeAndAstTypeList(union_type, uniondef.type_members))
-
-    meth export_type(Str name):
-        foreach named_type of self.types:
-            if named_type.name == name:
-                self.symbols.push(new ir::Symbol(self.path, name, named_type.type))
-                return
-        assert(false)
-
-    meth do_toplevel_declaration_pass2(ast::ToplevelDeclaration top_decl) -> List[ir::ToplevelDeclaration]:
-        switch top_decl:
-            case ast::Import imp:
-                return []
-
-            case ast::FuncOrMethodDef funcdef:
-                return [new ir::ToplevelDeclaration(
-                    self.do_func_or_method_def_pass2(funcdef, null) as ir::FuncDef
-                )]
-
+    meth do_step4(ast::ToplevelDeclaration top_declaration) -> List[ir::ToplevelDeclaration]:
+        switch top_declaration:
             case ast::ClassDef classdef:
                 let found = false
                 foreach named_type of self.types:
@@ -1192,34 +1228,21 @@ class FileConverter(
                 let typed_method_defs = []
                 if "equals" not in [foreach method of classdef.body: method.name]:
                     typed_method_defs.push(new ir::ToplevelDeclaration(
-                        self.create_pointers_equal_method(classtype, classdef.location)
+                        create_pointers_equal_method(self.builtins, classtype, classdef.location)
                     ))
 
                 foreach method_def of classdef.body:
-                    typed_method_defs.push(self.do_func_or_method_def_pass2(method_def, classtype) as ir::MethodDef)
+                    typed_method_defs.push(self.func_or_meth_step4(method_def, classtype) as ir::MethodDef)
 
                 # TODO: use classdef.export
                 self.symbols.push(new ir::Symbol(self.path, classdef.name, classtype))
                 return typed_method_defs
 
-            case ast::TypeDef type_def:
-                self.export_type(type_def.name)
-                return []
+            case ast::FuncOrMethodDef funcdef:
+                return [self.func_or_meth_step4(funcdef, null)]
 
-            case ast::UnionDef uniondef:
-                self.export_type(uniondef.name)
+            case *:
                 return []
-
-    meth post_process_union(ir::UnionType union_type):
-        if union_type.type_members == null:
-            for let i = 0; ; i = i+1:
-                let pair = self.union_laziness.get(i)
-                if pair.union_type == union_type:
-                    # TODO: auto types don't work for this
-                    let members = new Optional[List[ir::Type]](new List[ir::Type]())
-                    members.get().push_all([foreach t of pair.types: self.get_type(t, null)])
-                    union_type.type_members = members
-                    break
 
 
 export func convert_program(
@@ -1246,14 +1269,20 @@ export func convert_program(
         ],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],
+        [],
     )
 
+
     foreach top of program:
-        converter.do_toplevel_declaration_pass1(top)
-    foreach pair of converter.union_laziness.reversed().reversed():  # TODO: better way to copy list
-        converter.post_process_union(pair.union_type)
+        converter.do_step1(top)
+    foreach top of program:
+        converter.do_step2(top)
+    assert(converter.union_laziness == [])
+    assert(converter.typedef_laziness == [])
+    foreach top of program:
+        converter.do_step3(top)
 
     let result = []
     foreach top of program:
-        result.push_all(converter.do_toplevel_declaration_pass2(top))
+        result.push_all(converter.do_step4(top))
     return result
