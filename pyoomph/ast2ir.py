@@ -809,7 +809,7 @@ class _FileConverter:
     def __init__(self, path: pathlib.Path, symbols: List[ir.Symbol]) -> None:
         self.path = path
         self.symbols = symbols
-        self._types: Dict[str, Type] = builtin_types.copy()
+        self._types = builtin_types.copy()
         self._generic_types = builtin_generic_types.copy()
         # https://github.com/python/typeshed/issues/5089
         self.variables: Dict[str, ir.Variable] = ir.visible_builtins.copy()  # type: ignore
@@ -860,7 +860,7 @@ class _FileConverter:
 
                 name = top_declaration.name + "::" + symbol.name
                 if isinstance(symbol.value, ir.FileVariable):
-                    # Technically pass 3, but adding it earlier doesn't matter
+                    # Technically step 3, but adding it earlier doesn't matter
                     self.add_var(symbol.value, name)
                 else:
                     self._types[name] = symbol.value
