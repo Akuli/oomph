@@ -1,2 +1,2 @@
-AssertionError
+AssertionError: (<UnionType 'Foo', type_members={<Type: Str>}>, <UnionType 'Bar', type_members=None>)
 
