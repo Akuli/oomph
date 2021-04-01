@@ -1,0 +1,2 @@
+string: lol
+int (or bool): IntBool(123)

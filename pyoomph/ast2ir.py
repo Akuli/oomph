@@ -766,6 +766,9 @@ class _FunctionOrMethodConverter:
 
                 with self.code_to_separate_list() as as_code:
                     for member_type in target_members:
+                        if member_type not in ins.source.type.type_members:
+                            continue
+
                         with self.code_to_separate_list() as if_it_matches:
                             member_var = self.create_var(member_type)
                             self.code.append(ir.GetFromUnion(member_var, ins.source))

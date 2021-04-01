@@ -1,0 +1,18 @@
+union StrInt:
+    Str
+    Int
+
+union IntBool:
+    Int
+    Bool
+
+func foo(StrInt si):
+    switch si:
+        case Str s:
+            print("string: {s}")
+        case IntBool ib:
+            print("int (or bool): {ib}")
+
+export func main():
+    foo("lol")
+    foo(123)
