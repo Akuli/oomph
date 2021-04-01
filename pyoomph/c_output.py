@@ -165,9 +165,7 @@ class _FunctionEmitter:
             return f"if ({self.emit_var(ins.cond)}) goto {self.get_label_name(ins.label)};\n"
 
         if isinstance(ins, ir.UnionMemberCheck):
-            assert (
-                isinstance(ins.union.type, UnionType)
-            )
+            assert isinstance(ins.union.type, UnionType)
             return f"""
             {self.emit_var(ins.result)} = (
                 {self.emit_var(ins.union)}.membernum == {_get_member_num(ins.union.type, ins.member_type)}

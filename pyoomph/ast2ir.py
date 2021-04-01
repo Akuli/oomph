@@ -6,10 +6,11 @@ from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from pyoomph import ast, ir
 from pyoomph.types import (
-    BOOL,OPTIONAL,
+    BOOL,
     FLOAT,
     INT,
     LIST,
+    OPTIONAL,
     STRING,
     AutoType,
     FunctionType,
@@ -830,9 +831,16 @@ class _FileConverter:
         generic_arg = (recursing_callback or self.get_type)(raw_type.generic)
         generic = self._generic_types[raw_type.name]
 
-        if generic is OPTIONAL and isinstance(generic_arg, UnionType) and generic_arg.type_members is None:
+        if (
+            generic is OPTIONAL
+            and isinstance(generic_arg, UnionType)
+            and generic_arg.type_members is None
+        ):
             result = generic.get_type(generic_arg, set_type_members=False)
-            self.union_laziness[result] = [ast.Type('null', None)] + self.union_laziness[generic_arg]
+            assert isinstance(result, UnionType)
+            self.union_laziness[result] = [
+                ast.Type("null", None)
+            ] + self.union_laziness[generic_arg]
             return result
 
         return generic.get_type(generic_arg)
@@ -952,7 +960,7 @@ class _FileConverter:
             self._types[top_declaration.name] = self.get_type(top_declaration.type)
 
         elif isinstance(top_declaration, ast.UnionDef):
-            union_type = UnionType(top_declaration.name, self.path)
+            union_type = UnionType(top_declaration.name)
             self._types[top_declaration.name] = union_type
             self.union_laziness[union_type] = top_declaration.type_members
 

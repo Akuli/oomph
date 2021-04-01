@@ -64,8 +64,8 @@ class AutoType(Type):
 class UnionType(Type):
     type_members: Optional[Set[Type]]
 
-    def __init__(self, name: str, definition_path: Optional[pathlib.Path] = None):
-        super().__init__(name, True, definition_path)
+    def __init__(self, name: str):
+        super().__init__(name, True)
         self.type_members = None  # to be set later
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
@@ -85,7 +85,7 @@ class UnionType(Type):
             else:
                 self.type_members.add(member)
 
-        assert len(self.type_members) >= 2   # TODO
+        assert len(self.type_members) >= 2  # TODO
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
@@ -93,7 +93,7 @@ class UnionType(Type):
 class Generic:
     name: str
 
-    def get_type(self, generic_arg: Type, *, set_type_members=True) -> Type:
+    def get_type(self, generic_arg: Type, *, set_type_members: bool = True) -> Type:
         result: Type
         if self is OPTIONAL:
             mypy_sucks = UnionType(f"{self.name}[{generic_arg.name}]")
