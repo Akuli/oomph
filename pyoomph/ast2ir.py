@@ -933,6 +933,10 @@ class _FileConverter:
                 method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
                 self._do_func_or_method_def_pass1(method_def, classtype)
 
+        elif isinstance(top_declaration, ast.TypeDef):
+            assert top_declaration.name not in self._types
+            self._types[top_declaration.name] = self.get_type(top_declaration.type)
+
         elif isinstance(top_declaration, ast.UnionDef):
             union_type = UnionType(top_declaration.name, self.path)
             self._types[top_declaration.name] = union_type
@@ -945,7 +949,7 @@ class _FileConverter:
         self,
         top_declaration: ast.ToplevelDeclaration,
     ) -> List[ir.ToplevelDeclaration]:
-        if isinstance(top_declaration, ast.Import):
+        if isinstance(top_declaration, (ast.Import, ast.TypeDef)):
             return []
 
         if isinstance(top_declaration, ast.FuncOrMethodDef):

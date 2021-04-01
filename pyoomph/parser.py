@@ -480,6 +480,14 @@ class _Parser:
             types = self.parse_block(self.parse_union_member)
             return ast.UnionDef(name, types, export)
 
+        if self.token_iter.peek() == ("keyword", "typedef"):
+            self.get_token("keyword", "typedef")
+            name = self.get_token("identifier")[1]
+            self.get_token("op", "=")
+            the_type = self.parse_type()
+            self.get_token("op", "\n")
+            return ast.TypeDef(name, the_type)
+
         raise NotImplementedError(self.token_iter.peek())
 
 
