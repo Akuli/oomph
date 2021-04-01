@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 
 # Describes how exactly a type was created from a generic
@@ -73,7 +73,7 @@ class UnionType(Type):
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
-    def set_type_members(self, type_members: List[Type]) -> None:
+    def set_type_members(self, type_members: Union[List[Type], Set[Type]]) -> None:
         assert self.type_members is None
         self.type_members = set()
 

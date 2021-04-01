@@ -672,8 +672,9 @@ class _FunctionOrMethodConverter:
                     assert types_to_do
                     # TODO: improve type name
                     if len(types_to_do) >= 2:
-                        the_type = ir.UnionType('<case *>')
-                        the_type.set_type_members(types_to_do)
+                        mypy_sucks = ir.UnionType("<case *>")
+                        mypy_sucks.set_type_members(types_to_do)
+                        the_type: Type = mypy_sucks
                     else:
                         [the_type] = types_to_do
                     types_to_do.clear()
@@ -692,7 +693,12 @@ class _FunctionOrMethodConverter:
 
                 if varname is not None:
                     self.variables[varname] = var
-                self.do_if(as_success_bool, self.do_block(case.body) + [ir.Goto(done, ir.visible_builtins['true'])], [])
+                self.do_if(
+                    as_success_bool,
+                    self.do_block(case.body)
+                    + [ir.Goto(done, ir.visible_builtins["true"])],
+                    [],
+                )
                 if varname is not None:
                     assert self.variables[varname] == var
                     del self.variables[varname]
@@ -754,6 +760,7 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.source)
                 assert isinstance(ins.source.type, ir.UnionType), ins.source
+                assert ins.source.type.type_members is not None
 
                 if isinstance(ins.result.type, UnionType):
                     assert ins.result.type.type_members is not None
@@ -782,7 +789,9 @@ class _FunctionOrMethodConverter:
                                 )
                             )
                             self.code.append(ir.IncRef(ins.result))
-                            self.code.append(ir.VarCpy(ins.success_bool, ir.visible_builtins["true"]))
+                            self.code.append(
+                                ir.VarCpy(ins.success_bool, ir.visible_builtins["true"])
+                            )
                             self.code.append(ir.Goto(done, ir.visible_builtins["true"]))
 
                         self.code.append(
@@ -792,7 +801,9 @@ class _FunctionOrMethodConverter:
                         )
                         self.do_if(member_check_var, if_it_matches, [])
 
-                    self.code.append(ir.VarCpy(ins.success_bool, ir.visible_builtins["false"]))
+                    self.code.append(
+                        ir.VarCpy(ins.success_bool, ir.visible_builtins["false"])
+                    )
                     self.code.append(done)
 
                 where = self.code.index(ins)
