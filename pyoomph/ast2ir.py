@@ -860,7 +860,7 @@ class _FileConverter:
 
                 name = top_declaration.name + "::" + symbol.name
                 if isinstance(symbol.value, ir.FileVariable):
-                    # Technically pass 3, but adding it earlier doesn't matter
+                    # Technically step 3, but adding it earlier doesn't matter
                     self.add_var(symbol.value, name)
                 else:
                     self._types[name] = symbol.value
