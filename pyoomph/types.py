@@ -64,8 +64,14 @@ class AutoType(Type):
 class UnionType(Type):
     type_members: List[Type]
 
-    def __init__(self, name: str, type_members: List[Type]):
-        super().__init__(name, True)
+    # TODO: get rid of definition_path
+    def __init__(
+        self,
+        name: str,
+        type_members: List[Type],
+        definition_path: Optional[pathlib.Path] = None,
+    ):
+        super().__init__(name, True, definition_path)
         assert len(type_members) >= 2
         assert len(type_members) == len(set(type_members))  # no duplicates
         self.type_members = type_members
