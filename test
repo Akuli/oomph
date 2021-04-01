@@ -4,8 +4,8 @@ set -o pipefail
 
 keep_going=no
 fix=no
-check_self_hosted=yes
-check_pyoomph=yes
+check_self_hosted=no
+check_pyoomph=no
 
 while [[ "$1" == --* ]]; do
     case "$1" in
@@ -22,12 +22,12 @@ while [[ "$1" == --* ]]; do
             compiler_valgrind_arg="--valgrind='$valgrind'"
             shift
             ;;
-        --skip-self-hosted)
-            check_self_hosted=no
+        --self-hosted)
+            check_self_hosted=yes
             shift
             ;;
-        --skip-pyoomph)
-            check_pyoomph=no
+        --pyoomph)
+            check_pyoomph=yes
             shift
             ;;
         *)
@@ -35,6 +35,11 @@ while [[ "$1" == --* ]]; do
             exit 2
     esac
 done
+
+if [ $check_self_hosted == no ] && [ $check_pyoomph == no ]; then
+    check_self_hosted=yes
+    check_pyoomph=yes
+fi
 
 function check()
 {
