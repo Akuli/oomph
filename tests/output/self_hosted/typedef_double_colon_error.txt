@@ -1,0 +1,5 @@
+tests/typedef_double_colon_error.oomph:1: error: typedef name must not contain '::'
+
+    typedef foo::Bar = Int
+            ^^^^^^^^
+

@@ -35,6 +35,7 @@ export union ToplevelDeclaration:
     ClassDef
     FuncOrMethodDef  # function definition, in this context
     Import
+    TypeDef
     UnionDef
 
 export union LoopHeader:
@@ -80,6 +81,7 @@ export class Switch(error::Location location, Expression union_obj, List[Case] c
 export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndName] args, Optional[Type] returntype, List[Statement] body)
 export class ClassDef(error::Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(error::Location location, Str path, Str name)
+export class TypeDef(error::Location location, Str name, Type type)
 export class UnionDef(error::Location location, Str name, List[Type] type_members)
 
 export func locate_loop_header(LoopHeader loop_header) -> error::Location:

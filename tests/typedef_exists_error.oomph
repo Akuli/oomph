@@ -1,0 +1,4 @@
+typedef Int = Str
+
+export func main():
+    pass

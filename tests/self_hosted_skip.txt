@@ -92,6 +92,7 @@ tests/slice.oomph
 tests/string.oomph
 tests/switch_in_loop.oomph
 tests/trailing_comma.oomph
+tests/typedef.oomph
 tests/union_bugs.oomph
 tests/union.oomph
 tests/union_segfault_bug.oomph

@@ -1,0 +1,4 @@
+typedef foo::Bar = Int
+
+export func main():
+    pass

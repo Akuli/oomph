@@ -11,7 +11,7 @@ export func main():
 
     print(new hello::FooBar(b))
     switch new hello::FooBar(b):
-        case hello::Foo f:
+        case hello::TypeDeffedFoo f:
             print("Foo from switch: {f}")
         case hello::Bar b2:  # TODO: let it shadow?
             print("Bar from switch: {b2}")

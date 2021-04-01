@@ -1,0 +1,4 @@
+typedef NumberOrNot = Optional[Int]
+
+export func main():
+    print("lol")

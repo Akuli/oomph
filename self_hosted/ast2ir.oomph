@@ -1106,6 +1106,12 @@ class FileConverter(
                             self.delete_type_if_exists(name)
                             self.types.push(new NamedType(name, type))
 
+            case ast::TypeDef type_def:
+                foreach type of self.types:
+                    if type.name == type_def.name:
+                        type_def.location.error("type '{type_def.name}' already exists")
+                self.types.push(new NamedType(type_def.name, self.get_type(type_def.type, null)))
+
             case ast::FuncOrMethodDef funcdef:
                 self.do_func_or_method_def_pass1(funcdef, null)
 
@@ -1157,6 +1163,13 @@ class FileConverter(
                 self.types.push(new NamedType(uniondef.name, union_type))
                 self.union_laziness.push(new UnionTypeAndAstTypeList(union_type, uniondef.type_members))
 
+    meth export_type(Str name):
+        foreach named_type of self.types:
+            if named_type.name == name:
+                self.symbols.push(new ir::Symbol(self.path, name, named_type.type))
+                return
+        assert(false)
+
     meth do_toplevel_declaration_pass2(ast::ToplevelDeclaration top_decl) -> List[ir::ToplevelDeclaration]:
         switch top_decl:
             case ast::Import imp:
@@ -1189,16 +1202,13 @@ class FileConverter(
                 self.symbols.push(new ir::Symbol(self.path, classdef.name, classtype))
                 return typed_method_defs
 
-            case ast::UnionDef uniondef:
-                foreach named_type of self.types:
-                    if named_type.name == uniondef.name:
-                        self.symbols.push(new ir::Symbol(
-                            self.path, uniondef.name, named_type.type as ir::UnionType
-                        ))
-                        # Union methods are implemented in c_output
-                        return []
+            case ast::TypeDef type_def:
+                self.export_type(type_def.name)
+                return []
 
-                assert(false)
+            case ast::UnionDef uniondef:
+                self.export_type(uniondef.name)
+                return []
 
     meth post_process_union(ir::UnionType union_type):
         if union_type.type_members == null:
