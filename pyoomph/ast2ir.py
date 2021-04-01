@@ -847,6 +847,7 @@ class _FileConverter:
             (recursing_callback or self.get_type)(raw_type.generic)
         )
 
+    # See docs/syntax.md
     # Step 1: available type names: imports, classes, typedefs, unions
     # Step 2: typedef contents, union contents
     # Step 3: function/method names and signatures, class constructor signatures
