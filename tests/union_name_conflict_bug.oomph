@@ -1,0 +1,18 @@
+import "union_name_conflict_bug_lib.oomph" as lib
+
+union Blah:
+    Str
+    Bool
+
+class FooBar():
+    meth bar() -> lib::Blah:
+        return new lib::Blah(123)
+    meth baz(Blah top_decl):
+        switch top_decl:
+            case Str s:
+                pass
+            case *:
+                pass
+
+export func main():
+    pass

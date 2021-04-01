@@ -117,7 +117,6 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
-            assert ins.result.type.type_members is not None
             membernum = ins.result.type.type_members.index(ins.value.type)
             return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };\n" % (
                 self.emit_var(ins.result),
@@ -129,7 +128,6 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.GetFromUnion):
             assert isinstance(ins.union.type, ir.UnionType)
-            assert ins.union.type.type_members is not None
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"""
             if ({self.emit_var(ins.union)}.membernum != {membernum})
@@ -153,10 +151,7 @@ class _FunctionEmitter:
             return f"if ({self.emit_var(ins.cond)}) goto {self.get_label_name(ins.label)};\n"
 
         if isinstance(ins, ir.UnionMemberCheck):
-            assert (
-                isinstance(ins.union.type, UnionType)
-                and ins.union.type.type_members is not None
-            )
+            assert isinstance(ins.union.type, UnionType)
             return f"""
             {self.emit_var(ins.result)} = (
                 {self.emit_var(ins.union)}.membernum == {ins.union.type.type_members.index(ins.member_type)}
@@ -415,8 +410,6 @@ class _FilePair:
         assert self.struct is None
 
         if isinstance(the_type, UnionType):
-            assert the_type.type_members is not None
-
             to_string_cases = "".join(
                 f"""
                 case {num}:

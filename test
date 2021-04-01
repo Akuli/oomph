@@ -121,9 +121,7 @@ if [ $check_pyoomph == yes ]; then
         if [[ $file == tests/*_lib.oomph ]]; then
             # The file is meant to be imported
             continue
-        fi
-
-        if [[ $file == tests/*_error.oomph ]]; then
+        elif [[ $file == tests/*_error.oomph ]]; then
             run check \
                 "$file" \
                 "python3 -m pyoomph $file" \
@@ -151,7 +149,9 @@ if [ $check_self_hosted == yes ] && (
     make oomphc
 
     for file in tests/*.oomph; do
-        if ! grep -q "^$file" tests/self_hosted_skip.txt; then
+        if [[ $file == tests/*_lib.oomph ]]; then
+            continue
+        elif ! grep -q "^$file" tests/self_hosted_skip.txt; then
             if [[ $file == tests/*_error.oomph ]]; then
                 check "$file" "./oomphc $file" "2>/dev/null" tests/output/self_hosted should_fail
             else

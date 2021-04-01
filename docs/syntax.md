@@ -184,3 +184,22 @@ A simple expression can be:
 Any simple expression can include zero or more of the following at the end:
 - Call: comma-separated parenthesized list of expressions.
 - Attribute lookup: `.` operator token followed by a simple identifier token.
+
+
+## Order of toplevel declarations
+
+Imports must be first, but otherwise,
+the order of toplevel declarations in an Oomph program usually doesn't matter.
+To make this work, the compiler processes the parsed code in the following steps:
+1. Make names of classes, typedefs, unions and imported files available for subsequent
+    steps. No more types are defined after this step, although details about the types
+    are not made available yet; we don't know what methods are available in each class,
+    for example.
+2. Process typedef contents and union contents. This is done in a separate step because
+    it involves referencing other types, possibly defined later in the file.
+3. Process arguments and return types of functions, methods and classes. These may use
+    typedefs, which is fine, because the actual type corresponding with each typedef
+    is now known.
+4. Process bodies of functions and methods. This needs information about what other
+    functions and methods there are, what arguments do they take, and what they return,
+    provided by the previous step.
