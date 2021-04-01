@@ -190,7 +190,7 @@ Any simple expression can include zero or more of the following at the end:
 
 Imports must be first, but otherwise,
 the order of toplevel declarations in an Oomph program usually doesn't matter.
-To make this work, the compiler processes AST in the following steps:
+To make this work, the compiler processes the parsed code in the following steps:
 1. Make names of classes, typedefs, unions and imported files available for subsequent
     steps. No more types are defined after this steps, although details about the types
     are not made available yet; we don't know what methods are available in each class,
