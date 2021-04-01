@@ -1,0 +1,13 @@
+union Expression:
+    Int
+    Str
+
+union Statement:
+    Str
+    Return
+
+class ForLoopHeader(Statement init, Optional[Expression] cond)
+class Return(Optional[Expression] value)
+
+export func main():
+    pass
