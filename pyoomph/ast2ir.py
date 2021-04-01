@@ -949,7 +949,13 @@ class _FileConverter:
         self,
         top_declaration: ast.ToplevelDeclaration,
     ) -> List[ir.ToplevelDeclaration]:
-        if isinstance(top_declaration, (ast.Import, ast.TypeDef)):
+        if isinstance(top_declaration, ast.Import):
+            return []
+
+        if isinstance(top_declaration, ast.TypeDef):
+            self.symbols.append(
+                ir.Symbol(self.path, top_declaration.name, self._types[top_declaration.name])
+            )
             return []
 
         if isinstance(top_declaration, ast.FuncOrMethodDef):
