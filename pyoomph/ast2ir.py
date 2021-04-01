@@ -759,7 +759,7 @@ class _FunctionOrMethodConverter:
                     assert ins.result.type.type_members is not None
                     target_members = ins.result.type.type_members
                 else:
-                    target_members = [ins.result.type]
+                    target_members = {ins.result.type}
 
                 member_check_var = self.create_var(BOOL)
                 done = ir.GotoLabel()
@@ -770,17 +770,29 @@ class _FunctionOrMethodConverter:
                             member_var = self.create_var(member_type)
                             self.code.append(ir.GetFromUnion(member_var, ins.source))
                             self.code.append(ir.IncRef(member_var))
-                            self.code.append(ir.VarCpy(ins.result, self.implicit_conversion(member_var, ins.result.type)))
-                            self.code.append(ir.Goto(done, ir.visible_builtins['true']))
+                            self.code.append(
+                                ir.VarCpy(
+                                    ins.result,
+                                    self.implicit_conversion(
+                                        member_var, ins.result.type
+                                    ),
+                                )
+                            )
+                            self.code.append(ir.Goto(done, ir.visible_builtins["true"]))
 
-                        self.code.append(ir.UnionMemberCheck(member_check_var, ins.source, member_type))
+                        self.code.append(
+                            ir.UnionMemberCheck(
+                                member_check_var, ins.source, member_type
+                            )
+                        )
                         self.do_if(member_check_var, if_it_matches, [])
 
-                    self.code.append(ir.Panic("'as' failed"))  # TODO: better error message?
+                    # TODO: better error message?
+                    self.code.append(ir.Panic("'as' failed"))
                     self.code.append(done)
 
                 where = self.code.index(ins)
-                self.code[where:where+1] = as_code
+                self.code[where : where + 1] = as_code
 
         for ins in self.code:
             if isinstance(
