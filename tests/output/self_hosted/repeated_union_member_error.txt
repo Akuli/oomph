@@ -1,0 +1,5 @@
+tests/repeated_union_member_error.oomph:1: error: repeated union member 'Int'
+
+    typedef Foo = Int | Str | Int
+                  ^^^^^^^^^^^^^^^
+

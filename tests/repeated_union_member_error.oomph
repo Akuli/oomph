@@ -1,0 +1,4 @@
+typedef Foo = Int | Str | Int
+
+export func main():
+    pass

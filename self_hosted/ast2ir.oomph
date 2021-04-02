@@ -997,7 +997,7 @@ class FileConverter(
                     let types = [foreach t of union_type.unioned: self.get_type(t, null)]
                 else:
                     types = [foreach t of union_type.unioned: how2recurse.get().get_type(t)]
-                return ir::make_union(self.builtins, types)
+                return ir::make_union(self.builtins, types, ast::locate_type(union_type))
 
             case ast::GenericType generic_type:
                 foreach named_generic of self.generics:

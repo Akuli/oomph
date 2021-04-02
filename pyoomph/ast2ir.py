@@ -840,6 +840,7 @@ class _FileConverter:
             types = [
                 (recursing_callback or self.get_type)(item) for item in raw_type.unioned
             ]
+            assert len(types) == len(set(types)), "duplicate union members"
             return UnionType(set(types))
         elif isinstance(raw_type, ast.GenericType):
             return self._generic_types[raw_type.name].get_type(
