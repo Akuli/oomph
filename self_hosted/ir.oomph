@@ -54,12 +54,9 @@ export func make_union(
 
     # FIXME: sort the type members consistently
 
-    # move NULL_TYPE to beginning, if it's in the list
-    for let i = 0; i < type_members.length(); i = i+1:
-        if type_members.get(i) == builtins.NULL_TYPE:
-            type_members.delete_at_index(i)
-            type_members.insert(0, builtins.NULL_TYPE)
-            break
+    if builtins.NULL_TYPE in type_members:
+        type_members.delete_at_index(type_members.find_only(builtins.NULL_TYPE))
+        type_members.insert(0, builtins.NULL_TYPE)
 
     return new UnionType(type_members, null, builtins)
 
