@@ -477,12 +477,9 @@ class _FunctionOrMethodConverter:
             if isinstance(expr.func, ast.Constructor):
                 union_type = self.get_type(expr.func.type)
                 if isinstance(union_type, UnionType):
-                    var = self.create_var(union_type)
                     assert len(expr.args) == 1
                     obj = self.do_expression(expr.args[0])
-                    self.code.append(ir.IncRef(obj))
-                    self.code.append(ir.InstantiateUnion(var, obj))
-                    return var
+                    return self.implicit_conversion(obj, union_type)
 
             call = self.do_call(expr, True)
             assert call is not None, f"return value of void function {expr.func} used"
@@ -845,7 +842,7 @@ class _FileConverter:
             types = [
                 (recursing_callback or self.get_type)(item) for item in raw_type.unioned
             ]
-            return UnionType(" | ".join(t.name for t in types), set(types))
+            return UnionType('(%s)' % " | ".join(t.name for t in types), set(types))
         elif isinstance(raw_type, ast.GenericType):
             return self._generic_types[raw_type.name].get_type(
                 (recursing_callback or self.get_type)(raw_type.arg)

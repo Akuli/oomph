@@ -129,6 +129,7 @@ A type is a non-union type or multiple `|`-separated non-union types. A non-unio
 - [Automatic type](auto.md): the keyword `auto`.
 - Generic type: an identifier followed by a `[]`-parenthesized type.
 - Named type: an identifier.
+- Any parenthesized type.
 
 A statement can be:
 - If statement: the keyword `if` followed by an expression, then a block of statements,
