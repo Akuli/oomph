@@ -57,7 +57,7 @@ but they are [implicitly converted](implicit-conversions.md) to type `Str | null
 
 Only unions like `SomeType | null` have a `.get()` method;
 other unions don't have it.
-To access the string of `Str | Int`, knowing that's the active member, you can use `as`:
+To access the `Int` of `Str | Int`, knowing that's the active member, you can use `as`:
 
     func blah(Str | Int thing):
         print((thing as Int) + 1)
