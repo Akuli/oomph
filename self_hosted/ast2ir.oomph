@@ -364,13 +364,6 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::VarCpy(result, self.builtins.get_visible_var("true")))
         return result
 
-    meth get_value_of_optional(ir::LocalVariable obj) -> ir::LocalVariable:
-        let source = ir::get_generic_source(obj.type).get()
-        assert(source.generik == self.builtins.OPTIONAL)
-        let result_var = self.create_var(source.arg, obj.location)
-        self.code.push(new ir::MethodCall(obj, "get", [], result_var, obj.location))
-        return result_var
-
     meth do_binary_op_typed(ir::LocalVariable lhs, Str op, error::Location op_location, ir::LocalVariable rhs) -> ir::LocalVariable:
         if op in ["in", "not in"]:
             let result_var = self.create_var(self.builtins.BOOL, op_location)
