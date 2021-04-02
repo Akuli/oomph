@@ -124,6 +124,9 @@ Now `Thing` can be used as a type, and it means same as `FooThing | BarThing`,
 similarly to making `FooThing` and `BarThing` inherit from a base class `Thing`
 in a programming language that has inheritance.
 
+A `typedef` doesn't create a new type; it just gives a new name to an existing type.
+This concept is called type aliasing in some programming languages.
+
 If you want, you can also put the `typedef` before the classes (explained in detail
 [here](syntax.md#order-of-toplevel-declarations)):
 
