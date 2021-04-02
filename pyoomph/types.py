@@ -71,6 +71,9 @@ class AutoType(Type):
     def __init__(self) -> None:
         super().__init__("auto_" + hex(id(self))[-4:], True)
 
+    def get_id_string(self) -> str:
+        raise RuntimeError
+
 
 class UnionType(Type):
     def __init__(self, type_members: Set[Type]):
