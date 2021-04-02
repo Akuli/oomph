@@ -1,7 +1,9 @@
 class Foo()
 class Bar()
 class Baz()
-typedef FooBarBaz = Foo | (Bar | Baz)
+typedef Flat = Foo | Bar | Baz
+typedef Nested = Foo | (Bar | Baz)
 
 export func main():
-    print(new FooBarBaz(new Bar()))
+    print(new Flat(new Bar()))
+    print(new Nested(new Bar()))
