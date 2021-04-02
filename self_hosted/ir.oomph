@@ -31,13 +31,30 @@ export class BasicType(
     meth to_string() -> Str:
         return "<BasicType: {self.name}>"
 
-export class UnionType(Str name, List[Type] type_members, Optional[GenericSource] generic_source):
+export class UnionType(Str name, List[Type] type_members):
     # Helps with reference cycles
     meth to_string() -> Str:
         return "<UnionType: {self.name}>"
 
     meth equals(UnionType other) -> Bool:
         return self.type_members == other.type_members
+
+
+export func make_union(Builtins builtins, Str name, List[Type] type_members) -> UnionType:
+    type_members = type_members.reversed().reversed()   # TODO: better way to copy list
+
+    # check no duplicates
+    for let i = 0; i < type_members.length(); i = i+1:
+        assert(type_members.get(i) not in type_members.slice(0, i))
+
+    # move NULL_TYPE to beginning, if it's in the list
+    for let i = 0; i < type_members.length(); i = i+1:
+        if type_members.get(i) == builtins.NULL_TYPE:
+            type_members.delete_at_index(i)
+            type_members.insert(0, builtins.NULL_TYPE)
+            break
+
+    return new UnionType(name, type_members)
 
 
 export func get_constructor_argtypes(Type type) -> Optional[List[Type]]:
@@ -73,7 +90,7 @@ export func get_generic_source(Type type) -> Optional[GenericSource]:
         case FunctionType functype:
             return null
         case UnionType uniontype:
-            return uniontype.generic_source
+            return null
 
 
 export class BuiltinVariable(Str name, Type type)
@@ -134,12 +151,7 @@ export class Builtins(
     meth generic2type(Generic generik, Type arg) -> Type:
         let source = new GenericSource(generik, arg)
         if generik == self.OPTIONAL:
-            # TODO: equals() and get() methods
-            return new UnionType(
-                "Optional[{type_name(arg)}]",
-                [arg, self.NULL_TYPE],
-                new GenericSource(generik, arg),
-            )
+            return make_union(self, "Optional[{type_name(arg)}]", [arg, self.NULL_TYPE])
         if generik == self.LIST:
             let methods = []
             let result = new BasicType(
@@ -302,11 +314,17 @@ export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
             let methods = basictype.methods
         case FunctionType functype:
             methods = []
-        case UnionType uniontype:
+        case UnionType union_type:
             methods = [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
+            if (
+                union_type.type_members.length() == 2
+                and union_type.type_members.first() == builtins.NULL_TYPE
+            ):
+                let item_type = union_type.type_members.last()
+                methods.push(new Method("get", new FunctionType([new Type(union_type)], item_type)))
 
     foreach method of methods:
         if method.name == name:
