@@ -1,11 +1,7 @@
 class Foo()
 class Bar()
 class Baz()
-
-union FooBarBaz:
-    Foo
-    Bar
-    Baz
+typedef FooBarBaz = Foo | Bar | Baz
 
 export func main():
     let thing = new FooBarBaz(new Foo())

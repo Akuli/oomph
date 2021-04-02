@@ -49,14 +49,8 @@ export typedef Statement = (
     | SetVar
     | Switch
 )
-export typedef ToplevelDeclaration = (
-    ClassDef
-    | FuncOrMethodDef   # function definition, in this context
-    | Import
-    | TypeDef
-    | UnionDef
-)
-export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
+# In ToplevelDeclaration, FuncOrMethodDef is always function definition
+export typedef ToplevelDeclaration = ClassDef | FuncOrMethodDef | Import | TypeDef
 
 export class TypeAndName(Type type, Str name, error::Location name_location)
 
@@ -64,6 +58,7 @@ export class TypeAndName(Type type, Str name, error::Location name_location)
 export class Case(error::Location location, Optional[TypeAndName] type_and_name, List[Statement] body)
 export class ConditionAndBody(error::Location location, Expression cond, List[Statement] body)
 
+export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
 # for init; cond; incr
 export class ForLoopHeader(error::Location keyword_location, List[Statement] init, Optional[Expression] cond, List[Statement] incr)
 export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
@@ -98,7 +93,6 @@ export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndNam
 export class ClassDef(error::Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(error::Location location, Str path, Str name)
 export class TypeDef(error::Location location, Str name, Type type)
-export class UnionDef(error::Location location, Str name, List[Type] type_members)
 
 export func locate_loop_header(LoopHeader loop_header) -> error::Location:
     switch loop_header:

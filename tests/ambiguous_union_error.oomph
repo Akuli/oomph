@@ -1,16 +1,7 @@
-class Foo()
-class Bar()
+typedef Ambiguous = Str | (Str | Int)
 
-union Inner:
-    Foo
-    Bar
-
-union Outer:
-    Foo
-    Inner
-
-func blah(Outer o):
+func blah(Ambiguous a):
     pass
 
 export func main():
-    blah(new Foo())
+    blah("lol")

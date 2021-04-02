@@ -813,7 +813,6 @@ class _FileConverter:
         self.variables: Dict[str, ir.Variable] = ir.visible_builtins.copy()  # type: ignore
 
         # Unions and typedefs are created in pass 1, but content isn't available until pass 2
-        self.union_laziness: Dict[str, List[ast.Type]] = {}
         self.typedef_laziness: Dict[str, ast.Type] = {}
 
     def add_var(self, var: ir.Variable, name: str) -> None:
@@ -825,14 +824,6 @@ class _FileConverter:
         if name in self.typedef_laziness:
             assert name not in self._types
             self._types[name] = self.get_type(self.typedef_laziness.pop(name))
-        elif name in self.union_laziness:
-            assert name not in self._types
-            types = [self.get_type(arg) for arg in self.union_laziness.pop(name)]
-            assert len(types) == len(set(types))  # no duplicates
-
-            union = UnionType(set(types))
-            union.custom_name = name
-            self._types[name] = union
         return self._types[name]
 
     def get_type(
@@ -891,11 +882,8 @@ class _FileConverter:
         elif isinstance(top_declaration, ast.TypeDef):
             self.typedef_laziness[top_declaration.name] = top_declaration.type
 
-        elif isinstance(top_declaration, ast.UnionDef):
-            self.union_laziness[top_declaration.name] = top_declaration.type_members
-
     def do_step2(self, top_declaration: ast.ToplevelDeclaration) -> None:
-        if isinstance(top_declaration, (ast.TypeDef, ast.UnionDef, ast.ClassDef)):
+        if isinstance(top_declaration, (ast.TypeDef, ast.ClassDef)):
             the_type = self.get_named_type(top_declaration.name)
             self.symbols.append(ir.Symbol(self.path, top_declaration.name, the_type))
             if isinstance(top_declaration, ast.TypeDef) and isinstance(
@@ -1019,7 +1007,6 @@ def convert_program(
         converter.do_step1(top)
     for top in program:
         converter.do_step2(top)
-    assert not converter.union_laziness
     assert not converter.typedef_laziness
     for top in program:
         converter.do_step3(top)

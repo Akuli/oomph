@@ -1,6 +1,4 @@
-union Foo:
-    Int
-    Str
+typedef Foo = Int | Str
 
 export func main():
     switch new Foo(1):

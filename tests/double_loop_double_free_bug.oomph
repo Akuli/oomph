@@ -1,8 +1,5 @@
 class IntConstant()
-
-union PrecedenceItem:
-    IntConstant
-    Str
+typedef PrecedenceItem = IntConstant | Str
 
 export func main():
     let magic_list = new List[PrecedenceItem]()

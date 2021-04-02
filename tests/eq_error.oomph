@@ -1,10 +1,8 @@
 class Foo()
 class Bar()
 
-# The existence of this should not affect anything
-union FooBar:
-    Foo
-    Bar
+# The existence of this type should not affect anything
+typedef FooBar = Foo | Bar
 
 export func main():
     print(new Foo() == new Bar())

@@ -236,10 +236,3 @@ class ClassDef(ToplevelDeclaration):
 class TypeDef(ToplevelDeclaration):
     name: str
     type: Type
-
-
-@dataclass(eq=False)
-class UnionDef(ToplevelDeclaration):
-    name: str
-    type_members: List[Type]
-    export: bool

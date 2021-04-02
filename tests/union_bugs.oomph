@@ -1,7 +1,4 @@
-union Thing:
-    Foo
-    Bar
-
+typedef Thing = Foo | Bar
 class Foo()
 class Bar()
 

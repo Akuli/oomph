@@ -1,8 +1,5 @@
 class Foo(Int value)
-
-union Bar:
-    Foo
-    Str
+typedef Bar = Foo | Str
 
 export func main():
     print(new Bar(new Foo(123)) as Foo)

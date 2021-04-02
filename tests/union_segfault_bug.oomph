@@ -1,6 +1,4 @@
-union Foo:
-    Str
-    Int
+typedef Foo = Str | Int
 
 export func main():
     print(new Foo("a") == new Foo(1))
