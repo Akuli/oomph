@@ -462,11 +462,6 @@ class _Parser:
         self.get_token("keyword", "meth")
         return self.parse_function_or_method()
 
-    def parse_union_member(self) -> ast.Type:
-        result = self.parse_type()
-        self.get_token("op", "\n")
-        return result
-
     def parse_toplevel(self) -> ast.ToplevelDeclaration:
         if self.token_iter.peek() == ("keyword", "export"):
             self.get_token("keyword", "export")
@@ -490,12 +485,6 @@ class _Parser:
                 body = []
                 self.get_token("op", "\n")
             return ast.ClassDef(name, args, body, export)
-
-        if self.token_iter.peek() == ("keyword", "union"):
-            self.get_token("keyword", "union")
-            name = self.get_token("identifier")[1]
-            types = self.parse_block(self.parse_union_member)
-            return ast.UnionDef(name, types, export)
 
         if self.token_iter.peek() == ("keyword", "typedef"):
             self.get_token("keyword", "typedef")

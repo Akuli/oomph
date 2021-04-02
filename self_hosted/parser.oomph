@@ -119,15 +119,6 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("end_block", "")
         return result
 
-    meth parse_block_of_union_members() -> List[ast::Type]:
-        self.get_token("begin_block", ":")
-        let result = []
-        while self.tokens != [] and not self.peek().matches("end_block", ""):
-            result.push(self.parse_type())
-            self.get_token("op", "\n")
-        self.get_token("end_block", "")
-        return result
-
     meth tokenize_and_parse_expression(Str code, error::Location location) -> ast::Expression:
         let parser = new Parser(tokenizer::tokenize(
             code, location.path, location.lineno, location.line_prefix
@@ -586,12 +577,6 @@ class Parser(List[tokenizer::Token] tokens):
                 body = []
                 self.get_token("op", "\n")
             return new ast::ClassDef(location, name, args, body)
-
-        if self.peek().matches("keyword", "union"):
-            let location = self.get_token("keyword", "union").location
-            let name = self.get_token_by_type("id").value
-            let types = self.parse_block_of_union_members()
-            return new ast::UnionDef(location, name, types)
 
         if self.peek().matches("keyword", "typedef"):
             let location = self.get_token("keyword", "typedef").location
