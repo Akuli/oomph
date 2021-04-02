@@ -1,0 +1,4 @@
+export func main():
+    print([1, 2, 2, 3].find_first(2))
+    print([1, 2, 2, 3].find_last(2))
+    print([1, 2, 2, 3].find_only(3))
