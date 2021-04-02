@@ -70,7 +70,7 @@ class FunctionEmitter(
             case ir::FileVariable this_file_var:
                 assert(false)
 
-    meth emit_call(Str c_func, List[ir::LocalVariable] args, Optional[ir::LocalVariable] result):
+    meth emit_call(Str c_func, List[ir::LocalVariable] args, ir::LocalVariable | null result):
         let arg_strings = [foreach arg of args: self.emit_var(arg)]
         if result == null:
             let assignment = ""

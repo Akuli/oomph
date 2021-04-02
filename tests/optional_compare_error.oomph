@@ -1,2 +1,2 @@
 export func main():
-    print(new Optional[Int](1) < new Optional[Int](2))
+    print(new (Int | null)(1) < new (Int | null)(2))

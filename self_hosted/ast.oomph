@@ -55,12 +55,12 @@ export typedef ToplevelDeclaration = ClassDef | FuncOrMethodDef | Import | TypeD
 export class TypeAndName(Type type, Str name, error::Location name_location)
 
 # 'case *' means that type_and_varname is null
-export class Case(error::Location location, Optional[TypeAndName] type_and_name, List[Statement] body)
+export class Case(error::Location location, TypeAndName | null type_and_name, List[Statement] body)
 export class ConditionAndBody(error::Location location, Expression cond, List[Statement] body)
 
 export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
 # for init; cond; incr
-export class ForLoopHeader(error::Location keyword_location, List[Statement] init, Optional[Expression] cond, List[Statement] incr)
+export class ForLoopHeader(error::Location keyword_location, List[Statement] init, Expression | null cond, List[Statement] incr)
 export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
 
 export class As(error::Location location, Expression expr, Type type)
@@ -84,12 +84,12 @@ export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block
 export class Let(error::Location location, Str varname, Expression value)
 export class Loop(LoopHeader loop_header, List[Statement] body)
 export class Pass(error::Location location)
-export class Return(error::Location location, Optional[Expression] value)
+export class Return(error::Location location, Expression | null value)
 export class SetAttribute(error::Location attribute_location, Expression obj, Str attribute, Expression value)
 export class SetVar(error::Location location, Str varname, Expression value)
 export class Switch(error::Location location, Expression union_obj, List[Case] cases)
 
-export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndName] args, Optional[Type] returntype, List[Statement] body)
+export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndName] args, Type | null returntype, List[Statement] body)
 export class ClassDef(error::Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(error::Location location, Str path, Str name)
 export class TypeDef(error::Location location, Str name, Type type)

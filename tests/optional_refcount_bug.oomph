@@ -1,5 +1,5 @@
-func foo() -> Optional[Str]:
-    return new Optional[Str]("aaa".split("").first())
+func foo() -> Str | null:
+    return new (Str | null)("aaa".split("").first())
 
 export func main():
     print(foo())

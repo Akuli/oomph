@@ -244,7 +244,7 @@ class Parser(List[tokenizer::Token] tokens):
                 return result
 
     # TODO: find_blah_operator() functions should not be as difficult as they are
-    meth find_unary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
+    meth find_unary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Int | null:
         for let i = 0; i < magic_list.length() - 1; i = i+1:
             switch magic_list.get(i):
                 case tokenizer::Token operator:
@@ -260,7 +260,7 @@ class Parser(List[tokenizer::Token] tokens):
             return i
         return null
 
-    meth find_binary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Optional[Int]:
+    meth find_binary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Int | null:
         for let i = 0; i <= magic_list.length() - 3; i = i+1:
             switch magic_list.get(i):
                 case ast::Expression expr:
@@ -340,7 +340,7 @@ class Parser(List[tokenizer::Token] tokens):
                 new PrecedenceItem(self.tokens.pop())
         ]
 
-    meth parse_expression(Optional[Str] error_message) -> ast::Expression:
+    meth parse_expression(Str | null error_message) -> ast::Expression:
         if error_message == null:
             error_message = "should be an expression"
 
@@ -421,7 +421,7 @@ class Parser(List[tokenizer::Token] tokens):
         let case_keyword = self.get_token("keyword", "case")
         if self.peek().matches("op", "*"):
             self.get_token("op", "*")
-            let type_and_varname = new Optional[ast::TypeAndName](null)
+            let type_and_varname = new (ast::TypeAndName | null)(null)
         else:
             type_and_varname = self.parse_type_and_name()
         let body = self.parse_block_of_statements()
@@ -442,7 +442,7 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("op", ";")
 
             if self.peek().matches("op", ";"):
-                let cond = new Optional[ast::Expression](null)
+                let cond = new (ast::Expression | null)(null)
             else:
                 cond = self.parse_expression(null)
             self.get_token("op", ";")
@@ -544,7 +544,7 @@ class Parser(List[tokenizer::Token] tokens):
 
         if self.peek().matches("op", "->"):
             self.get_token("op", "->")
-            let returntype = new Optional[ast::Type](self.parse_type())
+            let returntype = new (ast::Type | null)(self.parse_type())
         else:
             returntype = null
 
@@ -594,7 +594,7 @@ class Parser(List[tokenizer::Token] tokens):
 export func parse_file(
     Str code,
     Str path,
-    Optional[Str] stdlib_path,
+    Str | null stdlib_path,
 ) -> List[ast::ToplevelDeclaration]:
 
     let parser = new Parser(tokenizer::tokenize(code, path, 1, "").reversed())
