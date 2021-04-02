@@ -827,9 +827,9 @@ class _FileConverter:
             self._types[name] = self.get_type(self.typedef_laziness.pop(name))
         elif name in self.union_laziness:
             assert name not in self._types
-            self._types[name] = UnionType(
-                name, [self.get_type(arg) for arg in self.union_laziness.pop(name)]
-            )
+            types = [self.get_type(arg) for arg in self.union_laziness.pop(name)]
+            assert len(types) == len(set(types))  # no duplicates
+            self._types[name] = UnionType(name, set(types))
         return self._types[name]
 
     def get_type(

@@ -88,9 +88,8 @@ double float_mod(double a, double b);
 int64_t int_mod(int64_t a, int64_t b);
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
 
-// Optional[T] is actually Union[NULL_TYPE, T]
-// To set variable to null, do:  var = (the_type){0};
-#define IS_NULL(unionvar) ((unionvar).membernum == 1)
+// null is first member
+#define IS_NULL(unionvar) ((unionvar).membernum == 0)
 
 // self-hosted can't use builtins.oomph yet
 #ifdef SELF_HOSTED

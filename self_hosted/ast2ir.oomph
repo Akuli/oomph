@@ -991,19 +991,18 @@ class FileConverter(
                 let type = self.get_type(self.typedef_laziness.get(i).type, null)
                 self.types.push(new NamedType(name, type))
                 self.typedef_laziness.delete_at_index(i)
-                return type
 
         for let i = 0; i < self.union_laziness.length(); i = i+1:
             if self.union_laziness.get(i).name == name:
                 assert(name not in [foreach t of self.types: t.name])
-                let type = new ir::UnionType(
-                    name,
-                    [foreach t of self.union_laziness.get(i).types: self.get_type(t, null)],
-                    null,
-                )
-                self.types.push(new NamedType(name, type))
+                let types = [foreach t of self.union_laziness.get(i).types: self.get_type(t, null)]
+                for let k = 0; k < types.length(); k = k+1:
+                    if types.get(k) in types.slice(0, k):
+                        # TODO: error location
+                        print("duplicate union member {ir::type_name(types.get(k))}")
+                        assert(false)
+                self.types.push(new NamedType(name, ir::make_union(self.builtins, name, types)))
                 self.union_laziness.delete_at_index(i)
-                return type
 
         foreach type of self.types:
             if type.name == name:
