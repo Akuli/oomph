@@ -206,6 +206,21 @@ int64_t METHOD(find_only)(TYPE self, ITEMTYPE item)
 	return found;
 }
 
+void METHOD(delete_first)(TYPE self, ITEMTYPE item)
+{
+	METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
+}
+
+void METHOD(delete_last)(TYPE self, ITEMTYPE item)
+{
+	METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
+}
+
+void METHOD(delete_only)(TYPE self, ITEMTYPE item)
+{
+	METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
+}
+
 bool METHOD(starts_with)(TYPE self, TYPE prefix)
 {
 	if (self->len < prefix->len)
