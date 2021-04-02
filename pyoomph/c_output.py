@@ -100,6 +100,7 @@ class _FunctionEmitter:
                 ins.args,
                 ins.result,
             )
+
         if isinstance(ins, ir.Return):
             if ins.value is not None:
                 return f"{self.incref_var(ins.value)}; retval = {self.emit_var(ins.value)}; goto out;\n"
