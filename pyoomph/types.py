@@ -174,7 +174,7 @@ class FunctionType(Type):
 BOOL = Type("Bool", False)
 FLOAT = Type("Float", False)
 INT = Type("Int", False)
-NULL_TYPE = Type("<type of null>", False)
+NULL_TYPE = Type("null", False)
 STRING = Type("Str", True)
 
 BOOL.methods["equals"] = FunctionType([BOOL, BOOL], BOOL)
@@ -215,5 +215,5 @@ STRING.methods["to_int"] = FunctionType([STRING], INT)
 STRING.methods["to_string"] = FunctionType([STRING], STRING)  # does nothing
 STRING.methods["trim"] = FunctionType([STRING], STRING)
 
-builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING]}
+builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING, NULL_TYPE]}
 builtin_generic_types = {gen.name: gen for gen in [OPTIONAL, LIST]}

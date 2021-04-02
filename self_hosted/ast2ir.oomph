@@ -1253,11 +1253,11 @@ export func convert_program(
         path,
         symbols,
         [
-            # NULL_TYPE not exposed
             new NamedType("Bool", builtins.BOOL),
             new NamedType("Float", builtins.FLOAT),
             new NamedType("Int", builtins.INT),
             new NamedType("Str", builtins.STR),
+            new NamedType("null", builtins.NULL_TYPE),
         ],
         [
             new NamedGeneric("List", builtins.LIST),

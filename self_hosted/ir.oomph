@@ -210,7 +210,7 @@ export func create_builtins() -> Builtins:
     let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, false))
     let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, false))
     let INT = new Type(new BasicType("Int", false, [], [], null, null, false))
-    let NULL_TYPE = new Type(new BasicType("Bool", false, [], [], null, null, false))
+    let NULL_TYPE = new Type(new BasicType("null", false, [], [], null, null, false))
     let STR = new Type(new BasicType("Str", true, [], [], null, null, false))
 
     let LIST = new Generic("List")

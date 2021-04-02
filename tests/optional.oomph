@@ -1,4 +1,4 @@
-func show(Optional[Str] x):
+func show(Str | null x):
     print("show: {x} {x == null}")
 
 export func main():
