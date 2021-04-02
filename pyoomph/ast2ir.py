@@ -901,6 +901,7 @@ class _FileConverter:
             if isinstance(top_declaration, ast.TypeDef) and isinstance(
                 the_type, UnionType
             ):
+                # use typedef name in error messages
                 assert the_type.custom_name is None
                 the_type.custom_name = top_declaration.name
 

@@ -1091,6 +1091,8 @@ class FileConverter(
                 self.symbols.push(new ir::Symbol(self.path, def.name, the_type))
                 switch the_type:
                     case ir::UnionType union_type:
+                        # use typedef name in error messages
+                        assert(union_type.custom_name == null)
                         union_type.custom_name = new Optional[Str](def.name)
                     case *:
                         pass
