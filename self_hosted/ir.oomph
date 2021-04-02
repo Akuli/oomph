@@ -31,16 +31,20 @@ export class BasicType(
     meth to_string() -> Str:
         return "<BasicType: {self.name}>"
 
-export class UnionType(Str name, List[Type] type_members):
+export class UnionType(
+    List[Type] type_members,
+    Optional[Str] custom_name,
+    Builtins builtins,  # TODO: this sucks
+):
     # Helps with reference cycles
     meth to_string() -> Str:
-        return "<UnionType: {self.name}>"
+        return "<UnionType: custom_name={self.custom_name}>"
 
     meth equals(UnionType other) -> Bool:
         return self.type_members == other.type_members
 
 
-export func make_union(Builtins builtins, Str name, List[Type] type_members) -> UnionType:
+export func make_union(Builtins builtins, List[Type] type_members) -> UnionType:
     type_members = type_members.reversed().reversed()   # TODO: better way to copy list
 
     # check no duplicates
@@ -56,7 +60,7 @@ export func make_union(Builtins builtins, Str name, List[Type] type_members) -> 
             type_members.insert(0, builtins.NULL_TYPE)
             break
 
-    return new UnionType(name, type_members)
+    return new UnionType(type_members, null, builtins)
 
 
 export func get_constructor_argtypes(Type type) -> Optional[List[Type]]:
@@ -80,8 +84,20 @@ export func type_name(Type type) -> Str:
             return basic.name
         case FunctionType functype:
             return "<function type>"
-        case UnionType uniontype:
-            return uniontype.name
+        case UnionType union_type:
+            if (
+                union_type.type_members.length() == 2
+                and union_type.type_members.first() == union_type.builtins.NULL_TYPE
+            ):
+                return "Optional[{type_name(union_type.type_members.last())}]"
+
+            switch union_type.custom_name:
+                case Str s:
+                    return s
+                case *:
+                    return "(" + [
+                        foreach t of union_type.type_members: type_name(t)
+                    ].join(" | ") + ")"
 
 export func get_generic_source(Type type) -> Optional[GenericSource]:
     switch type:
@@ -153,7 +169,7 @@ export class Builtins(
     meth generic2type(Generic generik, Type arg) -> Type:
         let source = new GenericSource(generik, arg)
         if generik == self.OPTIONAL:
-            return make_union(self, "Optional[{type_name(arg)}]", [arg, self.NULL_TYPE])
+            return make_union(self, [arg, self.NULL_TYPE])
         if generik == self.LIST:
             let methods = []
             let result = new BasicType(

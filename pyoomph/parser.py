@@ -429,11 +429,11 @@ class _Parser:
         return ast.NamedType(name)
 
     def parse_type(self) -> ast.Type:
-        first_basic_type = self.parse_type_without_unions()
+        first_member = self.parse_type_without_unions()
         if self.token_iter.peek() != ("op", "|"):
-            return first_basic_type
+            return first_member
 
-        result = ast.UnionType([first_basic_type])
+        result = ast.UnionType([first_member])
         while self.token_iter.peek() == ("op", "|"):
             self.get_token("op", "|")
             result.unioned.append(self.parse_type_without_unions())

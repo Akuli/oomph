@@ -102,6 +102,7 @@ tests/string.oomph
 tests/switch_in_loop.oomph
 tests/trailing_comma.oomph
 tests/typedef.oomph
+tests/typedef_optional.oomph
 tests/union_bugs.oomph
 tests/union_name_conflict_bug.oomph
 tests/union.oomph

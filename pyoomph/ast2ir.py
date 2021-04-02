@@ -664,6 +664,10 @@ class _FunctionOrMethodConverter:
                     ugly_type, varname = case.type_and_varname
                     nice_type = self.get_type(ugly_type)
                     nice_types = [nice_type]
+                    assert nice_type in types_to_do, (
+                        nice_type,
+                        nice_type.definition_path,
+                    )
                     types_to_do.remove(nice_type)
 
                     case_var = self.create_var(nice_type)
@@ -893,14 +897,10 @@ class _FileConverter:
     def do_step2(self, top_declaration: ast.ToplevelDeclaration) -> None:
         if isinstance(top_declaration, (ast.TypeDef, ast.UnionDef, ast.ClassDef)):
             the_type = self.get_named_type(top_declaration.name)
-            self.symbols.append(
-                ir.Symbol(
-                    self.path,
-                    top_declaration.name,
-                    the_type
-                )
-            )
-            if isinstance(top_declaration, ast.TypeDef) and isinstance(the_type, UnionType):
+            self.symbols.append(ir.Symbol(self.path, top_declaration.name, the_type))
+            if isinstance(top_declaration, ast.TypeDef) and isinstance(
+                the_type, UnionType
+            ):
                 assert the_type.custom_name is None
                 the_type.custom_name = top_declaration.name
 

@@ -1,6 +1,24 @@
 import "error.oomph" as error
 
-class Type(error::Location location, Str name, Optional[Type] generic_arg)
+export typedef Type = AutoType | GenericType | NamedType | UnionType
+export class AutoType(error::Location location)
+export class GenericType(error::Location location, Str name, Type arg)
+export class NamedType(error::Location location, Str name)
+export class UnionType(List[Type] unioned)  # always 2 or more unioned types
+
+export func locate_type(Type type) -> error::Location:
+    switch type:
+        case AutoType autotype:
+            return autotype.location
+        case GenericType generic_type:
+            return generic_type.location
+        case NamedType named_type:
+            return named_type.location
+        case UnionType union_type:
+            let result = locate_type(union_type.unioned.first())
+            foreach member of union_type.unioned.slice(1, union_type.unioned.length()):
+                result = result.combine(locate_type(member))
+            return result
 
 export union Expression:
     As
@@ -94,7 +112,7 @@ export func locate_loop_header(LoopHeader loop_header) -> error::Location:
 export func locate_expression(Expression expression) -> error::Location:
     switch expression:
         case As expr:
-            return locate_expression(expr.expr).combine(expr.type.location)
+            return locate_expression(expr.expr).combine(locate_type(expr.type))
         case BinaryOperator expr:
             return locate_expression(expr.lhs).combine(locate_expression(expr.rhs))
         case Call expr:
