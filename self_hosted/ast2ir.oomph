@@ -734,11 +734,9 @@ class FunctionOrMethodConverter(
                 if header.init.length() == 1:
                     switch header.init.first():
                         case ast::Let leet:
-                            # TODO: better way to remove from list, with custom key func
-                            for let i = 0; ; i = i+1:
-                                if self.variables.get(i).name == leet.varname:
-                                    self.variables.delete_at_index(i)
-                                    break
+                            let varnames = [foreach var of self.variables: var.name]
+                            if leet.varname in varnames:
+                                self.variables.delete_at_index(varnames.find_only(leet.varname))
                         case *:
                             pass
 
@@ -968,12 +966,12 @@ class FileConverter(
     meth get_named_type(Str name) -> ir::Type:
         # step 2 stuff
         # TODO: better list methods
-        for let i = 0; i < self.typedef_laziness.length(); i = i+1:
-            if self.typedef_laziness.get(i).name == name:
-                assert(name not in [foreach t of self.types: t.name])
-                let type = self.get_type(self.typedef_laziness.get(i).type, null)
-                self.types.push(new NamedType(name, type))
-                self.typedef_laziness.delete_at_index(i)
+        let laziness_names = [foreach pair of self.typedef_laziness: pair.name]
+        if name in laziness_names:
+            let pair = self.typedef_laziness.get(laziness_names.find_only(name))
+            self.typedef_laziness.delete_at_index(laziness_names.find_only(name))
+            assert(name not in [foreach t of self.types: t.name])
+            self.types.push(new NamedType(name, self.get_type(pair.type, null)))
 
         foreach type of self.types:
             if type.name == name:
