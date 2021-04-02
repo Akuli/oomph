@@ -108,6 +108,8 @@ function run()
     fi
     "$@" &
 }
+echo "Running $(nproc) tests at a time in parallel"
+trap wait EXIT
 
 make
 mkdir -vp test_out
@@ -115,8 +117,6 @@ rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
 
 if [ $check_pyoomph == yes ]; then
-    echo "Running $(nproc) tests at a time in parallel"
-    trap wait EXIT
     for file in tests/*.oomph; do
         if [[ $file == tests/*_lib.oomph ]]; then
             # The file is meant to be imported
