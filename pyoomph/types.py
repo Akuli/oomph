@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 
 # Describes how exactly a type was created from a generic
@@ -70,11 +70,16 @@ class AutoType(Type):
 class UnionType(Type):
     type_members: List[Type]
 
-    def __init__(self, name: str, type_members: List[Type]):
+    def __init__(self, name: str, type_members: Set[Type]):
         super().__init__(name, True)
         assert len(type_members) >= 2
-        assert len(type_members) == len(set(type_members))  # no duplicates
-        self.type_members = type_members
+
+        # Consistent order, with null first if any (used in lib/)
+        self.type_members = sorted(type_members, key=(lambda t: t.get_id_string()))
+        if NULL_TYPE in self.type_members:
+            self.type_members.remove(NULL_TYPE)
+            self.type_members.insert(0, NULL_TYPE)
+
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
 
@@ -95,7 +100,7 @@ class Generic:
     def get_type(self, generic_arg: Type) -> Type:
         if self is OPTIONAL:
             result: Type = UnionType(
-                f"{self.name}[{generic_arg.name}]", [generic_arg, NULL_TYPE]
+                f"{self.name}[{generic_arg.name}]", {generic_arg, NULL_TYPE}
             )
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)

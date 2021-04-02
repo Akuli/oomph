@@ -37,12 +37,7 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
 
 # returns consistent order, with null first if it's there (used in lib/)
 def _get_members(union: UnionType) -> List[Type]:
-    assert union.type_members is not None
-    members = sorted(union.type_members, key=(lambda m: m.get_id_string()))
-    if NULL_TYPE in members:
-        members.remove(NULL_TYPE)
-        members.insert(0, NULL_TYPE)
-    return members
+    return union.type_members
 
 
 def _get_member_num(union: UnionType, member: Type) -> int:
