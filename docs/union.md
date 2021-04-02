@@ -47,9 +47,6 @@ Recall that `message` has type `Str | null`.
 However, when the `else` runs, the active member of `message` can't be `null`.
 The `.get()` method converts from `Str | null` to `Str`.
 
-If you accidentally call `.get()` so that the active member is `null`,
-you will get a runtime error.
-
     export func main():
         foo(null)       # prints "No message"
         foo("hello")    # prints hello
@@ -77,6 +74,15 @@ To access the `Int` of `Str | Int`, knowing that's the active member, you can us
     export func main():
         blah(123)       # prints "124"
         blah("lol")     # runtime error
+
+In fact, `message.get()` in the first example is a shorthand for `message as Str`,
+and that too gives a runtime error if called with the wrong active member:
+
+    func greet(Str | null name):
+        print("Hello " + name.get())
+
+    greet("World")  # prints "Hello World"
+    greet(null)     # runtime error
 
 
 ## Switch
