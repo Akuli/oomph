@@ -825,7 +825,10 @@ class _FileConverter:
             assert name not in self._types
             types = [self.get_type(arg) for arg in self.union_laziness.pop(name)]
             assert len(types) == len(set(types))  # no duplicates
-            self._types[name] = UnionType(name, set(types))
+
+            union = UnionType(set(types))
+            union.custom_name = name
+            self._types[name] = union
         return self._types[name]
 
     def get_type(
@@ -842,7 +845,7 @@ class _FileConverter:
             types = [
                 (recursing_callback or self.get_type)(item) for item in raw_type.unioned
             ]
-            return UnionType('(%s)' % " | ".join(t.name for t in types), set(types))
+            return UnionType(set(types))
         elif isinstance(raw_type, ast.GenericType):
             return self._generic_types[raw_type.name].get_type(
                 (recursing_callback or self.get_type)(raw_type.arg)
@@ -889,13 +892,17 @@ class _FileConverter:
 
     def do_step2(self, top_declaration: ast.ToplevelDeclaration) -> None:
         if isinstance(top_declaration, (ast.TypeDef, ast.UnionDef, ast.ClassDef)):
+            the_type = self.get_named_type(top_declaration.name)
             self.symbols.append(
                 ir.Symbol(
                     self.path,
                     top_declaration.name,
-                    self.get_named_type(top_declaration.name),
+                    the_type
                 )
             )
+            if isinstance(top_declaration, ast.TypeDef) and isinstance(the_type, UnionType):
+                assert the_type.custom_name is None
+                the_type.custom_name = top_declaration.name
 
     def _func_or_meth_step3(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]

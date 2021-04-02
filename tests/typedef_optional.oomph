@@ -1,0 +1,7 @@
+# optional is special-cased
+typedef Foo = Optional[Int]
+typedef Bar = Int | Str
+
+export func main():
+    print(new Foo(123))
+    print(new Bar(123))

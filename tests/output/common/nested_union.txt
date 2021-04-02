@@ -1,2 +1,2 @@
-(Foo | Bar | Baz)(Bar())
-(Foo | (Bar | Baz))((Bar | Baz)(Bar()))
+Flat(Bar())
+Nested((Bar | Baz)(Bar()))
