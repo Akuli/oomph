@@ -1,2 +1,2 @@
-TypeError: Optional[Int] > Optional[Int]
+TypeError: (null | Int) > (null | Int)
 

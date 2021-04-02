@@ -1253,10 +1253,7 @@ export func convert_program(
             new NamedType("Str", builtins.STR),
             new NamedType("null", builtins.NULL_TYPE),
         ],
-        [
-            new NamedGeneric("List", builtins.LIST),
-            new NamedGeneric("Optional", builtins.OPTIONAL),
-        ],
+        [new NamedGeneric("List", builtins.LIST)],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],
     )
