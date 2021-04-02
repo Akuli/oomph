@@ -1,3 +1,1 @@
-export union Blah:
-    Int
-    Bool
+export typedef Blah = Int | Bool

@@ -1,10 +1,7 @@
 export func print_hello():
     print("hello")
 
-export union FooBar:
-    Foo
-    Bar
-
+export typedef FooBar = Foo | Bar
 export class Foo()
 export class Bar(Int thing, Optional[Str] optional_thing):
     meth lol():

@@ -1,8 +1,6 @@
 import "union_name_conflict_bug_lib.oomph" as lib
 
-union Blah:
-    Str
-    Bool
+typedef Blah = Str | Bool
 
 class FooBar():
     meth bar() -> lib::Blah:

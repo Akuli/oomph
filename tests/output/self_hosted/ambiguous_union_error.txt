@@ -1,5 +1,5 @@
-tests/ambiguous_union_error.oomph:16: error: wrong type: should be Outer, but it's Foo
+tests/ambiguous_union_error.oomph:7: error: wrong type: should be Ambiguous, but it's Str
 
-    blah(new Foo())
-         ^^^^^^^^
+    blah("lol")
+          ^^^
 

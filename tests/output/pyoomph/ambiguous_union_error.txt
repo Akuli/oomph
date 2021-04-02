@@ -1,2 +1,2 @@
-pyoomph.ast2ir.ConversionError: ambiguous implicit conversion from Foo to Outer
+pyoomph.ast2ir.ConversionError: ambiguous implicit conversion from Str to Ambiguous
 
