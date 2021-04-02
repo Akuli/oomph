@@ -47,6 +47,8 @@ export func make_union(Builtins builtins, Str name, List[Type] type_members) -> 
     for let i = 0; i < type_members.length(); i = i+1:
         assert(type_members.get(i) not in type_members.slice(0, i))
 
+    # FIXME: sort the type members consistently
+
     # move NULL_TYPE to beginning, if it's in the list
     for let i = 0; i < type_members.length(); i = i+1:
         if type_members.get(i) == builtins.NULL_TYPE:
