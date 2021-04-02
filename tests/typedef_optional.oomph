@@ -1,5 +1,5 @@
 # optional is special-cased
-typedef Foo = Optional[Int]
+typedef Foo = Int | null
 typedef Bar = Int | Str
 
 export func main():

@@ -13,7 +13,6 @@ from pyoomph.types import (
     INT,
     LIST,
     NULL_TYPE,
-    OPTIONAL,
     STRING,
     AutoType,
     FunctionType,

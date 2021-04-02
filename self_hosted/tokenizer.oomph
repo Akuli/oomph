@@ -1,12 +1,12 @@
 import "error.oomph" as error
 
-func starts_with_any(Str s, List[Str] prefixes) -> Optional[Str]:
+func starts_with_any(Str s, List[Str] prefixes) -> Str | null:
     foreach prefix of prefixes:
         if s.starts_with(prefix):
             return prefix
     return null
 
-func get_simple_identifier(Str code) -> Optional[Str]:
+func get_simple_identifier(Str code) -> Str | null:
     let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
     let continue_chars = first_chars + "1234567890"
 
@@ -21,7 +21,7 @@ func get_simple_identifier(Str code) -> Optional[Str]:
             return result
         result = result + match.get()
 
-func get_identifier(Str code) -> Optional[Str]:
+func get_identifier(Str code) -> Str | null:
     switch get_simple_identifier(code):
         case Str s:
             let remaining = code.remove_prefix(s)

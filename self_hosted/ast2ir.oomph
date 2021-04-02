@@ -25,7 +25,7 @@ func is_autotype(ir::Type type) -> Bool:
 func find_variable(
     List[NamedVariable] variables,
     Str name,
-    Optional[error::Location] location,  # if user can make variable not found, then must be non-null
+    error::Location | null location,  # if user can make variable not found, then must be non-null
 ) -> ir::Variable:
     foreach named_var of variables:
         if named_var.name == name:
@@ -37,7 +37,7 @@ class FunctionOrMethodConverter(
     ir::Builtins builtins,
     FileConverter file_converter,
     List[NamedVariable] variables,
-    Optional[ir::Type] returntype,
+    ir::Type | null returntype,
     List[LoopLabels] loop_stack,
     List[ir::Instruction] code,
     List[List[ir::Instruction]] code_stack,
@@ -58,7 +58,7 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::UnSet(result))
         return result
 
-    meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
+    meth get_var(Str name, error::Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
@@ -155,7 +155,7 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::FunctionCall(function, args, result_var))
         return result_var
 
-    meth lookup_autotype(ir::AutoType autotype) -> Optional[ir::Type]:
+    meth lookup_autotype(ir::AutoType autotype) -> ir::Type | null:
         foreach resolve of self.resolved_autotypes:
             if resolve.autotype == autotype:
                 return resolve.actual
@@ -209,7 +209,7 @@ class FunctionOrMethodConverter(
     meth implicit_conversion_if_possible(
         ir::LocalVariable var,
         ir::Type target_type,
-    ) -> Optional[ir::LocalVariable]:
+    ) -> ir::LocalVariable | null:
         let pair = self.do_the_autotype_thing(var.type, target_type)
         var.type = pair.first
         target_type = pair.second
@@ -224,7 +224,7 @@ class FunctionOrMethodConverter(
             case ir::UnionType target_union:
                 # FIXME: cyclicly nested unions
                 # TODO: simplify the spec plz
-                let result_path = new Optional[List[ir::UnionType]](null)
+                let result_path = new (List[ir::UnionType] | null)(null)
                 let todo_paths = [[target_union]]
                 while todo_paths != []:
                     let path = todo_paths.pop()
@@ -290,9 +290,9 @@ class FunctionOrMethodConverter(
     meth get_attribute_type(ir::Type type, Str attribute) -> ir::Type:
         return ir::get_member(type, attribute)
 
-    meth do_call(ast::Call call, Bool must_return_value) -> Optional[ir::LocalVariable]:
+    meth do_call(ast::Call call, Bool must_return_value) -> ir::LocalVariable | null:
         let args = [foreach arg of call.args: self.do_expression(arg)]
-        let result_var = new Optional[ir::LocalVariable](null)
+        let result_var = new (ir::LocalVariable | null)(null)
 
         switch call.function:
             case ast::GetAttribute method:
@@ -964,7 +964,7 @@ class FileConverter(
             assert(named_var.name != name)
         self.variables.push(new NamedVariable(name, var))
 
-    meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
+    meth get_var(Str name, error::Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
     meth get_named_type(Str name) -> ir::Type:
@@ -979,10 +979,11 @@ class FileConverter(
         foreach type of self.types:
             if type.name == name:
                 return type.type
+        print("no type named '{name}'")
         assert(false)   # TODO: error
 
     # TODO: simplify how2recurse stuff
-    meth get_type(ast::Type raw_type, Optional[FunctionOrMethodConverter] how2recurse) -> ir::Type:
+    meth get_type(ast::Type raw_type, FunctionOrMethodConverter | null how2recurse) -> ir::Type:
         switch raw_type:
             case ast::AutoType autotype:
                 # TODO: test this
@@ -1063,7 +1064,7 @@ class FileConverter(
                     case ir::UnionType union_type:
                         # use typedef name in error messages
                         assert(union_type.custom_name == null)
-                        union_type.custom_name = new Optional[Str](def.name)
+                        union_type.custom_name = new (Str | null)(def.name)
                     case *:
                         pass
             case ast::ClassDef def:
@@ -1071,10 +1072,10 @@ class FileConverter(
             case *:
                 pass
 
-    meth func_or_meth_step3(ast::FuncOrMethodDef def, Optional[ir::BasicType] classtype):
+    meth func_or_meth_step3(ast::FuncOrMethodDef def, ir::BasicType | null classtype):
         if def.returntype == null:
-            # FIXME: new Optional[auto](null) doesn't work here
-            let returntype = new Optional[ir::Type](null)
+            # FIXME: new (auto | null)(null) doesn't work here
+            let returntype = new (ir::Type | null)(null)
         else:
             returntype = self.get_type(def.returntype.get(), null)
 
@@ -1116,8 +1117,8 @@ class FileConverter(
                     new ir::Member(member.name, self.get_type(member.type, null))
                 ])
                 # TODO: is it possible to specify this when creating classtype?
-                # TODO: auto types not working here at all
-                classtype.constructor_argtypes = new Optional[List[ir::Type]](new List[ir::Type]())
+                # TODO: auto types not working at all here
+                classtype.constructor_argtypes = new (List[ir::Type] | null)(new List[ir::Type]())
                 classtype.constructor_argtypes.get().push_all([
                     foreach member of classtype.members: member.type
                 ])
@@ -1149,7 +1150,7 @@ class FileConverter(
                 pass
 
     meth func_or_meth_step4(
-        ast::FuncOrMethodDef def, Optional[ir::Type] classtype
+        ast::FuncOrMethodDef def, ir::Type | null classtype
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
             let funcvar = self.get_var(def.name, null)
@@ -1246,16 +1247,13 @@ export func convert_program(
         path,
         symbols,
         [
-            # NULL_TYPE not exposed
             new NamedType("Bool", builtins.BOOL),
             new NamedType("Float", builtins.FLOAT),
             new NamedType("Int", builtins.INT),
             new NamedType("Str", builtins.STR),
+            new NamedType("null", builtins.NULL_TYPE),
         ],
-        [
-            new NamedGeneric("List", builtins.LIST),
-            new NamedGeneric("Optional", builtins.OPTIONAL),
-        ],
+        [new NamedGeneric("List", builtins.LIST)],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],
     )

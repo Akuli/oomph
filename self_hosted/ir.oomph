@@ -6,7 +6,7 @@ export typedef Type = AutoType | BasicType | FunctionType | UnionType
 export class Generic(Str name)
 
 export class AutoType(Int id)
-export class FunctionType(List[Type] argtypes, Optional[Type] returntype)
+export class FunctionType(List[Type] argtypes, Type | null returntype)
 
 # TODO: mappings
 export class Method(Str name, FunctionType functype)
@@ -19,8 +19,8 @@ export class BasicType(
     Bool refcounted,
     List[Method] methods,  # TODO: get rid of this
     List[Member] members,  # TODO: get rid of this
-    Optional[List[Type]] constructor_argtypes,
-    Optional[GenericSource] generic_source,
+    List[Type] | null constructor_argtypes,
+    GenericSource | null generic_source,
     Bool create_to_string_method,
 ):
     # Helps with reference cycles
@@ -29,7 +29,7 @@ export class BasicType(
 
 export class UnionType(
     List[Type] type_members,
-    Optional[Str] custom_name,
+    Str | null custom_name,
     Builtins builtins,  # TODO: this sucks
 ):
     # Helps with reference cycles
@@ -59,7 +59,7 @@ export func make_union(Builtins builtins, List[Type] type_members) -> UnionType:
     return new UnionType(type_members, null, builtins)
 
 
-export func get_constructor_argtypes(Type type) -> Optional[List[Type]]:
+export func get_constructor_argtypes(Type type) -> List[Type] | null:
     switch type:
         case AutoType autotype:
             assert(false)
@@ -81,21 +81,17 @@ export func type_name(Type type) -> Str:
         case FunctionType functype:
             return "<function type>"
         case UnionType union_type:
-            if (
+            # Don't use custom names for 'Foo | null'
+            if union_type.custom_name == null or (
                 union_type.type_members.length() == 2
                 and union_type.type_members.first() == union_type.builtins.NULL_TYPE
             ):
-                return "Optional[{type_name(union_type.type_members.last())}]"
+                return "(" + [
+                    foreach t of union_type.type_members: type_name(t)
+                ].join(" | ") + ")"
+            return union_type.custom_name.get()
 
-            switch union_type.custom_name:
-                case Str s:
-                    return s
-                case *:
-                    return "(" + [
-                        foreach t of union_type.type_members: type_name(t)
-                    ].join(" | ") + ")"
-
-export func get_generic_source(Type type) -> Optional[GenericSource]:
+export func get_generic_source(Type type) -> GenericSource | null:
     switch type:
         case AutoType autotype:
             assert(false)
@@ -131,7 +127,6 @@ export class Builtins(
     Type NULL_TYPE,
     Type STR,
     Generic LIST,
-    Generic OPTIONAL,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
     List[Type] cleanup_list,
@@ -161,47 +156,43 @@ export class Builtins(
     # TODO: this is in a weird place
     meth generic2type(Generic generik, Type arg) -> Type:
         let source = new GenericSource(generik, arg)
-        if generik == self.OPTIONAL:
-            return make_union(self, [arg, self.NULL_TYPE])
-        if generik == self.LIST:
-            let methods = []
-            let result = new BasicType(
-                "List[{type_name(arg)}]",
-                true,
-                methods,
-                [],
-                new List[Type](),  # FIXME: [] doesn't work
-                new GenericSource(generik, arg),
-                false,
-            )
-            let r = new Type(result)  # TODO: get rid of this
-            methods.push_all([
-                # TODO: hide __contains better?
-                new Method("__contains", new FunctionType([r, arg], self.BOOL)),
-                new Method("delete_at_index", new FunctionType([r, self.INT], null)),
-                new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
-                new Method("ends_with", new FunctionType([r, r], self.BOOL)),
-                new Method("first", new FunctionType([r], arg)),
-                new Method("get", new FunctionType([r, self.INT], arg)),
-                new Method("insert", new FunctionType([r, self.INT, arg], null)),
-                new Method("last", new FunctionType([r], arg)),
-                new Method("length", new FunctionType([r], self.INT)),
-                new Method("pop", new FunctionType([r], arg)),
-                new Method("push", new FunctionType([r, arg], null)),
-                new Method("push_all", new FunctionType([r, r], null)),
-                new Method("reversed", new FunctionType([r], r)),
-                new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
-                new Method("starts_with", new FunctionType([r, r], self.BOOL)),
-                new Method("to_string", new FunctionType([r], self.STR)),
-                # TODO: this is only for strings, but List[auto] may become List[Str] later
-                # if arg is STR:
-                new Method("join", new FunctionType([r, self.STR], self.STR)),
-            ])
-            self.cleanup_list.push(result)
-            return result
+        assert(generik == self.LIST)
 
-        print(generik)
-        assert(false)
+        let methods = []
+        let result = new BasicType(
+            "List[{type_name(arg)}]",
+            true,
+            methods,
+            [],
+            new List[Type](),  # FIXME: [] doesn't work
+            new GenericSource(generik, arg),
+            false,
+        )
+        let r = new Type(result)  # TODO: get rid of this
+        methods.push_all([
+            # TODO: hide __contains better?
+            new Method("__contains", new FunctionType([r, arg], self.BOOL)),
+            new Method("delete_at_index", new FunctionType([r, self.INT], null)),
+            new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
+            new Method("ends_with", new FunctionType([r, r], self.BOOL)),
+            new Method("first", new FunctionType([r], arg)),
+            new Method("get", new FunctionType([r, self.INT], arg)),
+            new Method("insert", new FunctionType([r, self.INT, arg], null)),
+            new Method("last", new FunctionType([r], arg)),
+            new Method("length", new FunctionType([r], self.INT)),
+            new Method("pop", new FunctionType([r], arg)),
+            new Method("push", new FunctionType([r, arg], null)),
+            new Method("push_all", new FunctionType([r, r], null)),
+            new Method("reversed", new FunctionType([r], r)),
+            new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
+            new Method("starts_with", new FunctionType([r, r], self.BOOL)),
+            new Method("to_string", new FunctionType([r], self.STR)),
+            # TODO: this is only for strings, but List[auto] may become List[Str] later
+            # if arg is STR:
+            new Method("join", new FunctionType([r, self.STR], self.STR)),
+        ])
+        self.cleanup_list.push(result)
+        return result
 
 
 # TODO: custom constructors
@@ -210,11 +201,10 @@ export func create_builtins() -> Builtins:
     let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, false))
     let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, false))
     let INT = new Type(new BasicType("Int", false, [], [], null, null, false))
-    let NULL_TYPE = new Type(new BasicType("Bool", false, [], [], null, null, false))
+    let NULL_TYPE = new Type(new BasicType("null", false, [], [], null, null, false))
     let STR = new Type(new BasicType("Str", true, [], [], null, null, false))
 
     let LIST = new Generic("List")
-    let OPTIONAL = new Generic("Optional")
 
     # These variables are not exposed in oomph
     let hidden_vars = [
@@ -242,7 +232,7 @@ export func create_builtins() -> Builtins:
 
     let visible_vars = []
     let result = new Builtins(
-        BOOL, FLOAT, INT, NULL_TYPE, STR, LIST, OPTIONAL,
+        BOOL, FLOAT, INT, NULL_TYPE, STR, LIST,
         visible_vars, hidden_vars,
         [BOOL, FLOAT, INT, NULL_TYPE, STR],
     )
@@ -385,7 +375,7 @@ export typedef Instruction = (
 export class ConstructorCall(LocalVariable result, List[LocalVariable] args)
 export class DecRef(LocalVariable var)
 export class FloatConstant(Str value, LocalVariable var)
-export class FunctionCall(Variable function, List[LocalVariable] args, Optional[LocalVariable] result)
+export class FunctionCall(Variable function, List[LocalVariable] args, LocalVariable | null result)
 export class GetAttribute(LocalVariable obj, LocalVariable result, Str attribute)
 export class GetFromUnion(LocalVariable result, LocalVariable union_var)
 export class GotoLabel(Int id)
@@ -393,9 +383,9 @@ export class GotoIf(GotoLabel label, LocalVariable cond)
 export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
-export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, Optional[LocalVariable] result, error::Location location)
+export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, error::Location location)
 export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
-export class Return(Optional[LocalVariable] value)
+export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)
 export class StringConstant(Str value, LocalVariable var)
 export class UnSet(LocalVariable var)

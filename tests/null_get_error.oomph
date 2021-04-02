@@ -1,2 +1,2 @@
 export func main():
-    new Optional[Str](null).get()
+    new (Str | null)(null).get()
