@@ -35,15 +35,6 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
 
 
-# returns consistent order, with null first if it's there (used in lib/)
-def _get_members(union: UnionType) -> List[Type]:
-    return union.type_members
-
-
-def _get_member_num(union: UnionType, member: Type) -> int:
-    return _get_members(union).index(member)
-
-
 class _FunctionEmitter:
     def __init__(self, file_pair: _FilePair) -> None:
         self.file_pair = file_pair
@@ -125,7 +116,7 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
-            membernum = _get_member_num(ins.result.type, ins.value.type)
+            membernum = ins.result.type.type_members.index(ins.value.type)
             return "%s = (%s){ .val = { .item%d = %s }, .membernum = %d };\n" % (
                 self.emit_var(ins.result),
                 self.file_pair.emit_type(ins.result.type),
@@ -136,7 +127,7 @@ class _FunctionEmitter:
 
         if isinstance(ins, ir.GetFromUnion):
             assert isinstance(ins.union.type, ir.UnionType)
-            membernum = _get_member_num(ins.union.type, ins.result.type)
+            membernum = ins.union.type.type_members.index(ins.result.type)
             return f"""
             if ({self.emit_var(ins.union)}.membernum != {membernum})
                 panic_printf("'as' failed");   // TODO: better message?
@@ -162,7 +153,7 @@ class _FunctionEmitter:
             assert isinstance(ins.union.type, UnionType)
             return f"""
             {self.emit_var(ins.result)} = (
-                {self.emit_var(ins.union)}.membernum == {_get_member_num(ins.union.type, ins.member_type)}
+                {self.emit_var(ins.union)}.membernum == {ins.union.type.type_members.index(ins.member_type)}
             );
             """
 
@@ -424,7 +415,7 @@ class _FilePair:
                     valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
                     break;
                 """
-                for num, typ in enumerate(_get_members(the_type))
+                for num, typ in enumerate(the_type.type_members)
             )
             equals_cases = "".join(
                 f"""
@@ -432,7 +423,7 @@ class _FilePair:
                     return meth_{self.session.get_type_c_name(typ)}_equals(
                         a.val.item{num}, b.val.item{num});
                 """
-                for num, typ in enumerate(_get_members(the_type))
+                for num, typ in enumerate(the_type.type_members)
             )
             # TODO: can decls be emitted automatically?
             self.function_decls += f"""
@@ -485,7 +476,7 @@ class _FilePair:
                     {self.session.emit_incref(f"obj.val.item{num}", typ)};
                     break;
                 """
-                for num, typ in enumerate(_get_members(the_type))
+                for num, typ in enumerate(the_type.type_members)
             )
             decref_cases = "".join(
                 f"""
@@ -493,7 +484,7 @@ class _FilePair:
                     {self.session.emit_decref(f"obj.val.item{num}", typ)};
                     break;
                 """
-                for num, typ in enumerate(_get_members(the_type))
+                for num, typ in enumerate(the_type.type_members)
             )
 
             self.function_decls += f"""
@@ -521,7 +512,7 @@ class _FilePair:
 
             union_members = "".join(
                 f"\t{self.emit_type(the_type)} item{index};\n"
-                for index, the_type in enumerate(_get_members(the_type))
+                for index, the_type in enumerate(the_type.type_members)
             )
             self.struct = f"""
             struct class_{self.id} {{
