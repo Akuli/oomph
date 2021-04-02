@@ -111,8 +111,6 @@ A toplevel declaration can be:
   in that case, it's interpreted relative to Oomph's standard library directory.
 - A typedef: the keyword `typedef` followed by a simple identifier, then the `=` operator,
     then a type and a newline token. It is an error if the type exists already.
-- A union definition: the keyword `union` followed by a simple identifier, and then a block of union members.
-  Each union member is a type followed by a newline token.
 - A class definition: the keyword `class` followed by a simple identifier,
   then parenthesized and comma-separated argument definitions,
   and then optionally a block of method definitions.
@@ -197,11 +195,11 @@ Any simple expression can include zero or more of the following at the end:
 Imports must be first, but otherwise,
 the order of toplevel declarations in an Oomph program usually doesn't matter.
 To make this work, the compiler processes the parsed code in the following steps:
-1. Make names of classes, typedefs, unions and imported files available for subsequent
+1. Make names of classes, typedefs and imported files available for subsequent
     steps. No more types are defined after this step, although details about the types
     are not made available yet; we don't know what methods are available in each class,
     for example.
-2. Process typedef contents and union contents. This is done in a separate step because
+2. Process typedef contents. This is done in a separate step because
     it involves referencing other types, possibly defined later in the file.
 3. Process arguments and return types of functions, methods and classes. These may use
     typedefs, which is fine, because the actual type corresponding with each typedef
