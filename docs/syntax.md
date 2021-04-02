@@ -127,7 +127,7 @@ An argument definition of a function, method or class is a type followed by a si
 A type is a list of one or more non-union types,
 separated by `|` operators to make a union type when there are multiple non-union types.
 A non-union type can be:
-- Auto type: the keyword `auto`.
+- [Automatic type](auto.md): the keyword `auto`.
 - Generic type: an identifier followed by a `[]`-parenthesized type.
 - Named type: an identifier.
 
