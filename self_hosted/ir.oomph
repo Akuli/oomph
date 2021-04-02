@@ -4,7 +4,7 @@ export union Type:
     AutoType
     BasicType       # FIXME: missing equals method
     FunctionType    # FIXME: missing equals method
-    UnionType       # FIXME: missing equals method
+    UnionType
 
 
 export class Generic(Str name)
@@ -35,6 +35,9 @@ export class UnionType(Str name, List[Type] type_members, Optional[GenericSource
     # Helps with reference cycles
     meth to_string() -> Str:
         return "<UnionType: {self.name}>"
+
+    meth equals(UnionType other) -> Bool:
+        return self.type_members == other.type_members
 
 
 export func get_constructor_argtypes(Type type) -> Optional[List[Type]]:
