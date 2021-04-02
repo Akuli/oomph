@@ -111,6 +111,27 @@ If this isn't what you want, you can use `case *`, which matches all remaining t
         this_works("lol")   # prints "Got something else than an integer"
 
 
+## Typedef
+
+Oomph doesn't have inheritance, but usually unions can be used instead.
+For example, you can do something like this in oomph:
+
+    class FooThing()
+    class BarThing()
+    typedef Thing = FooThing | BarThing
+
+Now `Thing` can be used as a type, and it means same as `FooThing | BarThing`,
+similarly to making `FooThing` and `BarThing` inherit from a base class `Thing`
+in a programming language that has inheritance.
+
+If you want, you can also put the `typedef` before the classes (explained in detail
+[here](syntax.md#order-of-toplevel-declarations)):
+
+    typedef Thing = FooThing | BarThing
+    class FooThing()
+    class BarThing()
+
+
 ## Converting to union type
 
 Ideally, you would never need to do this, because implicit conversions should handle this.
