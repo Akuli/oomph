@@ -81,8 +81,9 @@ and that too gives a runtime error if called with the wrong active member:
     func greet(Str | null name):
         print("Hello " + name.get())
 
-    greet("World")  # prints "Hello World"
-    greet(null)     # runtime error
+    export func main():
+        greet("World")  # prints "Hello World"
+        greet(null)     # runtime error
 
 
 ## Switch
