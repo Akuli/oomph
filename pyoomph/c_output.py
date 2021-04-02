@@ -699,14 +699,6 @@ class Session:
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
         if isinstance(the_type, UnionType):
             return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
-        if (
-            the_type.generic_origin is not None
-            and the_type.generic_origin.generic is OPTIONAL
-        ):
-            value_decref = self.emit_decref(
-                f"({c_expression}).value", the_type.generic_origin.arg
-            )
-            return f"(IS_NULL({c_expression}) ? (void)0 : {value_decref})"
         if the_type.refcounted:
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         return "(void)0"
