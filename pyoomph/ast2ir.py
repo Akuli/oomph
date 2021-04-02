@@ -73,8 +73,7 @@ class _FunctionOrMethodConverter:
         )
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
-        if raw_type.name == "auto":
-            assert raw_type.generic is None, "auto types can't be generic"
+        if isinstance(raw_type, ast.AutoType):
             return AutoType()
         return self.file_converter.get_type(raw_type, recursing_callback=self.get_type)
 
@@ -820,7 +819,7 @@ class _FileConverter:
         assert name not in self.variables
         self.variables[name] = var
 
-    def get_non_generic_type(self, name: str) -> Type:
+    def get_named_type(self, name: str) -> Type:
         # Step 2 stuff
         if name in self.typedef_laziness:
             assert name not in self._types
@@ -838,12 +837,21 @@ class _FileConverter:
         *,
         recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
     ) -> ir.Type:
-        assert raw_type.name != "auto", "can't use auto type here"
-        if raw_type.generic is None:
-            return self.get_non_generic_type(raw_type.name)
-        return self._generic_types[raw_type.name].get_type(
-            (recursing_callback or self.get_type)(raw_type.generic)
-        )
+        if isinstance(raw_type, ast.AutoType):
+            raise RuntimeError("can't use auto type here")
+        elif isinstance(raw_type, ast.NamedType):
+            return self.get_named_type(raw_type.name)
+        elif isinstance(raw_type, ast.UnionType):
+            types = [
+                (recursing_callback or self.get_type)(item) for item in raw_type.unioned
+            ]
+            return UnionType(" | ".join(t.name for t in types), set(types))
+        elif isinstance(raw_type, ast.GenericType):
+            return self._generic_types[raw_type.name].get_type(
+                (recursing_callback or self.get_type)(raw_type.arg)
+            )
+        else:
+            raise NotImplementedError(raw_type)
 
     # See docs/syntax.md
     # Step 1: available type names: imports, classes, typedefs, unions
@@ -888,7 +896,7 @@ class _FileConverter:
                 ir.Symbol(
                     self.path,
                     top_declaration.name,
-                    self.get_non_generic_type(top_declaration.name),
+                    self.get_named_type(top_declaration.name),
                 )
             )
 
@@ -928,7 +936,7 @@ class _FileConverter:
                 classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
 
             for method_def in top_declaration.body:
-                method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
+                method_def.args.insert(0, (ast.NamedType(classtype.name), "self"))
                 self._func_or_meth_step3(method_def, classtype)
 
     def _func_or_meth_step4(

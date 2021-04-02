@@ -1,9 +1,6 @@
-union Thing:
-    Foo
-    Bar
-    Baz
+typedef Thing = Foo | Bar | Baz
 
-# Can be defined after the union
+# Can be defined after the typedef
 class Foo(Int foo_thing)
 class Bar()
 class Baz()

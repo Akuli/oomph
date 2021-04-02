@@ -408,19 +408,30 @@ class _Parser:
         self.get_token("op", "\n")
         return [result]
 
-    def parse_type(self) -> ast.Type:
+    def parse_type_without_unions(self) -> ast.Type:
         if self.token_iter.peek() == ("keyword", "auto"):
             self.get_token("keyword", "auto")
-            name = "auto"
-        else:
-            name = self.get_token("identifier")[1]
+            return ast.AutoType()
 
-        generic = None
+        name = self.get_token("identifier")[1]
         if self.token_iter.peek() == ("op", "["):
             self.get_token("op", "[")
-            generic = self.parse_type()
+            arg = self.parse_type()
             self.get_token("op", "]")
-        return ast.Type(name, generic)
+            return ast.GenericType(name, arg)
+
+        return ast.NamedType(name)
+
+    def parse_type(self) -> ast.Type:
+        first_basic_type = self.parse_type_without_unions()
+        if self.token_iter.peek() != ("op", "|"):
+            return first_basic_type
+
+        result = ast.UnionType([first_basic_type])
+        while self.token_iter.peek() == ("op", "|"):
+            self.get_token("op", "|")
+            result.unioned.append(self.parse_type_without_unions())
+        return result
 
     def parse_funcdef_arg(self) -> Tuple[ast.Type, str]:
         type_name = self.parse_type()

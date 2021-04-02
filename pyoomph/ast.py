@@ -7,8 +7,28 @@ from typing import List, Optional, Tuple, Union
 
 @dataclass(eq=False)
 class Type:
+    pass
+
+
+@dataclass(eq=False)
+class AutoType(Type):
+    pass
+
+
+@dataclass(eq=False)
+class GenericType(Type):
     name: str
-    generic: Optional[Type]
+    arg: Type
+
+
+@dataclass(eq=False)
+class NamedType(Type):
+    name: str
+
+
+@dataclass(eq=False)
+class UnionType(Type):
+    unioned: List[Type]
 
 
 @dataclass(eq=False)
