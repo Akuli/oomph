@@ -1,11 +1,7 @@
 import "error.oomph" as error
 
-export union Type:
-    AutoType
-    BasicType       # FIXME: missing equals method
-    FunctionType    # FIXME: missing equals method
-    UnionType
-
+# FIXME: BasicType and FunctionType: missing equals method
+export typedef Type = AutoType | BasicType | FunctionType | UnionType
 
 export class Generic(Str name)
 
@@ -111,13 +107,10 @@ export func get_generic_source(Type type) -> Optional[GenericSource]:
             return null
 
 
+export typedef Variable = BuiltinVariable | FileVariable | LocalVariable
 export class BuiltinVariable(Str name, Type type)
 export class FileVariable(Str name, Type type)
 export class LocalVariable(Type type, Int id, error::Location location)
-export union Variable:
-    BuiltinVariable
-    FileVariable
-    LocalVariable
 
 # TODO: this sucks
 export func var_type(Variable var) -> Type:
@@ -368,27 +361,27 @@ export func get_member(Type type, Str name) -> Type:
     assert(false)   # TODO: error
 
 
-export union Instruction:
+export typedef Instruction = (
     ConstructorCall
-    DecRef
-    FloatConstant
-    FunctionCall
-    GetAttribute
-    GetFromUnion
-    GotoIf
-    GotoLabel
-    IncRef
-    InstantiateUnion
-    IntConstant
-    MethodCall
-    PointersEqual
-    Return
-    SetAttribute
-    StringConstant
-    UnSet
-    UnionMemberCheck
-    VarCpy
-
+    | DecRef
+    | FloatConstant
+    | FunctionCall
+    | GetAttribute
+    | GetFromUnion
+    | GotoIf
+    | GotoLabel
+    | IncRef
+    | InstantiateUnion
+    | IntConstant
+    | MethodCall
+    | PointersEqual
+    | Return
+    | SetAttribute
+    | StringConstant
+    | UnSet
+    | UnionMemberCheck
+    | VarCpy
+)
 export class ConstructorCall(LocalVariable result, List[LocalVariable] args)
 export class DecRef(LocalVariable var)
 export class FloatConstant(Str value, LocalVariable var)
@@ -409,15 +402,10 @@ export class UnSet(LocalVariable var)
 export class UnionMemberCheck(LocalVariable result, LocalVariable union_var, Type member_type)
 export class VarCpy(LocalVariable dest, Variable source)  # same argument order as memcpy
 
-export union ToplevelDeclaration:
-    FuncDef
-    MethodDef
-
+export typedef ToplevelDeclaration = FuncDef | MethodDef
 export class FuncDef(FileVariable var, List[LocalVariable] argvars, List[Instruction] body)
 export class MethodDef(Str name, FunctionType type, List[LocalVariable] argvars, List[Instruction] body)
 
 # Symbol represents anything that might need to be shared between different .c files
-export union SymbolValue:
-    FileVariable
-    Type
+export typedef SymbolValue = FileVariable | Type
 export class Symbol(Str path, Str name, SymbolValue value)

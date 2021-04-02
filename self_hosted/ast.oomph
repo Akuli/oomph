@@ -20,45 +20,43 @@ export func locate_type(Type type) -> error::Location:
                 result = result.combine(locate_type(member))
             return result
 
-export union Expression:
+export typedef Expression = (
     As
-    BinaryOperator
-    Call
-    Constructor
-    FloatConstant
-    GetAttribute
-    GetVar
-    IntConstant
-    ListComprehension
-    ListLiteral
-    StatementsAndExpression
-    StringConstant
-    StringFormatJoin
-    UnaryOperator
-
-export union Statement:
+    | BinaryOperator
+    | Call
+    | Constructor
+    | FloatConstant
+    | GetAttribute
+    | GetVar
+    | IntConstant
+    | ListComprehension
+    | ListLiteral
+    | StatementsAndExpression
+    | StringConstant
+    | StringFormatJoin
+    | UnaryOperator
+)
+export typedef Statement = (
     Break
-    Call
-    Continue
-    If
-    Let
-    Loop
-    Pass
-    Return
-    SetAttribute
-    SetVar
-    Switch
-
-export union ToplevelDeclaration:
+    | Call
+    | Continue
+    | If
+    | Let
+    | Loop
+    | Pass
+    | Return
+    | SetAttribute
+    | SetVar
+    | Switch
+)
+export typedef ToplevelDeclaration = (
     ClassDef
-    FuncOrMethodDef  # function definition, in this context
-    Import
-    TypeDef
-    UnionDef
-
-export union LoopHeader:
-    ForLoopHeader
-    ForeachLoopHeader
+    | FuncOrMethodDef   # function definition, in this context
+    | Import
+    | TypeDef
+    | UnionDef
+)
+export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
 
 export class TypeAndName(Type type, Str name, error::Location name_location)
 

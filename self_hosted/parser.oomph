@@ -2,10 +2,8 @@ import "ast.oomph" as ast
 import "error.oomph" as error
 import "tokenizer.oomph" as tokenizer
 
-union PrecedenceItem:
-    ast::Expression
-    ast::Type
-    tokenizer::Token   # e.g. "+" or "as" token
+# token is e.g. "+" or "as"
+typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
 
 # TODO: should move to stdlib
 func path_parent(Str path) -> Str:
