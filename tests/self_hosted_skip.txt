@@ -1,6 +1,14 @@
 # How to update this list:
 # - Finding unnecessary non-_error lines: ./unnecessary_skips
 # - Finding unnecessary _error lines: make oomphc && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomphc $file; done
+self_hosted/ast.oomph
+self_hosted/ast2ir.oomph
+self_hosted/c_output.oomph
+self_hosted/error.oomph
+self_hosted/ir.oomph
+self_hosted/main.oomph
+self_hosted/parser.oomph
+self_hosted/tokenizer.oomph
 tests/a_lib.oomph
 tests/andor_error.oomph
 tests/args.oomph

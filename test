@@ -148,7 +148,7 @@ if [ $check_self_hosted == yes ] && (
     echo "Compiling self-hosted compiler"
     make oomphc
 
-    for file in tests/*.oomph; do
+    for file in tests/*.oomph self_hosted/*.oomph; do
         if [[ $file == tests/*_lib.oomph ]]; then
             continue
         elif ! grep -q "^$file" tests/self_hosted_skip.txt; then
@@ -159,9 +159,10 @@ if [ $check_self_hosted == yes ] && (
                 check "$file" "$command" "$noise" tests/output/common should_succeed
             fi
         elif ! grep -q "^$file" tests/self_hosted_skip_ast.txt; then
-            check "$file" "$valgrind ./oomphc --ast $file" "" "" should_succeed
+            run check "$file" "$valgrind ./oomphc --ast $file" "" "" should_succeed
         fi
     done
+    wait
 fi
 
 status=0

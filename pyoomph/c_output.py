@@ -540,12 +540,9 @@ class _FilePair:
             }};
             """
 
-            if (
-                the_type.generic_origin is not None
-                and the_type.generic_origin.generic is OPTIONAL
-            ):
-                itemtype = the_type.generic_origin.arg
-                itemtype_code = self.emit_type(the_type.generic_origin.arg)
+            if "get" in the_type.methods:
+                itemtype = the_type.type_members[1]
+                itemtype_code = self.emit_type(itemtype)
                 self.function_decls += (
                     f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
                 )

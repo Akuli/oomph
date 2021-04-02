@@ -73,17 +73,23 @@ class UnionType(Type):
     def __init__(self, name: str, type_members: Set[Type]):
         super().__init__(name, True)
         assert len(type_members) >= 2
-        self.type_members = type_members
+
+        # Consistent order, with null first if any (used in lib/)
+        self.type_members = sorted(type_members, key=(lambda t: t.get_id_string()))
+        if NULL_TYPE in self.type_members:
+            self.type_members.remove(NULL_TYPE)
+            self.type_members.insert(0, NULL_TYPE)
+
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
+        if len(self.type_members) == 2 and self.type_members[0] == NULL_TYPE:
+            self.methods["get"] = FunctionType([self], self.type_members[1])
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
     def get_id_string(self) -> str:
-        return self.name + "|".join(
-            member.get_id_string() for member in self.type_members
-        )
+        return "|".join(member.get_id_string() for member in self.type_members)
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
@@ -94,7 +100,7 @@ class Generic:
     def get_type(self, generic_arg: Type) -> Type:
         if self is OPTIONAL:
             result: Type = UnionType(
-                f"{self.name}[{generic_arg.name}]", [generic_arg, NULL_TYPE]
+                f"{self.name}[{generic_arg.name}]", {generic_arg, NULL_TYPE}
             )
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
@@ -121,11 +127,11 @@ class Generic:
             # TODO: this is only for strings, but List[auto] may become List[Str] later
             # if generic_arg is STRING:
             result.methods["join"] = FunctionType([result, STRING], STRING)
+            result.generic_origin = GenericSource(self, generic_arg)
         else:
             raise NotImplementedError
 
         result.methods["equals"] = FunctionType([result, result], BOOL)
-        result.generic_origin = GenericSource(self, generic_arg)
         return result
 
 
