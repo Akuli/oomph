@@ -87,9 +87,7 @@ class UnionType(Type):
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
     def get_id_string(self) -> str:
-        return self.name + "|".join(
-            member.get_id_string() for member in self.type_members
-        )
+        return "|".join(member.get_id_string() for member in self.type_members)
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is
