@@ -114,7 +114,7 @@ If this isn't what you want, you can use `case *`, which matches all remaining t
 ## Typedef
 
 Oomph doesn't have inheritance, but usually unions can be used instead.
-For example, you can do something like this in oomph:
+For example, you can do this in oomph:
 
     class FooThing()
     class BarThing()
