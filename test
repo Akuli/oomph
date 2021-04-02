@@ -125,7 +125,7 @@ if [ $check_pyoomph == yes ]; then
             run check \
                 "$file" \
                 "python3 -m pyoomph $file" \
-                "2>&1 | grep -v 'This happened while' | tail -2" \
+                "2>&1 | (grep -v 'This happened while' || true) | tail -2" \
                 tests/output/pyoomph \
                 should_fail
         else
