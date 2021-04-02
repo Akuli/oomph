@@ -82,6 +82,8 @@ class UnionType(Type):
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
+        if len(self.type_members) == 2 and self.type_members[0] == NULL_TYPE:
+            self.methods["get"] = FunctionType([self], self.type_members[1])
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
@@ -125,11 +127,11 @@ class Generic:
             # TODO: this is only for strings, but List[auto] may become List[Str] later
             # if generic_arg is STRING:
             result.methods["join"] = FunctionType([result, STRING], STRING)
+            result.generic_origin = GenericSource(self, generic_arg)
         else:
             raise NotImplementedError
 
         result.methods["equals"] = FunctionType([result, result], BOOL)
-        result.generic_origin = GenericSource(self, generic_arg)
         return result
 
 
