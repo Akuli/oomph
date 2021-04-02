@@ -2,10 +2,8 @@ import "ast.oomph" as ast
 import "error.oomph" as error
 import "tokenizer.oomph" as tokenizer
 
-union PrecedenceItem:
-    ast::Expression
-    ast::Type
-    tokenizer::Token   # e.g. "+" or "as" token
+# token is e.g. "+" or "as"
+typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
 
 # TODO: should move to stdlib
 func path_parent(Str path) -> Str:
@@ -513,22 +511,36 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("op", "\n")
         return [result]
 
-    meth parse_type() -> ast::Type:
-        if self.peek().matches("keyword", "auto"):
-            let name_token = self.get_token("keyword", "auto")
-        else:
-            name_token = self.get_token_by_type("id")
+    meth parse_type_without_unions() -> ast::Type:
+        if self.peek().matches("op", "("):
+            self.get_token("op", "(")
+            let result = self.parse_type()
+            self.get_token("op", ")")
+            return result
 
+        if self.peek().matches("keyword", "auto"):
+            return new ast::AutoType(self.get_token("keyword", "auto").location)
+
+        let name_token = self.get_token_by_type("id")
         if self.peek().matches("op", "["):
             self.get_token("op", "[")
-            let generic_arg = new Optional[ast::Type](self.parse_type())
+            let arg = self.parse_type()
             let close = self.get_token("op", "]")
             let location = name_token.location.combine(close.location)
-        else:
-            generic_arg = null
-            location = name_token.location
+            return new ast::GenericType(location, name_token.value, arg)
 
-        return new ast::Type(location, name_token.value, generic_arg)
+        return new ast::NamedType(name_token.location, name_token.value)
+
+    meth parse_type() -> ast::Type:
+        let first_member = self.parse_type_without_unions()
+        if not self.peek().matches("op", "|"):
+            return first_member
+
+        let result = [first_member]
+        while self.peek().matches("op", "|"):
+            self.get_token("op", "|")
+            result.push(self.parse_type_without_unions())
+        return new ast::UnionType(result)
 
     meth parse_type_and_name() -> ast::TypeAndName:
         let type = self.parse_type()

@@ -1,16 +1,9 @@
 class Foo()
 class Bar()
 class Baz()
-
-# FIXME: inner union must be first
-union Inner:
-    Bar
-    Baz
-
-union Outer:
-    Inner
-    Foo
+typedef Flat = Foo | Bar | Baz
+typedef Nested = Foo | (Bar | Baz)
 
 export func main():
-    let x = new Outer(new Inner(new Bar()))
-    print(x)
+    print(new Flat(new Bar()))
+    print(new Nested(new Bar()))

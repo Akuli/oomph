@@ -1,1 +1,2 @@
-Outer(Inner(Bar()))
+Flat(Bar())
+Nested((Bar | Baz)(Bar()))

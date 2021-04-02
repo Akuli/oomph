@@ -73,8 +73,7 @@ class _FunctionOrMethodConverter:
         )
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
-        if raw_type.name == "auto":
-            assert raw_type.generic is None, "auto types can't be generic"
+        if isinstance(raw_type, ast.AutoType):
             return AutoType()
         return self.file_converter.get_type(raw_type, recursing_callback=self.get_type)
 
@@ -478,12 +477,9 @@ class _FunctionOrMethodConverter:
             if isinstance(expr.func, ast.Constructor):
                 union_type = self.get_type(expr.func.type)
                 if isinstance(union_type, UnionType):
-                    var = self.create_var(union_type)
                     assert len(expr.args) == 1
                     obj = self.do_expression(expr.args[0])
-                    self.code.append(ir.IncRef(obj))
-                    self.code.append(ir.InstantiateUnion(var, obj))
-                    return var
+                    return self.implicit_conversion(obj, union_type)
 
             call = self.do_call(expr, True)
             assert call is not None, f"return value of void function {expr.func} used"
@@ -668,6 +664,10 @@ class _FunctionOrMethodConverter:
                     ugly_type, varname = case.type_and_varname
                     nice_type = self.get_type(ugly_type)
                     nice_types = [nice_type]
+                    assert nice_type in types_to_do, (
+                        nice_type,
+                        nice_type.definition_path,
+                    )
                     types_to_do.remove(nice_type)
 
                     case_var = self.create_var(nice_type)
@@ -820,7 +820,7 @@ class _FileConverter:
         assert name not in self.variables
         self.variables[name] = var
 
-    def get_non_generic_type(self, name: str) -> Type:
+    def get_named_type(self, name: str) -> Type:
         # Step 2 stuff
         if name in self.typedef_laziness:
             assert name not in self._types
@@ -829,7 +829,10 @@ class _FileConverter:
             assert name not in self._types
             types = [self.get_type(arg) for arg in self.union_laziness.pop(name)]
             assert len(types) == len(set(types))  # no duplicates
-            self._types[name] = UnionType(name, set(types))
+
+            union = UnionType(set(types))
+            union.custom_name = name
+            self._types[name] = union
         return self._types[name]
 
     def get_type(
@@ -838,12 +841,21 @@ class _FileConverter:
         *,
         recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
     ) -> ir.Type:
-        assert raw_type.name != "auto", "can't use auto type here"
-        if raw_type.generic is None:
-            return self.get_non_generic_type(raw_type.name)
-        return self._generic_types[raw_type.name].get_type(
-            (recursing_callback or self.get_type)(raw_type.generic)
-        )
+        if isinstance(raw_type, ast.AutoType):
+            raise RuntimeError("can't use auto type here")
+        elif isinstance(raw_type, ast.NamedType):
+            return self.get_named_type(raw_type.name)
+        elif isinstance(raw_type, ast.UnionType):
+            types = [
+                (recursing_callback or self.get_type)(item) for item in raw_type.unioned
+            ]
+            return UnionType(set(types))
+        elif isinstance(raw_type, ast.GenericType):
+            return self._generic_types[raw_type.name].get_type(
+                (recursing_callback or self.get_type)(raw_type.arg)
+            )
+        else:
+            raise NotImplementedError(raw_type)
 
     # See docs/syntax.md
     # Step 1: available type names: imports, classes, typedefs, unions
@@ -884,13 +896,14 @@ class _FileConverter:
 
     def do_step2(self, top_declaration: ast.ToplevelDeclaration) -> None:
         if isinstance(top_declaration, (ast.TypeDef, ast.UnionDef, ast.ClassDef)):
-            self.symbols.append(
-                ir.Symbol(
-                    self.path,
-                    top_declaration.name,
-                    self.get_non_generic_type(top_declaration.name),
-                )
-            )
+            the_type = self.get_named_type(top_declaration.name)
+            self.symbols.append(ir.Symbol(self.path, top_declaration.name, the_type))
+            if isinstance(top_declaration, ast.TypeDef) and isinstance(
+                the_type, UnionType
+            ):
+                # use typedef name in error messages
+                assert the_type.custom_name is None
+                the_type.custom_name = top_declaration.name
 
     def _func_or_meth_step3(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
@@ -928,7 +941,7 @@ class _FileConverter:
                 classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
 
             for method_def in top_declaration.body:
-                method_def.args.insert(0, (ast.Type(classtype.name, None), "self"))
+                method_def.args.insert(0, (ast.NamedType(classtype.name), "self"))
                 self._func_or_meth_step3(method_def, classtype)
 
     def _func_or_meth_step4(

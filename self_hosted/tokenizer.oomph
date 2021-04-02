@@ -87,7 +87,7 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
         ";", ",", ".", ":",
         "(", ")", "[", "]",
         "+", "-", "*", "/",
-        "=", "\n",
+        "=", "|", "\n",
     ]
     let keyword_list = [
         "let", "import", "as", "export", "func", "meth", "class", "union", "typedef",

@@ -1,0 +1,2 @@
+Optional[Int](123)
+Bar(123)

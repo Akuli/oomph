@@ -1,11 +1,7 @@
 import "error.oomph" as error
 
-export union Type:
-    AutoType
-    BasicType       # FIXME: missing equals method
-    FunctionType    # FIXME: missing equals method
-    UnionType
-
+# FIXME: BasicType and FunctionType: missing equals method
+export typedef Type = AutoType | BasicType | FunctionType | UnionType
 
 export class Generic(Str name)
 
@@ -31,16 +27,20 @@ export class BasicType(
     meth to_string() -> Str:
         return "<BasicType: {self.name}>"
 
-export class UnionType(Str name, List[Type] type_members):
+export class UnionType(
+    List[Type] type_members,
+    Optional[Str] custom_name,
+    Builtins builtins,  # TODO: this sucks
+):
     # Helps with reference cycles
     meth to_string() -> Str:
-        return "<UnionType: {self.name}>"
+        return "<UnionType: custom_name={self.custom_name}>"
 
     meth equals(UnionType other) -> Bool:
         return self.type_members == other.type_members
 
 
-export func make_union(Builtins builtins, Str name, List[Type] type_members) -> UnionType:
+export func make_union(Builtins builtins, List[Type] type_members) -> UnionType:
     type_members = type_members.reversed().reversed()   # TODO: better way to copy list
 
     # check no duplicates
@@ -56,7 +56,7 @@ export func make_union(Builtins builtins, Str name, List[Type] type_members) -> 
             type_members.insert(0, builtins.NULL_TYPE)
             break
 
-    return new UnionType(name, type_members)
+    return new UnionType(type_members, null, builtins)
 
 
 export func get_constructor_argtypes(Type type) -> Optional[List[Type]]:
@@ -80,8 +80,20 @@ export func type_name(Type type) -> Str:
             return basic.name
         case FunctionType functype:
             return "<function type>"
-        case UnionType uniontype:
-            return uniontype.name
+        case UnionType union_type:
+            if (
+                union_type.type_members.length() == 2
+                and union_type.type_members.first() == union_type.builtins.NULL_TYPE
+            ):
+                return "Optional[{type_name(union_type.type_members.last())}]"
+
+            switch union_type.custom_name:
+                case Str s:
+                    return s
+                case *:
+                    return "(" + [
+                        foreach t of union_type.type_members: type_name(t)
+                    ].join(" | ") + ")"
 
 export func get_generic_source(Type type) -> Optional[GenericSource]:
     switch type:
@@ -95,13 +107,10 @@ export func get_generic_source(Type type) -> Optional[GenericSource]:
             return null
 
 
+export typedef Variable = BuiltinVariable | FileVariable | LocalVariable
 export class BuiltinVariable(Str name, Type type)
 export class FileVariable(Str name, Type type)
 export class LocalVariable(Type type, Int id, error::Location location)
-export union Variable:
-    BuiltinVariable
-    FileVariable
-    LocalVariable
 
 # TODO: this sucks
 export func var_type(Variable var) -> Type:
@@ -153,7 +162,7 @@ export class Builtins(
     meth generic2type(Generic generik, Type arg) -> Type:
         let source = new GenericSource(generik, arg)
         if generik == self.OPTIONAL:
-            return make_union(self, "Optional[{type_name(arg)}]", [arg, self.NULL_TYPE])
+            return make_union(self, [arg, self.NULL_TYPE])
         if generik == self.LIST:
             let methods = []
             let result = new BasicType(
@@ -352,27 +361,27 @@ export func get_member(Type type, Str name) -> Type:
     assert(false)   # TODO: error
 
 
-export union Instruction:
+export typedef Instruction = (
     ConstructorCall
-    DecRef
-    FloatConstant
-    FunctionCall
-    GetAttribute
-    GetFromUnion
-    GotoIf
-    GotoLabel
-    IncRef
-    InstantiateUnion
-    IntConstant
-    MethodCall
-    PointersEqual
-    Return
-    SetAttribute
-    StringConstant
-    UnSet
-    UnionMemberCheck
-    VarCpy
-
+    | DecRef
+    | FloatConstant
+    | FunctionCall
+    | GetAttribute
+    | GetFromUnion
+    | GotoIf
+    | GotoLabel
+    | IncRef
+    | InstantiateUnion
+    | IntConstant
+    | MethodCall
+    | PointersEqual
+    | Return
+    | SetAttribute
+    | StringConstant
+    | UnSet
+    | UnionMemberCheck
+    | VarCpy
+)
 export class ConstructorCall(LocalVariable result, List[LocalVariable] args)
 export class DecRef(LocalVariable var)
 export class FloatConstant(Str value, LocalVariable var)
@@ -393,15 +402,10 @@ export class UnSet(LocalVariable var)
 export class UnionMemberCheck(LocalVariable result, LocalVariable union_var, Type member_type)
 export class VarCpy(LocalVariable dest, Variable source)  # same argument order as memcpy
 
-export union ToplevelDeclaration:
-    FuncDef
-    MethodDef
-
+export typedef ToplevelDeclaration = FuncDef | MethodDef
 export class FuncDef(FileVariable var, List[LocalVariable] argvars, List[Instruction] body)
 export class MethodDef(Str name, FunctionType type, List[LocalVariable] argvars, List[Instruction] body)
 
 # Symbol represents anything that might need to be shared between different .c files
-export union SymbolValue:
-    FileVariable
-    Type
+export typedef SymbolValue = FileVariable | Type
 export class Symbol(Str path, Str name, SymbolValue value)

@@ -21,7 +21,7 @@ class Type:
         *,
         create_to_string_method: bool = False,
     ):
-        self.name = name
+        self._name = name
         self.refcounted = refcounted
         self.definition_path = definition_path
         self.methods: Dict[str, FunctionType] = {}
@@ -31,6 +31,11 @@ class Type:
         self.create_to_string_method = create_to_string_method
         if create_to_string_method:
             self.methods["to_string"] = FunctionType([self], STRING)
+
+    # To make the name more overridable
+    @property
+    def name(self) -> str:
+        return self._name
 
     def get_id_string(self) -> str:
         if self.generic_origin is None:
@@ -68,10 +73,10 @@ class AutoType(Type):
 
 
 class UnionType(Type):
-    type_members: List[Type]
+    def __init__(self, type_members: Set[Type]):
+        super().__init__("", True)
+        self.custom_name: Optional[str] = None
 
-    def __init__(self, name: str, type_members: Set[Type]):
-        super().__init__(name, True)
         assert len(type_members) >= 2
 
         # Consistent order, with null first if any (used in lib/)
@@ -88,6 +93,14 @@ class UnionType(Type):
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
+    @property
+    def name(self) -> str:
+        if "get" in self.methods:
+            return f"Optional[{self.type_members[1].name}]"
+        if self.custom_name is None:
+            return "(%s)" % " | ".join(t.name for t in self.type_members)
+        return self.custom_name
+
     def get_id_string(self) -> str:
         return "|".join(member.get_id_string() for member in self.type_members)
 
@@ -99,9 +112,7 @@ class Generic:
 
     def get_type(self, generic_arg: Type) -> Type:
         if self is OPTIONAL:
-            result: Type = UnionType(
-                f"{self.name}[{generic_arg.name}]", {generic_arg, NULL_TYPE}
-            )
+            result: Type = UnionType({generic_arg, NULL_TYPE})
             result.constructor_argtypes = [generic_arg]
             result.methods["get"] = FunctionType([result], generic_arg)
         elif self is LIST:

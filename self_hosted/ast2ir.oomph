@@ -115,10 +115,11 @@ class FunctionOrMethodConverter(
         return new ir::GotoLabel(self.goto_label_counter)
 
     meth get_type(ast::Type raw_type) -> ir::Type:
-        if raw_type.name == "auto":
-            assert(raw_type.generic_arg == null)  # TODO: error
-            return self.create_autotype()
-        return self.file_converter.get_type(raw_type, self)
+        switch raw_type:
+            case ast::AutoType autotype:
+                return self.create_autotype()
+            case *:
+                return self.file_converter.get_type(raw_type, self)
 
     # TODO: something like @contextlib.contextmanager in python?
     meth push_code():
@@ -548,12 +549,9 @@ class FunctionOrMethodConverter(
                     case ast::Constructor constructor:
                         switch self.get_type(constructor.type):
                             case ir::UnionType union_type:
-                                let var = self.create_var(union_type, location)
-                                assert(call.args.length() == 1)
+                                assert(call.args.length() == 1)  # TODO: error
                                 let obj = self.do_expression(call.args.first())
-                                self.code.push(new ir::IncRef(obj))
-                                self.code.push(new ir::InstantiateUnion(var, obj))
-                                return var
+                                return self.implicit_conversion(obj, union_type)
                             case *:
                                 pass
                     case *:
@@ -977,7 +975,7 @@ class FileConverter(
     meth get_var(Str name, Optional[error::Location] location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
-    meth get_non_generic_type(Str name) -> ir::Type:
+    meth get_named_type(Str name) -> ir::Type:
         # step 2 stuff
         for let i = 0; i < self.typedef_laziness.length(); i = i+1:
             if self.typedef_laziness.get(i).name == name:
@@ -993,9 +991,14 @@ class FileConverter(
                 for let k = 0; k < types.length(); k = k+1:
                     if types.get(k) in types.slice(0, k):
                         # TODO: error location
+                        # TODO: should this move to ir::make_union?
                         print("duplicate union member {ir::type_name(types.get(k))}")
                         assert(false)
-                self.types.push(new NamedType(name, ir::make_union(self.builtins, name, types)))
+
+                let union_type = ir::make_union(self.builtins, types)
+                # FIXME: should convert implicitly
+                union_type.custom_name = new Optional[Str](name)
+                self.types.push(new NamedType(name, union_type))
                 self.union_laziness.delete_at_index(i)
 
         foreach type of self.types:
@@ -1005,20 +1008,31 @@ class FileConverter(
 
     # TODO: simplify how2recurse stuff
     meth get_type(ast::Type raw_type, Optional[FunctionOrMethodConverter] how2recurse) -> ir::Type:
-        assert(raw_type.name != "auto")  # TODO: error
-        if raw_type.generic_arg == null:
-            return self.get_non_generic_type(raw_type.name)
+        switch raw_type:
+            case ast::AutoType autotype:
+                # TODO: test this
+                autotype.location.error("can't use auto type here")
 
-        foreach named_generic of self.generics:
-            if named_generic.name == raw_type.name:
+            case ast::NamedType named_type:
+                return self.get_named_type(named_type.name)
+
+            case ast::UnionType union_type:
                 if how2recurse == null:
-                    let arg = self.get_type(raw_type.generic_arg.get(), null)
+                    let types = [foreach t of union_type.unioned: self.get_type(t, null)]
                 else:
-                    arg = how2recurse.get().get_type(raw_type.generic_arg.get())
-                return self.builtins.generic2type(named_generic.generik, arg)
+                    types = [foreach t of union_type.unioned: how2recurse.get().get_type(t)]
+                return ir::make_union(self.builtins, types)
 
-        print("no generic type named {raw_type.name}")
-        assert(false)  # TODO: error
+            case ast::GenericType generic_type:
+                foreach named_generic of self.generics:
+                    if named_generic.name == generic_type.name:
+                        if how2recurse == null:
+                            let arg = self.get_type(generic_type.arg, null)
+                        else:
+                            arg = how2recurse.get().get_type(generic_type.arg)
+                        return self.builtins.generic2type(named_generic.generik, arg)
+                print("no generic type named {generic_type.name}")
+                assert(false)  # TODO: error
 
     meth check_type_not_exists(Str name, error::Location location):
         if (
@@ -1073,11 +1087,19 @@ class FileConverter(
         switch top_declaration:
             # TODO: copy pasta
             case ast::TypeDef def:
-                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_non_generic_type(def.name)))
+                let the_type = self.get_named_type(def.name)
+                self.symbols.push(new ir::Symbol(self.path, def.name, the_type))
+                switch the_type:
+                    case ir::UnionType union_type:
+                        # use typedef name in error messages
+                        assert(union_type.custom_name == null)
+                        union_type.custom_name = new Optional[Str](def.name)
+                    case *:
+                        pass
             case ast::ClassDef def:
-                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_non_generic_type(def.name)))
+                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_named_type(def.name)))
             case ast::UnionDef def:
-                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_non_generic_type(def.name)))
+                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_named_type(def.name)))
             case *:
                 pass
 
@@ -1149,7 +1171,7 @@ class FileConverter(
                 foreach method_def of classdef.body:
                     let self_location = classdef.location   # a bit weird
                     method_def.args.insert(0, new ast::TypeAndName(
-                        new ast::Type(self_location, classtype.name, null),
+                        new ast::NamedType(self_location, classtype.name),
                         "self",
                         self_location
                     ))
