@@ -22,12 +22,6 @@ func is_autotype(ir::Type type) -> Bool:
         case *:
             return false
 
-# Weird hack
-# TODO: still needed?
-union FileConverterForwardReference:
-    FileConverter
-    Str
-
 func find_variable(
     List[NamedVariable] variables,
     Str name,
@@ -41,7 +35,7 @@ func find_variable(
 
 class FunctionOrMethodConverter(
     ir::Builtins builtins,
-    FileConverterForwardReference file_converter,
+    FileConverter file_converter,
     List[NamedVariable] variables,
     Optional[ir::Type] returntype,
     List[LoopLabels] loop_stack,
@@ -124,7 +118,7 @@ class FunctionOrMethodConverter(
         if raw_type.name == "auto":
             assert(raw_type.generic_arg == null)  # TODO: error
             return self.create_autotype()
-        return (self.file_converter as FileConverter).get_type(raw_type, self)
+        return self.file_converter.get_type(raw_type, self)
 
     # TODO: something like @contextlib.contextmanager in python?
     meth push_code():
