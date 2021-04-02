@@ -99,6 +99,7 @@ In this documentation, we use the following phrases:
 - "Parenthesized" means enclosed between `(` and `)` operators.
 - "`[]`-parenthesized" means the same thing with `[` and `]` operators.
 - "Comma-separated" means separated by `,` operators, with trailing comma allowed.
+- "`|`-separated" means a similar thing, but without leading or trailing `|` allowed.
 
 The tokenized file consists of zero or more toplevel declarations.
 A toplevel declaration can be:
@@ -124,9 +125,7 @@ This makes the defined function or type visible in other files when the file is 
 
 An argument definition of a function, method or class is a type followed by a simple identifier.
 
-A type is a list of one or more non-union types,
-separated by `|` operators to make a union type when there are multiple non-union types.
-A non-union type can be:
+A type is a non-union type or multiple `|`-separated non-union types. A non-union type can be:
 - [Automatic type](auto.md): the keyword `auto`.
 - Generic type: an identifier followed by a `[]`-parenthesized type.
 - Named type: an identifier.
