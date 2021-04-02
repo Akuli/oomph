@@ -964,7 +964,6 @@ class FileConverter(
     List[NamedType] types,
     List[NamedGeneric] generics,
     List[NamedVariable] variables,
-    List[NamedAstTypeList] union_laziness,
     List[NamedAstType] typedef_laziness,
 ):
     meth add_var(ir::Variable var, Str name):
@@ -983,23 +982,6 @@ class FileConverter(
                 let type = self.get_type(self.typedef_laziness.get(i).type, null)
                 self.types.push(new NamedType(name, type))
                 self.typedef_laziness.delete_at_index(i)
-
-        for let i = 0; i < self.union_laziness.length(); i = i+1:
-            if self.union_laziness.get(i).name == name:
-                assert(name not in [foreach t of self.types: t.name])
-                let types = [foreach t of self.union_laziness.get(i).types: self.get_type(t, null)]
-                for let k = 0; k < types.length(); k = k+1:
-                    if types.get(k) in types.slice(0, k):
-                        # TODO: error location
-                        # TODO: should this move to ir::make_union?
-                        print("duplicate union member {ir::type_name(types.get(k))}")
-                        assert(false)
-
-                let union_type = ir::make_union(self.builtins, types)
-                # FIXME: should convert implicitly
-                union_type.custom_name = new Optional[Str](name)
-                self.types.push(new NamedType(name, union_type))
-                self.union_laziness.delete_at_index(i)
 
         foreach type of self.types:
             if type.name == name:
@@ -1038,7 +1020,6 @@ class FileConverter(
         if (
             name in [foreach t of self.types: t.name]
             or name in [foreach t of self.typedef_laziness: t.name]
-            or name in [foreach t of self.union_laziness: t.name]
         ):
             location.error("type '{name}' already exists")
 
@@ -1075,10 +1056,6 @@ class FileConverter(
                 self.check_type_not_exists(type_def.name, type_def.location)
                 self.typedef_laziness.push(new NamedAstType(type_def.name, type_def.type))
 
-            case ast::UnionDef union_def:
-                self.check_type_not_exists(union_def.name, union_def.location)
-                self.union_laziness.push(new NamedAstTypeList(union_def.name, union_def.type_members))
-
             case ast::FuncOrMethodDef funcdef:
                 # TODO: check not exists
                 pass
@@ -1097,8 +1074,6 @@ class FileConverter(
                     case *:
                         pass
             case ast::ClassDef def:
-                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_named_type(def.name)))
-            case ast::UnionDef def:
                 self.symbols.push(new ir::Symbol(self.path, def.name, self.get_named_type(def.name)))
             case *:
                 pass
@@ -1290,7 +1265,6 @@ export func convert_program(
         ],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],
-        [],
     )
 
 
@@ -1298,7 +1272,6 @@ export func convert_program(
         converter.do_step1(top)
     foreach top of program:
         converter.do_step2(top)
-    assert(converter.union_laziness == [])
     assert(converter.typedef_laziness == [])
     foreach top of program:
         converter.do_step3(top)
