@@ -114,7 +114,6 @@ class Generic:
         if self is OPTIONAL:
             result: Type = UnionType({generic_arg, NULL_TYPE})
             result.constructor_argtypes = [generic_arg]
-            result.methods["get"] = FunctionType([result], generic_arg)
         elif self is LIST:
             result = Type(f"{self.name}[{generic_arg.name}]", True)
             result.constructor_argtypes = []
