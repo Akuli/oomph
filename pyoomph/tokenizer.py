@@ -14,7 +14,6 @@ TOKEN_REGEX = r'''
         | func
         | meth
         | class
-        | union
         | typedef
         | switch
         | case

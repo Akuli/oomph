@@ -15,7 +15,6 @@ keywords = [
     "func",
     "meth",
     "class",
-    "union",
     "typedef",
     "switch",
     "case",
