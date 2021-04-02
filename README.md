@@ -24,6 +24,7 @@ This is yet another attempt at making a usable programming language.
 - Some things are implemented in the language itself (see `builtins.oomph` and `stdlib`)
 
 Docs:
+- [Unions](docs/implicit-conversions.md)
 - [Syntax](docs/syntax.md)
 - [Automatic Types](docs/auto.md)
 - [Implicit conversions](docs/implicit-conversions.md)
