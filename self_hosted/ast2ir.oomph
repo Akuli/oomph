@@ -1041,6 +1041,7 @@ class FileConverter(
                 let classtype = new ir::BasicType(
                     classdef.name, true, [], [], null, null, add_to_string_method
                 )
+                self.builtins.cleanup_list.push(classtype)
                 assert(classdef.name not in [foreach t of self.types: t.name])
                 self.types.push(new NamedType(classdef.name, classtype))
 
