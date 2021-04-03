@@ -375,7 +375,7 @@ class FilePair(
         let decl = "{self.emit_type(type.returntype)} {function_name}({arg_decl_string})"
         self.function_decls = self.function_decls + decl + ";\n"
         if body != null:
-            self.function_defs = self.function_defs + decl + "\{" + body.get() + "\}"
+            self.function_defs = self.function_defs + decl + "\{" + body.get() + "\}\n"
 
     meth emit_string(Str value) -> Str:
         let first_time_with_this_value = value not in self.strings
