@@ -59,7 +59,9 @@ visible_builtins = {
         BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__run_subprocess", FunctionType([LIST.get_type(STRING)], INT)),
-        BuiltinVariable("__slice_until_substring", FunctionType([STRING, STRING], STRING)        ),
+        BuiltinVariable(
+            "__slice_until_substring", FunctionType([STRING, STRING], STRING)
+        ),
         BuiltinVariable("__string_get_first_char", FunctionType([STRING], STRING)),
         BuiltinVariable("__string_get_utf8_byte", FunctionType([STRING, INT], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
