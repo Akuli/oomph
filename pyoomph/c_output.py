@@ -236,11 +236,6 @@ class _FunctionEmitter:
 _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generic"
 _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
-_specially_emitted_variables: Dict[ir.Variable, str] = {
-    **{var: "oomph_" + name.lstrip("_") for name, var in ir.visible_builtins.items()},
-    **{var: "oomph_" + name for name, var in ir.hidden_builtins.items()},
-}
-
 
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
@@ -310,8 +305,9 @@ class _FilePair:
                     self.h_includes.add(pair)
                     return pair.emit_var(var)
 
-        if var in _specially_emitted_variables:
-            return _specially_emitted_variables[var]
+        for name, builtin_var in ir.visible_builtins.items() | ir.hidden_builtins.items():
+            if var == builtin_var:
+                return 'oomph_' + name.lstrip('_')
 
         assert isinstance(var.type, FunctionType)
         if isinstance(var, ir.FileVariable) and var.name == "main":
