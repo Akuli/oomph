@@ -38,11 +38,9 @@ export class Token(Str type, Str value, error::Location location):
         return self.type == type and self.value == value
 
 func get_int(Str code) -> Str:
-    let all_digits = [for let n = 0; n <= 9; n = n+1: n.to_string()]
     let result = ""
-
     while true:
-        switch starts_with_any(code.remove_prefix(result), all_digits):
+        switch starts_with_any(code.remove_prefix(result), "0123456789".split("")):
             case Str digit:
                 result = result + digit
             case null _:
