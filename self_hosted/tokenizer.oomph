@@ -8,7 +8,7 @@ func starts_with_any(Str s, List[Str] prefixes) -> Str | null:
 
 func get_simple_identifier(Str code) -> Str | null:
     let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-    let continue_chars = first_chars + "1234567890"
+    let continue_chars = first_chars + "0123456789"
 
     let match = starts_with_any(code, first_chars.split(""))
     if match == null:
