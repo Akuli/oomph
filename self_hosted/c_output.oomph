@@ -277,7 +277,7 @@ class FilePair(
         if type == self.session.builtins.BOOL:
             return "bool"
         if type == self.session.builtins.STR:
-            return "struct class_Str * /* A */"  # TODO: rename the struct?
+            return "struct class_Str *"  # TODO: rename the struct?
         if type == self.session.builtins.NULL_TYPE:
             return "char"  # always zero
 
