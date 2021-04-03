@@ -1,6 +1,6 @@
 export func main():
     let foo = ["a", "b", "c"]
-    foo.delete_at_index(0)
+    print("Deleted: " + foo.delete_at_index(0))
     print(foo)
-    foo.delete_at_index(1)
+    print("Deleted: " + foo.delete_at_index(1))
     print(foo)

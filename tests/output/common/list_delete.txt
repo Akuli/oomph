@@ -1,2 +1,4 @@
+Deleted: a
 ["b", "c"]
+Deleted: c
 ["b"]
