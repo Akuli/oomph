@@ -38,16 +38,15 @@ export class Token(Str type, Str value, error::Location location):
         return self.type == type and self.value == value
 
 func get_int(Str code) -> Str:
+    let all_digits = [for let n = 0; n <= 9; n = n+1: n.to_string()]
     let result = ""
+
     while true:
-        # TODO: this is ugly
-        let did_something = false
-        for let digit = 0; digit <= 9; digit = digit + 1:
-            if code.remove_prefix(result).starts_with(digit.to_string()):
-                result = result + digit.to_string()
-                did_something = true
-        if not did_something:
-            return result
+        switch starts_with_any(code.remove_prefix(result), all_digits):
+            case Str digit:
+                result = result + digit
+            case null _:
+                return result
 
 func extract_string(Str code, Str quotes, error::Location location) -> Str:
     let result = quotes

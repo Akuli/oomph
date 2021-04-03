@@ -1,0 +1,2 @@
+find_only: item found multiple times
+Program exited with status 1

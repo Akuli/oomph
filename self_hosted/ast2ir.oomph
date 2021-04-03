@@ -734,11 +734,9 @@ class FunctionOrMethodConverter(
                 if header.init.length() == 1:
                     switch header.init.first():
                         case ast::Let leet:
-                            # TODO: better way to remove from list
-                            for let i = 0; ; i = i+1:
-                                if self.variables.get(i).name == leet.varname:
-                                    self.variables.delete_at_index(i)
-                                    break
+                            let varnames = [foreach var of self.variables: var.name]
+                            if leet.varname in varnames:
+                                self.variables.delete_at_index(varnames.find_only(leet.varname))
                         case *:
                             pass
 
@@ -765,10 +763,9 @@ class FunctionOrMethodConverter(
                         let varname = chase.type_and_name.get().name
                         let nice_type = self.get_type(chase.type_and_name.get().type)
                         let nice_types = [nice_type]
-                        for let i = 0; ; i = i+1:
-                            if types_to_do.get(i) == nice_type:
-                                types_to_do.delete_at_index(i)
-                                break
+                        assert(nice_type in types_to_do)   # TODO: error
+                        types_to_do.delete_only(nice_type)
+
                         let case_var = self.create_var(
                             nice_type, chase.type_and_name.get().name_location
                         )
@@ -782,7 +779,7 @@ class FunctionOrMethodConverter(
 
                     if chase.type_and_name != null:
                         assert(self.get_var(varname, null) == case_var)
-                        # TODO: better way to find and remove from list
+                        # TODO: better way to remove from list, with custom key func
                         for let i = 0; ; i = i + 1:
                             if self.variables.get(i).name == varname and self.variables.get(i).var == case_var:
                                 self.variables.delete_at_index(i)
@@ -830,12 +827,10 @@ class FunctionOrMethodConverter(
                     )
                     let front_code = self.pop_code()
 
-                    for let i = 0; ; i = i + 1:
-                        if self.code.get(i) == call:
-                            # TODO: insert_sublist method to handle this
-                            foreach item of front_code.reversed():
-                                self.code.insert(i, item)
-                            break
+                    let i = self.code.find_only(call)
+                    # TODO: insert_sublist method to handle this
+                    foreach item of front_code.reversed():
+                        self.code.insert(i, item)
 
                     if functype.returntype == null:
                         # TODO: is this needed? when does it run?
@@ -969,12 +964,13 @@ class FileConverter(
 
     meth get_named_type(Str name) -> ir::Type:
         # step 2 stuff
-        for let i = 0; i < self.typedef_laziness.length(); i = i+1:
-            if self.typedef_laziness.get(i).name == name:
-                assert(name not in [foreach t of self.types: t.name])
-                let type = self.get_type(self.typedef_laziness.get(i).type, null)
-                self.types.push(new NamedType(name, type))
-                self.typedef_laziness.delete_at_index(i)
+        # TODO: better list methods
+        let laziness_names = [foreach pair of self.typedef_laziness: pair.name]
+        if name in laziness_names:
+            let pair = self.typedef_laziness.get(laziness_names.find_only(name))
+            self.typedef_laziness.delete_at_index(laziness_names.find_only(name))
+            assert(name not in [foreach t of self.types: t.name])
+            self.types.push(new NamedType(name, self.get_type(pair.type, null)))
 
         foreach type of self.types:
             if type.name == name:
@@ -1164,7 +1160,7 @@ class FileConverter(
 
         let local_var_counter = 0
         assert(def.args.length() == functype.argtypes.length())
-        for let i = 0; i < def.args.length(); i = i+1:
+        for let i = 0; i < def.args.length(); i = i+1:   # TODO: zip
             let argname = def.args.get(i).name
             let arg_location = def.args.get(i).name_location
             let type = functype.argtypes.get(i)

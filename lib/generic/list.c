@@ -174,6 +174,54 @@ bool METHOD(__contains)(TYPE self, ITEMTYPE item)
 	return false;
 }
 
+int64_t METHOD(find_first)(TYPE self, ITEMTYPE item)
+{
+	for (int64_t i = 0; i < self->len; i++) {
+		if (ITEMTYPE_METHOD(equals)(self->data[i], item))
+			return i;
+	}
+	panic_printf("find_first: item not found");
+}
+
+int64_t METHOD(find_last)(TYPE self, ITEMTYPE item)
+{
+	for (int64_t i = self->len - 1; i >= 0; i--) {
+		if (ITEMTYPE_METHOD(equals)(self->data[i], item))
+			return i;
+	}
+	panic_printf("find_last: item not found");
+}
+
+int64_t METHOD(find_only)(TYPE self, ITEMTYPE item)
+{
+	int64_t found = -1;
+	for (int64_t i = 0; i < self->len; i++) {
+		if (ITEMTYPE_METHOD(equals)(self->data[i], item)) {
+			if (found != -1)
+				panic_printf("find_only: item found multiple times");
+			found = i;
+		}
+	}
+	if (found == -1)
+		panic_printf("find_only: item not found");
+	return found;
+}
+
+void METHOD(delete_first)(TYPE self, ITEMTYPE item)
+{
+	METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
+}
+
+void METHOD(delete_last)(TYPE self, ITEMTYPE item)
+{
+	METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
+}
+
+void METHOD(delete_only)(TYPE self, ITEMTYPE item)
+{
+	METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
+}
+
 bool METHOD(starts_with)(TYPE self, TYPE prefix)
 {
 	if (self->len < prefix->len)
