@@ -1,18 +1,22 @@
 import "error.oomph" as error
 
-# FIXME: BasicType and FunctionType: missing equals method
 export typedef Type = AutoType | BasicType | FunctionType | UnionType
 
-export class Generic(Str name)
-
 export class AutoType(Int id)
+
+# FIXME: missing equals method
 export class FunctionType(List[Type] argtypes, Type | null returntype)
 
 # TODO: mappings
 export class Method(Str name, FunctionType functype)
 export class Member(Str name, Type type)
 
-export class GenericSource(Generic generik, Type arg)
+export class Generic(Str name)
+export class GenericSource(Generic generik, Type arg):
+    # TODO: some kind of handy way to say "do equality checks by value"
+    meth equals(GenericSource other) -> Bool:
+        return self.generik == other.generik and self.arg == other.arg
+
 export class BasicType(
     # TODO: definition path
     Str name,
@@ -26,6 +30,15 @@ export class BasicType(
     # Helps with reference cycles
     meth to_string() -> Str:
         return "<BasicType: {self.name}>"
+
+    meth equals(BasicType other) -> Bool:
+        let result = (
+            self.name == other.name
+            # FIXME: and self.definition_path == other.definition_path
+            and self.generic_source == other.generic_source
+        )
+        return result
+
 
 export class UnionType(
     List[Type] type_members,
@@ -199,11 +212,14 @@ export class Builtins(
         )
         let r = new Type(result)  # TODO: get rid of this
         methods.push_all([
-            # TODO: hide __contains better?
-            new Method("__contains", new FunctionType([r, arg], self.BOOL)),
+            new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
             new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
+            new Method("delete_first", new FunctionType([r, arg], null)),
+            new Method("delete_first", new FunctionType([r, arg], null)),
+            new Method("delete_only", new FunctionType([r, arg], null)),
             new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
             new Method("ends_with", new FunctionType([r, r], self.BOOL)),
+            new Method("equals", new FunctionType([r, r], self.BOOL)),
             new Method("find_first", new FunctionType([r, arg], self.INT)),
             new Method("find_last", new FunctionType([r, arg], self.INT)),
             new Method("find_only", new FunctionType([r, arg], self.INT)),
@@ -215,9 +231,6 @@ export class Builtins(
             new Method("pop", new FunctionType([r], arg)),
             new Method("push", new FunctionType([r, arg], null)),
             new Method("push_all", new FunctionType([r, r], null)),
-            new Method("delete_first", new FunctionType([r, arg], null)),
-            new Method("delete_last", new FunctionType([r, arg], null)),
-            new Method("delete_only", new FunctionType([r, arg], null)),
             new Method("reversed", new FunctionType([r], r)),
             new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
             new Method("starts_with", new FunctionType([r, r], self.BOOL)),
