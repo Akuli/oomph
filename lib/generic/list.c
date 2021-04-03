@@ -254,14 +254,14 @@ struct class_Str *METHOD(to_string)(TYPE self)
 
 	for (int64_t i = 0; i < self->len; i++) {
 		if (i != 0) {
-			string_concat_inplace(&res, ", ");
+			oomph_string_concat_inplace(&res, ", ");
 		}
 		struct class_Str *s = ITEMTYPE_METHOD(to_string)(self->data[i]);
-		string_concat_inplace(&res, s->str);
+		oomph_string_concat_inplace(&res, s->str);
 		decref(s, dtor_Str);
 	}
 
-	string_concat_inplace(&res, "]");
+	oomph_string_concat_inplace(&res, "]");
 	return res;
 }
 

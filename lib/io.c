@@ -4,18 +4,18 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void io_print(const struct class_Str *s)
+void oomph_print(const struct class_Str *s)
 {
 	puts(s->str);
 }
 
-void io_mkdir(const struct class_Str *path)
+void oomph_io_mkdir(const struct class_Str *path)
 {
 	if (mkdir(path->str, 0777) == -1 && errno != EEXIST)
 		panic_printf_errno("creating directory \"%s\" failed", path->str);
 }
 
-struct class_Str *io_read_file(const struct class_Str *path)
+struct class_Str *oomph_io_read_file(const struct class_Str *path)
 {
 	FILE *f = fopen(path->str, "r");
 	if (!f)
@@ -51,7 +51,7 @@ struct class_Str *io_read_file(const struct class_Str *path)
 	return res;
 }
 
-void io_write_file(const struct class_Str *path, const struct class_Str *content)
+void oomph_io_write_file(const struct class_Str *path, const struct class_Str *content)
 {
 	FILE *f = fopen(path->str, "w");
 	if (!f)

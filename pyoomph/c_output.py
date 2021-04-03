@@ -236,28 +236,6 @@ class _FunctionEmitter:
 _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generic"
 _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
-_specially_emitted_variables: Dict[ir.Variable, str] = {
-    # TODO: why is this so difficult?
-    ir.visible_builtins["__argv_count"]: "argv_count",
-    ir.visible_builtins["__argv_get"]: "argv_get",
-    ir.visible_builtins["__hash"]: "oomph_hash",
-    ir.visible_builtins["__io_mkdir"]: "io_mkdir",
-    ir.visible_builtins["__io_read_file"]: "io_read_file",
-    ir.visible_builtins["__io_write_file"]: "io_write_file",
-    ir.visible_builtins["__remove_prefix"]: "string_remove_prefix",
-    ir.visible_builtins["__remove_suffix"]: "string_remove_suffix",
-    ir.visible_builtins["__run_subprocess"]: "run_subprocess",
-    ir.visible_builtins["__slice_until_substring"]: "slice_until_substring",
-    ir.visible_builtins["__string_get_first_char"]: "string_get_first_char",
-    ir.visible_builtins["__string_get_utf8_byte"]: "string_get_utf8_byte",
-    ir.visible_builtins["assert"]: "oomph_assert",
-    ir.visible_builtins["false"]: "false",
-    ir.visible_builtins["null"]: "0",
-    ir.visible_builtins["print"]: "io_print",
-    ir.visible_builtins["true"]: "true",
-    **{var: name for name, var in ir.hidden_builtins.items()},
-}
-
 
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
@@ -327,8 +305,11 @@ class _FilePair:
                     self.h_includes.add(pair)
                     return pair.emit_var(var)
 
-        if var in _specially_emitted_variables:
-            return _specially_emitted_variables[var]
+        for name, builtin_var in (
+            ir.visible_builtins.items() | ir.hidden_builtins.items()
+        ):
+            if var == builtin_var:
+                return "oomph_" + name.lstrip("_")
 
         assert isinstance(var.type, FunctionType)
         if isinstance(var, ir.FileVariable) and var.name == "main":
@@ -447,9 +428,9 @@ class _FilePair:
                 struct class_Str *res = {self.emit_string(the_type.name)};
                 // TODO: missing incref, although doesn't matter since these
                 //       strings are not reference counted
-                string_concat_inplace(&res, "(");
-                string_concat_inplace(&res, valstr->str);
-                string_concat_inplace(&res, ")");
+                oomph_string_concat_inplace(&res, "(");
+                oomph_string_concat_inplace(&res, valstr->str);
+                oomph_string_concat_inplace(&res, ")");
                 decref(valstr, dtor_Str);
                 return res;
             }}
@@ -633,15 +614,15 @@ class _FilePair:
                 struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} self)
                 {{
                     struct class_Str *res = {self.emit_string(the_type.name)};
-                    string_concat_inplace(&res, "(");
+                    oomph_string_concat_inplace(&res, "(");
                     struct class_Str *strs[] = {{ {','.join(to_string_calls + ['NULL'])} }};
                     for (size_t i = 0; strs[i]; i++) {{
                         if (i != 0)
-                            string_concat_inplace(&res, ", ");
-                        string_concat_inplace(&res, strs[i]->str);
+                            oomph_string_concat_inplace(&res, ", ");
+                        oomph_string_concat_inplace(&res, strs[i]->str);
                         decref(strs[i], dtor_Str);
                     }}
-                    string_concat_inplace(&res, ")");
+                    oomph_string_concat_inplace(&res, ")");
                     return res;
                 }}
                 """

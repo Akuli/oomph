@@ -59,7 +59,7 @@ double meth_Str_to_float(const struct class_Str *s)
 	return res;
 }
 
-int64_t int_mod(int64_t a, int64_t b)
+int64_t oomph_int_mod(int64_t a, int64_t b)
 {
 	int64_t res = a % b;
 	// Make sure result has same sign as b
@@ -68,7 +68,7 @@ int64_t int_mod(int64_t a, int64_t b)
 	return res;
 }
 
-double float_mod(double a, double b)
+double oomph_float_mod(double a, double b)
 {
 	double res = fmod(a, b);
 	if ((b > 0 && res < 0) || (b < 0 && res > 0))
