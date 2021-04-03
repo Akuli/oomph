@@ -248,6 +248,8 @@ export func create_builtins() -> Builtins:
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
         new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
+        new BuiltinVariable("__get_first_char", new FunctionType([STR], STR)),
+        new BuiltinVariable("__get_utf8_byte", new FunctionType([STR, INT], INT)),
         new BuiltinVariable("__hash", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
         new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
@@ -256,8 +258,6 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, STR)], INT)),
         new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
-        new BuiltinVariable("__get_first_char", new FunctionType([STR], STR)),
-        new BuiltinVariable("__get_utf8_byte", new FunctionType([STR, INT], INT)),
         new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
         new BuiltinVariable("false", BOOL),
         new BuiltinVariable("null", NULL_TYPE),

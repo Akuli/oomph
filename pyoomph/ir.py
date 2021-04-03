@@ -52,6 +52,8 @@ visible_builtins = {
     for var in [
         BuiltinVariable("__argv_count", FunctionType([], INT)),
         BuiltinVariable("__argv_get", FunctionType([INT], STRING)),
+        BuiltinVariable("__get_first_char", FunctionType([STRING], STRING)),
+        BuiltinVariable("__get_utf8_byte", FunctionType([STRING, INT], INT)),
         BuiltinVariable("__hash", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
@@ -62,8 +64,6 @@ visible_builtins = {
         BuiltinVariable(
             "__slice_until_substring", FunctionType([STRING, STRING], STRING)
         ),
-        BuiltinVariable("__get_first_char", FunctionType([STRING], STRING)),
-        BuiltinVariable("__get_utf8_byte", FunctionType([STRING, INT], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("null", NULL_TYPE),

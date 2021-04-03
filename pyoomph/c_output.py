@@ -237,7 +237,7 @@ _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generi
 _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
-    **{var: 'oomph_' + name.lstrip('_') for name, var in ir.visible_builtins.items()},
+    **{var: "oomph_" + name.lstrip("_") for name, var in ir.visible_builtins.items()},
     **{var: name for name, var in ir.hidden_builtins.items()},
 }
 
