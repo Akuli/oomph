@@ -124,7 +124,7 @@ export func type_id_string(Type type) -> Str:
             assert(false)
         case BasicType basictype:
             if basictype.generic_source == null:
-                # TODO: return self.name + str(self.definition_path)
+                # FIXME: return self.name + str(self.definition_path)
                 return basictype.name
             let source = basictype.generic_source.get()
             return source.generik.name + type_id_string(source.arg)
