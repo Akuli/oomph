@@ -8,10 +8,9 @@ import "tokenizer.oomph" as tokenizer
 
 # TODO: respect quoting rules
 func split(Str s) -> List[Str]:
-    let result = []
-    foreach part of s.split(" "):
-        if part != "":
-            result.push(part)
+    let result = s.split(" ")
+    while "" in result:
+        result.delete_first("")
     return result
 
 func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[Str]:
