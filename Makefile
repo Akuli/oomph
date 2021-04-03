@@ -1,3 +1,10 @@
+# Use tcc if it's installed and $(CC) is 'cc', the system default
+ifneq ($(shell which tcc),)
+ifeq ($(CC),cc)
+CC := tcc
+endif
+endif
+
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
 CFLAGS += -Werror=incompatible-pointer-types
 CFLAGS += -Werror=implicit-function-declaration
