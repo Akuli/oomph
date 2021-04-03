@@ -53,7 +53,6 @@ class FunctionEmitter(
         return [foreach ins of body: self.emit_instruction(ins)].join("")
 
     meth emit_instruction(ir::Instruction instruction) -> Str:
-        pass
         switch instruction:
             case ir::StringConstant cons:
                 return """
