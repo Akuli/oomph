@@ -30,21 +30,21 @@ noreturn void panic_printf_errno(const char *fmt, ...);
 #define panic_printf(...) (errno = 0, panic_printf_errno(__VA_ARGS__))
 
 // Currently it's not easy to return a list of strings from C function
-int64_t argv_count(void);
-struct class_Str *argv_get(int64_t i);
+int64_t oomph_argv_count(void);
+struct class_Str *oomph_argv_get(int64_t i);
 
-int64_t run_subprocess(void *args);
-int64_t string_get_utf8_byte(struct class_Str *s, int64_t i);
-struct class_Str *io_read_file(const struct class_Str *path);
-struct class_Str *oomph_hash(const struct class_Str *data, const struct class_Str *algname);
+int64_t oomph_get_utf8_byte(struct class_Str *s, int64_t i);
+int64_t oomph_run_subprocess(void *args);
 struct class_Str *meth_Str_remove_prefix(struct class_Str *s, struct class_Str *pre);
 struct class_Str *meth_Str_remove_suffix(struct class_Str *s, struct class_Str *suf);
-struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep);
-struct class_Str *string_get_first_char(struct class_Str *s);
-void io_mkdir(const struct class_Str *path);
-void io_print(const struct class_Str *s);
-void io_write_file(const struct class_Str *path, const struct class_Str *content);
+struct class_Str *oomph_get_first_char(struct class_Str *s);
+struct class_Str *oomph_hash(const struct class_Str *data, const struct class_Str *algname);
+struct class_Str *oomph_io_read_file(const struct class_Str *path);
+struct class_Str *oomph_slice_until_substring(struct class_Str *s, struct class_Str *sep);
 void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno);
+void oomph_io_mkdir(const struct class_Str *path);
+void oomph_io_write_file(const struct class_Str *path, const struct class_Str *content);
+void oomph_print(const struct class_Str *s);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
 #define meth_Float_equals(a, b) ((a)==(b))
@@ -88,6 +88,10 @@ void decref(void *ptr, void (*destructor)(void *ptr));
 double float_mod(double a, double b);
 int64_t int_mod(int64_t a, int64_t b);
 struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
+
+#define oomph_false false
+#define oomph_null 0
+#define oomph_true true
 
 // null is first member
 #define IS_NULL(unionvar) ((unionvar).membernum == 0)

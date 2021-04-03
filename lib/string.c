@@ -123,7 +123,7 @@ static struct class_Str *slice_from_start(struct class_Str *s, size_t len)
 }
 
 // TODO: avoid allocations
-struct class_Str *string_get_first_char(struct class_Str *s)
+struct class_Str *oomph_get_first_char(struct class_Str *s)
 {
 	assert(s->str[0] != '\0');
 	size_t n = 1;
@@ -152,7 +152,7 @@ struct class_Str *meth_Str_remove_suffix(struct class_Str *s, struct class_Str *
 }
 
 // python's string.split(sep)[0]
-struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep)
+struct class_Str *oomph_slice_until_substring(struct class_Str *s, struct class_Str *sep)
 {
 	char *ptr = strstr(s->str, sep->str);
 	if (!ptr) {
@@ -162,7 +162,7 @@ struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *s
 	return slice_from_start(s, ptr - s->str);
 }
 
-int64_t string_get_utf8_byte(struct class_Str *s, int64_t i)
+int64_t oomph_get_utf8_byte(struct class_Str *s, int64_t i)
 {
 	// Include trailing zero byte
 	assert(0 <= i && i <= (int64_t)strlen(s->str));

@@ -62,8 +62,8 @@ visible_builtins = {
         BuiltinVariable(
             "__slice_until_substring", FunctionType([STRING, STRING], STRING)
         ),
-        BuiltinVariable("__string_get_first_char", FunctionType([STRING], STRING)),
-        BuiltinVariable("__string_get_utf8_byte", FunctionType([STRING, INT], INT)),
+        BuiltinVariable("__get_first_char", FunctionType([STRING], STRING)),
+        BuiltinVariable("__get_utf8_byte", FunctionType([STRING, INT], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("null", NULL_TYPE),

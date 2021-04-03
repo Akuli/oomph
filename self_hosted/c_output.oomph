@@ -102,7 +102,7 @@ class FunctionEmitter(
             case ir::FunctionCall call:
                 # TODO: use emit_var
                 if call.function == self.file.builtins.get_visible_var("print"):
-                    self.emit_call("io_print", call.args, null)
+                    self.emit_call("oomph_print", call.args, null)
                 else:
                     self.emit_call(
                         (call.function as ir::BuiltinVariable).name,
