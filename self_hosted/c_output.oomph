@@ -283,7 +283,7 @@ class FilePair(
         if type == self.session.builtins.NULL_TYPE:
             return "char"  # always zero
 
-        let defining_file_pair = self.session.get_file_pair_for_type(type)
+        let defining_file_pair = self.session.type_to_file_pair(type)
         let result = "struct class_{defining_file_pair.id}"
 
         switch type:
@@ -664,7 +664,7 @@ class FilePair(
                 ).emit_funcdef(funcdef, self.emit_var(funcdef.var))
             case ir::MethodDef methdef:
                 let klass = methdef.type.argtypes.first()
-                let file_pair = self.session.get_file_pair_for_type(klass)
+                let file_pair = self.session.type_to_file_pair(klass)
                 new FunctionEmitter(
                     file_pair, self.session, [], [], "", "", []
                 ).emit_funcdef(
@@ -686,7 +686,7 @@ class Session(
                 return pair
         assert(false)
 
-    meth get_file_pair_for_type(ir::Type type) -> FilePair:
+    meth type_to_file_pair(ir::Type type) -> FilePair:
         foreach pair of self.file_pairs:
             if pair.type_or_source_path == type:
                 return pair
@@ -714,7 +714,7 @@ class Session(
         ]
         if type in builtin_types:
             return ir::type_name(type)
-        return self.get_file_pair_for_type(type).id
+        return self.type_to_file_pair(type).id
 
     # May evaluate c_expression several times
     meth emit_incref(Str c_expression, ir::Type type) -> Str:

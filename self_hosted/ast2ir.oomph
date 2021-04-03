@@ -73,10 +73,10 @@ class FunctionOrMethodConverter(
 
     meth resolve_autotype(ir::AutoType autotype, ir::Type actual):
         switch actual:
-            case ir::AutoType actual_autotype:
-                pass
-            case *:
+            case ir::AutoType _:
                 assert(false)
+            case *:
+                pass
 
         foreach pair of self.resolved_autotypes:
             if pair.autotype == autotype:
@@ -162,9 +162,6 @@ class FunctionOrMethodConverter(
         return null
 
     meth do_the_autotype_thing(ir::Type type1, ir::Type type2) -> TypePair:
-        let type1_source = ir::get_generic_source(type1)
-        let type2_source = ir::get_generic_source(type2)
-
         if is_autotype(type1) and is_autotype(type2):
             if type1 != type2:
                 let actual_type1 = self.lookup_autotype(type1 as ir::AutoType)
@@ -194,16 +191,22 @@ class FunctionOrMethodConverter(
             self.resolve_autotype(type2 as ir::AutoType, type1)
             return new TypePair(type1, type1)
 
-        elif (type1_source != null
-              and type2_source != null
-              and type1_source.get().generik == type2_source.get().generik):
-            # Handle List[Str] matching List[auto]
-            let generik = type1_source.get().generik
-            let arg_pair = self.do_the_autotype_thing(type1_source.get().arg, type2_source.get().arg)
-            return new TypePair(
-                self.builtins.generic2type(generik, arg_pair.first),
-                self.builtins.generic2type(generik, arg_pair.second),
-            )
+        else:
+            let type1_source = ir::get_generic_source(type1)
+            let type2_source = ir::get_generic_source(type2)
+            if (
+                type1_source != null
+                and type2_source != null
+                and type1_source.get().generik == type2_source.get().generik
+            ):
+                # Handle List[Str] matching List[auto]
+                let generik = type1_source.get().generik
+                let arg_pair = self.do_the_autotype_thing(type1_source.get().arg, type2_source.get().arg)
+                return new TypePair(
+                    self.builtins.generic2type(generik, arg_pair.first),
+                    self.builtins.generic2type(generik, arg_pair.second),
+                )
+
         return new TypePair(type1, type2)
 
     meth implicit_conversion_if_possible(
