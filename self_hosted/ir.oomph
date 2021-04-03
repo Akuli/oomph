@@ -1,18 +1,22 @@
 import "error.oomph" as error
 
-# FIXME: BasicType and FunctionType: missing equals method
 export typedef Type = AutoType | BasicType | FunctionType | UnionType
 
-export class Generic(Str name)
-
 export class AutoType(Int id)
+
+# FIXME: missing equals method
 export class FunctionType(List[Type] argtypes, Type | null returntype)
 
 # TODO: mappings
 export class Method(Str name, FunctionType functype)
 export class Member(Str name, Type type)
 
-export class GenericSource(Generic generik, Type arg)
+export class Generic(Str name)
+export class GenericSource(Generic generik, Type arg):
+    # TODO: some kind of handy way to say "do equality checks by value"
+    meth equals(GenericSource other) -> Bool:
+        return self.generik == other.generik and self.arg == other.arg
+
 export class BasicType(
     # TODO: definition path
     Str name,
@@ -26,6 +30,15 @@ export class BasicType(
     # Helps with reference cycles
     meth to_string() -> Str:
         return "<BasicType: {self.name}>"
+
+    meth equals(BasicType other) -> Bool:
+        let result = (
+            self.name == other.name
+            # FIXME: and self.definition_path == other.definition_path
+            and self.generic_source == other.generic_source
+        )
+        return result
+
 
 export class UnionType(
     List[Type] type_members,
@@ -54,11 +67,24 @@ export func make_union(
 
     # FIXME: sort the type members consistently
 
+    # Rest of the code relies on null being first when detecting 'Foo | null' unions
     if builtins.NULL_TYPE in type_members:
         type_members.delete_only(builtins.NULL_TYPE)
         type_members.insert(0, builtins.NULL_TYPE)
 
     return new UnionType(type_members, null, builtins)
+
+
+export func is_refcounted(Type type) -> Bool:
+    switch type:
+        case AutoType _:
+            assert(false)
+        case BasicType basictype:
+            return basictype.refcounted
+        case FunctionType functype:
+            return false
+        case UnionType _:
+            return true
 
 
 export func get_constructor_argtypes(Type type) -> List[Type] | null:
@@ -82,16 +108,31 @@ export func type_name(Type type) -> Str:
             return basic.name
         case FunctionType functype:
             return "<function type>"
-        case UnionType union_type:
+        case UnionType union:
             # Don't use custom names for 'Foo | null'
-            if union_type.custom_name == null or (
-                union_type.type_members.length() == 2
-                and union_type.type_members.first() == union_type.builtins.NULL_TYPE
+            if union.custom_name == null or (
+                union.type_members.length() == 2
+                and union.type_members.first() == union.builtins.NULL_TYPE
             ):
                 return "(" + [
-                    foreach t of union_type.type_members: type_name(t)
+                    foreach t of union.type_members: type_name(t)
                 ].join(" | ") + ")"
-            return union_type.custom_name.get()
+            return union.custom_name.get()
+
+export func type_id_string(Type type) -> Str:
+    switch type:
+        case AutoType _:
+            assert(false)
+        case BasicType basictype:
+            if basictype.generic_source == null:
+                # FIXME: return self.name + str(self.definition_path)
+                return basictype.name
+            let source = basictype.generic_source.get()
+            return source.generik.name + type_id_string(source.arg)
+        case UnionType union:
+            return [foreach m of union.type_members: type_id_string(m)].join("|")
+        case FunctionType functype:
+            assert(false)   # TODO
 
 export func get_generic_source(Type type) -> GenericSource | null:
     switch type:
@@ -131,15 +172,15 @@ export class Builtins(
     Generic LIST,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
-    List[Type] cleanup_list,
+    List[BasicType] cleanup_list,
 ):
     meth destroy():
         # get rid of reference cycles
-        # TODO: syntax sucks
         foreach type of self.cleanup_list:
             # TODO: 'thing.methods = []' doesn't work
-            while (type as BasicType).methods != []:
-                (type as BasicType).methods.pop()
+            type.methods = new List[Method]()
+            type.members = new List[Member]()
+            type.constructor_argtypes = new (List[Type] | null)(null)
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
@@ -154,6 +195,9 @@ export class Builtins(
                 return var
         print("INTERNAL ERROR: hidden variable {name} not found")
         assert(false)
+
+    meth get_builtin_types() -> List[Type]:
+        return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
 
     # TODO: this is in a weird place
     meth generic2type(Generic generik, Type arg) -> Type:
@@ -172,11 +216,14 @@ export class Builtins(
         )
         let r = new Type(result)  # TODO: get rid of this
         methods.push_all([
-            # TODO: hide __contains better?
-            new Method("__contains", new FunctionType([r, arg], self.BOOL)),
+            new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
             new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
+            new Method("delete_first", new FunctionType([r, arg], null)),
+            new Method("delete_first", new FunctionType([r, arg], null)),
+            new Method("delete_only", new FunctionType([r, arg], null)),
             new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
             new Method("ends_with", new FunctionType([r, r], self.BOOL)),
+            new Method("equals", new FunctionType([r, r], self.BOOL)),
             new Method("find_first", new FunctionType([r, arg], self.INT)),
             new Method("find_last", new FunctionType([r, arg], self.INT)),
             new Method("find_only", new FunctionType([r, arg], self.INT)),
@@ -188,9 +235,6 @@ export class Builtins(
             new Method("pop", new FunctionType([r], arg)),
             new Method("push", new FunctionType([r, arg], null)),
             new Method("push_all", new FunctionType([r, r], null)),
-            new Method("delete_first", new FunctionType([r, arg], null)),
-            new Method("delete_last", new FunctionType([r, arg], null)),
-            new Method("delete_only", new FunctionType([r, arg], null)),
             new Method("reversed", new FunctionType([r], r)),
             new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
             new Method("starts_with", new FunctionType([r, r], self.BOOL)),
@@ -242,8 +286,9 @@ export func create_builtins() -> Builtins:
     let result = new Builtins(
         BOOL, FLOAT, INT, NULL_TYPE, STR, LIST,
         visible_vars, hidden_vars,
-        [BOOL, FLOAT, INT, NULL_TYPE, STR],
+        [],
     )
+    result.cleanup_list.push_all([foreach t of result.get_builtin_types(): t as BasicType])
 
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
@@ -315,28 +360,29 @@ export func create_builtins() -> Builtins:
 
     return result
 
-
-export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
+export func get_methods(Type type, Builtins builtins) -> List[Method]:
     switch type:
         case AutoType a:
             assert(false)
         case BasicType basictype:
-            let methods = basictype.methods
+            return basictype.methods
         case FunctionType functype:
-            methods = []
-        case UnionType union_type:
-            methods = [
+            return []
+        case UnionType union:
+            let methods = [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
             if (
-                union_type.type_members.length() == 2
-                and union_type.type_members.first() == builtins.NULL_TYPE
+                union.type_members.length() == 2
+                and union.type_members.first() == builtins.NULL_TYPE
             ):
-                let item_type = union_type.type_members.last()
-                methods.push(new Method("get", new FunctionType([new Type(union_type)], item_type)))
+                let item_type = union.type_members.last()
+                methods.push(new Method("get", new FunctionType([new Type(union)], item_type)))
+            return methods
 
-    foreach method of methods:
+export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
+    foreach method of get_methods(type, builtins):
         if method.name == name:
             return method.functype
 

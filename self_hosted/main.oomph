@@ -13,7 +13,7 @@ func split(Str s) -> List[Str]:
         result.delete_first("")
     return result
 
-func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[Str]:
+func get_c_compiler_command(List[Str] c_paths, Str exepath) -> List[Str]:
     # TODO: dict
     let cc = ""
     let cflags = ""
@@ -42,17 +42,21 @@ func get_c_compiler_command(Str project_root, Str c_path, Str exepath) -> List[S
         "obj/string.o",
         "obj/process.o",
     ])
-    result.push(c_path)
+    result.push_all(c_paths)
     result.push("-o")
     result.push(exepath)
     result.push_all(split(ldflags))
     result.push("-I")
-    result.push(project_root)
+    result.push(".")
     return result
 
+func create_ir(ir::Builtins builtins, Str source_path) -> List[ir::ToplevelDeclaration]:
+    let code = io::read_file(source_path)
+    let ast = parser::parse_file(code, source_path, "stdlib.oomph")
+    return ast2ir::convert_program(builtins, ast, source_path, [])
+
 export func main():
-    let project_root = "."
-    let cache_dir = "{project_root}/.oomph-cache"
+    let cache_dir = ".oomph-cache"
     io::mkdir(cache_dir)
 
     let args = process::get_args()
@@ -77,30 +81,36 @@ export func main():
     assert(args != [])  # TODO: error
     let source_path = args.delete_at_index(0)
 
-    let builtins = ir::create_builtins()
-    let code = io::read_file(source_path)
-
     if tokens_only:
+        let code = io::read_file(source_path)
         foreach token of tokenizer::tokenize(code, source_path, 1, ""):
             print(token)
-        builtins.destroy()
         return
 
-    let ast = parser::parse_file(code, source_path, "{project_root}/stdlib.oomph")
     if ast_only:
+        let code = io::read_file(source_path)
+        let ast = parser::parse_file(code, source_path, "stdlib")
         print(ast)
-        builtins.destroy()
         return
 
-    let ir = ast2ir::convert_program(builtins, ast, source_path, [])
-    let c_code = c_output::create_code(builtins, ir)
-    io::write_file("{cache_dir}/out.c", c_code)
+    let builtins = ir::create_builtins()
+    let builtins_ir = create_ir(builtins, "builtins.oomph")
+    let file_ir = create_ir(builtins, source_path)
+
+    # TODO: use separate compilation dir inside cache dir
+    let session = new c_output::Session(builtins, cache_dir, [], [])
+    session.create_c_code(builtins_ir, "builtins.oomph")
+    session.create_c_code(file_ir, source_path)
+    let c_paths = session.write_everything("builtins.oomph")
+
     assert(process::run(
-        get_c_compiler_command(project_root, "{cache_dir}/out.c", "{cache_dir}/out")
+        get_c_compiler_command(c_paths, "{cache_dir}/out")
     ) == 0)
 
     let run_command = split(valgrind)
     run_command.push("{cache_dir}/out")
     run_command.push_all(args)
     assert(process::run(run_command) == 0)
+
+    session.destroy()
     builtins.destroy()

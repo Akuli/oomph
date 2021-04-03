@@ -18,7 +18,7 @@ while [[ "$1" == --* ]]; do
             shift
             ;;
         --valgrind)
-            valgrind='valgrind -q --leak-check=full --show-leak-kinds=all'
+            valgrind='valgrind -q --leak-check=full --error-exitcode=1'
             compiler_valgrind_arg="--valgrind='$valgrind'"
             shift
             ;;

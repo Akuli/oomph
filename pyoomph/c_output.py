@@ -4,7 +4,7 @@ import hashlib
 import os
 import pathlib
 import re
-from typing import Dict, List, Optional, Set, TypeVar, Union
+from typing import Dict, List, Optional, Set, Union
 
 from pyoomph import ir
 from pyoomph.types import (
@@ -20,8 +20,6 @@ from pyoomph.types import (
     UnionType,
     builtin_types,
 )
-
-_T = TypeVar("_T")
 
 
 def _emit_label(name: str) -> str:
@@ -60,7 +58,7 @@ class _FunctionEmitter:
         return f"{self.emit_var(result_var)} = {func}({args_string});\n"
 
     def emit_body(self, body: List[ir.Instruction]) -> str:
-        return "\n\t".join(map(self.emit_instruction, body))
+        return "".join(map(self.emit_instruction, body))
 
     def emit_instruction(self, ins: ir.Instruction) -> str:
         if isinstance(ins, ir.StringConstant):
@@ -514,9 +512,9 @@ class _FilePair:
                 self.function_defs += f"""
                 {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
                 {{
-                    if (IS_NULL(obj))
+                    if (obj.membernum == 0)
                         panic_printf("Error: null.get() was called");
-
+                    assert(obj.membernum == 1);
                     {self.session.emit_incref('obj.val.item1', itemtype)};
                     return obj.val.item1;
                 }}
@@ -556,9 +554,12 @@ class _FilePair:
                 f"{self.emit_type(the_type)} memb_{name};\n"
                 for the_type, name in the_type.members
             )
-            constructor_args = ",".join(
-                f"{self.emit_type(the_type)} arg_{name}"
-                for the_type, name in the_type.members
+            constructor_args = (
+                ",".join(
+                    f"{self.emit_type(the_type)} arg_{name}"
+                    for the_type, name in the_type.members
+                )
+                or "void"
             )
             member_assignments = "".join(
                 f"obj->memb_{name} = arg_{name};\n"
