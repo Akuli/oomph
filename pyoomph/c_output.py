@@ -554,10 +554,13 @@ class _FilePair:
                 f"{self.emit_type(the_type)} memb_{name};\n"
                 for the_type, name in the_type.members
             )
-            constructor_args = ",".join(
-                f"{self.emit_type(the_type)} arg_{name}"
-                for the_type, name in the_type.members
-            ) or "void"
+            constructor_args = (
+                ",".join(
+                    f"{self.emit_type(the_type)} arg_{name}"
+                    for the_type, name in the_type.members
+                )
+                or "void"
+            )
             member_assignments = "".join(
                 f"obj->memb_{name} = arg_{name};\n"
                 for the_type, name in the_type.members
