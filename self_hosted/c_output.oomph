@@ -282,7 +282,7 @@ class FilePair(
             return "char"  # always zero
 
         let defining_file_pair = self.session.type_to_file_pair(type)
-        let result = "struct class_{defining_file_pair.id} /* B */"
+        let result = "struct class_{defining_file_pair.id}"
 
         switch type:
             case ir::UnionType _:
