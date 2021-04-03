@@ -1,0 +1,2 @@
+export func main():
+    print([1, 2, 2, 3].find_only(69))

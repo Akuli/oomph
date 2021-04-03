@@ -34,7 +34,7 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
-- `or_if_null_then` method: `optional.or_if_null_then(default)`
+- `or_if_null_then` method: `optional.or_if_null_then(default)` ([#80](https://github.com/Akuli/oomph/issues/80))
 - safe and unsafe (user-input) strings: would prevent a lot of security problems
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - `[first_foo, ...other_foos]` syntax
@@ -50,11 +50,8 @@ Missing features:
 - better ternary than in python: `if cond then a else b`
 - named arguments
 - default values of arguments
-- find element from list (with custom callback to specify what matches):
-    - first occurence
-    - last occurrence
-    - all occurrences
-    - only occurrence, failing if multiple are found
+- find all occurences from list
+- custom callback to list find methods
 - string methods
     - upper and lower (need unicode lib?)
     - grep self-hosted compiler for more string method ideas

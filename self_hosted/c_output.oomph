@@ -25,10 +25,8 @@ class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
         return "{self.emit_type(type)} {varname} = NULL;"
 
     meth emit_string(Str value) -> Str:
-        # TODO: replace with one of: list find method, enumerate, mapping
-        for let i = 0; i < self.declared_strings.length(); i = i+1:
-            if self.declared_strings.get(i) == value:
-                return "string{i}"
+        if value in self.declared_strings:
+            return "string" + self.declared_strings.find_only(value).to_string()
 
         let varname = "string{self.declared_strings.length()}"
         self.declared_strings.push(value)
