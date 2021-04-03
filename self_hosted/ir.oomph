@@ -172,15 +172,15 @@ export class Builtins(
     Generic LIST,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
-    List[Type] cleanup_list,
+    List[BasicType] cleanup_list,
 ):
     meth destroy():
         # get rid of reference cycles
         foreach type of self.cleanup_list:
             # TODO: 'thing.methods = []' doesn't work
-            (type as BasicType).methods = new List[Method]()
-            (type as BasicType).members = new List[Member]()
-            (type as BasicType).constructor_argtypes = new (List[Type] | null)(null)
+            type.methods = new List[Method]()
+            type.members = new List[Member]()
+            type.constructor_argtypes = new (List[Type] | null)(null)
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
@@ -288,7 +288,7 @@ export func create_builtins() -> Builtins:
         visible_vars, hidden_vars,
         [],
     )
-    result.cleanup_list.push_all(result.get_builtin_types())
+    result.cleanup_list.push_all([foreach t of result.get_builtin_types(): t as BasicType])
 
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
