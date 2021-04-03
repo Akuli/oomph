@@ -699,17 +699,7 @@ class Session(
         return pair
 
     meth get_type_c_name(ir::Type type) -> Str:
-        if type == self.builtins.NULL_TYPE:
-            return "null"
-        # TODO: the same list is likely somewhere else too
-        let builtin_types = [
-            self.builtins.INT,
-            self.builtins.FLOAT,
-            self.builtins.BOOL,
-            self.builtins.STR,
-            self.builtins.NULL_TYPE,
-        ]
-        if type in builtin_types:
+        if type in self.builtins.get_builtin_types():
             return ir::type_name(type)
         return self.type_to_file_pair(type).id
 
