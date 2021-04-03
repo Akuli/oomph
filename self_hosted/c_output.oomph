@@ -298,7 +298,7 @@ class FilePair(
                 self.c_includes.push(defining_file_pair)
 
             if can_fwd_declare_in_header:
-                self.h_fwd_decls = self.h_fwd_decls + "struct class_{defining_file_pair.id}; /* C */ \n"
+                self.h_fwd_decls = self.h_fwd_decls + "struct class_{defining_file_pair.id};\n"
             else:
                 if defining_file_pair not in self.h_includes:
                     self.h_includes.push(defining_file_pair)
