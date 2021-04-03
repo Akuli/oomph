@@ -26,7 +26,6 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
 
 class FunctionEmitter(
     FilePair file_pair,
-    Session session,    # TODO: use self.file_pair.session instead
     List[ir::LocalVariable] local_vars,     # named var0, var1, var2, ...
     List[ir::GotoLabel] labels,             # named label0, label1, label2, ...
     Str before_body,
@@ -35,7 +34,7 @@ class FunctionEmitter(
 ):
 
     meth incref_var(ir::LocalVariable var) -> Str:
-        return self.session.emit_incref(self.emit_var(var), var.type)
+        return self.file_pair.session.emit_incref(self.emit_var(var), var.type)
 
     meth emit_call(
         Str function,
@@ -73,7 +72,7 @@ class FunctionEmitter(
                 return self.incref_var(inc.var) + ";\n"
 
             case ir::DecRef dec:
-                return self.session.emit_decref(self.emit_var(dec.var), dec.var.type) + ";\n"
+                return self.file_pair.session.emit_decref(self.emit_var(dec.var), dec.var.type) + ";\n"
 
             case ir::FunctionCall call:
                 return self.emit_call(self.emit_var(call.function), call.args, call.result)
@@ -82,11 +81,11 @@ class FunctionEmitter(
                 # TODO: list + list
                 let args = [call.obj]
                 args.push_all(call.args)
-                let name = "meth_{self.session.get_type_c_name(call.obj.type)}_{call.method_name}"
+                let name = "meth_{self.file_pair.session.get_type_c_name(call.obj.type)}_{call.method_name}"
                 return self.emit_call(name, args, call.result)
 
             case ir::ConstructorCall call:
-                let name = "ctor_" + self.session.get_type_c_name(call.result.type)
+                let name = "ctor_" + self.file_pair.session.get_type_c_name(call.result.type)
                 return self.emit_call(name, call.args, call.result)
 
             case ir::Return ret:
@@ -201,7 +200,7 @@ class FunctionEmitter(
         # TODO: is reversing still needed?
         let decrefs = [
             foreach var of self.need_decref.reversed(): 
-            self.session.emit_decref(self.emit_var(var), var.type) + ";\n"
+            self.file_pair.session.emit_decref(self.emit_var(var), var.type) + ";\n"
         ].join("")
 
         if functype.returntype != null:
@@ -655,15 +654,13 @@ class FilePair(
     meth emit_toplevel_declaration(ir::ToplevelDeclaration top_declaration):
         switch top_declaration:
             case ir::FuncDef funcdef:
-                new FunctionEmitter(
-                    self, self.session, [], [], "", "", []
-                ).emit_funcdef(funcdef, self.emit_var(funcdef.var))
+                new FunctionEmitter(self, [], [], "", "", []).emit_funcdef(
+                    funcdef, self.emit_var(funcdef.var)
+                )
             case ir::MethodDef methdef:
                 let klass = methdef.type.argtypes.first()
                 let file_pair = self.session.type_to_file_pair(klass)
-                new FunctionEmitter(
-                    file_pair, self.session, [], [], "", "", []
-                ).emit_funcdef(
+                new FunctionEmitter(file_pair, [], [], "", "", []).emit_funcdef(
                     methdef,
                     "meth_{self.session.get_type_c_name(klass)}_{methdef.name}",
                 )
