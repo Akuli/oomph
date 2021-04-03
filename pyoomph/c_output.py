@@ -238,7 +238,7 @@ _generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
 
 _specially_emitted_variables: Dict[ir.Variable, str] = {
     **{var: "oomph_" + name.lstrip("_") for name, var in ir.visible_builtins.items()},
-    **{var: name for name, var in ir.hidden_builtins.items()},
+    **{var: "oomph_" + name for name, var in ir.hidden_builtins.items()},
 }
 
 
@@ -430,9 +430,9 @@ class _FilePair:
                 struct class_Str *res = {self.emit_string(the_type.name)};
                 // TODO: missing incref, although doesn't matter since these
                 //       strings are not reference counted
-                string_concat_inplace(&res, "(");
-                string_concat_inplace(&res, valstr->str);
-                string_concat_inplace(&res, ")");
+                oomph_string_concat_inplace(&res, "(");
+                oomph_string_concat_inplace(&res, valstr->str);
+                oomph_string_concat_inplace(&res, ")");
                 decref(valstr, dtor_Str);
                 return res;
             }}
@@ -616,15 +616,15 @@ class _FilePair:
                 struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} self)
                 {{
                     struct class_Str *res = {self.emit_string(the_type.name)};
-                    string_concat_inplace(&res, "(");
+                    oomph_string_concat_inplace(&res, "(");
                     struct class_Str *strs[] = {{ {','.join(to_string_calls + ['NULL'])} }};
                     for (size_t i = 0; strs[i]; i++) {{
                         if (i != 0)
-                            string_concat_inplace(&res, ", ");
-                        string_concat_inplace(&res, strs[i]->str);
+                            oomph_string_concat_inplace(&res, ", ");
+                        oomph_string_concat_inplace(&res, strs[i]->str);
                         decref(strs[i], dtor_Str);
                     }}
-                    string_concat_inplace(&res, ")");
+                    oomph_string_concat_inplace(&res, ")");
                     return res;
                 }}
                 """

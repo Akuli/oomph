@@ -19,7 +19,7 @@ struct class_Str *cstr_to_string(const char *s)
 	return res;
 }
 
-struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2)
+struct class_Str *oomph_string_concat(const struct class_Str *str1, const struct class_Str *str2)
 {
 	struct class_Str *res = alloc_string(strlen(str1->str) + strlen(str2->str));
 	strcpy(res->str, str1->str);
@@ -27,7 +27,7 @@ struct class_Str *string_concat(const struct class_Str *str1, const struct class
 	return res;
 }
 
-void string_concat_inplace(struct class_Str **res, const char *suf)
+void oomph_string_concat_inplace(struct class_Str **res, const char *suf)
 {
 	// TODO: do we always need to make a new string?
 	struct class_Str *old = *res;

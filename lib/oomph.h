@@ -20,7 +20,7 @@ struct class_Str {
 	char str[];   // flexible array member, ends with \0, valid utf-8
 };
 struct class_Str *cstr_to_string(const char *s);
-void string_concat_inplace(struct class_Str **res, const char *suf);
+void oomph_string_concat_inplace(struct class_Str **res, const char *suf);
 bool string_validate_utf8(const char *s);
 #define dtor_Str free
 struct class_List_Str;
@@ -72,22 +72,22 @@ void incref(void *ptr);
 void decref(void *ptr, void (*destructor)(void *ptr));
 
 // Special functions. Keep up to date with typer.py.
-#define bool_not(a) (!(a))
-#define float_add(a, b) ((a)+(b))
-#define float_div(a, b) ((a)/(b))
-#define float_gt(a, b) ((a)>(b))
-#define float_mul(a, b) ((a)*(b))
-#define float_neg(a) (-(a))
-#define float_sub(a, b) ((a)-(b))
-#define int2float(x) ((double)(x))
-#define int_add(a, b) ((a)+(b))
-#define int_gt(a, b) ((a)>(b))
-#define int_mul(a, b) ((a)*(b))
-#define int_neg(a) (-(a))
-#define int_sub(a, b) ((a)-(b))
-double float_mod(double a, double b);
-int64_t int_mod(int64_t a, int64_t b);
-struct class_Str *string_concat(const struct class_Str *str1, const struct class_Str *str2);
+#define oomph_bool_not(a) (!(a))
+#define oomph_float_add(a, b) ((a)+(b))
+#define oomph_float_div(a, b) ((a)/(b))
+#define oomph_float_gt(a, b) ((a)>(b))
+#define oomph_float_mul(a, b) ((a)*(b))
+#define oomph_float_neg(a) (-(a))
+#define oomph_float_sub(a, b) ((a)-(b))
+#define oomph_int2float(x) ((double)(x))
+#define oomph_int_add(a, b) ((a)+(b))
+#define oomph_int_gt(a, b) ((a)>(b))
+#define oomph_int_mul(a, b) ((a)*(b))
+#define oomph_int_neg(a) (-(a))
+#define oomph_int_sub(a, b) ((a)-(b))
+double oomph_float_mod(double a, double b);
+int64_t oomph_int_mod(int64_t a, int64_t b);
+struct class_Str *oomph_string_concat(const struct class_Str *str1, const struct class_Str *str2);
 
 #define oomph_false false
 #define oomph_null 0

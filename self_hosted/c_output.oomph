@@ -105,7 +105,7 @@ class FunctionEmitter(
                     self.emit_call("oomph_print", call.args, null)
                 else:
                     self.emit_call(
-                        (call.function as ir::BuiltinVariable).name,
+                        "oomph_" + (call.function as ir::BuiltinVariable).name,
                         call.args,
                         call.result
                     )
