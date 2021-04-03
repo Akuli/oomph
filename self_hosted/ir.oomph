@@ -177,7 +177,7 @@ export class Builtins(
         methods.push_all([
             # TODO: hide __contains better?
             new Method("__contains", new FunctionType([r, arg], self.BOOL)),
-            new Method("delete_at_index", new FunctionType([r, self.INT], null)),
+            new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
             new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
             new Method("ends_with", new FunctionType([r, r], self.BOOL)),
             new Method("first", new FunctionType([r], arg)),

@@ -108,12 +108,13 @@ ITEMTYPE METHOD(get)(TYPE self, int64_t i)
 	return self->data[i];
 }
 
-void METHOD(delete_at_index)(TYPE self, int64_t i)
+ITEMTYPE METHOD(delete_at_index)(TYPE self, int64_t i)
 {
 	validate_index(self, i);
-	DECREF_ITEM(self->data[i]);
+	ITEMTYPE item = self->data[i];
 	self->len--;
 	memmove(self->data+i, self->data+i+1, (self->len - i)*sizeof(self->data[0]));
+	return item;
 }
 
 static TYPE slice(TYPE self, int64_t start, int64_t end, bool del)
