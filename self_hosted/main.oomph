@@ -63,22 +63,20 @@ export func main():
     let valgrind = ""
 
     while args != [] and args.first().starts_with("--"):
-        if args.first() == "--tokens":
+        let arg = args.delete_at_index(0)
+        if arg == "--tokens":
             tokens_only = true
-        elif args.first() == "--ast":
+        elif arg == "--ast":
             ast_only = true
-        elif args.first().starts_with("--valgrind="):
-            valgrind = args.first().remove_prefix("--valgrind=")
+        elif arg.starts_with("--valgrind="):
+            valgrind = arg.remove_prefix("--valgrind=")
         else:
-            print("bad arg: {args.first()}")
+            print("bad arg: {arg}")
             assert(false)  # TODO: error
-
-        args.delete_at_index(0)
 
     assert(not (ast_only and tokens_only))
     assert(args != [])  # TODO: error
-    let source_path = args.first()
-    args.delete_at_index(0)
+    let source_path = args.delete_at_index(0)
 
     let builtins = ir::create_builtins()
     let code = io::read_file(source_path)
