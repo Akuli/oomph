@@ -159,8 +159,8 @@ Optimization ideas:
 
 ## Self-hosted compiler
 
-Very wip. The `./test` script runs working tests specified in `tests/self_hosted.txt`.
-Run `./generate_self_hosted_test_list` to update it.
+Very wip. The `./test` script runs working tests.
+There's a list of tests that don't work at `tests/self_hosted_skip.txt`.
 
 
 ## Editor support
