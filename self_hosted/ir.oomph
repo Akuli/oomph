@@ -61,6 +61,18 @@ export func make_union(
     return new UnionType(type_members, null, builtins)
 
 
+export func is_refcounted(Type type) -> Bool:
+    switch type:
+        case AutoType _:
+            assert(false)
+        case BasicType basictype:
+            return basictype.refcounted
+        case FunctionType functype:
+            return false
+        case UnionType _:
+            return true
+
+
 export func get_constructor_argtypes(Type type) -> List[Type] | null:
     switch type:
         case AutoType autotype:
@@ -82,16 +94,31 @@ export func type_name(Type type) -> Str:
             return basic.name
         case FunctionType functype:
             return "<function type>"
-        case UnionType union_type:
+        case UnionType union:
             # Don't use custom names for 'Foo | null'
-            if union_type.custom_name == null or (
-                union_type.type_members.length() == 2
-                and union_type.type_members.first() == union_type.builtins.NULL_TYPE
+            if union.custom_name == null or (
+                union.type_members.length() == 2
+                and union.type_members.first() == union.builtins.NULL_TYPE
             ):
                 return "(" + [
-                    foreach t of union_type.type_members: type_name(t)
+                    foreach t of union.type_members: type_name(t)
                 ].join(" | ") + ")"
-            return union_type.custom_name.get()
+            return union.custom_name.get()
+
+export func type_id_string(Type type) -> Str:
+    switch type:
+        case AutoType _:
+            assert(false)
+        case BasicType basictype:
+            if basictype.generic_source == null:
+                # TODO: return self.name + str(self.definition_path)
+                return basictype.name
+            let source = basictype.generic_source.get()
+            return source.generik.name + type_id_string(source.arg)
+        case UnionType union:
+            return [foreach m of union.type_members: type_id_string(m)].join("|")
+        case FunctionType functype:
+            assert(false)   # TODO
 
 export func get_generic_source(Type type) -> GenericSource | null:
     switch type:
@@ -315,28 +342,29 @@ export func create_builtins() -> Builtins:
 
     return result
 
-
-export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
+export func get_methods(Type type, Builtins builtins) -> List[Method]:
     switch type:
         case AutoType a:
             assert(false)
         case BasicType basictype:
-            let methods = basictype.methods
+            return basictype.methods
         case FunctionType functype:
-            methods = []
-        case UnionType union_type:
-            methods = [
+            return []
+        case UnionType union:
+            let methods = [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
             if (
-                union_type.type_members.length() == 2
-                and union_type.type_members.first() == builtins.NULL_TYPE
+                union.type_members.length() == 2
+                and union.type_members.first() == builtins.NULL_TYPE
             ):
-                let item_type = union_type.type_members.last()
-                methods.push(new Method("get", new FunctionType([new Type(union_type)], item_type)))
+                let item_type = union.type_members.last()
+                methods.push(new Method("get", new FunctionType([new Type(union)], item_type)))
+            return methods
 
-    foreach method of methods:
+export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
+    foreach method of get_methods(type, builtins):
         if method.name == name:
             return method.functype
 

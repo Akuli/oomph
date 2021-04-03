@@ -1,194 +1,807 @@
+import "<stdlib>/hash.oomph" as hash
+import "<stdlib>/io.oomph" as io
 import "ir.oomph" as ir
 
-class File(ir::Builtins builtins, List[Str] declared_strings, Str string_defs):
-    meth get_type_c_name(ir::Type type) -> Str:
-        return (type as ir::BasicType).name
+# The resulting C code is unreadable anyway, but it follows these conventions:
+#   - When you use ";", add a trailing newline by using a multiline string or
+#     with ";\n". This avoids making lines really long, so even though the code
+#     is unreadable, C compiler error messages are not.
+#   - Don't care about indentation.
 
-    meth emit_type(ir::Type type) -> Str:
-        if type == self.builtins.INT:
-            return "int64_t"
-        if type == self.builtins.BOOL:
-            return "bool"
-        if type == self.builtins.FLOAT:
-            return "double"
-        switch type:
-            case ir::BasicType basic:
-                if basic.refcounted:
-                    return "struct class_{self.get_type_c_name(type)} *"
-            case *:
-                pass
-        return "struct class_{self.get_type_c_name(type)}"
+func emit_label(Str name) -> Str:
+    # It's invalid c syntax to end a block with a label, (void)0 fixes
+    return "{name}: (void)0;\n"
 
-    meth emit_declaration(ir::Type type, Str varname) -> Str:
-        if type == self.builtins.INT or type == self.builtins.FLOAT:
-            return "{self.emit_type(type)} {varname};"
-        return "{self.emit_type(type)} {varname} = NULL;"
+func create_id(Str readable_part, Str identifying_part) -> Str:
+    let result = ""
+    foreach char of readable_part.split(""):
+        # TODO: avoid starting with digit?
+        if char in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789":
+            result = result + char
+        else:
+            result = result + "_"
 
-    meth emit_string(Str value) -> Str:
-        if value in self.declared_strings:
-            return "string" + self.declared_strings.find_only(value).to_string()
+    return result + hash::md5(identifying_part).split("").slice(0, 10).join("")
 
-        let varname = "string{self.declared_strings.length()}"
-        self.declared_strings.push(value)
-
-        let content_chars = [foreach c of value.get_utf8(): c.to_string()]
-        content_chars.push("'\\0'")
-
-        self.string_defs = self.string_defs + """
-        static {self.emit_type(self.builtins.STR)} {varname}
-        = (void*)(unsigned char[]) \{
-            // TODO: is this insanity cross-platform enough?
-            0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff,
-            {content_chars.join(",")}
-        \};
-        """
-        return varname
 
 class FunctionEmitter(
-    File file,
-    List[ir::LocalVariable] declared_vars,
+    FilePair file_pair,
+    Session session,
+    List[ir::LocalVariable] local_vars,     # named var0, var1, var2, ...
+    List[ir::GotoLabel] labels,             # named label0, label1, label2, ...
     Str before_body,
-    Str body,
     Str after_body,
+    List[ir::LocalVariable] need_decref,  # TODO: do this in c_output?
 ):
+
+    meth incref_var(ir::LocalVariable var) -> Str:
+        return self.session.emit_incref(self.emit_var(var), var.type)
+
+    meth emit_call(
+        Str function,
+        List[ir::LocalVariable] args,
+        ir::LocalVariable | null result_var,
+    ) -> Str:
+        let args_string = [foreach arg of args: self.emit_var(arg)].join(",")
+        switch result_var:
+            case ir::LocalVariable var:
+                return "{self.emit_var(var)} = {function}({args_string});\n"
+            case null _:
+                return "{function}({args_string});\n"
+
+    meth emit_body(List[ir::Instruction] body) -> Str:
+        return [foreach ins of body: self.emit_instruction(ins)].join("")
+
+    meth emit_instruction(ir::Instruction instruction) -> Str:
+        pass
+        switch instruction:
+            case ir::StringConstant cons:
+                return """
+                {self.emit_var(cons.var)} = {self.file_pair.emit_string(cons.value)};
+                {self.incref_var(cons.var)};
+                """
+
+            case ir::IntConstant cons:
+                return "{self.emit_var(cons.var)} = {cons.value}LL;\n"
+
+            case ir::FloatConstant cons:
+                return "{self.emit_var(cons.var)} = {cons.value};\n"
+
+            case ir::VarCpy copy:
+                return "{self.emit_var(copy.dest)} = {self.emit_var(copy.source)};\n"
+
+            case ir::IncRef inc:
+                return self.incref_var(inc.var) + ";\n"
+
+            case ir::DecRef dec:
+                return self.session.emit_decref(self.emit_var(dec.var), dec.var.type) + ";\n"
+
+            case ir::FunctionCall call:
+                return self.emit_call(self.emit_var(call.function), call.args, call.result)
+
+            case ir::MethodCall call:
+                # TODO: list + list
+                let args = [call.obj]
+                args.push_all(call.args)
+                let name = "meth_{self.session.get_type_c_name(call.obj.type)}_{call.method_name}"
+                return self.emit_call(name, args, call.result)
+
+            case ir::ConstructorCall call:
+                let name = "ctor_" + self.session.get_type_c_name(call.result.type)
+                return self.emit_call(name, call.args, call.result)
+
+            case ir::Return ret:
+                switch ret.value:
+                    case ir::LocalVariable retval:
+                        return """
+                        {self.incref_var(retval)};
+                        retval = {self.emit_var(retval)};
+                        goto out;
+                        """
+                    case null _:
+                        return "goto out;\n"
+
+            case ir::GetAttribute getattr:
+                return "{self.emit_var(getattr.result)} = {self.emit_var(getattr.obj)}->memb_{getattr.attribute};\n"
+
+            case ir::SetAttribute setattr:
+                return "{self.emit_var(setattr.obj)}->memb_{setattr.attribute} = {self.emit_var(setattr.value)};\n"
+
+            # TODO: this still in use?
+            case ir::PointersEqual eq:
+                return "{self.emit_var(eq.result)} = ({self.emit_var(eq.lhs)} == {self.emit_var(eq.rhs)});\n"
+
+            case ir::InstantiateUnion inst:
+                let union = inst.result.type as ir::UnionType
+                let membernum = union.type_members.find_only(inst.value.type)
+                return """
+                {self.emit_var(inst.result)} = ({self.file_pair.emit_type(union)}) \{
+                    .val = \{ .item{membernum} = {self.emit_var(inst.value)} \},
+                    .membernum = {membernum},
+                \};
+                """
+
+            case ir::GetFromUnion get:
+                let union = get.union_var.type as ir::UnionType
+                let membernum = union.type_members.find_only(get.result.type)
+                return """
+                if ({self.emit_var(get.union_var)}.membernum != {membernum})
+                    panic_printf("'as' failed");   // TODO: better message?
+
+                {self.emit_var(get.result)} = {self.emit_var(get.union_var)}.val.item{membernum};
+                """
+
+            case ir::UnSet unset:
+                switch unset.var.type:
+                    case ir::UnionType _:
+                        return "{self.emit_var(unset.var)}.membernum = -1;\n"
+                    case *:
+                        if ir::is_refcounted(unset.var.type):
+                            # Pointer type
+                            return "{self.emit_var(unset.var)} = NULL;\n"
+                        return ""
+
+            case ir::GotoLabel label:
+                return emit_label(self.get_label_name(label))
+
+            case ir::GotoIf goto:
+                return """
+                if ({self.emit_var(goto.cond)})
+                    goto {self.get_label_name(goto.label)};
+                """
+
+            case ir::UnionMemberCheck check:
+                let membernum = (check.union_var.type as ir::UnionType).type_members.find_only(check.member_type)
+                return "{self.emit_var(check.result)} = ({self.emit_var(check.union_var)}.membernum == {membernum});\n"
+
+    meth get_label_name(ir::GotoLabel label) -> Str:
+        if label not in self.labels:
+            self.labels.push(label)
+        return "label" + self.labels.find_only(label).to_string()
+
+    # Usually, declare and need_decref should both be true
+    meth add_local_var(ir::LocalVariable var, Bool declare, Bool need_decref):
+        assert(var not in self.local_vars)
+        self.local_vars.push(var)
+        let name = self.emit_var(var)
+
+        if declare:
+            # TODO: add UnSets in ast2ir?
+            self.before_body = self.before_body + """
+            {self.file_pair.emit_type(var.type)} {name};
+            """ + self.emit_instruction(new ir::UnSet(var))
+
+        if need_decref:
+            assert(var not in self.need_decref)
+            self.need_decref.push(var)
 
     meth emit_var(ir::Variable var) -> Str:
         switch var:
             case ir::LocalVariable local_var:
-                if local_var in self.declared_vars:
-                    return "var{local_var.id}"
+                if local_var not in self.local_vars:
+                    self.add_local_var(local_var, true, true)
+                return "var" + self.local_vars.find_only(local_var).to_string()
+            case *:
+                return self.file_pair.emit_var(var)
 
-                self.before_body = self.before_body + self.file.emit_declaration(
-                    local_var.type, "var{local_var.id}")
-                self.declared_vars.push(local_var)
-                return "var{local_var.id}"
-            case ir::BuiltinVariable builtin_var:
-                return builtin_var.name
-            case ir::FileVariable this_file_var:
+    meth emit_funcdef(ir::FuncDef | ir::MethodDef funcdef, Str c_name):
+        switch funcdef:
+            case ir::FuncDef fdef:
+                let argvars = fdef.argvars
+                let functype = fdef.var.type as ir::FunctionType
+                let body = fdef.body
+            case ir::MethodDef mdef:
+                argvars = mdef.argvars
+                functype = mdef.type
+                body = mdef.body
+
+        foreach var of argvars:
+            self.add_local_var(var, false, false)
+
+        let body_instructions = self.emit_body(body)
+        # TODO: is reversing still needed?
+        let decrefs = [
+            foreach var of self.need_decref.reversed(): 
+            self.session.emit_decref(self.emit_var(var), var.type) + ";\n"
+        ].join("")
+
+        if functype.returntype != null:
+            self.before_body = self.before_body + """
+            {self.file_pair.emit_type(functype.returntype.get())} retval;
+            """
+            self.after_body = self.after_body + "return retval;\n"
+
+        # TODO: couldn't get list comprehension to work
+        let foo = new List[Str]()
+        foreach var of argvars:
+            foo.push(self.emit_var(var))
+
+        self.file_pair.define_function(
+            c_name,
+            functype,
+            foo,
+            (
+                self.before_body
+                + body_instructions
+                + emit_label("out")
+                + decrefs
+                + self.after_body
+            ),
+        )
+
+
+func trim_leading_underscores(Str s) -> Str:
+    while s.starts_with("_"):
+        s = s.remove_prefix("_")
+    return s
+
+
+# Represents .c and .h file, and possibly *the* type defined in those.
+# That's right, each type goes to separate .c and .h file.
+class FilePair(
+    Session session,
+    Str id,  # used in file names and type names
+    ir::Type | Str type_or_source_path,
+    List[Str] strings,
+    Str | null struct,
+    Str string_defs,
+    Str function_decls,
+    Str function_defs,
+    # When a FilePair is in h_includes, the corresponding h_fwd_decls are unnecessary
+    List[FilePair] c_includes,
+    List[FilePair] h_includes,
+    Str h_fwd_decls,
+):
+
+    # Usually can_fwd_declare_in_header should be true
+    # TODO: default values of arguments
+    meth emit_type(ir::Type | null type_or_null) -> Str:
+        return self.emit_type_custom(type_or_null, true)
+
+    meth emit_type_custom(ir::Type | null type_or_null, Bool can_fwd_declare_in_header) -> Str:
+        pass
+        if type_or_null == null:
+            # Function return types only
+            # TODO: handle this elsewhere?
+            return "void"
+
+        let type = type_or_null.get()
+        switch type:
+            case ir::AutoType _:
                 assert(false)
+            case *:
+                pass
 
-    meth emit_call(Str c_func, List[ir::LocalVariable] args, ir::LocalVariable | null result):
-        let arg_strings = [foreach arg of args: self.emit_var(arg)]
-        if result == null:
-            let assignment = ""
-        else:
-            assignment = "{self.emit_var(result.get())} ="
+        if type == self.session.builtins.INT:
+            return "int64_t"
+        if type == self.session.builtins.FLOAT:
+            return "double"
+        if type == self.session.builtins.BOOL:
+            return "bool"
+        if type == self.session.builtins.STR:
+            return "struct class_Str *"  # TODO: rename the struct?
+        if type == self.session.builtins.NULL_TYPE:
+            return "char"  # always zero
 
-        self.body = self.body + """
-        {assignment} {c_func}({arg_strings.join(",")});
-        """
+        let defining_file_pair = self.session.get_file_pair_for_type(type)
+        let result = "struct class_{defining_file_pair.id}"
 
-    # FIXME
-    meth is_refcounted(ir::Type type) -> Bool:
-        if type == self.file.builtins.STR:
-            return true
-        if (
-            type == self.file.builtins.INT
-            or type == self.file.builtins.BOOL
-            or type == self.file.builtins.FLOAT
-        ):
-            return false
-        print("is_refcounted dunno about {type}")
-        assert(false)
+        switch type:
+            case ir::UnionType _:
+                can_fwd_declare_in_header = false
+            case *:
+                if ir::is_refcounted(type):
+                    result = result + "*"
+                else:
+                    can_fwd_declare_in_header = false
 
-    meth emit_instruction(ir::Instruction ins):
-        switch ins:
-            case ir::FloatConstant floatconst:
-                self.body = self.body + """
-                {self.emit_var(floatconst.var)} = {floatconst.value};
+        if defining_file_pair != self:
+            if defining_file_pair not in self.c_includes:
+                self.c_includes.push(defining_file_pair)
+
+            if can_fwd_declare_in_header:
+                self.h_fwd_decls = self.h_fwd_decls + result + ";\n"
+            else:
+                if defining_file_pair not in self.h_includes:
+                    self.h_includes.push(defining_file_pair)
+
+        return result
+
+    meth emit_var(ir::Variable var) -> Str:
+        pass
+        switch var:
+            case ir::LocalVariable _:
+                assert(false)
+            case ir::BuiltinVariable builtin:
+                return "oomph_" + trim_leading_underscores(builtin.name)
+            case ir::FileVariable filevar:
+                foreach symbol of self.session.symbols:
+                    if symbol.value == filevar:
+                        let pair = self.session.source_path_to_file_pair(symbol.path)
+                        if pair != self:
+                            if pair not in self.c_includes:
+                                self.c_includes.push(pair)
+                            if pair not in self.h_includes:
+                                self.h_includes.push(pair)
+                            return pair.emit_var(filevar)
+
+                if filevar.name == "main":
+                    return "oomph_main"
+                if filevar.name in [
+                    "__Bool_to_string",
+                    "__List_Str_join",
+                    "__Str___contains",
+                    "__Str_center_pad",
+                    "__Str_count",
+                    "__Str_ends_with",
+                    "__Str_from_start_to_substring",
+                    "__Str_get_utf8",
+                    "__Str_left_pad",
+                    "__Str_left_trim",
+                    "__Str_remove_prefix",
+                    "__Str_remove_suffix",
+                    "__Str_repeat",
+                    "__Str_replace",
+                    "__Str_right_pad",
+                    "__Str_right_trim",
+                    "__Str_split",
+                    "__Str_starts_with",
+                    "__Str_trim",
+                ]:
+                    # Class implemented in C, method in builtins.oomph
+                    # TODO: check if this file is builtins.oomph
+                    return "oomph_" + trim_leading_underscores(filevar.name)
+                return self.id + "_" + filevar.name
+
+    # If body is None, declares but does not actually define
+    meth define_function(
+        Str function_name,
+        ir::FunctionType type,
+        List[Str] | null argnames,
+        Str | null body,
+    ):
+        switch argnames:
+            case null _:
+                let arg_decls = [foreach t of type.argtypes: self.emit_type(t)]
+            case List[Str] names:
+                # TODO: zip
+                assert(names.length() == type.argtypes.length())
+                arg_decls = [
+                    for let i = 0; i < argnames.get().length(); i = i+1:
+                    self.emit_type(type.argtypes.get(i)) + " " + names.get(i)
+                ]
+
+        let arg_decl_string = arg_decls.join(",")
+        if arg_decl_string == "":
+            arg_decl_string = "void"
+
+        let decl = "{self.emit_type(type.returntype)} {function_name}({arg_decl_string})"
+        self.function_decls = self.function_decls + decl + ";\n"
+        if body != null:
+            self.function_defs = self.function_defs + decl + "\{" + body.get() + "\}"
+
+    meth emit_string(Str value) -> Str:
+        let first_time_with_this_value = value not in self.strings
+        if first_time_with_this_value:
+            self.strings.push(value)
+
+        # Including the full value in first argument of create_id causes issue #132
+        # I like to include some parts of string content for debugging though
+        let shortened = value.split("").slice(0, 20).join("")
+        let varname = create_id("string" + self.strings.find_only(value).to_string() + shortened, value)
+
+        if first_time_with_this_value:
+            let content_chars = [foreach c of value.get_utf8(): c.to_string()]
+            content_chars.push("'\\0'")
+
+            self.string_defs = self.string_defs + """
+            static {self.emit_type(self.session.builtins.STR)} {varname}
+            = (void*)(unsigned char[]) \{
+                // String constants consist of int64_t refcount set to -1,
+                // followed by utf8, followed by zero byte
+                // TODO: is this insanity cross-platform enough?
+                0xff, 0xff, 0xff, 0xff,
+                0xff, 0xff, 0xff, 0xff,
+                {content_chars.join(",")}
+            \};
+            """
+
+        return varname
+
+    # Must not be called multiple times for the same FilePair
+    # FIXME: split this up into smaller funcs
+    meth define_type(ir::Type type):
+        assert(self.struct == null)
+
+        switch type:
+            case ir::AutoType _:
+                assert(false)
+            case ir::FunctionType _:
+                assert(false)
+            case ir::UnionType union:
+                # TODO: enumerate
+                let n = union.type_members.length()
+
+                let member_cnames = [foreach member of union.type_members: self.session.get_type_c_name(member)]
+                let to_string_cases = [
+                    for let i = 0; i < n; i = i+1:
+                        """
+                        case {i}:
+                            valstr = meth_{member_cnames.get(i)}_to_string(obj.val.item{i});
+                            break;
+                        """
+                ].join("")
+                let equals_cases = [
+                    for let i = 0; i < n; i = i+1:
+                        """
+                        case {i}:
+                            return meth_{member_cnames.get(i)}_equals(a.val.item{i}, b.val.item{i});
+                        """
+                ].join("")
+
+                # TODO: can decls be emitted automatically?
+                self.function_decls = self.function_decls + """
+                struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);
+                bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
                 """
 
-            case ir::FunctionCall call:
-                # TODO: use emit_var
-                if call.function == self.file.builtins.get_visible_var("print"):
-                    self.emit_call("oomph_print", call.args, null)
+                let type_name_code = self.emit_string(ir::type_name(union)) + "->str"
+                self.function_defs = self.function_defs + """
+                struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj)
+                \{
+                    struct class_Str *valstr;
+                    switch(obj.membernum) \{
+                        {to_string_cases}
+                        default:
+                            panic_printf(
+                                "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                                {type_name_code}, (int)obj.membernum);
+                    \}
+
+                    struct class_Str *res = {self.emit_string(ir::type_name(union))};
+                    incref(res);
+                    oomph_string_concat_inplace(&res, "(");
+                    oomph_string_concat_inplace(&res, valstr->str);
+                    oomph_string_concat_inplace(&res, ")");
+                    decref(valstr, dtor_Str);
+                    return res;
+                \}
+
+                bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
+                \{
+                    if (a.membernum != b.membernum)
+                        return false;
+                    switch(a.membernum) \{
+                        {equals_cases}
+                        default:
+                            panic_printf(
+                                "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                                {type_name_code}, (int)a.membernum);
+                    \}
+                \}
+                """
+
+                # To incref/decref unions, we need to know the value of membernum
+                # and incref/decref the correct member of the union. Union-specific
+                # functions handle that.
+                let increfs = [for let i = 0; i < n; i = i+1: self.session.emit_incref("obj.val.item{i}", union.type_members.get(i))]
+                let decrefs = [for let i = 0; i < n; i = i+1: self.session.emit_decref("obj.val.item{i}", union.type_members.get(i))]
+                let incref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {increfs.get(i)}; break;\n"].join("")
+                let decref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {decrefs.get(i)}; break;\n"].join("")
+
+                self.function_decls = self.function_decls + """
+                void incref_{self.id}(struct class_{self.id} obj);
+                void decref_{self.id}(struct class_{self.id} obj);
+                """
+                self.function_defs = self.function_defs + """
+                void incref_{self.id}(struct class_{self.id} obj) \{
+                    switch(obj.membernum) \{
+                        {incref_cases}
+                        default:
+                            assert(0);
+                    \}
+                \}
+                void decref_{self.id}(struct class_{self.id} obj) \{
+                    switch(obj.membernum) \{
+                        case -1:   // variable not in use (see UnSet)
+                            break;
+                        {decref_cases}
+                        default:
+                            assert(0);
+                    \}
+                \}
+                """
+
+                let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
+                self.struct = new (Str | null)("""
+                struct class_{self.id} \{
+                    union \{
+                        {union_members}
+                    \} val;
+                    short membernum;
+                \};
+                """)
+
+                if n == 2 and union.type_members.first() == self.session.builtins.NULL_TYPE:
+                    # Create .get() method only for 'null | Foo' unions
+                    let itemtype = union.type_members.last()
+                    let itemtype_code = self.emit_type(itemtype)
+                    self.function_decls = self.function_decls + (
+                        "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
+                    )
+                    self.function_defs = self.function_defs + """
+                    {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
+                    \{
+                        if (obj.membernum == 0)
+                            panic_printf("Error: null.get() was called");
+                        assert(obj.membernum == 1);
+                        {self.session.emit_incref("obj.val.item1", itemtype)};
+                        return obj.val.item1;
+                    \}
+                    """
+
+            case ir::BasicType basictype:
+                if basictype.generic_source == null:
+                    let struct_members = [foreach m of basictype.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")
+                    let constructor_args = [foreach m of basictype.members: "{self.emit_type(m.type)} arg_{m.name}"].join(",")
+                    if constructor_args == "":
+                        constructor_args = "void"
+                    let member_assignments = [foreach m of basictype.members: "obj->memb_{m.name} = arg_{m.name};\n"].join("")
+                    let member_increfs = [foreach m of basictype.members: self.session.emit_incref("obj->memb_{m.name}", m.type) + ";\n"].join("")
+                    let member_decrefs = [foreach m of basictype.members: self.session.emit_decref("obj->memb_{m.name}", m.type) + ";\n"].join("")
+
+                    self.struct = new (Str | null)("""
+                    struct class_{self.id} \{
+                        REFCOUNT_HEADER
+                        {struct_members}
+                    \};
+                    """)
+                    self.function_decls = self.function_decls + """
+                    {self.emit_type(basictype)} ctor_{self.id}({constructor_args});
+                    void dtor_{self.id}(void *ptr);
+                    """
+                    self.function_defs = self.function_defs + """
+                    {self.emit_type(basictype)} ctor_{self.id}({constructor_args})
+                    \{
+                        {self.emit_type(basictype)} obj = malloc(sizeof(*obj));
+                        assert(obj);
+                        obj->refcount = 1;
+                        {member_assignments}
+                        {member_increfs}
+                        return obj;
+                    \}
+
+                    void dtor_{self.id}(void *ptr)
+                    \{
+                        struct class_{self.id} *obj = ptr;
+                        {member_decrefs}
+                        free(obj);
+                    \}
+                    """
+
+                    if basictype.create_to_string_method:
+                        self.function_decls = self.function_decls + """
+                        struct class_Str *meth_{self.id}_to_string({self.emit_type(basictype)} obj);
+                        """
+                        let to_string_calls = [
+                            foreach member of basictype.members:
+                            "meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name})"
+                        ]
+                        to_string_calls.push("NULL")
+                        self.function_defs = self.function_defs + """
+                        struct class_Str *meth_{self.id}_to_string({self.emit_type(basictype)} self)
+                        \{
+                            struct class_Str *res = {self.emit_string(basictype.name)};
+                            oomph_string_concat_inplace(&res, "(");
+                            struct class_Str *strs[] = \{ {to_string_calls.join(",")} \};
+                            for (size_t i = 0; strs[i]; i++) \{
+                                if (i != 0)
+                                    oomph_string_concat_inplace(&res, ", ");
+                                oomph_string_concat_inplace(&res, strs[i]->str);
+                                decref(strs[i], dtor_Str);
+                            \}
+                            oomph_string_concat_inplace(&res, ")");
+                            return res;
+                        \}
+                        """
+
                 else:
-                    self.emit_call(
-                        "oomph_" + (call.function as ir::BuiltinVariable).name,
-                        call.args,
-                        call.result
+                    assert(basictype.generic_source.get().generik == self.session.builtins.LIST)
+                    let itemtype = basictype.generic_source.get().arg
+                    let macros = [
+                        ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(basictype)}"],
+                        ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(basictype)}"],
+                        ["TYPE", "struct class_{self.session.get_type_c_name(basictype)} *"],
+                        ["TYPE_STRUCT", "class_{self.session.get_type_c_name(basictype)}"],
+                        ["METHOD(name)", "meth_{self.session.get_type_c_name(basictype)}_##name"],
+                        ["ITEMTYPE", self.emit_type_custom(itemtype, false)],
+                        ["ITEMTYPE_METHOD(name)", "meth_{self.session.get_type_c_name(itemtype)}_##name"],
+                        ["INCREF_ITEM(val)", self.session.emit_incref("(val)", itemtype)],
+                        ["DECREF_ITEM(val)", self.session.emit_decref("(val)", itemtype)],
+                    ]
+                    if itemtype == self.session.builtins.STR:
+                        macros.push(["ITEMTYPE_IS_STRING", "1"])
+                    else:
+                        macros.push(["ITEMTYPE_IS_STRING", "0"])
+
+                    let defines = "\n"
+                    let undefs = "\n"
+                    foreach pair of macros:
+                        let name_without_args = pair.first().split("(").first()
+                        defines = defines + "define {pair.first()} {pair.last()}\n"
+                        undefs = undefs + "undef {name_without_args}\n"
+
+                    self.struct = new (Str | null)(
+                        defines + io::read_file("lib/generic/list.h") + undefs
                     )
 
-            case ir::IntConstant intconst:
-                self.body = self.body + """
-                {self.emit_var(intconst.var)} = {intconst.value}LL;
-                """
+                    foreach method of ir::get_methods(basictype, self.session.builtins):
+                        self.define_function(
+                            "meth_{self.session.get_type_c_name(basictype)}_{method.name}",
+                            method.functype,
+                            null,
+                            null,
+                        )
 
-            case ir::MethodCall call:
-                let args = [call.obj]
-                args.push_all(call.args)
-                self.emit_call(
-                    "meth_{self.file.get_type_c_name(call.obj.type)}_{call.method_name}",
-                    args, call.result)
+                    self.function_decls = (
+                        self.function_decls
+                        + defines
+                        + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);"
+                        + undefs
+                    )
+                    self.function_defs = (
+                        self.function_defs
+                        + defines
+                        + io::read_file("lib/generic/list.c")
+                        + undefs
+                    )
 
-            case ir::StringConstant strconst:
-                self.body = self.body + """
-                {self.emit_var(strconst.var)} = {self.file.emit_string(strconst.value)};
-                """
+    meth emit_toplevel_declaration(ir::ToplevelDeclaration top_declaration):
+        switch top_declaration:
+            case ir::FuncDef funcdef:
+                new FunctionEmitter(
+                    self, self.session, [], [], "", "", []
+                ).emit_funcdef(funcdef, self.emit_var(funcdef.var))
+            case ir::MethodDef methdef:
+                let klass = methdef.type.argtypes.first()
+                let file_pair = self.session.get_file_pair_for_type(klass)
+                new FunctionEmitter(
+                    file_pair, self.session, [], [], "", "", []
+                ).emit_funcdef(
+                    methdef,
+                    "meth_{self.session.get_type_c_name(klass)}_{methdef.name}",
+                )
 
-            case ir::VarCpy varcpy:
-                self.body = self.body + """
-                {self.emit_var(varcpy.dest)} = {self.emit_var(varcpy.source)};
-                """
 
-            case ir::GotoLabel label:
-                # (void)0 needed when label is last thing in function
-                self.body = self.body + """
-                label{label.id}:
-                    (void)0;
-                """
+# This state is shared between different files
+class Session(
+    ir::Builtins builtins,
+    Str compilation_dir,
+    List[ir::Symbol] symbols,
+    List[FilePair] file_pairs,
+):
+    meth source_path_to_file_pair(Str path) -> FilePair:
+        foreach pair of self.file_pairs:
+            if pair.type_or_source_path == path:
+                return pair
+        assert(false)
 
-            case ir::GotoIf goto:
-                self.body = self.body + """
-                if ({self.emit_var(goto.cond)})
-                    goto label{goto.label.id};
-                """
+    meth get_file_pair_for_type(ir::Type type) -> FilePair:
+        foreach pair of self.file_pairs:
+            if pair.type_or_source_path == type:
+                return pair
 
-            case ir::IncRef incref:
-                if self.is_refcounted(incref.var.type):
-                    assert(incref.var.type == self.file.builtins.INT)
-                    self.body = self.body + """
-                    incref({self.emit_var(incref.var)});
-                    """
+        let pair = new FilePair(
+            self,
+            create_id(ir::type_name(type), ir::type_id_string(type)),
+            type,
+            [], null, "", "", "", [], [], "",
+        )
+        self.file_pairs.push(pair)
+        pair.define_type(type)
+        return pair
 
-            case ir::DecRef decref:
-                if self.is_refcounted(decref.var.type):
-                    assert(decref.var.type == self.file.builtins.STR)
-                    self.body = self.body + """
-                    decref({self.emit_var(decref.var)}, dtor_Str);
-                    """
+    meth get_type_c_name(ir::Type type) -> Str:
+        if type == self.builtins.NULL_TYPE:
+            return "null"
+        # TODO: the same list is likely somewhere else too
+        let builtin_types = [
+            self.builtins.INT,
+            self.builtins.FLOAT,
+            self.builtins.BOOL,
+            self.builtins.STR,
+            self.builtins.NULL_TYPE,
+        ]
+        if type in builtin_types:
+            return ir::type_name(type)
+        return self.get_file_pair_for_type(type).id
 
-            case ir::UnSet unset:
-                if self.is_refcounted(unset.var.type):
-                    assert(unset.var.type == self.file.builtins.STR)
-                    self.body = self.body + """
-                    {self.emit_var(unset.var)} = NULL;
-                    """
-
+    # May evaluate c_expression several times
+    meth emit_incref(Str c_expression, ir::Type type) -> Str:
+        switch type:
+            case ir::UnionType union:
+                return "incref_{self.get_type_c_name(union)}({c_expression})"
             case *:
-                print(ins)
-                assert(false)
+                if ir::is_refcounted(type):
+                    return "incref({c_expression})"
+                return "(void)0"
 
-export func create_code(ir::Builtins builtins, List[ir::ToplevelDeclaration] ir) -> Str:
-    let file = new File(builtins, [], "")
+    meth emit_decref(Str c_expression, ir::Type type) -> Str:
+        switch type:
+            case ir::UnionType _:
+                return "decref_{self.get_type_c_name(type)}({c_expression})"
+            case *:
+                if ir::is_refcounted(type):
+                    return "decref(({c_expression}), dtor_{self.get_type_c_name(type)})"
+                return "(void)0"
 
-    let code = ""
-    foreach top_decl of ir:
-        let funcdef = top_decl as ir::FuncDef
-        assert(funcdef.var.name == "main")
-        assert(funcdef.argvars == [])
+    meth create_c_code(List[ir::ToplevelDeclaration] top_decls, Str source_path):
+        foreach pair of self.file_pairs:
+            assert(pair.type_or_source_path != source_path)
 
-        let emitter = new FunctionEmitter(file, [], "", "", "")
-        foreach ins of funcdef.body:
-            emitter.emit_instruction(ins)
-        code = code + """
-        void oomph_main(void)
-        \{
-            {emitter.before_body}
-            {emitter.body}
-            {emitter.after_body}
-        \}
-        """
+        let pair = new FilePair(
+            self,
+            create_id(
+                source_path.split("/").last().split(".").first(),
+                # TODO: use relative path
+                #os.path.relpath(source_path, self.compilation_dir.parent),
+                source_path,
+            ),
+            source_path,
+            [], null, "", "", "", [], [], "",
+        )
+        self.file_pairs.push(pair)
+        foreach top_declaration of top_decls:
+            pair.emit_toplevel_declaration(top_declaration)
 
-    return "#define SELF_HOSTED\n#include <lib/oomph.h>\n" + file.string_defs + code
+    # returns list of c paths
+    # TODO: don't keep stuff in memory so much
+    meth write_everything(Str builtins_path) -> List[Str]:
+        let builtins_pair = self.source_path_to_file_pair(builtins_path)
+
+        let c_paths = []
+        foreach file_pair of self.file_pairs:
+            let c_path = self.compilation_dir + "/" + file_pair.id + ".c"
+            let h_path = self.compilation_dir + "/" + file_pair.id + ".h"
+            c_paths.push(c_path)
+
+            let c_includes = [file_pair.id + ".h"]
+            let h_includes = []
+
+            if file_pair != builtins_pair:
+                c_includes.push(builtins_pair.id + ".h")
+                h_includes.push(builtins_pair.id + ".h")
+
+            c_includes.push_all([foreach pair of file_pair.c_includes: pair.id + ".h"])
+            h_includes.push_all([foreach pair of file_pair.c_includes: pair.id + ".h"])
+
+            # TODO: https://github.com/Akuli/oomph/issues/80
+            if file_pair.struct == null:
+                let struct = ""
+            else:
+                struct = file_pair.struct.get()
+
+            let h_code = (
+                "#include <lib/oomph.h>\n"
+                + [foreach include of h_includes: "#include \"{include}\"\n"].join("")
+                + file_pair.h_fwd_decls
+                + struct
+                + file_pair.function_decls
+            )
+            let c_code = (
+                "#include <lib/oomph.h>\n"
+                + [foreach include of c_includes: "#include \"{include}\"\n"].join("")
+                + file_pair.string_defs
+                + file_pair.function_defs
+            )
+
+            let header_guard = "HEADER_GUARD_" + file_pair.id
+            io::write_file(c_path, c_code)
+            io::write_file(h_path, """
+            #ifndef {header_guard}
+            #define {header_guard}
+            {h_code}
+            #endif
+            """)
+
+        return c_paths

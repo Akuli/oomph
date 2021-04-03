@@ -83,6 +83,7 @@ class UnionType(Type):
         assert len(type_members) >= 2
 
         # Consistent order, with null first if any (used in lib/)
+        # TODO: no longer used in lib/
         self.type_members = sorted(type_members, key=(lambda t: t.get_id_string()))
         if NULL_TYPE in self.type_members:
             self.type_members.remove(NULL_TYPE)

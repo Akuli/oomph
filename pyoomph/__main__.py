@@ -119,7 +119,6 @@ def main() -> None:
     session = c_output.Session(
         get_compilation_dir(cache_dir, compiler_args.infile.stem + "_compilation")
     )
-    session.compilation_dir.mkdir(exist_ok=True)
 
     all_compilation_units: List[CompilationUnit] = []
     dependencies: Dict[pathlib.Path, List[pathlib.Path]] = {}
