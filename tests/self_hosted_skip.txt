@@ -55,9 +55,10 @@ tests/equal.oomph
 tests/find.oomph
 tests/find_first_error.oomph
 tests/find_last_error.oomph
-tests/find_only_multiple_error.oomph
 tests/find_only_404_error.oomph
+tests/find_only_multiple_error.oomph
 tests/format.oomph
+tests/hash.oomph
 tests/hello_lib.oomph
 tests/implicit_float_convert.oomph
 tests/import.oomph

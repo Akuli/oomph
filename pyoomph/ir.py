@@ -52,17 +52,16 @@ visible_builtins = {
     for var in [
         BuiltinVariable("__argv_count", FunctionType([], INT)),
         BuiltinVariable("__argv_get", FunctionType([INT], STRING)),
+        BuiltinVariable("__hash", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
         BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
-        BuiltinVariable(
-            "__slice_until_substring", FunctionType([STRING, STRING], STRING)
-        ),
+        BuiltinVariable("__run_subprocess", FunctionType([LIST.get_type(STRING)], INT)),
+        BuiltinVariable("__slice_until_substring", FunctionType([STRING, STRING], STRING)        ),
         BuiltinVariable("__string_get_first_char", FunctionType([STRING], STRING)),
         BuiltinVariable("__string_get_utf8_byte", FunctionType([STRING, INT], INT)),
-        BuiltinVariable("__run_subprocess", FunctionType([LIST.get_type(STRING)], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("null", NULL_TYPE),

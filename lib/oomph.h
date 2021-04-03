@@ -33,13 +33,14 @@ noreturn void panic_printf_errno(const char *fmt, ...);
 int64_t argv_count(void);
 struct class_Str *argv_get(int64_t i);
 
-int64_t string_get_utf8_byte(struct class_Str *s, int64_t i);
 int64_t run_subprocess(void *args);
+int64_t string_get_utf8_byte(struct class_Str *s, int64_t i);
 struct class_Str *io_read_file(const struct class_Str *path);
-struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep);
-struct class_Str *string_get_first_char(struct class_Str *s);
+struct class_Str *oomph_hash(const struct class_Str *data, const struct class_Str *algname);
 struct class_Str *meth_Str_remove_prefix(struct class_Str *s, struct class_Str *pre);
 struct class_Str *meth_Str_remove_suffix(struct class_Str *s, struct class_Str *suf);
+struct class_Str *slice_until_substring(struct class_Str *s, struct class_Str *sep);
+struct class_Str *string_get_first_char(struct class_Str *s);
 void io_mkdir(const struct class_Str *path);
 void io_print(const struct class_Str *s);
 void io_write_file(const struct class_Str *path, const struct class_Str *content);

@@ -248,6 +248,7 @@ export func create_builtins() -> Builtins:
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
         new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
+        new BuiltinVariable("__hash", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
         new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
         new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
