@@ -305,9 +305,11 @@ class _FilePair:
                     self.h_includes.add(pair)
                     return pair.emit_var(var)
 
-        for name, builtin_var in ir.visible_builtins.items() | ir.hidden_builtins.items():
+        for name, builtin_var in (
+            ir.visible_builtins.items() | ir.hidden_builtins.items()
+        ):
             if var == builtin_var:
-                return 'oomph_' + name.lstrip('_')
+                return "oomph_" + name.lstrip("_")
 
         assert isinstance(var.type, FunctionType)
         if isinstance(var, ir.FileVariable) and var.name == "main":
