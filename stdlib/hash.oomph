@@ -1,0 +1,12 @@
+export func md5(Str s) -> Str:
+    return __hash(s, "md5")
+
+export func sha1(Str s) -> Str:
+    return __hash(s, "sha1")
+
+export func sha256(Str s) -> Str:
+    return __hash(s, "sha256")
+
+export func sha512(Str s) -> Str:
+    return __hash(s, "sha512")
+

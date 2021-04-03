@@ -1,6 +1,7 @@
 # oomph
 This is yet another attempt at making a usable programming language.
 
+    sudo apt install libssl-dev
     git clone https://github.com/Akuli/oomph
     cd oomph
     python3 -m venv env

@@ -1,0 +1,7 @@
+import "<stdlib>/hash.oomph" as hash
+
+export func main():
+    print(hash::md5("hello"))
+    print(hash::sha1("hello"))
+    print(hash::sha256("hello"))
+    print(hash::sha512("hello"))
