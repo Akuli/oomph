@@ -764,8 +764,7 @@ class FunctionOrMethodConverter(
                         let nice_type = self.get_type(chase.type_and_name.get().type)
                         let nice_types = [nice_type]
                         assert(nice_type in types_to_do)   # TODO: error
-                        # TODO: add handy delete_only method
-                        types_to_do.delete_at_index(types_to_do.find_only(nice_type))
+                        types_to_do.delete_only(nice_type)
 
                         let case_var = self.create_var(
                             nice_type, chase.type_and_name.get().name_location
