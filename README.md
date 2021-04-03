@@ -34,7 +34,7 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
-- `or_if_null_then` method: `optional.or_if_null_then(default)` (#80)
+- `or_if_null_then` method: `optional.or_if_null_then(default)` ([#80](https://github.com/Akuli/oomph/issues/80))
 - safe and unsafe (user-input) strings: would prevent a lot of security problems
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
 - `[first_foo, ...other_foos]` syntax
