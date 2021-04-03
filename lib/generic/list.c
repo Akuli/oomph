@@ -209,17 +209,20 @@ int64_t METHOD(find_only)(TYPE self, ITEMTYPE item)
 
 void METHOD(delete_first)(TYPE self, ITEMTYPE item)
 {
-	METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
+	ITEMTYPE deleted = METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
+	DECREF_ITEM(deleted);
 }
 
 void METHOD(delete_last)(TYPE self, ITEMTYPE item)
 {
-	METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
+	ITEMTYPE deleted = METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
+	DECREF_ITEM(deleted);
 }
 
 void METHOD(delete_only)(TYPE self, ITEMTYPE item)
 {
-	METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
+	ITEMTYPE deleted = METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
+	DECREF_ITEM(deleted);
 }
 
 bool METHOD(starts_with)(TYPE self, TYPE prefix)
