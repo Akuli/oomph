@@ -111,4 +111,6 @@ export func main():
     run_command.push("{cache_dir}/out")
     run_command.push_all(args)
     assert(process::run(run_command) == 0)
+
+    session.destroy()
     builtins.destroy()

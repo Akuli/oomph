@@ -26,7 +26,7 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
 
 class FunctionEmitter(
     FilePair file_pair,
-    Session session,
+    Session session,    # TODO: use self.file_pair.session instead
     List[ir::LocalVariable] local_vars,     # named var0, var1, var2, ...
     List[ir::GotoLabel] labels,             # named label0, label1, label2, ...
     Str before_body,
@@ -251,7 +251,6 @@ class FilePair(
     List[FilePair] h_includes,
     Str h_fwd_decls,
 ):
-
     # Usually can_fwd_declare_in_header should be true
     # TODO: default values of arguments
     meth emit_type(ir::Type | null type_or_null) -> Str:
@@ -677,6 +676,11 @@ class Session(
     List[ir::Symbol] symbols,
     List[FilePair] file_pairs,
 ):
+    # Gets rid of reference cycles
+    meth destroy():
+        while self.file_pairs != []:
+            self.file_pairs.pop()
+
     meth source_path_to_file_pair(Str path) -> FilePair:
         foreach pair of self.file_pairs:
             if pair.type_or_source_path == path:
