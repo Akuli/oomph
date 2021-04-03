@@ -259,7 +259,6 @@ class FilePair(
         return self.emit_type_custom(type_or_null, true)
 
     meth emit_type_custom(ir::Type | null type_or_null, Bool can_fwd_declare_in_header) -> Str:
-        pass
         if type_or_null == null:
             # Function return types only
             # TODO: handle this elsewhere?
@@ -279,12 +278,12 @@ class FilePair(
         if type == self.session.builtins.BOOL:
             return "bool"
         if type == self.session.builtins.STR:
-            return "struct class_Str *"  # TODO: rename the struct?
+            return "struct class_Str * /* A */"  # TODO: rename the struct?
         if type == self.session.builtins.NULL_TYPE:
             return "char"  # always zero
 
         let defining_file_pair = self.session.type_to_file_pair(type)
-        let result = "struct class_{defining_file_pair.id}"
+        let result = "struct class_{defining_file_pair.id} /* B */"
 
         switch type:
             case ir::UnionType _:
@@ -300,7 +299,7 @@ class FilePair(
                 self.c_includes.push(defining_file_pair)
 
             if can_fwd_declare_in_header:
-                self.h_fwd_decls = self.h_fwd_decls + result + ";\n"
+                self.h_fwd_decls = self.h_fwd_decls + "struct class_{defining_file_pair.id}; /* C */ \n"
             else:
                 if defining_file_pair not in self.h_includes:
                     self.h_includes.push(defining_file_pair)
@@ -308,7 +307,6 @@ class FilePair(
         return result
 
     meth emit_var(ir::Variable var) -> Str:
-        pass
         switch var:
             case ir::LocalVariable _:
                 assert(false)
@@ -350,7 +348,7 @@ class FilePair(
                 ]:
                     # Class implemented in C, method in builtins.oomph
                     # TODO: check if this file is builtins.oomph
-                    return "oomph_" + trim_leading_underscores(filevar.name)
+                    return "meth_" + trim_leading_underscores(filevar.name)
                 return self.id + "_" + filevar.name
 
     # If body is None, declares but does not actually define
@@ -628,8 +626,8 @@ class FilePair(
                     let undefs = "\n"
                     foreach pair of macros:
                         let name_without_args = pair.first().split("(").first()
-                        defines = defines + "define {pair.first()} {pair.last()}\n"
-                        undefs = undefs + "undef {name_without_args}\n"
+                        defines = defines + "#define {pair.first()} {pair.last()}\n"
+                        undefs = undefs + "#undef {name_without_args}\n"
 
                     self.struct = new (Str | null)(
                         defines + io::read_file("lib/generic/list.h") + undefs
