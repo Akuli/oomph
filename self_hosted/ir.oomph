@@ -288,7 +288,7 @@ export func create_builtins() -> Builtins:
         visible_vars, hidden_vars,
         [],
     )
-    result.cleanup_list.push_all(result.builtin_types)
+    result.cleanup_list.push_all(result.get_builtin_types())
 
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
