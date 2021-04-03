@@ -176,16 +176,11 @@ export class Builtins(
 ):
     meth destroy():
         # get rid of reference cycles
-        # TODO: syntax sucks
         foreach type of self.cleanup_list:
             # TODO: 'thing.methods = []' doesn't work
-            while (type as BasicType).methods != []:
-                (type as BasicType).methods.pop()
-            while (type as BasicType).members != []:
-                (type as BasicType).members.pop()
-            if (type as BasicType).constructor_argtypes != null:
-                while (type as BasicType).constructor_argtypes.get() != []:
-                    (type as BasicType).constructor_argtypes.get().pop()
+            (type as BasicType).methods = new List[Method]()
+            (type as BasicType).members = new List[Member]()
+            (type as BasicType).constructor_argtypes = new (List[Type] | null)(null)
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
