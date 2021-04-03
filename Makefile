@@ -9,6 +9,7 @@ CFLAGS += -Wno-unused-but-set-variable
 CFLAGS += -Wno-unused-label
 CFLAGS += -g
 LDFLAGS += -lm
+LDFLAGS += -lcrypto   # openssl hash functions
 
 # tcc doesn't have <stdnoreturn.h>
 # https://stackoverflow.com/a/37741652
