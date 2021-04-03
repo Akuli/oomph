@@ -25,7 +25,7 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
             line_prefix = line_prefix.remove_prefix(" ")
 
         # Add extra carets if it's supposed to span multiple lines (or it's "\n")
-        if self.code.contains("\n"):
+        if "\n" in self.code:
             let caret_count = self.code.split("\n").first().length() + 4
         else:
             caret_count = self.code.length()

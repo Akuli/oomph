@@ -275,8 +275,8 @@ export func create_builtins() -> Builtins:
     ])
 
     (STR as BasicType).methods.push_all([
+        new Method("__contains", new FunctionType([STR, STR], BOOL)),
         new Method("center_pad", new FunctionType([STR, INT, STR], STR)),
-        new Method("contains", new FunctionType([STR, STR], BOOL)),
         new Method("count", new FunctionType([STR, STR], INT)),
         new Method("ends_with", new FunctionType([STR, STR], BOOL)),
         new Method("equals", new FunctionType([STR, STR], BOOL)),

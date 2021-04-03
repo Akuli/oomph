@@ -73,7 +73,7 @@ func get_prefix_spaces(Str string) -> Str:
     return " ".repeat(result)
 
 func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token]:
-    assert(not line_prefix.contains("\n"))
+    assert("\n" not in line_prefix)
 
     # Make sure that every statement ends with newline
     if not code.ends_with("\n"):

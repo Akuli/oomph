@@ -26,7 +26,7 @@ func __Str_starts_with(Str self, Str prefix) -> Bool:
 func __Str_ends_with(Str self, Str suffix) -> Bool:
     return suffix == "" or self.remove_suffix(suffix) != self
 
-func __Str_contains(Str self, Str substring) -> Bool:
+func __Str___contains(Str self, Str substring) -> Bool:
     return (self == "" and substring == "") or __slice_until_substring(self, substring) != self
 
 # No need to use a third party library for this, lol

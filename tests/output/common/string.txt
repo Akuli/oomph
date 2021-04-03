@@ -19,7 +19,7 @@ abcabc
 abcabcabc
 abcabcabcabc
 abcabcabcabcabc
-Contains:
+'in' operator:
 true
 false
 true

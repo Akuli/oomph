@@ -317,8 +317,8 @@ class _FilePair:
         elif var.name in {
             "__Bool_to_string",
             "__List_Str_join",
+            "__Str___contains",
             "__Str_center_pad",
-            "__Str_contains",
             "__Str_count",
             "__Str_ends_with",
             "__Str_from_start_to_substring",

@@ -55,10 +55,10 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("op", "\n")
 
         string = string.remove_prefix("\"").remove_suffix("\"")
-        assert(not string.contains("\""))
-        assert(not string.contains("\\"))
-        assert(not string.contains("\{"))
-        assert(not string.contains("\}"))
+        assert("\"" not in string)
+        assert("\\" not in string)
+        assert("\{" not in string)
+        assert("\}" not in string)
 
         if string.starts_with("<stdlib>/"):
             let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/")
@@ -153,15 +153,15 @@ class Parser(List[tokenizer::Token] tokens):
                         break
                 assert(found_escape)
             elif location.code.starts_with("\{"):
-                assert(location.code.contains("\}"))
+                assert("\}" in location.code)
                 let code = location.code.split("\}").first().remove_prefix("\{")
                 let code_location = new error::Location(
                     location.path, location.lineno, location.line_prefix + "\{", code
                 )
-                assert(not code.contains("\n"))  # TODO: reconsider? might be useful in multiline strings
-                assert(not code.contains("\{"))
-                assert(not code.contains("\}"))
-                assert(not code.contains("\\"))
+                assert("\n" not in code)  # TODO: reconsider? might be useful in multiline strings
+                assert("\{" not in code)
+                assert("\}" not in code)
+                assert("\\" not in code)
                 result.push(self.tokenize_and_parse_expression(code, code_location))
                 location = location.remove_prefix("\{").remove_prefix(code).remove_prefix("\}")
             else:
@@ -581,7 +581,7 @@ class Parser(List[tokenizer::Token] tokens):
         if self.peek().matches("keyword", "typedef"):
             let location = self.get_token("keyword", "typedef").location
             let name_token = self.get_token_by_type("id")
-            if name_token.value.contains("::"):
+            if "::" in name_token.value:
                 name_token.location.error("typedef name must not contain '::'")
             self.get_token("op", "=")
             let type = self.parse_type()
