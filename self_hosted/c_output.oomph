@@ -2,7 +2,7 @@ import "<stdlib>/hash.oomph" as hash
 import "<stdlib>/io.oomph" as io
 import "ir.oomph" as ir
 
-# The resulting C code is unreadable anyway, but it follows these conventions:
+# The resulting C code is unreadable anyway, but please follow these conventions:
 #   - When you use ";", add a trailing newline by using a multiline string or
 #     with ";\n". This avoids making lines really long, so even though the code
 #     is unreadable, C compiler error messages are not.
