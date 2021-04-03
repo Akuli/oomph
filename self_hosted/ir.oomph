@@ -67,6 +67,7 @@ export func make_union(
 
     # FIXME: sort the type members consistently
 
+    # Rest of the code relies on null being first when detecting 'Foo | null' unions
     if builtins.NULL_TYPE in type_members:
         type_members.delete_only(builtins.NULL_TYPE)
         type_members.insert(0, builtins.NULL_TYPE)
