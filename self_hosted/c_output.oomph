@@ -716,6 +716,7 @@ class Session(
     # May evaluate c_expression several times
     meth emit_incref(Str c_expression, ir::Type type) -> Str:
         switch type:
+            # TODO: this logic is repeated in many places
             case ir::UnionType union:
                 return "incref_{self.get_type_c_name(union)}({c_expression})"
             case *:
