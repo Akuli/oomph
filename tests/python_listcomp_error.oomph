@@ -3,4 +3,3 @@ export func main():
     # In oomph you can do [foreach x of foo: x+1]
     # As a Python user, I often accidentally type:
     print([x+1 foreach x of foo])
-
