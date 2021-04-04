@@ -18,14 +18,14 @@ int64_t meth_Float_ceil(double f) { return (int64_t)ceil(f); }
 int64_t meth_Float_truncate(double f) { return (int64_t)f; }
 int64_t meth_Float_round(double f) { return (int64_t)round(f); }
 
-struct class_Str *meth_Int_to_string(int64_t n)
+struct class_Str meth_Int_to_string(int64_t n)
 {
 	char s[100];
 	snprintf(s, sizeof s, "%lld", (long long)n);
 	return cstr_to_string(s);
 }
 
-struct class_Str *meth_Float_to_string(double d)
+struct class_Str meth_Float_to_string(double d)
 {
 	char res[100];
 	snprintf(res, sizeof res, "%g", d);
@@ -39,23 +39,29 @@ struct class_Str *meth_Float_to_string(double d)
 	return cstr_to_string(res);
 }
 
-int64_t meth_Str_to_int(const struct class_Str *s)
+int64_t meth_Str_to_int(struct class_Str s)
 {
+	char *cstr = string_to_cstr(s);
 	char *endptr;
 	errno = 0;
-	long long res = strtoll(s->str, &endptr, 10);
-	if (errno != 0 || endptr != s->str + strlen(s->str))
-		panic_printf_errno("not a valid integer: %s", s->str);
+	long long res = strtoll(cstr, &endptr, 10);
+	if (errno != 0 || endptr != cstr + s.nbytes)
+		panic_printf_errno("not a valid integer: %s", cstr);
+
+	free(cstr);
 	return res;
 }
 
-double meth_Str_to_float(const struct class_Str *s)
+double meth_Str_to_float(struct class_Str s)
 {
+	char *cstr = string_to_cstr(s);
 	char *endptr;
 	errno = 0;
-	double res = strtod(s->str, &endptr);
-	if (errno != 0 || endptr != s->str + strlen(s->str))
-		panic_printf_errno("not a valid integer: %s", s->str);
+	double res = strtod(cstr, &endptr);
+	if (errno != 0 || endptr != cstr + s.nbytes)
+		panic_printf_errno("not a valid integer: %s", cstr);
+
+	free(cstr);
 	return res;
 }
 

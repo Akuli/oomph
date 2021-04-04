@@ -1,0 +1,9 @@
+import "<stdlib>/io.oomph" as io
+import "<stdlib>/process.oomph" as process
+
+export func main():
+    io::write_file("test_out/io_testing_dir/truncated.txt", "hellø")
+
+    # Remove last byte, reading should fail
+    process::run(["truncate", "-s", "-1", "test_out/io_testing_dir/truncated.txt"])
+    io::read_file("test_out/io_testing_dir/truncated.txt")

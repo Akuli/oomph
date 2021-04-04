@@ -59,12 +59,13 @@ tests/null_get_error.oomph
 tests/optional_compare_error.oomph
 tests/process.oomph
 tests/read_file_not_exists_error.oomph
-tests/read_file_zero_error.oomph
+tests/read_file_zero.oomph
 tests/return_type_error.oomph
 tests/switch_in_loop.oomph
 tests/union.oomph
 tests/union_name_conflict_bug.oomph
 tests/utf8_error.oomph
+tests/utf8_truncated_error.oomph
 tests/weird_minus_error.oomph
 tests/write_file_full_error.oomph
 tests/write_file_permission_error.oomph

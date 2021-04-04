@@ -134,6 +134,8 @@ class _FunctionEmitter:
             """
 
         if isinstance(ins, ir.UnSet):
+            if ins.var.type is STRING:
+                return f"{self.emit_var(ins.var)}.buf = NULL;\n"
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
             if not ins.var.type.refcounted:
@@ -279,7 +281,11 @@ class _FilePair:
             need_include = defining_file_pair is not self
 
         result = f"struct class_{type_id}"
-        if the_type.refcounted and not isinstance(the_type, UnionType):
+        if (
+            the_type.refcounted
+            and the_type != STRING
+            and not isinstance(the_type, UnionType)
+        ):
             result += "*"
         else:
             can_fwd_declare_in_header = False
@@ -372,15 +378,20 @@ class _FilePair:
                 f"string{len(self.strings)}_" + value, value
             )
 
-            # String constants consist of int64_t refcount set to -1,
-            # followed by utf8, followed by zero byte
-            # TODO: is this cross-platform enough?
-            struct_bytes = b"\xff" * 8 + value.encode("utf-8") + b"\0"
-
-            array_content = ", ".join(r"'\x%02x'" % byte for byte in struct_bytes)
+            array_content = ", ".join(
+                r"'\x%02x'" % byte for byte in value.encode("utf-8")
+            )
             self.string_defs += f"""
-            static {self.emit_type(STRING)} {self.strings[value]}
-            = (void*)(unsigned char[]){{ {array_content} }};
+            static struct StringBuf {self.strings[value]}_buf = {{
+                .refcount = -1,
+                .data = (char[]){{ {array_content or "0"} }},
+                .malloced = false,
+            }};
+            static {self.emit_type(STRING)} {self.strings[value]} = {{
+                .buf = &{self.strings[value]}_buf,
+                .nbytes = {len(value.encode("utf-8"))},
+                .offset = 0,
+            }};
             """
         return self.strings[value]
 
@@ -407,29 +418,29 @@ class _FilePair:
             )
             # TODO: can decls be emitted automatically?
             self.function_decls += f"""
-            struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);
+            struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
             bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
             """
-            type_name_code = self.emit_string(the_type.name) + "->str"
+            type_name_code = self.emit_string(the_type.name)
             self.function_defs += f"""
-            struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj)
+            struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
             {{
-                struct class_Str *valstr;
+                struct class_Str valstr;
                 switch(obj.membernum) {{
                     {to_string_cases}
                     default:
                         panic_printf(
                             "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                            {type_name_code}, (int)obj.membernum);
+                            string_to_cstr({type_name_code}), (int)obj.membernum);
                 }}
 
-                struct class_Str *res = {self.emit_string(the_type.name)};
+                struct class_Str res = {self.emit_string(the_type.name)};
                 // TODO: missing incref, although doesn't matter since these
                 //       strings are not reference counted
-                oomph_string_concat_inplace(&res, "(");
-                oomph_string_concat_inplace(&res, valstr->str);
-                oomph_string_concat_inplace(&res, ")");
-                decref(valstr, dtor_Str);
+                oomph_string_concat_inplace_cstr(&res, "(");
+                oomph_string_concat_inplace(&res, valstr);
+                oomph_string_concat_inplace_cstr(&res, ")");
+                string_decref(valstr);
                 return res;
             }}
 
@@ -442,7 +453,7 @@ class _FilePair:
                     default:
                         panic_printf(
                             "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                            {type_name_code}, (int)a.membernum);
+                            string_to_cstr({type_name_code}), (int)a.membernum);
                 }}
             }}
             """
@@ -605,25 +616,25 @@ class _FilePair:
 
             if the_type.create_to_string_method:
                 self.function_decls += f"""
-                struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} obj);
+                struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} obj);
                 """
-                to_string_calls = [
-                    f"meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam})"
+                concats = [
+                    f"""
+                    tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
+                    oomph_string_concat_inplace(&res, tmp);
+                    string_decref(tmp);
+                    """
                     for typ, nam in the_type.members
                 ]
+                concat_comma = 'oomph_string_concat_inplace_cstr(&res, ", ");'
                 self.function_defs += f"""
-                struct class_Str *meth_{self.id}_to_string({self.emit_type(the_type)} self)
+                struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} self)
                 {{
-                    struct class_Str *res = {self.emit_string(the_type.name)};
-                    oomph_string_concat_inplace(&res, "(");
-                    struct class_Str *strs[] = {{ {','.join(to_string_calls + ['NULL'])} }};
-                    for (size_t i = 0; strs[i]; i++) {{
-                        if (i != 0)
-                            oomph_string_concat_inplace(&res, ", ");
-                        oomph_string_concat_inplace(&res, strs[i]->str);
-                        decref(strs[i], dtor_Str);
-                    }}
-                    oomph_string_concat_inplace(&res, ")");
+                    struct class_Str res = {self.emit_string(the_type.name)};
+                    struct class_Str tmp;
+                    oomph_string_concat_inplace_cstr(&res, "(");
+                    {concat_comma.join(concats)}
+                    oomph_string_concat_inplace_cstr(&res, ")");
                     return res;
                 }}
                 """
@@ -672,6 +683,8 @@ class Session:
 
     # May evaluate c_expression several times
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
+        if the_type is STRING:
+            return f"string_incref({c_expression})"
         if isinstance(the_type, UnionType):
             return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
         if the_type.refcounted:
@@ -679,6 +692,8 @@ class Session:
         return "(void)0"
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        if the_type is STRING:
+            return f"string_decref({c_expression})"
         if isinstance(the_type, UnionType):
             return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
         if the_type.refcounted:

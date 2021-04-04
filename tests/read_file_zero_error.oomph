@@ -1,4 +1,0 @@
-import "<stdlib>/io.oomph" as io
-
-export func main():
-    io::read_file("tests/10_zero_bytes")

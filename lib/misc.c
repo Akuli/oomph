@@ -23,10 +23,10 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 	exit(1);
 }
 
-void oomph_assert(bool cond, const struct class_Str *path, int64_t lineno)
+void oomph_assert(bool cond, struct class_Str path, int64_t lineno)
 {
 	if (!cond)
-		panic_printf("assert() failed in \"%s\", line %d", path->str, (int)lineno);
+		panic_printf("assert() failed in \"%s\", line %d", string_to_cstr(path), (int)lineno);
 }
 
 static int global_argc = -1;
@@ -38,7 +38,7 @@ int64_t oomph_argv_count(void)
 	return global_argc;
 }
 
-struct class_Str *oomph_argv_get(int64_t i)
+struct class_Str oomph_argv_get(int64_t i)
 {
 	assert(global_argv != NULL);
 	assert(0 <= i && i < global_argc);

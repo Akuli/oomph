@@ -134,9 +134,11 @@ class FunctionEmitter(
                     case ir::UnionType _:
                         return "{self.emit_var(unset.var)}.membernum = -1;\n"
                     case *:
+                        if unset.var.type == self.file_pair.session.builtins.STR:
+                            return self.emit_var(unset.var) + ".buf = NULL;\n"
                         if ir::is_refcounted(unset.var.type):
                             # Pointer type
-                            return "{self.emit_var(unset.var)} = NULL;\n"
+                            return self.emit_var(unset.var) + " = NULL;\n"
                         return ""
 
             case ir::GotoLabel label:
@@ -275,7 +277,7 @@ class FilePair(
         if type == self.session.builtins.BOOL:
             return "bool"
         if type == self.session.builtins.STR:
-            return "struct class_Str *"  # TODO: rename the struct?
+            return "struct class_Str"  # TODO: rename the struct?
         if type == self.session.builtins.NULL_TYPE:
             return "char"  # always zero
 
@@ -387,17 +389,19 @@ class FilePair(
 
         if first_time_with_this_value:
             let content_chars = [foreach c of value.get_utf8(): c.to_string()]
-            content_chars.push("'\\0'")
+            if content_chars == []:
+                content_chars.push("0")  # empty c arrays aren't a thing
 
             self.string_defs = self.string_defs + """
-            static {self.emit_type(self.session.builtins.STR)} {varname}
-            = (void*)(unsigned char[]) \{
-                // String constants consist of int64_t refcount set to -1,
-                // followed by utf8, followed by zero byte
-                // TODO: is this insanity cross-platform enough?
-                0xff, 0xff, 0xff, 0xff,
-                0xff, 0xff, 0xff, 0xff,
-                {content_chars.join(",")}
+            static struct StringBuf {varname}_buf = \{
+                .refcount = -1,
+                .data = (char[])\{ {content_chars.join(",")} \},
+                .malloced = false,
+            \};
+            static struct class_Str {varname} = \{
+                .buf = &{varname}_buf,
+                .nbytes = {value.get_utf8().length()},
+                .offset = 0,
             \};
             """
 
@@ -436,29 +440,29 @@ class FilePair(
 
                 # TODO: can decls be emitted automatically?
                 self.function_decls = self.function_decls + """
-                struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj);
+                struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
                 bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
                 """
 
-                let type_name_code = self.emit_string(ir::type_name(union)) + "->str"
+                let type_name_code = self.emit_string(ir::type_name(union))
                 self.function_defs = self.function_defs + """
-                struct class_Str *meth_{self.id}_to_string(struct class_{self.id} obj)
+                struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
                 \{
-                    struct class_Str *valstr;
+                    struct class_Str valstr;
                     switch(obj.membernum) \{
                         {to_string_cases}
                         default:
                             panic_printf(
                                 "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                                {type_name_code}, (int)obj.membernum);
+                                string_to_cstr({type_name_code}), (int)obj.membernum);
                     \}
 
-                    struct class_Str *res = {self.emit_string(ir::type_name(union))};
-                    incref(res);
-                    oomph_string_concat_inplace(&res, "(");
-                    oomph_string_concat_inplace(&res, valstr->str);
-                    oomph_string_concat_inplace(&res, ")");
-                    decref(valstr, dtor_Str);
+                    struct class_Str res = {self.emit_string(ir::type_name(union))};
+                    string_incref(res);
+                    oomph_string_concat_inplace_cstr(&res, "(");
+                    oomph_string_concat_inplace(&res, valstr);
+                    oomph_string_concat_inplace_cstr(&res, ")");
+                    string_decref(valstr);
                     return res;
                 \}
 
@@ -471,7 +475,7 @@ class FilePair(
                         default:
                             panic_printf(
                                 "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                                {type_name_code}, (int)a.membernum);
+                                string_to_cstr({type_name_code}), (int)a.membernum);
                     \}
                 \}
                 """
@@ -576,26 +580,24 @@ class FilePair(
 
                     if basictype.create_to_string_method:
                         self.function_decls = self.function_decls + """
-                        struct class_Str *meth_{self.id}_to_string({self.emit_type(basictype)} obj);
+                        struct class_Str meth_{self.id}_to_string({self.emit_type(basictype)} obj);
                         """
-                        let to_string_calls = [
+                        let concats = [
                             foreach m of basictype.members:
-                            "meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name})"
-                        ]
-                        to_string_calls.push("NULL")
+                                """
+                                tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
+                                oomph_string_concat_inplace(&res, tmp);
+                                string_decref(tmp);
+                                """
+                        ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
                         self.function_defs = self.function_defs + """
-                        struct class_Str *meth_{self.id}_to_string({self.emit_type(basictype)} self)
+                        struct class_Str meth_{self.id}_to_string({self.emit_type(basictype)} self)
                         \{
-                            struct class_Str *res = {self.emit_string(basictype.name)};
-                            oomph_string_concat_inplace(&res, "(");
-                            struct class_Str *strs[] = \{ {to_string_calls.join(",")} \};
-                            for (size_t i = 0; strs[i]; i++) \{
-                                if (i != 0)
-                                    oomph_string_concat_inplace(&res, ", ");
-                                oomph_string_concat_inplace(&res, strs[i]->str);
-                                decref(strs[i], dtor_Str);
-                            \}
-                            oomph_string_concat_inplace(&res, ")");
+                            struct class_Str res = {self.emit_string(basictype.name)};
+                            struct class_Str tmp;
+                            oomph_string_concat_inplace_cstr(&res, "(");
+                            {concats}
+                            oomph_string_concat_inplace_cstr(&res, ")");
                             return res;
                         \}
                         """
@@ -706,8 +708,10 @@ class Session(
 
     # May evaluate c_expression several times
     meth emit_incref(Str c_expression, ir::Type type) -> Str:
+        # TODO: this logic is repeated in many places
+        if type == self.builtins.STR:
+            return "string_incref({c_expression})"
         switch type:
-            # TODO: this logic is repeated in many places
             case ir::UnionType union:
                 return "incref_{self.get_type_c_name(union)}({c_expression})"
             case *:
@@ -716,6 +720,8 @@ class Session(
                 return "(void)0"
 
     meth emit_decref(Str c_expression, ir::Type type) -> Str:
+        if type == self.builtins.STR:
+            return "string_decref({c_expression})"
         switch type:
             case ir::UnionType _:
                 return "decref_{self.get_type_c_name(type)}({c_expression})"
