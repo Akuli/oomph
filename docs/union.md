@@ -17,9 +17,12 @@ Let's go through this step by step.
     func foo(Str | null message):
 
 Here `Str | null` is a union type. Read it as "`Str` or `null`".
-When the code runs, each instance of the union type has exactly one **active member**,
-such as `Str` when this function is called with the string `"hello"` as an argument.
-A union type can also contain multiple types, such as `Str | Int | Bool`.
+
+When the code runs, each instance of the union type can be only one of the given types,
+in this case, `Str` or `null`.
+This type, whichever it is, is called the **active member** of the union.
+When this function is called with the string `"hello"` as an argument,
+the active member is `Str`.
 
     if message == null:
         print("No message")
@@ -42,8 +45,7 @@ whether `null` is the active member of `message`.
 
 Recall that `message` has type `Str | null`.
 However, when the `else` runs, the active member of `message` can't be `null`.
-The `.get()` method converts from `Str | null` to `Str`,
-causing a runtime error if the active member is `null`.
+The `.get()` method converts from `Str | null` to `Str`.
 
     export func main():
         foo(null)       # prints "No message"
@@ -51,6 +53,13 @@ causing a runtime error if the active member is `null`.
 
 Here `null` and `"hello"` have types `null` and `Str` respectively,
 but they are [implicitly converted](implicit-conversions.md) to type `Str | null`.
+
+
+## Multiple types
+
+A union type can have more than two member types, such as `Str | Int | Bool`.
+That's not same as `(Str | Int) | Bool`,
+where the union type `Str | Int` is inside another union type.
 
 
 ## As
@@ -65,6 +74,16 @@ To access the `Int` of `Str | Int`, knowing that's the active member, you can us
     export func main():
         blah(123)       # prints "124"
         blah("lol")     # runtime error
+
+In fact, `message.get()` in the first example is a shorthand for `message as Str`,
+and that too gives a runtime error if called with the wrong active member:
+
+    func greet(Str | null name):
+        print("Hello " + name.get())
+
+    export func main():
+        greet("World")  # prints "Hello World"
+        greet(null)     # runtime error
 
 
 ## Switch
@@ -87,7 +106,7 @@ To also check which member is active, use `switch`:
         bar(false)      # prints "Got boolean: false"
 
 Inside `case Int i`, the variable `i` has type `Int`.
-The type of `thing` doesn't magically change; it remains as `Int | Bool`.
+Of course, the type of `thing` doesn't change; it remains as `Int | Bool`.
 
 It is an error if the `thing` of `switch thing` does not have union type.
 Also, it is an error if you forget a type in the switch:
@@ -113,16 +132,14 @@ If this isn't what you want, you can use `case *`, which matches all remaining t
 
 ## Typedef
 
-Oomph doesn't have inheritance, but usually unions can be used instead.
-For example, you can do this in oomph:
+If you want to define a type `Thing` that can be either a `FooThing` or a `BarThing`,
+you can do this:
 
     class FooThing()
     class BarThing()
     typedef Thing = FooThing | BarThing
 
-Now `Thing` can be used as a type, and it means same as `FooThing | BarThing`,
-similarly to making `FooThing` and `BarThing` inherit from a base class `Thing`
-in a programming language that has inheritance.
+Now `Thing` can be used as a type, and it means same as `FooThing | BarThing`.
 
 A `typedef` doesn't create a new type; it just gives a new name to an existing type.
 This concept is called type aliasing in some programming languages.
@@ -133,6 +150,10 @@ If you want, you can also put the `typedef` before the classes (explained in det
     typedef Thing = FooThing | BarThing
     class FooThing()
     class BarThing()
+
+Oomph doesn't have inheritance, and often you can use unions instead.
+The above example is similar to making `FooThing` and `BarThing`
+inherit from a base class `Thing` in a programming language that has inheritance.
 
 
 ## Converting to union type
