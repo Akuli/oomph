@@ -8,44 +8,56 @@ class AstTransformer(Int varname_counter):
         # Actally using this variable name would be invalid syntax, which is great
         return "<var{self.varname_counter}>"
 
-#    meth foreach_loop_to_for_loop(ast::Loop loop) -> ast::Loop:
-#        let header = loop.loop_header as ast::ForeachLoopHeader
-#        let list_var = self.get_var_name()
-#        let index_var = self.get_var_name()
-#
-#        let body = [
-#            new ast::Statement(new ast::Let(
-#                header.varname,
-#                new ast::Call(
-#                    new ast::GetAttribute(new ast::GetVar(list_var), "get"),
-#                    [new ast::Expression(new ast::GetVar(index_var))],
-#                ),
-#            ))
-#        ]
-#        body.push_all(loop.body)
-#
-#        return new ast::Loop(
-#            new ast::ForLoopHeader(
-#                [
-#                    new ast::Let(index_var, new ast::IntConstant(0)),
-#                    new ast::Let(list_var, loop.loop_header.list),
-#                ],
-#                new ast::BinaryOperator(
-#                    new ast::GetVar(index_var),
-#                    "<",
-#                    new ast::Call(new ast::GetAttribute(new ast::GetVar(list_var), "length"), []),
-#                ),
-#                [
-#                    new ast::Statement(new ast::SetVar(
-#                        index_var,
-#                        new ast::BinaryOperator(
-#                            new ast::GetVar(index_var), "+", new ast::IntConstant(1)
-#                        ),
-#                    ))
-#                ],
-#            ),
-#            body
-#        )
+    meth foreach_loop_to_for_loop(ast::Loop loop) -> ast::Loop:
+        print("a")
+        let header = loop.loop_header as ast::ForeachLoopHeader
+        print("b")
+        let loc = header.keyword_location
+
+        let list_var = self.get_var_name()
+        let index_var = self.get_var_name()
+
+        let body = [
+            new ast::Statement(new ast::Let(
+                loc,
+                header.varname,
+                new ast::Call(
+                    loc,
+                    new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "get"),
+                    [new ast::Expression(new ast::GetVar(loc, index_var))],
+                ),
+            ))
+        ]
+        body.push_all(loop.body)
+
+        return new ast::Loop(
+            new ast::ForLoopHeader(
+                loc,
+                [
+                    new ast::Statement(new ast::Let(loc, index_var, new ast::IntConstant(loc, 0))),
+                    new ast::Statement(new ast::Let(loc, list_var, header.list)),
+                ],
+                new ast::BinaryOperator(
+                    loc,
+                    new ast::GetVar(loc, index_var),
+                    "<",
+                    new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "length"), []),
+                ),
+                [
+                    new ast::Statement(new ast::SetVar(
+                        loc,
+                        index_var,
+                        new ast::BinaryOperator(
+                            loc,
+                            new ast::GetVar(loc, index_var),
+                            "+",
+                            new ast::IntConstant(loc, 1),
+                        ),
+                    ))
+                ],
+            ),
+            body
+        )
 
     meth visit_expression(ast::Expression expr) -> ast::Expression:
         switch expr:
@@ -103,13 +115,18 @@ class AstTransformer(Int varname_counter):
                 lett.value = self.visit_expression(lett.value)
             case ast::Loop loop:
                 switch loop.loop_header:
-                    case ast::ForLoopHeader h:
-                        h.init = self.visit_statements(h.init)
-                        if h.cond != null:
-                            h.cond = new (ast::Expression | null)(self.visit_expression(h.cond.get()))
-                        h.incr = self.visit_statements(h.incr)
-                    case ast::ForeachLoopHeader h:
-                        h.list = self.visit_expression(h.list)
+                    case ast::ForeachLoopHeader header:
+                        header.list = self.visit_expression(header.list)
+                        loop = self.foreach_loop_to_for_loop(loop)
+                        stmt = loop
+                    case *:
+                        pass
+
+                let header = loop.loop_header as ast::ForLoopHeader
+                header.init = self.visit_statements(header.init)
+                if header.cond != null:
+                    header.cond = new (ast::Expression | null)(self.visit_expression(header.cond.get()))
+                header.incr = self.visit_statements(header.incr)
                 loop.body = self.visit_statements(loop.body)
             case ast::Pass _:
                 pass
