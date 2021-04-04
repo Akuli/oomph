@@ -21,7 +21,7 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
         else:
             result = result + "_"
 
-    return result + hash::md5(identifying_part).split("").slice(0, 10).join("")
+    return result + "_" + hash::md5(identifying_part).split("").slice(0, 10).join("")
 
 
 class FunctionEmitter(
