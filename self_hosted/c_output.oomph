@@ -403,6 +403,7 @@ class FilePair(
                 .refcount = -1,
                 .data = (char[])\{ {content_chars.join(",")} \},
                 .malloced = false,
+                .len = {value.get_utf8().length()},
             \};
             static struct class_Str {varname} = \{
                 .buf = &{varname}_buf,
