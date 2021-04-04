@@ -3,13 +3,13 @@ from __future__ import annotations
 import argparse
 import atexit
 import itertools
-from pathlib import Path
 import shlex
 import shutil
 import signal
 import subprocess
 import sys
 import traceback
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from pyoomph import ast, ast2ir, ast_transformer, c_output, ir, parser
