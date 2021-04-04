@@ -31,7 +31,7 @@ void string_buf_destructor(void *ptr)
 {
 	struct StringBuf *buf = ptr;
 	if (buf->malloced)
-		free((char*)buf->data);
+		free(buf->data);
 	free(buf);
 }
 
