@@ -612,24 +612,22 @@ class _FilePair:
                 self.function_decls += f"""
                 struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} obj);
                 """
-                to_string_calls = [
-                    f"meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam})"
+                concats = [
+                    f"""
+                    tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
+                    oomph_string_concat_inplace_string(&res, tmp);
+                    string_decref(tmp);
+                    """
                     for typ, nam in the_type.members
                 ]
+                concat_comma = 'oomph_string_concat_inplace(&res, ", ");'
                 self.function_defs += f"""
                 struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} self)
                 {{
                     struct class_Str res = {self.emit_string(the_type.name)};
+                    struct class_Str tmp;
                     oomph_string_concat_inplace(&res, "(");
-                #if {int(bool(the_type.members))}  // empty c arrays are a problem
-                    struct class_Str strs[] = {{ {','.join(to_string_calls)} }};
-                    for (size_t i = 0; i < sizeof(strs)/sizeof(strs[0]); i++) {{
-                        if (i != 0)
-                            oomph_string_concat_inplace(&res, ", ");
-                        oomph_string_concat_inplace_string(&res, strs[i]);
-                        string_decref(strs[i]);
-                    }}
-                #endif
+                    {concat_comma.join(concats)}
                     oomph_string_concat_inplace(&res, ")");
                     return res;
                 }}
