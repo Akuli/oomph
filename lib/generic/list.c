@@ -256,15 +256,12 @@ struct class_Str METHOD(to_string)(TYPE self)
 	struct class_Str res = cstr_to_string("[");
 
 	for (int64_t i = 0; i < self->len; i++) {
-		if (i != 0) {
+		if (i != 0)
 			oomph_string_concat_inplace_cstr(&res, ", ");
-		}
 
 		struct class_Str s = ITEMTYPE_METHOD(to_string)(self->data[i]);
-		struct class_Str res2 = oomph_string_concat(res, s);
+		oomph_string_concat_inplace_cstr(&res, s);
 		string_decref(s);
-		string_decref(res);
-		res = res2;
 	}
 
 	oomph_string_concat_inplace_cstr(&res, "]");
