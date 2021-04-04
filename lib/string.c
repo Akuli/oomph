@@ -13,6 +13,7 @@ static struct StringBuf *alloc_buf(size_t len)
 	struct StringBuf *res = malloc(sizeof(*res) + len);
 	assert(res);
 	res->data = res->flex;
+	res->malloced = false;
 	res->refcount = 1;
 	return res;
 }
@@ -21,7 +22,8 @@ void string_buf_destructor(void *ptr)
 {
 	struct StringBuf *buf = ptr;
 	if (buf->malloced)
-		free(buf);
+		free((char*)buf->data);
+	free(buf);
 }
 
 bool meth_Str_equals(struct class_Str a, struct class_Str b)
