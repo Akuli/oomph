@@ -281,7 +281,11 @@ class _FilePair:
             need_include = defining_file_pair is not self
 
         result = f"struct class_{type_id}"
-        if the_type.refcounted and the_type != STRING and not isinstance(the_type, UnionType):
+        if (
+            the_type.refcounted
+            and the_type != STRING
+            and not isinstance(the_type, UnionType)
+        ):
             result += "*"
         else:
             can_fwd_declare_in_header = False
@@ -374,7 +378,9 @@ class _FilePair:
                 f"string{len(self.strings)}_" + value, value
             )
 
-            array_content = ", ".join(r"'\x%02x'" % byte for byte in value.encode("utf-8"))
+            array_content = ", ".join(
+                r"'\x%02x'" % byte for byte in value.encode("utf-8")
+            )
             self.string_defs += f"""
             static struct StringBuf {self.strings[value]}_buf = {{
                 .refcount = -1,
