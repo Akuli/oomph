@@ -9,8 +9,8 @@ struct class_List_Str {
 	REFCOUNT_HEADER
 	int64_t len;
 	int64_t alloc;
-	struct class_Str * smalldata[8];
-	struct class_Str * *data;
+	struct class_Str smalldata[8];
+	struct class_Str *data;
 };
 
 int64_t oomph_run_subprocess(void *args)
@@ -20,7 +20,7 @@ int64_t oomph_run_subprocess(void *args)
 	char **argarr = malloc(sizeof(argarr[0]) * (arglst->len + 1));
 	assert(argarr);
 	for (int i = 0; i < arglst->len; i++)
-		argarr[i] = arglst->data[i]->str;
+		argarr[i] = string_to_cstr(arglst->data[i]);
 	argarr[arglst->len] = NULL;
 
 	pid_t pid = fork();
