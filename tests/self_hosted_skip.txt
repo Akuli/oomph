@@ -71,3 +71,4 @@ tests/weird_minus_error.oomph
 tests/write_file_full_error.oomph
 tests/write_file_permission_error.oomph
 tests/wrong_args_auto_error.oomph
+self_hosted/ast_transformer.oomph
