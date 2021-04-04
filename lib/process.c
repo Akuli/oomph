@@ -35,7 +35,7 @@ int64_t oomph_run_subprocess(void *args)
 			break;
 	}
 
-	for (size_t i = 0; i < arglst->len; i++)
+	for (int i = 0; i < arglst->len; i++)
 		free(argarr[i]);
 	free(argarr);
 	int wstatus;
