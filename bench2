@@ -1,0 +1,2 @@
+#!/bin/bash
+make oomphc && time ./oomphc --tokens self_hosted/ast2ir.oomph >/dev/null
