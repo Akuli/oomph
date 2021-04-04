@@ -113,65 +113,64 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
         if op != null:
             let token_type = "op"
             let token_value = op.get()
-        else:
-            if code.starts_with(" "):
-                if result != [] and result.last().matches("op", "\n"):
-                    # Space after newline: indentation
-                    let spaces = get_prefix_spaces(code)
-                    if code.remove_prefix(spaces).starts_with("#") or code.remove_prefix(spaces).starts_with("\n"):
-                        # This line doesn't actually contain any code, ignore the indent
-                        token_type = "skip"
-                        token_value = spaces
-                    else:
-                        token_type = "indent"
-                        token_value = spaces
-                else:
-                    # Space to be ignored
+
+        elif code.starts_with(" "):
+            if result != [] and result.last().matches("op", "\n"):
+                # Space after newline: indentation
+                let spaces = get_prefix_spaces(code)
+                if code.remove_prefix(spaces).starts_with("#") or code.remove_prefix(spaces).starts_with("\n"):
+                    # This line doesn't actually contain any code, ignore the indent
                     token_type = "skip"
-                    token_value = " "
-
-            elif code.starts_with("\""):
-                let rest_of_line = code.split("\n").first()
-                let location = new error::Location(path, lineno, line_prefix, rest_of_line)
-                if code.starts_with("\"\"\""):
-                    token_type = "multiline_string"
-                    token_value = extract_string(code, "\"\"\"", location)
                 else:
-                    token_type = "oneline_string"
-                    token_value = extract_string(code.split("\n").first(), "\"", location)
-
-            elif code.starts_with("#"):
-                token_type = "skip"
-                token_value = code.split("\n").first()
-
+                    token_type = "indent"
+                token_value = spaces
             else:
-                let id = get_identifier(code)
-                if id != null:
-                    token_value = id.get()
-                    if token_value in keyword_list:
-                        token_type = "keyword"
-                    else:
-                        token_type = "id"
+                # Space to be ignored
+                token_type = "skip"
+                token_value = " "
+
+        elif code.starts_with("\""):
+            let rest_of_line = code.split("\n").first()
+            let location = new error::Location(path, lineno, line_prefix, rest_of_line)
+            if code.starts_with("\"\"\""):
+                token_type = "multiline_string"
+                token_value = extract_string(code, "\"\"\"", location)
+            else:
+                token_type = "oneline_string"
+                token_value = extract_string(code.split("\n").first(), "\"", location)
+
+        elif code.starts_with("#"):
+            token_type = "skip"
+            token_value = code.split("\n").first()
+
+        else:
+            let id = get_identifier(code)
+            if id != null:
+                token_value = id.get()
+                if token_value in keyword_list:
+                    token_type = "keyword"
                 else:
-                    let int_value = get_int(code)
-                    if int_value != "":
-                        let remaining = code.remove_prefix(int_value)
-                        if remaining.starts_with("."):
-                            # this may set digit_after_dot to null
-                            let digit_after_dot = starts_with_any(
-                                remaining.remove_prefix("."), "0123456789".split(""))
-                        else:
-                            digit_after_dot = null
-
-                        if digit_after_dot == null:
-                            token_type = "int"
-                            token_value = int_value
-                        else:
-                            token_type = "float"
-                            token_value = int_value + "." + get_int(remaining.remove_prefix("."))
-
+                    token_type = "id"
+            else:
+                let int_value = get_int(code)
+                if int_value != "":
+                    let remaining = code.remove_prefix(int_value)
+                    if remaining.starts_with("."):
+                        # this may set digit_after_dot to null
+                        let digit_after_dot = starts_with_any(
+                            remaining.remove_prefix("."), "0123456789".split(""))
                     else:
-                        new error::Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")
+                        digit_after_dot = null
+
+                    if digit_after_dot == null:
+                        token_type = "int"
+                        token_value = int_value
+                    else:
+                        token_type = "float"
+                        token_value = int_value + "." + get_int(remaining.remove_prefix("."))
+
+                else:
+                    new error::Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")
 
         if token_type != "skip":
             let location = new error::Location(path, lineno, line_prefix, token_value)
