@@ -260,7 +260,7 @@ struct class_Str METHOD(to_string)(TYPE self)
 			oomph_string_concat_inplace_cstr(&res, ", ");
 
 		struct class_Str s = ITEMTYPE_METHOD(to_string)(self->data[i]);
-		oomph_string_concat_inplace_cstr(&res, s);
+		oomph_string_concat_inplace(&res, s);
 		string_decref(s);
 	}
 
