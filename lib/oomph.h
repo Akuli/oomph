@@ -56,6 +56,7 @@ struct class_Str oomph_argv_get(int64_t i);
 
 int64_t oomph_get_utf8_byte(struct class_Str s, int64_t i);
 int64_t oomph_run_subprocess(void *args);
+int64_t oomph_utf8_len(struct class_Str s);
 struct class_Str meth_Str_remove_prefix(struct class_Str s, struct class_Str pre);
 struct class_Str meth_Str_remove_suffix(struct class_Str s, struct class_Str suf);
 struct class_Str oomph_get_first_char(struct class_Str s);

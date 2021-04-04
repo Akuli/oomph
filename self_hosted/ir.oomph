@@ -303,6 +303,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, STR)], INT)),
         new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__utf8_len", new FunctionType([STR], INT)),
         new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
         new BuiltinVariable("false", BOOL),
         new BuiltinVariable("null", NULL_TYPE),

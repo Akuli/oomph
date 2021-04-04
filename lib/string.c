@@ -212,11 +212,13 @@ struct class_Str oomph_slice_until_substring(struct class_Str s, struct class_St
 	return s;
 }
 
+int64_t oomph_utf8_len(struct class_Str s)
+{
+	return (int64_t)s.nbytes;
+}
+
 int64_t oomph_get_utf8_byte(struct class_Str s, int64_t i)
 {
-	// FIXME: includeing trailing zero byte sucks
-	assert(0 <= i && i <= (int64_t)s.nbytes);
-	if (i == (int64_t)s.nbytes)
-		return 0;
+	assert(0 <= i && i < (int64_t)s.nbytes);
 	return (unsigned char) string_data(s)[i];
 }
