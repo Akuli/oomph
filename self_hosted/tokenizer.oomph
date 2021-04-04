@@ -287,9 +287,22 @@ func find_blocks(List[Token] tokens) -> List[Token]:
     return result
 
 export func tokenize(Str code, Str path, Int initial_lineno, Str initial_line_prefix) -> List[Token]:
-    return clean_newlines(
-        find_blocks(
-        clean_newlines(
-        combine_not_in(
-        ignore_whitespace_in_parens(
-        raw_tokenize(code, path, initial_lineno, initial_line_prefix))))))
+    print("raw_tokenize")
+    let tokens = raw_tokenize(code, path, initial_lineno, initial_line_prefix)
+
+    print("ignore_whitespace_in_parens")
+    tokens = ignore_whitespace_in_parens(tokens)
+
+    print("combine_not_in")
+    tokens = combine_not_in(tokens)
+
+    print("clean_newlines (1)")
+    tokens = clean_newlines(tokens)
+
+    print("find_blocks")
+    tokens = find_blocks(tokens)
+
+    print("clean_newlines (2)")
+    tokens = clean_newlines(tokens)
+
+    return tokens
