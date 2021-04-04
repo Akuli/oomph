@@ -16,7 +16,12 @@
 #define REFCOUNT_HEADER int64_t refcount;
 
 // Can be shared by multiple string for efficient substrings
-struct StringBuf;
+struct StringBuf {
+	REFCOUNT_HEADER
+	const char *data;
+	bool malloced;
+	char flex[];    // allows allocating StringBuf and data at once, not used otherwise
+};
 
 struct class_Str {
 	// don't try to change the buf of a string after creating string, is difficult
@@ -26,7 +31,7 @@ struct class_Str {
 };
 
 const char *string_data(struct class_Str s);
-void string_buf_destructor(void *buf);
+void string_buf_destructor(void *ptr);
 #define string_incref(s) incref((s).buf)
 #define string_decref(s) decref((s).buf, string_buf_destructor)
 

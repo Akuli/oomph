@@ -374,15 +374,15 @@ class _FilePair:
                 f"string{len(self.strings)}_" + value, value
             )
 
-            # StringBuf constants consist of int64_t refcount set to -1,
-            # followed by utf8, followed by zero byte
-            # TODO: is this cross-platform enough?
-            struct_bytes = b"\xff" * 8 + value.encode("utf-8")
-
-            array_content = ", ".join(r"'\x%02x'" % byte for byte in struct_bytes)
+            array_content = ", ".join(r"'\x%02x'" % byte for byte in value.encode("utf-8"))
             self.string_defs += f"""
+            static struct StringBuf {self.strings[value]}_buf = {{
+                .refcount = -1,
+                .data = (char[]){{ {array_content or "0"} }},
+                .malloced = false,
+            }};
             static {self.emit_type(STRING)} {self.strings[value]} = {{
-                .buf = (void*)(unsigned char[]){{ {array_content} }},
+                .buf = &{self.strings[value]}_buf,
                 .nbytes = {len(value.encode("utf-8"))},
                 .offset = 0,
             }};

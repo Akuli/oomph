@@ -3,11 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct StringBuf {
-	REFCOUNT_HEADER
-	char data[];    // flexible array member
-};
-
 const char *string_data(struct class_Str s)
 {
 	return s.buf->data + s.offset;
@@ -17,13 +12,16 @@ static struct StringBuf *alloc_buf(size_t len)
 {
 	struct StringBuf *res = malloc(sizeof(*res) + len);
 	assert(res);
+	res->data = res->flex;
 	res->refcount = 1;
 	return res;
 }
 
-void string_buf_destructor(void *buf)
+void string_buf_destructor(void *ptr)
 {
-	free(buf);
+	struct StringBuf *buf = ptr;
+	if (buf->malloced)
+		free(buf);
 }
 
 bool meth_Str_equals(struct class_Str a, struct class_Str b)
@@ -34,7 +32,7 @@ bool meth_Str_equals(struct class_Str a, struct class_Str b)
 struct class_Str data_to_string(const char *data, size_t len)
 {
 	struct StringBuf *buf = alloc_buf(len);
-	memcpy(buf->data, data, len);
+	memcpy(buf->flex, data, len);
 	return (struct class_Str){ .buf = buf, .nbytes = len, .offset = 0 };
 }
 
@@ -59,8 +57,8 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 {
 	// TODO: optimize?
 	struct StringBuf *buf = alloc_buf(str1.nbytes + str2.nbytes);
-	memcpy(buf->data, string_data(str1), str1.nbytes);
-	memcpy(buf->data + str1.nbytes, string_data(str2), str2.nbytes);
+	memcpy(buf->flex, string_data(str1), str1.nbytes);
+	memcpy(buf->flex + str1.nbytes, string_data(str2), str2.nbytes);
 	return (struct class_Str){ .buf = buf, .nbytes = str1.nbytes + str2.nbytes, .offset = 0 };
 }
 
@@ -69,8 +67,8 @@ void oomph_string_concat_inplace(struct class_Str *res, const char *suf)
 	// TODO: optimize?
 	struct class_Str old = *res;
 	struct StringBuf *buf = alloc_buf(old.nbytes + strlen(suf));
-	memcpy(buf->data, string_data(old), old.nbytes);
-	memcpy(buf->data + old.nbytes, suf, strlen(suf));
+	memcpy(buf->flex, string_data(old), old.nbytes);
+	memcpy(buf->flex + old.nbytes, suf, strlen(suf));
 	string_decref(*res);
 	*res = (struct class_Str){ .buf = buf, .nbytes = old.nbytes + strlen(suf), .offset = 0 };
 }
@@ -214,7 +212,7 @@ struct class_Str oomph_slice_until_substring(struct class_Str s, struct class_St
 
 int64_t oomph_get_utf8_byte(struct class_Str s, int64_t i)
 {
-	// TODO: includeing trailing zero byte sucks
+	// FIXME: includeing trailing zero byte sucks
 	assert(0 <= i && i <= (int64_t)s.nbytes);
 	if (i == (int64_t)s.nbytes)
 		return 0;
