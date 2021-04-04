@@ -9,9 +9,7 @@ class AstTransformer(Int varname_counter):
         return "<var{self.varname_counter}>"
 
     meth foreach_loop_to_for_loop(ast::Loop loop) -> ast::Loop:
-        print("a")
         let header = loop.loop_header as ast::ForeachLoopHeader
-        print("b")
         let loc = header.keyword_location
 
         let list_var = self.get_var_name()
