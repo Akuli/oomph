@@ -459,9 +459,9 @@ class FilePair(
 
                     struct class_Str res = {self.emit_string(ir::type_name(union))};
                     string_incref(res);
-                    oomph_string_concat_inplace(&res, "(");
-                    oomph_string_concat_inplace_string(&res, valstr);
-                    oomph_string_concat_inplace(&res, ")");
+                    oomph_string_concat_inplace_cstr(&res, "(");
+                    oomph_string_concat_inplace(&res, valstr);
+                    oomph_string_concat_inplace_cstr(&res, ")");
                     string_decref(valstr);
                     return res;
                 \}
@@ -586,18 +586,18 @@ class FilePair(
                             foreach m of basictype.members:
                                 """
                                 tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
-                                oomph_string_concat_inplace_string(&res, tmp);
+                                oomph_string_concat_inplace(&res, tmp);
                                 string_decref(tmp);
                                 """
-                        ].join("oomph_string_concat_inplace(&res, \", \");")
+                        ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
                         self.function_defs = self.function_defs + """
                         struct class_Str meth_{self.id}_to_string({self.emit_type(basictype)} self)
                         \{
                             struct class_Str res = {self.emit_string(basictype.name)};
                             struct class_Str tmp;
-                            oomph_string_concat_inplace(&res, "(");
+                            oomph_string_concat_inplace_cstr(&res, "(");
                             {concats}
-                            oomph_string_concat_inplace(&res, ")");
+                            oomph_string_concat_inplace_cstr(&res, ")");
                             return res;
                         \}
                         """

@@ -257,7 +257,7 @@ struct class_Str METHOD(to_string)(TYPE self)
 
 	for (int64_t i = 0; i < self->len; i++) {
 		if (i != 0) {
-			oomph_string_concat_inplace(&res, ", ");
+			oomph_string_concat_inplace_cstr(&res, ", ");
 		}
 
 		struct class_Str s = ITEMTYPE_METHOD(to_string)(self->data[i]);
@@ -267,7 +267,7 @@ struct class_Str METHOD(to_string)(TYPE self)
 		res = res2;
 	}
 
-	oomph_string_concat_inplace(&res, "]");
+	oomph_string_concat_inplace_cstr(&res, "]");
 	return res;
 }
 

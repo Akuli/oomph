@@ -64,7 +64,7 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 	return (struct class_Str){ .buf = buf, .nbytes = str1.nbytes + str2.nbytes, .offset = 0 };
 }
 
-void oomph_string_concat_inplace(struct class_Str *res, const char *suf)
+void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf)
 {
 	// TODO: optimize?
 	struct class_Str old = *res;
@@ -75,7 +75,7 @@ void oomph_string_concat_inplace(struct class_Str *res, const char *suf)
 	*res = (struct class_Str){ .buf = buf, .nbytes = old.nbytes + strlen(suf), .offset = 0 };
 }
 
-void oomph_string_concat_inplace_string(struct class_Str *res, struct class_Str suf)
+void oomph_string_concat_inplace(struct class_Str *res, struct class_Str suf)
 {
 	struct class_Str old = *res;
 	*res = oomph_string_concat(*res, suf);
@@ -86,8 +86,8 @@ void oomph_string_concat_inplace_string(struct class_Str *res, struct class_Str 
 struct class_Str meth_Str_to_string(struct class_Str s)
 {
 	struct class_Str res = cstr_to_string("\"");
-	oomph_string_concat_inplace_string(&res, s);	// TODO: escape
-	oomph_string_concat_inplace(&res, "\"");
+	oomph_string_concat_inplace(&res, s);	// TODO: escape
+	oomph_string_concat_inplace_cstr(&res, "\"");
 	return res;
 }
 

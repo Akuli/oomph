@@ -41,8 +41,8 @@ struct class_Str data_to_string(const char *data, size_t len);
 struct class_Str cstr_to_string(const char *s);
 char *string_to_cstr(struct class_Str s);
 
-void oomph_string_concat_inplace(struct class_Str *res, const char *suf);
-void oomph_string_concat_inplace_string(struct class_Str *res, struct class_Str suf);
+void oomph_string_concat_inplace(struct class_Str *res, struct class_Str suf);
+void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf);
 
 struct class_List_Str;
 
