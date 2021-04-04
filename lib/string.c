@@ -144,7 +144,7 @@ bool string_validate_utf8(const char *data, size_t len)
 }
 
 // this counts unicode chars, strlen counts utf8 chars
-int64_t meth_Str_length(const struct class_Str s)
+int64_t meth_Str_length(struct class_Str s)
 {
 	int64_t res = 0;
 	size_t i = 0;
