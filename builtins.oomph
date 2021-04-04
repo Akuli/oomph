@@ -4,7 +4,11 @@ func __Bool_to_string(Bool self) -> Str:
     return "false"
 
 func __Str_get_utf8(Str self) -> List[Int]:
-    return [for let i = 0; i < __utf8_len(self); i = i+1: __get_utf8_byte(self, i)]
+    # TODO: use list comprehension when self-hosted supports it
+    let result = []
+    for let i = 0; i < __utf8_len(self); i = i+1:
+        result.push(__get_utf8_byte(self, i))
+    return result
 
 func __Str_repeat(Str self, Int n) -> Str:
     # Square and multiply algorithm
