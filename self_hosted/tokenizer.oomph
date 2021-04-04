@@ -97,50 +97,61 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
         new Token("op", "\n", new error::Location(path, lineno, line_prefix, ""))
     ]
 
+    # For optimizing this, try to put most frequently needed things first, except when
+    # checking for one of those is slow.
+    #
+    # Example data from compiling self_hosted/ast2ir.oomph:
+    #   5001 op
+    #   4161 identifier
+    #   3303 whitespace
+    #     96 string
+    #     96 comment
+    #     29 int
+
     while code != "":
-        if code.starts_with(" "):
-            if result != [] and result.last().matches("op", "\n"):
-                # Space after newline: indentation
-                let spaces = get_prefix_spaces(code)
-                if code.remove_prefix(spaces).starts_with("#") or code.remove_prefix(spaces).starts_with("\n"):
-                    # This line doesn't actually contain any code, ignore the indent
-                    let token_type = "skip"
-                    let token_value = spaces
-                else:
-                    token_type = "indent"
-                    token_value = spaces
-            else:
-                # Space to be ignored
-                token_type = "skip"
-                token_value = " "
-
-        elif code.starts_with("#"):
-            token_type = "skip"
-            token_value = code.split("\n").first()
-
-        elif code.starts_with("\""):
-            let rest_of_line = code.split("\n").first()
-            let location = new error::Location(path, lineno, line_prefix, rest_of_line)
-            if code.starts_with("\"\"\""):
-                token_type = "multiline_string"
-                token_value = extract_string(code, "\"\"\"", location)
-            else:
-                token_type = "oneline_string"
-                token_value = extract_string(code.split("\n").first(), "\"", location)
-
+        let op = starts_with_any(code, op_list)
+        if op != null:
+            let token_type = "op"
+            let token_value = op.get()
         else:
-            let id = get_identifier(code)
-            if id != null:
-                token_value = id.get()
-                if token_value in keyword_list:
-                    token_type = "keyword"
+            if code.starts_with(" "):
+                if result != [] and result.last().matches("op", "\n"):
+                    # Space after newline: indentation
+                    let spaces = get_prefix_spaces(code)
+                    if code.remove_prefix(spaces).starts_with("#") or code.remove_prefix(spaces).starts_with("\n"):
+                        # This line doesn't actually contain any code, ignore the indent
+                        token_type = "skip"
+                        token_value = spaces
+                    else:
+                        token_type = "indent"
+                        token_value = spaces
                 else:
-                    token_type = "id"
+                    # Space to be ignored
+                    token_type = "skip"
+                    token_value = " "
+
+            elif code.starts_with("\""):
+                let rest_of_line = code.split("\n").first()
+                let location = new error::Location(path, lineno, line_prefix, rest_of_line)
+                if code.starts_with("\"\"\""):
+                    token_type = "multiline_string"
+                    token_value = extract_string(code, "\"\"\"", location)
+                else:
+                    token_type = "oneline_string"
+                    token_value = extract_string(code.split("\n").first(), "\"", location)
+
+            elif code.starts_with("#"):
+                token_type = "skip"
+                token_value = code.split("\n").first()
+
             else:
-                let op = starts_with_any(code, op_list)
-                if op != null:
-                    token_type = "op"
-                    token_value = op.get()
+                let id = get_identifier(code)
+                if id != null:
+                    token_value = id.get()
+                    if token_value in keyword_list:
+                        token_type = "keyword"
+                    else:
+                        token_type = "id"
                 else:
                     let int_value = get_int(code)
                     if int_value != "":
