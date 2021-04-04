@@ -16,7 +16,8 @@
 struct StringBuf {
 	REFCOUNT_HEADER
 	const char *data;
-	bool malloced;    // can you e.g. do free(buf->data)
+	bool malloced;  // can you e.g. do free(buf->data)
+	size_t len;     // strings don't use StringBuf beyond this, but more space may be malloced
 	char flex[];    // allows allocating StringBuf and data at once, not used otherwise
 };
 

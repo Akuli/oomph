@@ -1,5 +1,6 @@
 #include "oomph.h"
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,12 +9,21 @@ const char *string_data(struct class_Str s)
 	return s.buf->data + s.offset;
 }
 
+static size_t how_much_to_allocate(size_t len)
+{
+	size_t result = 1;
+	while (result < len)
+		result *= 2;
+	return result;
+}
+
 static struct StringBuf *alloc_buf(size_t len)
 {
-	struct StringBuf *res = malloc(sizeof(*res) + len);
+	struct StringBuf *res = malloc(sizeof(*res) + how_much_to_allocate(len));
 	assert(res);
 	res->data = res->flex;
-	res->malloced = false;
+	res->malloced = false;  // not a separate malloc
+	res->len = len;
 	res->refcount = 1;
 	return res;
 }
@@ -55,9 +65,41 @@ char *string_to_cstr(struct class_Str s)
 	return res;
 }
 
+#define likely(x)   __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+//#define likely(x)   (x)
+//#define unlikely(x) (x)
+
 struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str2)
 {
-	// TODO: optimize?
+	assert(str1.offset + str1.nbytes <= str1.buf->len);
+	if (likely(str1.offset + str1.nbytes == str1.buf->len)) {
+		// We can grow the buffer to fit str2 too
+		size_t newlen = str1.buf->len + str2.nbytes;
+		if (likely(str1.buf->malloced)) {
+			if (unlikely(how_much_to_allocate(newlen) > how_much_to_allocate(str1.buf->len))) {
+				str1.buf->data = realloc(str1.buf->data, how_much_to_allocate(newlen));
+				assert(str1.buf->data);
+//				printf("fast realloc\n");
+			} else {
+//				printf("fast no alloc\n");
+			}
+		} else {
+			char *newdata = malloc(how_much_to_allocate(newlen));
+			assert(newdata);
+			memcpy(newdata, str1.buf->data, str1.buf->len);
+			str1.buf->data = newdata;
+//			printf("fast malloc\n");
+		}
+		str1.buf->malloced = true;
+		memcpy(str1.buf->data + str1.buf->len, string_data(str2), str2.nbytes);
+		str1.buf->len += str2.nbytes;
+
+		incref(str1.buf);
+		return (struct class_Str){ .buf = str1.buf, .nbytes = str1.nbytes + str2.nbytes, .offset = str1.offset };
+	}
+
+//	printf("slow\n");
 	struct StringBuf *buf = alloc_buf(str1.nbytes + str2.nbytes);
 	memcpy(buf->flex, string_data(str1), str1.nbytes);
 	memcpy(buf->flex + str1.nbytes, string_data(str2), str2.nbytes);
