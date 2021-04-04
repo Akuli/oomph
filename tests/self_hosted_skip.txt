@@ -43,6 +43,7 @@ tests/find_only_multiple_error.oomph
 tests/hash.oomph
 tests/hello_lib.oomph
 tests/import.oomph
+tests/import_itself_error.oomph
 tests/int_eq_str_error.oomph
 tests/io.oomph
 tests/listcomp.oomph
