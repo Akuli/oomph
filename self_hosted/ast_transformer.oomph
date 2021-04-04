@@ -57,6 +57,27 @@ class AstTransformer(Int varname_counter):
             body
         )
 
+    meth handle_listcomp(ast::ListComprehension listcomp) -> ast::Expression:
+        let loc = ast::locate_loop_header(listcomp.loop_header)
+        let var = self.get_var_name()
+        return self.visit_expression(new ast::StatementsAndExpression(
+            loc,
+            [
+                new ast::Statement(new ast::Let(loc, var, new ast::ListLiteral(loc, []))),
+                new ast::Statement(new ast::Loop(
+                    listcomp.loop_header,
+                    [
+                        new ast::Statement(new ast::Call(
+                            loc,
+                            new ast::GetAttribute(loc, new ast::GetVar(loc, var), "push"),
+                            [listcomp.value],
+                        ))
+                    ],
+                )),
+            ],
+            new ast::GetVar(loc, var),
+        ))
+
     meth visit_expression(ast::Expression expr) -> ast::Expression:
         switch expr:
             case ast::As ass:
@@ -78,11 +99,12 @@ class AstTransformer(Int varname_counter):
             case ast::IntConstant _:
                 pass
             case ast::ListComprehension listcomp:
-                # TODO
-                pass
+                return self.visit_expression(self.handle_listcomp(listcomp))
             case ast::ListLiteral list:
                 list.content = self.visit_expressions(list.content)
             case ast::StatementsAndExpression sae:
+                sae.statements = self.visit_statements(sae.statements)
+                sae.expression = self.visit_expression(sae.expression)
                 # TODO
                 pass
             case ast::StringConstant _:
@@ -157,24 +179,6 @@ class AstTransformer(Int varname_counter):
                 foreach fdef of classdef.body:
                     fdef.body = self.visit_statements(fdef.body)
         return decl
-
-#        if isinstance(ast_thing, ast.ListComprehension):
-#            var = self.get_var_name()
-#            ast_thing = ast.StatementsAndExpression(
-#                [
-#                    ast.Let(var, ast.ListLiteral([])),
-#                    ast.Loop(
-#                        ast_thing.loop_header,
-#                        [
-#                            ast.Call(
-#                                ast.GetAttribute(ast.GetVar(var), "push"),
-#                                [ast_thing.value],
-#                            )
-#                        ],
-#                    ),
-#                ],
-#                ast.GetVar(var),
-#            )
 
 
 export func transform(List[ast::ToplevelDeclaration] decls) -> List[ast::ToplevelDeclaration]:
