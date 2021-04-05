@@ -154,6 +154,7 @@ func find_dependency(CompilationUnit candidate_unit, List[CompilationUnit] units
             return unit
     return null
 
+
 func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> List[CompilationUnit]:
     let compilation_order = []
     while compilation_order.length() < units.length():
