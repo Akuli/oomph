@@ -1,4 +1,5 @@
 import "<stdlib>/io.oomph" as io
+import "<stdlib>/path.oomph" as path
 import "<stdlib>/process.oomph" as process
 import "ast.oomph" as ast
 import "ast2ir.oomph" as ast2ir
@@ -6,7 +7,6 @@ import "ast_transformer.oomph" as ast_transformer
 import "c_output.oomph" as c_output
 import "ir.oomph" as ir
 import "parser.oomph" as parser
-import "util.oomph" as util
 
 
 class CompilationUnit(
@@ -102,8 +102,8 @@ func run(Command command, Bool verbose) -> Int:
 
 func mkdir_with_parents(Str path):
     let parents = [path]
-    while util::path_parent(parents.last()) != parents.last():
-        parents.push(util::path_parent(parents.last()))
+    while path::parent(parents.last()) != parents.last():
+        parents.push(path::parent(parents.last()))
 
     foreach parent of parents.reversed():
         io::mkdir(parent)
@@ -233,7 +233,7 @@ export func main():
     assert(infile_name_without_ext != "")
 
     # TODO: put cache dir to current working directory if file in non-writable location
-    let cache_dir = util::path_parent(args.infile) + "/.oomph-cache"
+    let cache_dir = path::parent(args.infile) + "/.oomph-cache"
     io::mkdir(cache_dir)
 
     let units = create_compilation_units(args.infile, args.verbose)

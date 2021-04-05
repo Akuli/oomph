@@ -1,7 +1,7 @@
+import "<stdlib>/path.oomph" as path
 import "ast.oomph" as ast
 import "error.oomph" as error
 import "tokenizer.oomph" as tokenizer
-import "util.oomph" as util
 
 # token is e.g. "+" or "as"
 typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
@@ -56,7 +56,7 @@ class Parser(List[tokenizer::Token] tokens):
         if string.starts_with("<stdlib>/"):
             let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/")
         else:
-            path = util::path_parent(path_of_this_file) + "/" + string
+            path = path::parent(path_of_this_file) + "/" + string
         return new ast::Import(import_token.location, path, name)
 
     # TODO: these are a bit copy/pasta

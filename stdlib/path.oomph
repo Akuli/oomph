@@ -1,6 +1,6 @@
-# FIXME: stuff should go to stdlib
+# TODO: Path class, similarly to python's pathlib
 
-export func path_parent(Str path) -> Str:
+export func parent(Str path) -> Str:
     if "/" not in path:
         # TODO: this is a bit broken, although python's pathlib is broken in the same way
         return "."
