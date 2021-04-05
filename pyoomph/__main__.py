@@ -103,21 +103,19 @@ def compute_dependency_graph(
     session: c_output.Session,
     infile: Path,
     verbose: bool,
-) -> Tuple[List[CompilationUnit], Dict[Path, List[Path]]]:
-    compilation_units: List[CompilationUnit] = []
-    dependency_graph: Dict[Path, List[Path]] = {}
+) -> Dict[CompilationUnit, List[Path]]:
+    dependency_graph: Dict[CompilationUnit, List[Path]] = {}
     queue = [infile]
     while queue:
         # Pop the next source file to parse
         source_path = queue.pop()
-        if source_path in dependency_graph:
+        if source_path in (unit.source_path for unit in dependency_graph.keys()):
             continue
         if verbose:
             print("Parsing", source_path)
 
         # Create a compilation unit out of it and parse it into an untyped ast
         candidate_unit = CompilationUnit(source_path, session)
-        compilation_units.append(candidate_unit)
         candidate_unit.create_untyped_ast()
 
         # Calculate its dependencies and add them to the dependencies dictionary,
@@ -129,28 +127,27 @@ def compute_dependency_graph(
         ]
         if source_path != project_root / "builtins.oomph":
             current_dependencies.append(project_root / "builtins.oomph")
-        dependency_graph[candidate_unit.source_path] = current_dependencies
+        dependency_graph[candidate_unit] = current_dependencies
         queue.extend(current_dependencies)
-    return compilation_units, dependency_graph
+    return dependency_graph
 
 
 def compute_compilation_order(
     verbose: bool,
-    compilation_units: List[CompilationUnit],
-    dependency_graph: Dict[Path, List[Path]],
+    dependency_graph: Dict[CompilationUnit, List[Path]],
 ) -> List[CompilationUnit]:
     compilation_order: List[CompilationUnit] = []
     while len(compilation_order) < len(dependency_graph):
         candidate_unit = next(
-            u for u in compilation_units if u not in compilation_order
+            u for u in dependency_graph.keys() if u not in compilation_order
         )
         breadcrumbs = [candidate_unit]
         while True:
             uncompiled_dependencies = [
                 u
-                for u in compilation_units
+                for u in dependency_graph.keys()
                 if u not in compilation_order
-                and u.source_path in dependency_graph[candidate_unit.source_path]
+                and u.source_path in dependency_graph[candidate_unit]
             ]
             if not uncompiled_dependencies:
                 break
@@ -192,13 +189,13 @@ def main() -> None:
     )
 
     # Calculate the dependency graph
-    compilation_units, dependency_graph = compute_dependency_graph(
+    dependency_graph = compute_dependency_graph(
         session, compiler_args.infile.absolute(), compiler_args.verbose
     )
 
     # Calculate in which order we need to compile our units
     compilation_order = compute_compilation_order(
-        compiler_args.verbose, compilation_units, dependency_graph
+        compiler_args.verbose, dependency_graph
     )
 
     # Compile in the calculated order
