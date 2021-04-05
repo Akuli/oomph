@@ -11,19 +11,12 @@ import "util.oomph" as util
 
 class CompilationUnit(
     Str source_path,
-    c_output::Session session,
     List[ast::ToplevelDeclaration] ast,
 ):
-    meth create_ast():
-        let source_code = self.source_path.read_text(encoding="utf-8")
-        self.ast = ast_transformer::transform(parser::parse_file(
-            source_code, self.source_path, project_root / "stdlib"
-        ))
-
     # Returns source paths
     meth get_dependencies() -> List[Str]:
         let result = []
-        if self.source_path == "builtins.oomph":
+        if self.source_path != "builtins.oomph":
             result.push("builtins.oomph")
         foreach top_decl of self.ast:
             switch top_decl:
@@ -33,9 +26,9 @@ class CompilationUnit(
                     pass
         return result
 
-    meth create_c_code(List[ir::Symbol] exports):
-        let ir = ast2ir::convert_program(self.ast, self.source_path, exports)
-        self.session.create_c_code(ir, self.source_path)
+    meth create_c_code(c_output::Session session):
+        let ir = ast2ir::convert_program(session.builtins, self.ast, self.source_path, session.symbols)
+        session.create_c_code(ir, self.source_path)
 
 
 # split() and join() don't cover all corner cases
@@ -58,12 +51,12 @@ func join(List[Str] args) -> Str:
 
 class Command(List[Str] command, Str human_readable)
 
-func get_c_compiler_command(List[Str] C_paths, Str exepath) -> Command:
+func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
     let cc = new (Str | null)(null)
     let cflags = (new Str | null)(null)
     let ldflags = (new Str | null)(null)
 
-    foreach line of io::read_file("obj/compile_info.txt").split("\n"):
+    foreach line of io::read_file("obj/compile_info.txt").remove_suffix("\n").split("\n"):
         if line.starts_with("cc="):
             cc = line.remove_prefix("cc=")
         elif line.starts_with("cflags="):
@@ -71,10 +64,11 @@ func get_c_compiler_command(List[Str] C_paths, Str exepath) -> Command:
         elif line.starts_with("ldflags="):
             ldflags = line.remove_prefix("ldflags=")
         else:
+            print("bad line in obj/compile_info.txt: {line}")
             assert(false)
 
     let before_files = [cc.get()]
-    before_files.push_all(split(cflags))
+    before_files.push_all(split(cflags.get()))
     before_files.push_all([
         # FIXME: hard-coded list of globbing obj/*.o
         "obj/io.o",
@@ -87,8 +81,8 @@ func get_c_compiler_command(List[Str] C_paths, Str exepath) -> Command:
     ])
 
     let after_files = ["-o", exepath]
-    after_files.push_all(split(ldflags))
-    after_files.push_all(["-I", project_root])
+    after_files.push_all(split(ldflags.get()))
+    after_files.push_all(["-I", "."])
 
     let all_args = []
     all_args.push_all(before_files)
@@ -100,7 +94,7 @@ func get_c_compiler_command(List[Str] C_paths, Str exepath) -> Command:
         join(before_files) + " <{c_paths.length()} files> " + join(after_files),
     )
 
-func run(Command command, Bool verbose) -> int:
+func run(Command command, Bool verbose) -> Int:
     if verbose:
         print("Running: " + command.human_readable)
     return process::run(command.command)
@@ -121,63 +115,70 @@ func get_compilation_dir(Str parent_dir, Str name_hint) -> Str:
 
         # TODO: better way to create file if not exists and know whether that was done
         if process::run(["bash", "-c", "printf '' > '{path}/compiling'"]) == 0:
-            io::delete_file_at_exit(path + "/compiling")
+            io::delete_at_exit(path + "/compiling")
             return path
 
+func create_ast(Str source_path) -> List[ast::ToplevelDeclaration]:
+    return ast_transformer::transform(parser::parse_file(
+        io::read_file(source_path), source_path, "stdlib"
+    ))
 
-func create_compilation_units(c_output::Session session, Str infile, Bool verbose) -> List[CompilationUnit]:
+func create_compilation_units(Str infile, Bool verbose) -> List[CompilationUnit]:
     let units = []
     let queue = [infile]
     while queue != []:
         let source_path = queue.pop()
         if source_path in [foreach unit of units: unit.source_path]:
             continue
-        let candidate_unit = new CompilationUnit(source_path, [], session, [])
 
         if verbose:
             print("Parsing {source_path}")
-        candidate_unit.create_ast()
-        queue.push_all(candidate_unit.get_dependencies())
+        let unit = new CompilationUnit(source_path, create_ast(source_path))
+        queue.push_all(unit.get_dependencies())
+        units.push(unit)
 
     return units
 
 func in_first_but_not_in_second(List[CompilationUnit] a, List[CompilationUnit] b) -> CompilationUnit:
-    let result = []
     foreach item of a:
         if item not in b:
             return item
     assert(false)
 
-func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> List[CompilationUnit]:
+# TODO: rename dependency_graph
+func compute_compilation_order(List[CompilationUnit] dependency_graph, Bool verbose) -> List[CompilationUnit]:
     let compilation_order = []
-    while compilation_order.length() < units.length():
-        let candidate_unit = in_first_but_not_in_second(units, compilation_order)
+    while compilation_order.length() < dependency_graph.length():
+        let candidate_unit = in_first_but_not_in_second(dependency_graph, compilation_order)
         let breadcrumbs = [candidate_unit]
         while true:
-            let found = false   # TODO: this sucks
-            foreach unit of units:
-                if unit not in compilation_order and u.source_path in candidate_unit.get_dependencies():
-                    let dependency = unit
-                    let found = true
-            if not found:
+            let uncompiled_dependencies = []
+            foreach u of dependency_graph:
+                if u not in compilation_order and u.source_path in candidate_unit.get_dependencies():
+                    uncompiled_dependencies.push(u)
+            if uncompiled_dependencies == []:
                 break
+            candidate_unit = uncompiled_dependencies.first()
             if verbose:
-                print("Noticed dependency: {candidate_unit.source_path} --> {dependency.source_path}")
-
-            let cyclic = dependency in breadcrumbs
-            breadcrumbs.push(dependency)
-            if cyclic:
+                print(
+                    "Noticed dependency: {candidate_unit.source_path} --> {candidate_unit.source_path}"
+                )
+            if candidate_unit in breadcrumbs:
+                breadcrumbs.push(candidate_unit)
+                let message = [foreach unit of breadcrumbs: unit.source_path].join(" --> ")
                 # TODO: error
-                print("cyclic imports: " + [foreach unit of breadcrumbs: unit.source_path].join(" --> "))
+                print("cyclic imports: {message}")
                 assert(false)
-        compilation_order.push(candidate_unit)
 
+            breadcrumbs.push(candidate_unit)
+        compilation_order.push(candidate_unit)
     return compilation_order
 
 
 class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str] program_args)
 
 func parse_args() -> Args:
+    let usage = "Usage: {__argv_get(0)} [compiler args] program.oomph [program args]"
     let infile = new (Str | null)(null)
     let outfile = new (Str | null)(null)
     let valgrind = ""
@@ -188,7 +189,7 @@ func parse_args() -> Args:
     while args != []:
         if args.last() == "--help":
             # FIXME: __argv_get shouldn't be used directly
-            print("""Usage: {__argv_get(0)} [compiler args] PROGRAM.oomph [program args]
+            print("""{usage}
 
 Compiler arguments:
     -o, --outfile FILE
@@ -212,56 +213,66 @@ Compiler arguments:
             args.pop()
             verbose = true
         elif args.last().starts_with("-"):
-            print("unknown argument: {args.last}")
+            print("unknown argument: {args.last()}")
             assert(false)
         else:
             infile = args.last()
             break
 
-    return new Args(infile.get(), outfile, valgrind, verbose, args.reversed())
+    switch infile:
+        case null _:
+            print(usage)
+            assert(false)
+        case Str s:
+            return new Args(s, outfile, valgrind, verbose, args.reversed())
 
 
 export func main():
     let args = parse_args()
+    let infile_name_without_ext = args.infile.split("/").last().split(".").first()
+    assert(infile_name_without_ext != "")
 
     # TODO: put cache dir to current working directory if file in non-writable location
     let cache_dir = util::path_parent(args.infile) + "/.oomph-cache"
     io::mkdir(cache_dir)
 
+    let units = create_compilation_units(args.infile, args.verbose)
+
     let session = new c_output::Session(
         ir::create_builtins(),
-        get_compilation_dir(cache_dir, compiler_args.infile.stem + "_compilation"),
+        get_compilation_dir(cache_dir, infile_name_without_ext + "_compilation"),
         [],
         [],
     )
-
-    let units = create_compilation_units(session, args.infile, args.verbose)
     foreach unit of compute_compilation_order(units, args.verbose):
         if args.verbose:
-            print("Creating C code:", unit.source_path)
-        unit.create_c_code(session.symbols)
+            print("Creating C code: {unit.source_path}")
+        unit.create_c_code(session)
 
     # Write out everything and compile it
     let c_paths = session.write_everything("builtins.oomph")
-    let exe_path = session.compilation_dir + "/" + compiler_args.infile.split("/").last().split(".").first()
+    let exe_path = session.compilation_dir + "/" + infile_name_without_ext
     let command = get_c_compiler_command(c_paths, exe_path)
-    let result = run(command, compiler_args.verbose)
+    let result = run(command, args.verbose)
     assert(result == 0)
 
     # If we have an outfile path, move the resulting executable to it and bail
-    switch compiler_args.outfile:
+    switch args.outfile:
         case Str outfile:
             # TODO: more path operations
-            assert(process::run(["[", "-d", outfile "]"]) == 1)  # mv is weird for dirs
-            if compiler_args.verbose:
+            assert(process::run(["[", "-d", outfile, "]"]) == 1)  # mv is weird for dirs
+            if args.verbose:
                 assert(process::run(["mv", "--verbose", exe_path, outfile]) == 0)
             else:
                 assert(process::run(["mv", exe_path, outfile]) == 0)
-        case null:
-            let command = split(compiler_args.valgrind)
+        case null _:
+            let command = split(args.valgrind)
             command.push(exe_path)
-            command.push_all(program_args)
+            command.push_all(args.program_args)
 
-            let result = run(command, compiler_args.verbose)
-            print("Program exited with status {result}")
-            assert(result == 0)
+            let result = run(new Command(command, join(command)), args.verbose)
+            if result != 0:
+                print("Program '{exe_path}' exited with status {result}")
+                assert(false)
+
+    session.builtins.destroy()
