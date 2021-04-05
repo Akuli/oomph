@@ -669,7 +669,7 @@ class FilePair(
 
 
 # This state is shared between different files
-class Session(
+export class Session(
     ir::Builtins builtins,
     Str compilation_dir,
     List[ir::Symbol] symbols,

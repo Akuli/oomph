@@ -1,17 +1,10 @@
+import "<stdlib>/path.oomph" as path
 import "ast.oomph" as ast
 import "error.oomph" as error
 import "tokenizer.oomph" as tokenizer
 
 # token is e.g. "+" or "as"
 typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
-
-# TODO: should move to stdlib
-func path_parent(Str path) -> Str:
-    let parts = path.split("/")
-    if parts == []:
-        # TODO: this is a bit broken, although python's pathlib is broken in the same way
-        return "."
-    return parts.slice(0, parts.length() - 1).join("/")
 
 func add_string(List[ast::Expression] parts, Str suffix, error::Location location):
     if parts != []:
@@ -63,7 +56,7 @@ class Parser(List[tokenizer::Token] tokens):
         if string.starts_with("<stdlib>/"):
             let path = stdlib_path + "/" + string.remove_prefix("<stdlib>/")
         else:
-            path = path_parent(path_of_this_file) + "/" + string
+            path = path::parent(path_of_this_file) + "/" + string
         return new ast::Import(import_token.location, path, name)
 
     # TODO: these are a bit copy/pasta

@@ -1,15 +1,7 @@
 # How to update this list:
 # - Finding unnecessary non-_error lines: ./unnecessary_skips
 # - Finding unnecessary _error lines: make oomphc && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomphc $file; done
-self_hosted/ast.oomph
-self_hosted/ast2ir.oomph
-self_hosted/ast_transformer.oomph
-self_hosted/c_output.oomph
-self_hosted/error.oomph
-self_hosted/ir.oomph
-self_hosted/main.oomph
-self_hosted/parser.oomph
-self_hosted/tokenizer.oomph
+
 tests/a_lib.oomph
 tests/andor_error.oomph
 tests/args.oomph
@@ -62,3 +54,22 @@ tests/weird_minus_error.oomph
 tests/write_file_full_error.oomph
 tests/write_file_permission_error.oomph
 tests/wrong_args_auto_error.oomph
+
+# Before #151, these files were in self_hosted_skip_ast.txt:
+tests/comma_error.oomph
+tests/double_comma_error.oomph
+tests/format_string_error.oomph
+tests/indent2_error.oomph
+tests/indent_error.oomph
+tests/indent_increase_error.oomph
+tests/invalid_token_error.oomph
+tests/leading_indent_error.oomph
+tests/leading_indent_with_comment_error.oomph
+tests/leading_zero_error.oomph
+tests/line_continuation_error.oomph
+tests/paren_no_open_error.oomph
+tests/paren_unclosed_error.oomph
+tests/paren_wrong_close_error.oomph
+tests/prefix_minus_error.oomph
+tests/unterminated_multiline_string_error.oomph
+tests/unterminated_string_error.oomph

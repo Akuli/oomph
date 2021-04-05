@@ -1,0 +1,9 @@
+# TODO: Path class, similarly to python's pathlib
+# TODO: more functions, e.g. something that does .split("/").last()
+
+export func parent(Str path) -> Str:
+    if "/" not in path:
+        # TODO: this is a bit broken, although python's pathlib is broken in the same way
+        return "."
+    let parts = path.split("/")
+    return parts.slice(0, parts.length() - 1).join("/")
