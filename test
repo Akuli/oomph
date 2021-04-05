@@ -101,6 +101,14 @@ function check()
     fi
 }
 
+function check_hello_txt()
+{
+    if [ -e test_out/io_testing_dir/hello.txt ]; then
+        echo "Error: io test didn't delete hello.txt"
+        exit 1
+    fi
+}
+
 function run()
 {
     if [ $(jobs | wc -l) -ge $(nproc) ]; then
@@ -138,6 +146,7 @@ if [ $check_pyoomph == yes ]; then
         fi
     done
     wait
+    check_hello_txt
 fi
 
 # Run all self-hosted tests with same compiler (speeds up a LOT)
@@ -163,6 +172,7 @@ if [ $check_self_hosted == yes ] && (
         fi
     done
     wait
+    check_hello_txt
 fi
 
 status=0

@@ -6,3 +6,7 @@ export func write_file(Str path, Str content):
 
 export func mkdir(Str path):
     __io_mkdir(path)
+
+# TODO: this sucks
+export func delete_at_exit(Str path):
+    __io_delete_at_exit(path)

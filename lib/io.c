@@ -1,6 +1,7 @@
 #include "oomph.h"
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -8,6 +9,35 @@ void oomph_print(struct class_Str str)
 {
 	fwrite(string_data(str), 1, str.nbytes, stdout);
 	putchar('\n');
+}
+
+// I wish there was a way to pass arguments to atexit()
+static struct class_Str global_delete_list[100];
+static size_t global_delete_list_len = 0;
+
+static void atexit_callback(void)
+{
+	for (size_t i = 0; i < global_delete_list_len; i = i+1) {
+		char *s = string_to_cstr(global_delete_list[i]);
+		string_decref(global_delete_list[i]);
+
+		if (remove(s) != 0)
+			panic_printf_errno("io::delete_at_exit failed to delete %s", s);
+		free(s);
+	}
+}
+
+void oomph_io_delete_at_exit(struct class_Str path)
+{
+	if (global_delete_list_len == 0)
+		atexit(atexit_callback);
+
+	size_t max = sizeof(global_delete_list)/sizeof(global_delete_list[0]);
+	if (global_delete_list_len >= max)
+		panic_printf("io::delete_at_exit() called more than %zu times", max);
+
+	global_delete_list[global_delete_list_len++] = path;
+	string_incref(path);
 }
 
 void oomph_io_mkdir(struct class_Str path)

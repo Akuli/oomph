@@ -296,6 +296,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("__get_first_char", new FunctionType([STR], STR)),
         new BuiltinVariable("__get_utf8_byte", new FunctionType([STR, INT], INT)),
         new BuiltinVariable("__hash", new FunctionType([STR, STR], STR)),
+        new BuiltinVariable("__io_delete_at_exit", new FunctionType([STR], null)),
         new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
         new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
         new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
