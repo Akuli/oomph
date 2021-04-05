@@ -139,39 +139,43 @@ func create_compilation_units(Str infile, Bool verbose) -> List[CompilationUnit]
 
     return units
 
-func in_first_but_not_in_second(List[CompilationUnit] a, List[CompilationUnit] b) -> CompilationUnit:
+
+# TODO: more list methods
+func list_difference(List[CompilationUnit] a, List[CompilationUnit] b) -> List[CompilationUnit]:
+    let result = []
     foreach item of a:
         if item not in b:
-            return item
-    assert(false)
+            result.push(item)
+    return result
 
-# TODO: rename dependency_graph
-func compute_compilation_order(List[CompilationUnit] dependency_graph, Bool verbose) -> List[CompilationUnit]:
+func find_dependency(CompilationUnit candidate_unit, List[CompilationUnit] units) -> CompilationUnit | null:
+    foreach unit of units:
+        if unit.source_path in candidate_unit.get_dependencies():
+            return unit
+    return null
+
+func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> List[CompilationUnit]:
     let compilation_order = []
-    while compilation_order.length() < dependency_graph.length():
-        let candidate_unit = in_first_but_not_in_second(dependency_graph, compilation_order)
+    while compilation_order.length() < units.length():
+        let candidate_unit = list_difference(units, compilation_order).first()
         let breadcrumbs = [candidate_unit]
         while true:
-            let uncompiled_dependencies = []
-            foreach u of dependency_graph:
-                if u not in compilation_order and u.source_path in candidate_unit.get_dependencies():
-                    uncompiled_dependencies.push(u)
-            if uncompiled_dependencies == []:
+            let uncompiled_dependency = find_dependency(
+                candidate_unit, list_difference(units, compilation_order)
+            )
+            if uncompiled_dependency == null:
                 break
-            candidate_unit = uncompiled_dependencies.first()
-            if verbose:
-                print(
-                    "Noticed dependency: {candidate_unit.source_path} --> {candidate_unit.source_path}"
-                )
-            if candidate_unit in breadcrumbs:
-                breadcrumbs.push(candidate_unit)
-                let message = [foreach unit of breadcrumbs: unit.source_path].join(" --> ")
+            candidate_unit = uncompiled_dependency.get()
+
+            let cyclic = candidate_unit in breadcrumbs
+            breadcrumbs.push(candidate_unit)
+            if cyclic:
                 # TODO: error
+                let message = [foreach unit of breadcrumbs: unit.source_path].join(" --> ")
                 print("cyclic imports: {message}")
                 assert(false)
-
-            breadcrumbs.push(candidate_unit)
         compilation_order.push(candidate_unit)
+
     return compilation_order
 
 
