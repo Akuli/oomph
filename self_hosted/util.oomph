@@ -1,0 +1,8 @@
+# FIXME: stuff should go to stdlib
+
+export func path_parent(Str path) -> Str:
+    let parts = path.split("/")
+    if parts == []:
+        # TODO: this is a bit broken, although python's pathlib is broken in the same way
+        return "."
+    return parts.slice(0, parts.length() - 1).join("/")

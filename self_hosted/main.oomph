@@ -1,18 +1,37 @@
 import "<stdlib>/io.oomph" as io
+import "<stdlib>/process.oomph" as process
 import "ast.oomph" as ast
 import "ast2ir.oomph" as ast2ir
 import "ast_transformer.oomph" as ast_transformer
 import "c_output.oomph" as c_output
 import "ir.oomph" as ir
 import "parser.oomph" as parser
+import "util.oomph" as util
 
 
-class CompilationUnit(Str source_path, c_output::Session session, List[ast::ToplevelDeclaration] ast):
-    meth create_untyped_ast():
+class CompilationUnit(
+    Str source_path,
+    c_output::Session session,
+    List[ast::ToplevelDeclaration] ast,
+):
+    meth create_ast():
         let source_code = self.source_path.read_text(encoding="utf-8")
         self.ast = ast_transformer::transform(parser::parse_file(
             source_code, self.source_path, project_root / "stdlib"
         ))
+
+    # Returns source paths
+    meth get_dependencies() -> List[Str]:
+        let result = []
+        if self.source_path == "builtins.oomph":
+            result.push("builtins.oomph")
+        foreach top_decl of self.ast:
+            switch top_decl:
+                case ast::Import imp:
+                    result.push(imp.path)
+                case *:
+                    pass
+        return result
 
     meth create_c_code(List[ir::Symbol] exports):
         let ir = ast2ir::convert_program(self.ast, self.source_path, exports)
@@ -81,182 +100,168 @@ func get_c_compiler_command(List[Str] C_paths, Str exepath) -> Command:
         join(before_files) + " <{c_paths.length()} files> " + join(after_files),
     )
 
-
 func run(Command command, Bool verbose) -> int:
     if verbose:
         print("Running: " + command.human_readable)
     return process::run(command.command)
 
+
 func mkdir_with_parents(Str path):
-    let parts = path.split("/")
-    if path.starts_with("/"):
-        let i = 2
-    else:
-        let i = 1
-    for ; i <= parts.length(); i = i+1:
-        io::mkdir(parts.slice(0, i).join("/"))
+    let parents = [path]
+    while util::path_parent(parents.last()) != parents.last():
+        parents.push(util::path_parent(parents.last()))
+
+    foreach parent of parents.reversed():
+        io::mkdir(parent)
 
 func get_compilation_dir(Str parent_dir, Str name_hint) -> Str:
     for let i = 0; ; i = i+1:
         let path = "{parent_dir}/{name_hint}{i}"
         mkdir_with_parents(path)
 
-        # TODO: better way to fail if file exists, create if not exists
+        # TODO: better way to create file if not exists and know whether that was done
         if process::run(["bash", "-c", "printf '' > '{path}/compiling'"]) == 0:
             io::delete_file_at_exit(path + "/compiling")
             return path
-            
-        
 
-        try:
-    for i in itertools.count():
-        path = parent_dir / (name_hint + str(i))
-        path.mkdir(parents=True, exist_ok=True)
-        try:
-            (path / "compiling").touch(exist_ok=False)
-        except FileExistsError:
-            # Another instance of oomph compiler running in parallel
+
+func create_compilation_units(c_output::Session session, Str infile, Bool verbose) -> List[CompilationUnit]:
+    let units = []
+    let queue = [infile]
+    while queue != []:
+        let source_path = queue.pop()
+        if source_path in [foreach unit of units: unit.source_path]:
             continue
-        else:
-            atexit.register((path / "compiling").unlink)
-            return path
-    assert False  # make mypy feel good
+        let candidate_unit = new CompilationUnit(source_path, [], session, [])
 
-
-def compute_dependency_graph(
-    session: c_output.Session,
-    infile: Path,
-    verbose: bool,
-) -> Dict[CompilationUnit, List[Path]]:
-    dependency_graph: Dict[CompilationUnit, List[Path]] = {}
-    queue = [infile]
-    while queue:
-        # Pop the next source file to parse
-        source_path = queue.pop()
-        if source_path in (unit.source_path for unit in dependency_graph.keys()):
-            continue
         if verbose:
-            print("Parsing", source_path)
+            print("Parsing {source_path}")
+        candidate_unit.create_ast()
+        queue.push_all(candidate_unit.get_dependencies())
 
-        # Create a compilation unit out of it and parse it into an untyped ast
-        candidate_unit = CompilationUnit(source_path, session)
-        candidate_unit.create_untyped_ast()
+    return units
 
-        # Calculate its dependencies and add them to the dependencies dictionary,
-        # including builtins if necessary, and add those dependencies to the queue
-        current_dependencies = [
-            top_declaration.path
-            for top_declaration in candidate_unit.ast
-            if isinstance(top_declaration, ast.Import)
-        ]
-        if source_path != project_root / "builtins.oomph":
-            current_dependencies.append(project_root / "builtins.oomph")
-        dependency_graph[candidate_unit] = current_dependencies
-        queue.extend(current_dependencies)
-    return dependency_graph
+func in_first_but_not_in_second(List[CompilationUnit] a, List[CompilationUnit] b) -> CompilationUnit:
+    let result = []
+    foreach item of a:
+        if item not in b:
+            return item
+    assert(false)
 
-
-def compute_compilation_order(
-    verbose: bool,
-    dependency_graph: Dict[CompilationUnit, List[Path]],
-) -> List[CompilationUnit]:
-    compilation_order: List[CompilationUnit] = []
-    while len(compilation_order) < len(dependency_graph):
-        candidate_unit = next(
-            u for u in dependency_graph.keys() if u not in compilation_order
-        )
-        breadcrumbs = [candidate_unit]
-        while True:
-            uncompiled_dependencies = [
-                u
-                for u in dependency_graph.keys()
-                if u not in compilation_order
-                and u.source_path in dependency_graph[candidate_unit]
-            ]
-            if not uncompiled_dependencies:
+func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> List[CompilationUnit]:
+    let compilation_order = []
+    while compilation_order.length() < units.length():
+        let candidate_unit = in_first_but_not_in_second(units, compilation_order)
+        let breadcrumbs = [candidate_unit]
+        while true:
+            let found = false   # TODO: this sucks
+            foreach unit of units:
+                if unit not in compilation_order and u.source_path in candidate_unit.get_dependencies():
+                    let dependency = unit
+                    let found = true
+            if not found:
                 break
             if verbose:
-                print(
-                    f"Noticed dependency: {candidate_unit.source_path} --> {uncompiled_dependencies[0].source_path}"
-                )
-            candidate_unit = uncompiled_dependencies[0]
-            if candidate_unit in breadcrumbs:
-                message = (
-                    " --> ".join(d.source_path.name for d in breadcrumbs)
-                    + " --> "
-                    + candidate_unit.source_path.name
-                )
-                raise RuntimeError("cyclic imports: " + message)
-            breadcrumbs.append(candidate_unit)
-        compilation_order.append(candidate_unit)
+                print("Noticed dependency: {candidate_unit.source_path} --> {dependency.source_path}")
+
+            let cyclic = dependency in breadcrumbs
+            breadcrumbs.push(dependency)
+            if cyclic:
+                # TODO: error
+                print("cyclic imports: " + [foreach unit of breadcrumbs: unit.source_path].join(" --> "))
+                assert(false)
+        compilation_order.push(candidate_unit)
+
     return compilation_order
 
 
-def main() -> None:
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("infile", type=Path)
-    arg_parser.add_argument("-o", "--outfile", type=Path)
-    arg_parser.add_argument("--valgrind", default="")
-    arg_parser.add_argument("-v", "--verbose", action="store_true")
-    compiler_args, program_args = arg_parser.parse_known_args()
+class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str] program_args)
 
-    try:
-        cache_dir = compiler_args.infile.parent / ".oomph-cache"
-        cache_dir.mkdir(exist_ok=True)
-    except OSError:
-        cache_dir = Path.cwd() / ".oomph-cache"
-        cache_dir.mkdir(exist_ok=True)
+func parse_args() -> Args:
+    let infile = new (Str | null)(null)
+    let outfile = new (Str | null)(null)
+    let valgrind = ""
+    let verbose = false
 
-    # Create a compiler session
-    session = c_output.Session(
-        get_compilation_dir(cache_dir, compiler_args.infile.stem + "_compilation")
+    # TODO: improve error handling
+    let args = process::get_args().reversed()
+    while args != []:
+        if args.last() == "--help":
+            # FIXME: __argv_get shouldn't be used directly
+            print("""Usage: {__argv_get(0)} [compiler args] PROGRAM.oomph [program args]
+
+Compiler arguments:
+    -o, --outfile FILE
+        Put executable here, don't run it
+
+    --valgrind COMMAND  (don't use with --outfile)
+        Run program with valgrind, e.g. '--valgrind valgrind' runs with no
+        valgrind arguments
+
+    -v, --verbose
+        Print lost of stuff
+""")
+            assert(false)
+        if args.last() in ["-o", "--outfile"]:
+            args.pop()
+            outfile = args.pop()
+        elif args.last() == "--valgrind":
+            args.pop()
+            valgrind = args.last()
+        elif args.last() in ["-v", "--verbose"]:
+            args.pop()
+            verbose = true
+        elif args.last().starts_with("-"):
+            print("unknown argument: {args.last}")
+            assert(false)
+        else:
+            infile = args.last()
+            break
+
+    return new Args(infile.get(), outfile, valgrind, verbose, args.reversed())
+
+
+export func main():
+    let args = parse_args()
+
+    # TODO: put cache dir to current working directory if file in non-writable location
+    let cache_dir = util::path_parent(args.infile) + "/.oomph-cache"
+    io::mkdir(cache_dir)
+
+    let session = new c_output::Session(
+        ir::create_builtins(),
+        get_compilation_dir(cache_dir, compiler_args.infile.stem + "_compilation"),
+        [],
+        [],
     )
 
-    # Calculate the dependency graph
-    dependency_graph = compute_dependency_graph(
-        session, compiler_args.infile.absolute(), compiler_args.verbose
-    )
-
-    # Calculate in which order we need to compile our units
-    compilation_order = compute_compilation_order(
-        compiler_args.verbose, dependency_graph
-    )
-
-    # Compile in the calculated order
-    for unit in compilation_order:
-        if compiler_args.verbose:
+    let units = create_compilation_units(session, args.infile, args.verbose)
+    foreach unit of compute_compilation_order(units, args.verbose):
+        if args.verbose:
             print("Creating C code:", unit.source_path)
         unit.create_c_code(session.symbols)
 
     # Write out everything and compile it
-    c_paths = session.write_everything(project_root / "builtins.oomph")
-    exe_path = session.compilation_dir / compiler_args.infile.stem
-    command, human_readable_command = get_c_compiler_command(c_paths, exe_path)
-    result = run(command, compiler_args.verbose, human_readable_command)
-    if result != 0:
-        sys.exit(result)
+    let c_paths = session.write_everything("builtins.oomph")
+    let exe_path = session.compilation_dir + "/" + compiler_args.infile.split("/").last().split(".").first()
+    let command = get_c_compiler_command(c_paths, exe_path)
+    let result = run(command, compiler_args.verbose)
+    assert(result == 0)
 
     # If we have an outfile path, move the resulting executable to it and bail
-    if compiler_args.outfile is not None:
-        assert not compiler_args.outfile.is_dir()  # shutil.move is weird for dirs
-        shutil.move(str(exe_path), str(compiler_args.outfile))
-        if compiler_args.verbose:
-            print("Moved executable to", compiler_args.outfile)
-        return
+    switch compiler_args.outfile:
+        case Str outfile:
+            # TODO: more path operations
+            assert(process::run(["[", "-d", outfile "]"]) == 1)  # mv is weird for dirs
+            if compiler_args.verbose:
+                assert(process::run(["mv", "--verbose", exe_path, outfile]) == 0)
+            else:
+                assert(process::run(["mv", exe_path, outfile]) == 0)
+        case null:
+            let command = split(compiler_args.valgrind)
+            command.push(exe_path)
+            command.push_all(program_args)
 
-    # Otherwise, run it directly
-    command = shlex.split(compiler_args.valgrind) + [str(exe_path)] + program_args
-    result = run(command, compiler_args.verbose)
-    if result < 0:  # killed by signal
-        message = f"Program killed by signal {abs(result)}"
-        try:
-            message += f" ({signal.Signals(abs(result)).name})"
-        except ValueError:  # e.g. SIGRTMIN + 1
-            pass
-        print(message, file=sys.stderr)
-    elif result > 0:
-        print(f"Program exited with status {result}", file=sys.stderr)
-    sys.exit(result)
-
-
-main()
+            let result = run(command, compiler_args.verbose)
+            print("Program exited with status {result}")
+            assert(result == 0)
