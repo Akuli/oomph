@@ -26,8 +26,11 @@ jobs:
       with:
         python-version: ${{ matrix.python }}
     - run: pip install -r requirements.txt
-    - run: sudo apt install ${{ matrix.compiler }}
-    - run: CC=${{ matrix.compiler }} make
+    - run: sudo apt install gcc
+    - run: |
+        if [ ${{ matrix.compiler }} == tcc ]; then
+          ./download-tcc.sh
+        fi
     - run: ./test
   lexer_test:
     runs-on: ubuntu-latest

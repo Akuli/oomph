@@ -1,8 +1,6 @@
-# Use tcc if it's installed and $(CC) is 'cc', the system default
-ifneq ($(shell which tcc),)
+# Use tcc if it's downloaded and $(CC) is the system default
 ifeq ($(CC),cc)
-CC := tcc
-endif
+CC := $(shell if [ -x tinycc/tcc ]; then echo tinycc/tcc; else echo cc; fi)
 endif
 
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
