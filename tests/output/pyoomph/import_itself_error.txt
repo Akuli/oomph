@@ -1,0 +1,2 @@
+    raise RuntimeError("cyclic imports: " + message)
+RuntimeError: cyclic imports: import_itself_error.oomph --> import_itself_error.oomph

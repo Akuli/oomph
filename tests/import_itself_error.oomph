@@ -1,0 +1,4 @@
+import "import_itself_error.oomph" as lel
+
+export func main():
+    pass
