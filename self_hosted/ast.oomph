@@ -73,7 +73,7 @@ export class GetVar(error::Location location, Str varname)
 export class IntConstant(error::Location location, Int value)
 export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(error::Location location, List[Expression] content)
-export class StatementsAndExpression(List[Statement] statements, Expression expression)
+export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
 export class StringConstant(error::Location location, Str value)
 export class StringFormatJoin(error::Location location, List[Expression] parts)  # always >=2 parts
 export class UnaryOperator(error::Location location, Str op, Expression obj)
@@ -125,11 +125,7 @@ export func locate_expression(Expression expression) -> error::Location:
         case ListLiteral expr:
             return expr.location
         case StatementsAndExpression expr:
-            let result = locate_expression(expr.expression)
-            # TODO: uncomment once there's a way to find location of statement
-#            foreach stmt of expr.statements:
-#                result = result.combine(stmt.location)
-            return result
+            return expr.location
         case StringConstant expr:
             return expr.location
         case StringFormatJoin expr:

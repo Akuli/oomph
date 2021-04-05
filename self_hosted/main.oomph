@@ -1,6 +1,7 @@
 import "<stdlib>/io.oomph" as io
 import "<stdlib>/process.oomph" as process
 import "ast2ir.oomph" as ast2ir
+import "ast_transformer.oomph" as ast_transformer
 import "c_output.oomph" as c_output
 import "ir.oomph" as ir
 import "parser.oomph" as parser
@@ -52,7 +53,7 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> List[Str]:
 
 func create_ir(ir::Builtins builtins, Str source_path) -> List[ir::ToplevelDeclaration]:
     let code = io::read_file(source_path)
-    let ast = parser::parse_file(code, source_path, "stdlib.oomph")
+    let ast = ast_transformer::transform(parser::parse_file(code, source_path, "stdlib.oomph"))
     return ast2ir::convert_program(builtins, ast, source_path, [])
 
 export func main():
@@ -89,7 +90,7 @@ export func main():
 
     if ast_only:
         let code = io::read_file(source_path)
-        let ast = parser::parse_file(code, source_path, "stdlib")
+        let ast = ast_transformer::transform(parser::parse_file(code, source_path, "stdlib"))
         print(ast)
         return
 
