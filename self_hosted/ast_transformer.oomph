@@ -120,7 +120,7 @@ class AstTransformer(Int varname_counter):
 
     meth visit_statement(ast::Statement stmt) -> ast::Statement:
         switch stmt:
-            case ast::Break bread:
+            case ast::Break _:
                 pass
             case ast::Call call:
                 return self.visit_expression(call) as ast::Call
