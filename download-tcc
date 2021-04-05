@@ -1,0 +1,16 @@
+#!/bin/bash
+set -ex
+
+rm -rf tinycc
+git clone https://github.com/TinyCC/tinycc/
+cd tinycc
+
+# It seems that anyone can commit to tcc without code reviews:
+# https://repo.or.cz/w/tinycc.git (click "what's mob?")
+# Please check the latest n commits for malicious stuff when changing this.
+git checkout aa77279
+
+# For some reason, it has to be 'make install'ed somewhere, doesn't matter where
+./configure --prefix=$PWD/build
+make -j2
+make install

@@ -1,8 +1,6 @@
-# Use tcc if it's installed and $(CC) is 'cc', the system default
-ifneq ($(shell which tcc),)
+# Use tcc if it's downloaded and $(CC) is the system default
 ifeq ($(CC),cc)
-CC := tcc
-endif
+CC := $(shell if [ -x tinycc/tcc ]; then echo tinycc/tcc; else echo cc; fi)
 endif
 
 CFLAGS += -std=c11 -Wall -Wextra -Wpedantic
@@ -17,12 +15,6 @@ CFLAGS += -Wno-unused-label
 CFLAGS += -g
 LDFLAGS += -lm
 LDFLAGS += -lcrypto   # openssl hash functions
-
-# tcc doesn't have <stdnoreturn.h>
-# https://stackoverflow.com/a/37741652
-ifeq ($(findstring tcc,$(CC)),tcc)
-CFLAGS += -Dnoreturn=
-endif
 
 SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)
