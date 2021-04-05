@@ -195,7 +195,7 @@ I like to use tcc when developing oomph.
 It compiles much faster than gcc, even though it doesn't optimize as well.
 
 ```
-./download-tcc.sh
+./download-tcc
 make clean
 ```
 
