@@ -101,10 +101,14 @@ function check()
     fi
 }
 
-function check_hello_txt()
+function check_files_deleted()
 {
     if [ -e test_out/io_testing_dir/hello.txt ]; then
-        echo "Error: io test didn't delete hello.txt"
+        echo "Error: tests/io.oomph didn't delete hello.txt"
+        exit 1
+    fi
+    if [ -e test_out/io_testing_dir/should_be_deleted.txt ]; then
+        echo "Error: tests/delete_at_exit_error.oomph didn't delete should_be_deleted.txt"
         exit 1
     fi
 }
@@ -146,7 +150,7 @@ if [ $check_pyoomph == yes ]; then
         fi
     done
     wait
-    check_hello_txt
+    check_files_deleted
 fi
 
 # Run all self-hosted tests with same compiler (speeds up a LOT)
@@ -172,7 +176,7 @@ if [ $check_self_hosted == yes ] && (
         fi
     done
     wait
-    check_hello_txt
+    check_files_deleted
 fi
 
 status=0
