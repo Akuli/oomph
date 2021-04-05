@@ -124,7 +124,7 @@ class AstTransformer(Int varname_counter):
                 pass
             case ast::Call call:
                 return self.visit_expression(call) as ast::Call
-            case ast::Continue kontinue:
+            case ast::Continue _:
                 pass
             case ast::If if_statement:
                 foreach pair of if_statement.ifs_and_elifs:
