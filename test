@@ -166,10 +166,10 @@ if [ $check_self_hosted == yes ] && (
             continue
         elif ! grep -q "^$file" tests/self_hosted_skip.txt; then
             if [[ $file == tests/*_error.oomph ]]; then
-                check "$file" "./oomphc $file" "2>/dev/null" tests/output/self_hosted should_fail
+                run check "$file" "./oomphc $file" "2>/dev/null" tests/output/self_hosted should_fail
             else
                 command="$valgrind ./oomphc $compiler_valgrind_arg $file"
-                check "$file" "$command" "$noise" tests/output/common should_succeed
+                run check "$file" "$command" "$noise" tests/output/common should_succeed
             fi
         fi
     done
