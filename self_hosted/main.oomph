@@ -53,8 +53,8 @@ class Command(List[Str] command, Str human_readable)
 
 func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
     let cc = new (Str | null)(null)
-    let cflags = (new Str | null)(null)
-    let ldflags = (new Str | null)(null)
+    let cflags = new (Str | null)(null)
+    let ldflags = new (Str | null)(null)
 
     foreach line of io::read_file("obj/compile_info.txt").remove_suffix("\n").split("\n"):
         if line.starts_with("cc="):
