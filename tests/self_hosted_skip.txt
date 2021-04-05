@@ -64,7 +64,7 @@ tests/write_file_full_error.oomph
 tests/write_file_permission_error.oomph
 tests/wrong_args_auto_error.oomph
 
-# These files were in self_hosted/skip.txt:
+# Before #151, these files were in self_hosted_skip_ast.txt:
 tests/comma_error.oomph
 tests/double_comma_error.oomph
 tests/format_string_error.oomph
