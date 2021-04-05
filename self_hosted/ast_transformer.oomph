@@ -171,7 +171,7 @@ class AstTransformer(Int varname_counter):
         switch decl:
             case ast::FuncOrMethodDef fdef:
                 fdef.body = self.visit_statements(fdef.body)
-            case ast::TypeDef type_def:
+            case ast::TypeDef _:
                 pass
             case ast::Import _:
                 pass
