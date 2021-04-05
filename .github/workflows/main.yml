@@ -17,7 +17,7 @@ jobs:
   build:
     strategy:
       matrix:
-        compiler: ["gcc"]#, "tcc"]
+        compiler: ["gcc", "tinycc/tcc"]
         python: ["3.7", "3.8", "3.9"]
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +26,17 @@ jobs:
       with:
         python-version: ${{ matrix.python }}
     - run: pip install -r requirements.txt
-    - run: sudo apt install ${{ matrix.compiler }}
+    - run: sudo apt install gcc
+    - if: contains(['tinycc/tcc'], matrix.compiler)
+      run: |
+        git clone https://github.com/TinyCC/tinycc/
+        cd tinycc
+        git checkout aa77279
+        # For some reason, it has to be 'make install'ed somewhere.
+        # Otherwise it doesn't find header files.
+        ./configure --cc=gcc --prefix=$PWD/build
+        make -j2
+        make install
     - run: CC=${{ matrix.compiler }} make
     - run: ./test
   lexer_test:
