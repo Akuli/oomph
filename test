@@ -171,8 +171,6 @@ if [ $check_self_hosted == yes ] && (
                 command="$valgrind ./oomphc $compiler_valgrind_arg $file"
                 check "$file" "$command" "$noise" tests/output/common should_succeed
             fi
-        elif ! grep -q "^$file" tests/self_hosted_skip_ast.txt; then
-            run check "$file" "$valgrind ./oomphc --ast $file" "" "" should_succeed
         fi
     done
     wait
