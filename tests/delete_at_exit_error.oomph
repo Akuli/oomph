@@ -1,0 +1,9 @@
+import "<stdlib>/io.oomph" as io
+
+export func main():
+    io::mkdir("test_out/io_testing_dir")
+
+    let path = "test_out/io_testing_dir/should_be_deleted.txt"
+    io::write_file(path, "This should be gone soon")
+    io::delete_at_exit(path)
+    assert(false)
