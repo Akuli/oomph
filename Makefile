@@ -16,12 +16,6 @@ CFLAGS += -g
 LDFLAGS += -lm
 LDFLAGS += -lcrypto   # openssl hash functions
 
-# tcc doesn't have <stdnoreturn.h>
-# https://stackoverflow.com/a/37741652
-ifeq ($(findstring tcc,$(CC)),tcc)
-CFLAGS += -Dnoreturn=
-endif
-
 SRC := $(wildcard lib/*.c)
 OBJ := $(SRC:lib/%.c=obj/%.o)
 HEADERS := lib/oomph.h
