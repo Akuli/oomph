@@ -64,6 +64,7 @@ struct class_Str oomph_hash(struct class_Str data, struct class_Str algname);
 struct class_Str oomph_io_read_file(struct class_Str path);
 struct class_Str oomph_slice_until_substring(struct class_Str s, struct class_Str sep);
 void oomph_assert(bool cond, struct class_Str path, int64_t lineno);
+void oomph_io_delete_at_exit(struct class_Str path);
 void oomph_io_mkdir(struct class_Str path);
 void oomph_io_write_file(struct class_Str path, struct class_Str content);
 void oomph_print(struct class_Str str);

@@ -5,5 +5,8 @@ export func main():
 
     io::mkdir("test_out/io_testing_dir")
     io::mkdir("test_out/io_testing_dir")  # no error if exists already
-    io::write_file("test_out/io_testing_dir/hello.txt", "Hello Files")
-    print(io::read_file("test_out/io_testing_dir/hello.txt"))
+
+    let path = "test_out/io_testing_dir/hello.txt"
+    io::write_file(path, "Hello Files")
+    print(io::read_file(path))
+    io::delete_at_exit(path)

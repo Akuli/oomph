@@ -1,0 +1,186 @@
+import "ast.oomph" as ast
+
+
+class AstTransformer(Int varname_counter):
+
+    meth get_var_name() -> Str:
+        self.varname_counter = self.varname_counter + 1
+        # Actally using this variable name would be invalid syntax, which is great
+        return "<var{self.varname_counter}>"
+
+    meth foreach_loop_to_for_loop(ast::Loop loop) -> ast::Loop:
+        let header = loop.loop_header as ast::ForeachLoopHeader
+        let loc = header.keyword_location
+
+        let list_var = self.get_var_name()
+        let index_var = self.get_var_name()
+
+        let body = [
+            new ast::Statement(new ast::Let(
+                loc,
+                header.varname,
+                new ast::Call(
+                    loc,
+                    new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "get"),
+                    [new ast::Expression(new ast::GetVar(loc, index_var))],
+                ),
+            ))
+        ]
+        body.push_all(loop.body)
+
+        return new ast::Loop(
+            new ast::ForLoopHeader(
+                loc,
+                [
+                    new ast::Statement(new ast::Let(loc, index_var, new ast::IntConstant(loc, 0))),
+                    new ast::Statement(new ast::Let(loc, list_var, header.list)),
+                ],
+                new ast::BinaryOperator(
+                    loc,
+                    new ast::GetVar(loc, index_var),
+                    "<",
+                    new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "length"), []),
+                ),
+                [
+                    new ast::Statement(new ast::SetVar(
+                        loc,
+                        index_var,
+                        new ast::BinaryOperator(
+                            loc,
+                            new ast::GetVar(loc, index_var),
+                            "+",
+                            new ast::IntConstant(loc, 1),
+                        ),
+                    ))
+                ],
+            ),
+            body
+        )
+
+    meth handle_listcomp(ast::ListComprehension listcomp) -> ast::Expression:
+        let loc = ast::locate_loop_header(listcomp.loop_header)
+        let var = self.get_var_name()
+        return self.visit_expression(new ast::StatementsAndExpression(
+            loc,
+            [
+                new ast::Statement(new ast::Let(loc, var, new ast::ListLiteral(loc, []))),
+                new ast::Statement(new ast::Loop(
+                    listcomp.loop_header,
+                    [
+                        new ast::Statement(new ast::Call(
+                            loc,
+                            new ast::GetAttribute(loc, new ast::GetVar(loc, var), "push"),
+                            [listcomp.value],
+                        ))
+                    ],
+                )),
+            ],
+            new ast::GetVar(loc, var),
+        ))
+
+    meth visit_expression(ast::Expression expr) -> ast::Expression:
+        switch expr:
+            case ast::As ass:
+                ass.expr = self.visit_expression(ass.expr)
+            case ast::BinaryOperator binop:
+                binop.lhs = self.visit_expression(binop.lhs)
+                binop.rhs = self.visit_expression(binop.rhs)
+            case ast::Call call:
+                call.function = self.visit_expression(call.function)
+                call.args = self.visit_expressions(call.args)
+            case ast::Constructor _:
+                pass
+            case ast::FloatConstant _:
+                pass
+            case ast::GetAttribute getattr:
+                getattr.obj = self.visit_expression(getattr.obj)
+            case ast::GetVar _:
+                pass
+            case ast::IntConstant _:
+                pass
+            case ast::ListComprehension listcomp:
+                return self.visit_expression(self.handle_listcomp(listcomp))
+            case ast::ListLiteral list:
+                list.content = self.visit_expressions(list.content)
+            case ast::StatementsAndExpression sae:
+                sae.statements = self.visit_statements(sae.statements)
+                sae.expression = self.visit_expression(sae.expression)
+                # TODO
+                pass
+            case ast::StringConstant _:
+                pass
+            case ast::StringFormatJoin join:
+                join.parts = self.visit_expressions(join.parts)
+            case ast::UnaryOperator unop:
+                unop.obj = self.visit_expression(unop.obj)
+        return expr
+
+    meth visit_expressions(List[ast::Expression] list) -> List[ast::Expression]:
+        return [foreach e of list: self.visit_expression(e)]
+
+    meth visit_statement(ast::Statement stmt) -> ast::Statement:
+        switch stmt:
+            case ast::Break _:
+                pass
+            case ast::Call call:
+                return self.visit_expression(call) as ast::Call
+            case ast::Continue _:
+                pass
+            case ast::If if_statement:
+                foreach pair of if_statement.ifs_and_elifs:
+                    pair.cond = self.visit_expression(pair.cond)
+                    pair.body = self.visit_statements(pair.body)
+                if_statement.else_block = self.visit_statements(if_statement.else_block)
+            case ast::Let lett:
+                lett.value = self.visit_expression(lett.value)
+            case ast::Loop loop:
+                switch loop.loop_header:
+                    case ast::ForeachLoopHeader header:
+                        header.list = self.visit_expression(header.list)
+                        loop = self.foreach_loop_to_for_loop(loop)
+                        stmt = loop
+                    case *:
+                        pass
+
+                let header = loop.loop_header as ast::ForLoopHeader
+                header.init = self.visit_statements(header.init)
+                if header.cond != null:
+                    header.cond = new (ast::Expression | null)(self.visit_expression(header.cond.get()))
+                header.incr = self.visit_statements(header.incr)
+                loop.body = self.visit_statements(loop.body)
+            case ast::Pass _:
+                pass
+            case ast::Return ret:
+                if ret.value != null:
+                    ret.value = new (ast::Expression | null)(self.visit_expression(ret.value.get()))
+            case ast::SetAttribute setattr:
+                setattr.obj = self.visit_expression(setattr.obj)
+                setattr.value = self.visit_expression(setattr.value)
+            case ast::SetVar setvar:
+                setvar.value = self.visit_expression(setvar.value)
+            case ast::Switch switchie:
+                switchie.union_obj = self.visit_expression(switchie.union_obj)
+                foreach kase of switchie.cases:
+                    kase.body = self.visit_statements(kase.body)
+        return stmt
+
+    meth visit_statements(List[ast::Statement] list) -> List[ast::Statement]:
+        return [foreach s of list: self.visit_statement(s)]
+
+    meth visit_top_decl(ast::ToplevelDeclaration decl) -> ast::ToplevelDeclaration:
+        switch decl:
+            case ast::FuncOrMethodDef fdef:
+                fdef.body = self.visit_statements(fdef.body)
+            case ast::TypeDef _:
+                pass
+            case ast::Import _:
+                pass
+            case ast::ClassDef classdef:
+                foreach fdef of classdef.body:
+                    fdef.body = self.visit_statements(fdef.body)
+        return decl
+
+
+export func transform(List[ast::ToplevelDeclaration] decls) -> List[ast::ToplevelDeclaration]:
+    let transformer = new AstTransformer(0)
+    return [foreach decl of decls: transformer.visit_top_decl(decl)]

@@ -189,18 +189,16 @@ To use it in an editor:
     unless you have installed Porcupine into it.
 
 
-## Switching C compilers
+## TCC
 
 I like to use tcc when developing oomph.
 It compiles much faster than gcc, even though it doesn't optimize as well.
 
 ```
-sudo apt install tcc
+./download-tcc
 make clean
-CC=tcc make
 ```
 
-Now `./test`, `python3 -m pyoomph` etc will use tcc.
-Note that you need `make clean` when switching compilers;
-the Makefile isn't clever enough to realize that
-everything has to be recompiled when the C compiler changes.
+Now `make`, `./test` etc will use the downloaded tinycc.
+Currently you need `make clean` because the Makefile isn't clever enough to realize that
+the C compiler changed and everything has to be recompiled.
