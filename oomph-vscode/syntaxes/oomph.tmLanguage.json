@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Oomph",
+  "patterns": [
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#comment"
+    }
+  ],
+  "repository": {
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.oomph",
+          "match": "\\b(let|import|as|export|func|meth|class|typedef|switch|case|auto|generic|new|return|pass|mod|and|or|not|in|if|elif|else|while|for|foreach|of|continue|break)\\b"
+        },
+        {
+          "name": "constant.other.oomph",
+          "match": "\\b(true|false|null)\\b"
+        },
+        {
+          "name": "support.class.oomph",
+          "match": "\\b(Bool|Int|List|Str)\\b"
+        },
+        {
+          "name": "support.function.oomph",
+          "match": "\\b(assert|print|main)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.oomph",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.oomph",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    },
+    "comment": {
+      "begin": "#",
+      "end": "(?=$)",
+      "name": "comment.line.number-sign"
+    }
+  },
+  "scopeName": "source.oomph"
+}

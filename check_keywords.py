@@ -1,6 +1,7 @@
 # Builtins, keywords etc are mentioned in many places that can't just import
 # them from one central place. This test ensures that they stay in sync.
 import subprocess
+import json
 import sys
 
 import oomph_pygments_lexer
@@ -26,6 +27,14 @@ self_hosted_names = subprocess.run(
     check=True,
 ).stdout.split()
 
+vscode_names = []
+for item in json.load(open("./oomph-vscode/syntaxes/oomph.tmLanguage.json"))["repository"]["keywords"]["patterns"]:
+    pattern = item["match"]
+    pattern = pattern[pattern.find("(")+1:pattern.rfind(")")]
+    vscode_names.extend(pattern.split("|"))
+
+    
+
 # null is type and variable, it appears twice in compiler lists
 pyoomph_names.remove("null")
 self_hosted_names.remove("null")
@@ -36,5 +45,6 @@ pygments_names.remove("main")
 print("pyoomph:       ", sorted(pyoomph_names))
 print("self-hosted:   ", sorted(self_hosted_names))
 print("pygments lexer:", sorted(pygments_names))
+print("pygments lexer:", sorted(vscode_names))
 
-assert sorted(pyoomph_names) == sorted(self_hosted_names) == sorted(pygments_names)
+assert sorted(pyoomph_names) == sorted(self_hosted_names) == sorted(pygments_names) == sorted(vscode_names)
