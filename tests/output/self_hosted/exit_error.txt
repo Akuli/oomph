@@ -1,2 +1,2 @@
 Should get printed
-Program 'tests/.oomph-cache/exit_error_compilation0/exit_error' exited with status 1
+Program exited with status 1

@@ -1,2 +1,2 @@
 invalid utf-8 in "tests/latin1.txt"
-Program 'tests/.oomph-cache/utf8_error_compilation0/utf8_error' exited with status 1
+Program exited with status 1

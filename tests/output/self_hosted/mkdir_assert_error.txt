@@ -1,2 +1,2 @@
 assert() failed in "tests/mkdir_assert_error.oomph", line N
-Program 'tests/.oomph-cache/mkdir_assert_error_compilation0/mkdir_assert_error' exited with status 1
+Program exited with status 1

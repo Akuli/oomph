@@ -279,7 +279,7 @@ export func main():
 
             let result = run(new Command(command, join(command)), args.verbose)
             if result != 0:
-                print("Program '{exe_path}' exited with status {result}")
+                print("Program exited with status {result}")
                 process::exit(1)
 
     session.builtins.destroy()
