@@ -1,2 +1,2 @@
-Error: null.get() was called
+tests/.oomph-cache/.../null_get_error: null.get() was called
 Program exited with status 1

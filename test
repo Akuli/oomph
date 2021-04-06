@@ -76,8 +76,10 @@ function check()
         success=no
     else
         if [ $file != tests/assert_error.oomph ]; then
-            sed -i 's/, line [0-9][0-9]*/, line N/' $out
+            sed -i 's|, line [0-9][0-9]*|, line N|' $out
         fi
+        sed -i 's|^tests/.oomph-cache/.*_compilation[0-9]*/|tests/.oomph-cache/.../|' $out
+
         if [ $fix == yes ]; then
             touch $outfile
         fi

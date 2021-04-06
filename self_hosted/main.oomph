@@ -73,7 +73,6 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
         # FIXME: hard-coded list of globbing obj/*.o
         "obj/io.o",
         "obj/string.o",
-        "obj/misc.o",
         "obj/ref.o",
         "obj/hash.o",
         "obj/numbers.o",

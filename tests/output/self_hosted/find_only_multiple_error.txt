@@ -1,2 +1,2 @@
-find_only: item found multiple times
+tests/.oomph-cache/.../find_only_multiple_error: find_only: item found multiple times
 Program exited with status 1
