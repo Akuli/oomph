@@ -1,0 +1,4 @@
+export func main():
+    let thing = 1
+    print(-(-thing))   # This works
+    print(--thing)     # This errors

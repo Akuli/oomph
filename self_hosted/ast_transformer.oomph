@@ -102,6 +102,8 @@ class AstTransformer(Int varname_counter):
                 return self.visit_expression(self.handle_listcomp(listcomp))
             case ast::ListLiteral list:
                 list.content = self.visit_expressions(list.content)
+            case ast::Parenthesized parened:
+                return self.visit_expression(parened.content)
             case ast::StatementsAndExpression sae:
                 sae.statements = self.visit_statements(sae.statements)
                 sae.expression = self.visit_expression(sae.expression)

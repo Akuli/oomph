@@ -6,6 +6,14 @@ import "tokenizer.oomph" as tokenizer
 # token is e.g. "+" or "as"
 typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
 
+# TODO: shouldn't be needed
+func is_mod(ast::Expression expr) -> Bool:
+    switch expr:
+        case ast::BinaryOperator binop:
+            return binop.op == "mod"
+        case *:
+            return false
+
 func add_string(List[ast::Expression] parts, Str suffix, error::Location location):
     if parts != []:
         switch parts.last():
@@ -174,27 +182,34 @@ class Parser(List[tokenizer::Token] tokens):
             let result = self.do_string_contents(
                 token.location.remove_prefix("\"").remove_suffix("\""),
             )
+
         elif self.peek().type == "multiline_string":
             let token = self.get_token_by_type("multiline_string")
             result = self.do_string_contents(
                 token.location.remove_prefix("\"\"\"").remove_suffix("\"\"\""),
             )
+
         elif self.peek().type == "id":
             let token = self.get_token_by_type("id")
             result = new ast::GetVar(token.location, token.value)
+
         elif self.peek().type == "int":
             let token = self.get_token_by_type("int")
             result = new ast::IntConstant(token.location, token.value.to_int())
+
         elif self.peek().type == "float":
             let token = self.get_token_by_type("float")
             result = new ast::FloatConstant(token.location, token.value)
+
         elif self.peek().matches("keyword", "new"):
             let new_keyword = self.get_token("keyword", "new")
             result = new ast::Constructor(new_keyword.location, self.parse_type())
+
         elif self.peek().matches("op", "("):
             self.get_token("op", "(")
-            result = self.parse_expression(null)
+            result = new ast::Parenthesized(self.parse_expression(null))
             self.get_token("op", ")")
+
         elif self.peek().matches("op", "["):
             let square_bracket = self.get_token("op", "[")
             if (
@@ -274,8 +289,7 @@ class Parser(List[tokenizer::Token] tokens):
             return i
         return null
 
-    # TODO: make sure this errors enough
-    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] unary, List[Str] binary):
+    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] unary, List[Str] binary, Bool allow_chains):
         while magic_list.length() >= 2:
             let un_or_null = self.find_unary_operator(magic_list, unary)
             let bin_or_null = self.find_binary_operator(magic_list, binary)
@@ -303,6 +317,30 @@ class Parser(List[tokenizer::Token] tokens):
                 let lhs = lhs_op_rhs.first() as ast::Expression
                 let op = lhs_op_rhs.get(1) as tokenizer::Token
                 let rhs = lhs_op_rhs.last() as ast::Expression
+                let location = ast::locate_expression(lhs).combine(ast::locate_expression(rhs))
+
+                switch lhs:
+                    case ast::BinaryOperator binop:
+                        if binop.op in binary and not allow_chains:
+                            if binop.op in ["and", "or"]:
+                                location.error(
+                                    "'a {binop.op} b {op.value} c' is ambiguous, " +
+                                    "please add more parentheses"
+                                )
+                            else:
+                                location.error(
+                                    "'a {binop.op} b {op.value} c' is not supported, " +
+                                    "did you mean 'a {binop.op} b and b {binop.op} c'?"
+                                )
+                    case *:
+                        pass
+
+                if op.value == "==" and is_mod(rhs) and not is_mod(lhs):
+                    location.error(
+                        "'a == b mod c' is ambiguous, " +
+                        "use e.g. 'a == (b mod c)' or '(a mod c) == (b mod c)' instead"
+                    )
+
                 magic_list.insert(i, new ast::BinaryOperator(op.location, lhs, op.value, rhs))
             else:
                 break
@@ -354,15 +392,30 @@ class Parser(List[tokenizer::Token] tokens):
                 magic_list.push_all(self.get_unary_operators())
                 magic_list.push(self.parse_simple_expression(error_message.get()))
 
-        self.eliminate_operators(magic_list, [], ["*", "/"])
-        self.eliminate_operators(magic_list, ["-"], ["+", "-"])
-        self.eliminate_operators(magic_list, [], ["mod"])
-        self.eliminate_operators(magic_list, [], ["==", "!="])
-        self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="])
+        # FIXME: this nestedness sucks in many ways
+        for let i = 1; i < magic_list.length(); i = i+1:
+            switch magic_list.get(i-1):
+                case tokenizer::Token op1:
+                    switch magic_list.get(i):
+                        case tokenizer::Token op2:
+                            if op1.value == "-" and op2.value == "-":
+                                op1.location.combine(op2.location).error(
+                                    "sorry, --x is not supported :("
+                                )
+                        case *:
+                            pass
+                case *:
+                    pass
+
+        self.eliminate_operators(magic_list, [], ["*", "/"], true)
+        self.eliminate_operators(magic_list, ["-"], ["+", "-"], true)
+        self.eliminate_operators(magic_list, [], ["mod"], false)
+        self.eliminate_operators(magic_list, [], ["==", "!="], false)
+        self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="], false)
         self.eliminate_as(magic_list)
-        self.eliminate_operators(magic_list, [], ["in", "not in"])
-        self.eliminate_operators(magic_list, ["not"], [])
-        self.eliminate_operators(magic_list, [], ["and", "or"])
+        self.eliminate_operators(magic_list, [], ["in", "not in"], false)
+        self.eliminate_operators(magic_list, ["not"], [], false)
+        self.eliminate_operators(magic_list, [], ["and", "or"], false)
 
         if magic_list.length() != 1:
             print(magic_list)

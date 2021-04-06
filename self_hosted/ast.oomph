@@ -31,6 +31,7 @@ export typedef Expression = (
     | IntConstant
     | ListComprehension
     | ListLiteral
+    | Parenthesized     # makes error handling easier in parser.oomph
     | StatementsAndExpression
     | StringConstant
     | StringFormatJoin
@@ -73,6 +74,7 @@ export class GetVar(error::Location location, Str varname)
 export class IntConstant(error::Location location, Int value)
 export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(error::Location location, List[Expression] content)
+export class Parenthesized(Expression content)
 export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
 export class StringConstant(error::Location location, Str value)
 export class StringFormatJoin(error::Location location, List[Expression] parts)  # always >=2 parts
@@ -126,6 +128,8 @@ export func locate_expression(Expression expression) -> error::Location:
             return locate_loop_header(expr.loop_header)
         case ListLiteral expr:
             return expr.location
+        case Parenthesized parened:
+            return locate_expression(parened.content)
         case StatementsAndExpression expr:
             return expr.location
         case StringConstant expr:
