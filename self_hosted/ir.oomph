@@ -50,7 +50,7 @@ export class UnionType(
 ):
     # Helps with reference cycles
     meth to_string() -> Str:
-        return "<UnionType: custom_name={self.custom_name}>"
+        return "<UnionType {type_name(self)}: custom_name={self.custom_name}>"
 
     meth equals(UnionType other) -> Bool:
         return self.type_members == other.type_members

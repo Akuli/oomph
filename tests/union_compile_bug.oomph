@@ -1,0 +1,5 @@
+export class Foo()
+export class Bar(Foo | Bar arg)
+
+export func main():
+    pass

@@ -271,29 +271,22 @@ class _FilePair:
             return "bool"
         if the_type is NULL_TYPE:
             return "char"  # always zero
+        if the_type is STRING:
+            return "struct class_Str"
+        assert the_type not in builtin_types.values()
 
-        if the_type in builtin_types.values():
-            type_id = the_type.name
-            need_include = False
-        else:
-            defining_file_pair = self.session.get_file_pair_for_type(the_type)
-            type_id = defining_file_pair.id
-            need_include = defining_file_pair is not self
+        defining_file_pair = self.session.get_file_pair_for_type(the_type)
+        result = f"struct class_{defining_file_pair.id}"
 
-        result = f"struct class_{type_id}"
-        if (
-            the_type.refcounted
-            and the_type != STRING
-            and not isinstance(the_type, UnionType)
-        ):
+        if the_type.refcounted and not isinstance(the_type, UnionType):
             result += "*"
         else:
             can_fwd_declare_in_header = False
 
-        if need_include:
+        if defining_file_pair is not self:
             self.c_includes.add(defining_file_pair)
             if can_fwd_declare_in_header:
-                self.h_fwd_decls += f"struct class_{type_id};\n"
+                self.h_fwd_decls += f"struct class_{defining_file_pair.id};\n"
             else:
                 self.h_includes.add(defining_file_pair)
         return result

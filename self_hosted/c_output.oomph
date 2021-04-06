@@ -277,6 +277,7 @@ class FilePair(
             return "struct class_Str"  # TODO: rename the struct?
         if type == self.session.builtins.NULL_TYPE:
             return "char"  # always zero
+        assert(type not in self.session.builtins.get_builtin_types())
 
         let defining_file_pair = self.session.type_to_file_pair(type)
         let result = "struct class_{defining_file_pair.id}"
@@ -773,7 +774,7 @@ export class Session(
                 h_includes.push(builtins_pair.id + ".h")
 
             c_includes.push_all([foreach pair of file_pair.c_includes: pair.id + ".h"])
-            h_includes.push_all([foreach pair of file_pair.c_includes: pair.id + ".h"])
+            h_includes.push_all([foreach pair of file_pair.h_includes: pair.id + ".h"])
 
             # TODO: https://github.com/Akuli/oomph/issues/80
             if file_pair.struct == null:
