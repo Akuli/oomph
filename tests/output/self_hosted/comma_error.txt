@@ -3,4 +3,3 @@ tests/comma_error.oomph:2: error: should be an expression
     print([,])
            ^
 
-assert() failed in "self_hosted/error.oomph", line N

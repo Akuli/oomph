@@ -3,4 +3,3 @@ tests/leading_indent_with_comment_error.oomph:2: error: should be function, clas
         export func main():
     ^^^^
 
-assert() failed in "self_hosted/error.oomph", line N

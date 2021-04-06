@@ -3,4 +3,3 @@ tests/wrong_args_method_error.oomph:2: error: expected 1 argument, got 2
     print("asdf".split("a", "b"))
            ^^^^^^^^^^^^
 
-assert() failed in "self_hosted/error.oomph", line N

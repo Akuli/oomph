@@ -3,4 +3,3 @@ tests/line_continuation_error.oomph:3: error: string does not terminate
     print("Hello \
           ^^^^^^^^
 
-assert() failed in "self_hosted/error.oomph", line N

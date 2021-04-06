@@ -3,4 +3,3 @@ tests/paren_unclosed_error.oomph:1: error: missing ')'
     ([]
     ^
 
-assert() failed in "self_hosted/error.oomph", line N

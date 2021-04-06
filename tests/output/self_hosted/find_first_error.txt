@@ -1,3 +1,2 @@
 find_first: item not found
 Program 'tests/.oomph-cache/find_first_error_compilation0/find_first_error' exited with status 1
-assert() failed in "self_hosted/main.oomph", line N

@@ -3,4 +3,3 @@ tests/wrong_args_auto_error.oomph:4: error: expected 1 argument, got 2
     lel.remove_prefix("foo", "bar")
     ^^^^^^^^^^^^^^^^^^
 
-assert() failed in "self_hosted/error.oomph", line N
