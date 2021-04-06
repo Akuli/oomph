@@ -1,2 +1,2 @@
 # Tests for self-hosted compiler only
-tests/oomphc_help.oomph
+tests/oomphc_cmdline.oomph
