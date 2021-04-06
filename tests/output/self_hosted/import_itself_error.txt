@@ -1,2 +1,2 @@
 cyclic imports: tests/import_itself_error.oomph --> tests/import_itself_error.oomph
-assert() failed in "self_hosted/main.oomph", line N
+./oomphc: assert() failed in "self_hosted/main.oomph", line N

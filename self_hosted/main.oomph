@@ -73,7 +73,6 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
         # FIXME: hard-coded list of globbing obj/*.o
         "obj/io.o",
         "obj/string.o",
-        "obj/misc.o",
         "obj/ref.o",
         "obj/hash.o",
         "obj/numbers.o",
@@ -183,7 +182,7 @@ func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> Lis
 class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str] program_args)
 
 func parse_args() -> Args:
-    let usage = "Usage: {__argv_get(0)} [compiler args] program.oomph [program args]"
+    let usage = "Usage: {process::program_name()} [compiler args] program.oomph [program args]"
     let infile = new (Str | null)(null)
     let outfile = new (Str | null)(null)
     let valgrind = ""
@@ -193,7 +192,6 @@ func parse_args() -> Args:
     let args = process::get_args().reversed()
     while args != []:
         if args.last() == "--help":
-            # FIXME: __argv_get shouldn't be used directly
             print("""{usage}
 
 Compiler arguments:

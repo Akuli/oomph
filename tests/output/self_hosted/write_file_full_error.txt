@@ -1,2 +1,2 @@
-writing to file "/dev/full" failed (errno 28: No space left on device)
+tests/.oomph-cache/.../write_file_full_error: writing to file "/dev/full" failed (errno 28: No space left on device)
 Program exited with status 1

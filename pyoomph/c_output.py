@@ -524,7 +524,7 @@ class _FilePair:
                 {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
                 {{
                     if (obj.membernum == 0)
-                        panic_printf("Error: null.get() was called");
+                        panic_printf("null.get() was called");
                     assert(obj.membernum == 1);
                     {self.session.emit_incref('obj.val.item1', itemtype)};
                     return obj.val.item1;
