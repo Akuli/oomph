@@ -219,7 +219,7 @@ export class Builtins(
             new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
             new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
             new Method("delete_first", new FunctionType([r, arg], null)),
-            new Method("delete_first", new FunctionType([r, arg], null)),
+            new Method("delete_last", new FunctionType([r, arg], null)),
             new Method("delete_only", new FunctionType([r, arg], null)),
             new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
             new Method("ends_with", new FunctionType([r, r], self.BOOL)),
