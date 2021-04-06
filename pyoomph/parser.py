@@ -429,9 +429,6 @@ class _Parser:
         return ast.NamedType(name)
 
     def parse_type(self) -> ast.Type:
-            self.get_token("keyword", "noreturn")
-            return ast.NamedType("null")
-
         first_member = self.parse_type_without_unions()
         if self.token_iter.peek() != ("op", "|"):
             return first_member
