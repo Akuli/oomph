@@ -99,8 +99,7 @@ export func get_constructor_argtypes(Type type) -> List[Type] | null:
         case FunctionType functype:
             return null
         case UnionType uniontype:
-            # Special-cased in ast2ir because multiple possibilities
-            # TODO: rely on implicit conversions and return [type] maybe?
+            # Special-cased in ast2ir
             assert(false)
 
 export func type_name(Type type) -> Str:
