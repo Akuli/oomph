@@ -725,7 +725,7 @@ class FunctionOrMethodConverter(
                 self.code.push(cond_label)
                 if header.cond == null:
                     let cond_var = self.create_var(
-                        self.builtins.BOOL, ast::locate_expression(header.cond.get())
+                        self.builtins.BOOL, header.keyword_location
                     )
                     self.code.push(new ir::VarCpy(
                         cond_var, self.builtins.get_visible_var("true")
