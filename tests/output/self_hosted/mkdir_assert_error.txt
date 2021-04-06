@@ -1,0 +1,3 @@
+assert() failed in "tests/mkdir_assert_error.oomph", line N
+Program 'tests/.oomph-cache/mkdir_assert_error_compilation0/mkdir_assert_error' exited with status 1
+assert() failed in "self_hosted/main.oomph", line N

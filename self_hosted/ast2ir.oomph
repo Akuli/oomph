@@ -334,7 +334,13 @@ class FunctionOrMethodConverter(
                         ast_function.location.error("print must be called with 1 argument")
                     args = [foreach arg of args: self.stringify(arg)]
                 else:
-                    # TODO: special-casing of assert
+                    if function == self.builtins.get_visible_var("assert"):
+                        if args.length() != 1:
+                            ast_function.location.error("assert must be called with 1 argument")
+                        # Add path and line number args
+                        let loc = ast_function.location
+                        args.push(self.do_expression(new ast::StringConstant(loc, loc.path)))
+                        args.push(self.do_expression(new ast::IntConstant(loc, loc.lineno)))
                     args = self.do_args(
                         args,
                         functype.argtypes,
