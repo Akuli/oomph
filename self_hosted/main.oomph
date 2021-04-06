@@ -182,7 +182,7 @@ func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> Lis
 class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str] program_args)
 
 func parse_args() -> Args:
-    let usage = "Usage: {process::get_program_name()} [compiler args] program.oomph [program args]"
+    let usage = "Usage: {process::program_name()} [compiler args] program.oomph [program args]"
     let infile = new (Str | null)(null)
     let outfile = new (Str | null)(null)
     let valgrind = ""

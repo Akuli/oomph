@@ -8,7 +8,7 @@ export func get_args() -> List[Str]:
         args.push(__argv_get(i))
     return args
 
-export func get_program_name() -> Str:
+export func program_name() -> Str:
     return __argv_get(0)
 
 export func exit(Int status):
