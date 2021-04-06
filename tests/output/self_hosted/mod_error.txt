@@ -1,0 +1,5 @@
+tests/mod_error.oomph:2: error: 'a == b mod c' is ambiguous, use e.g. 'a == (b mod c)' or '(a mod c) == (b mod c)' instead
+
+    if 4 == 1 mod 3:
+       ^^^^^^^^^^^^
+

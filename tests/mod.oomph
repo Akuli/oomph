@@ -16,3 +16,7 @@ export func main():
     print(-1.5 mod 2.5)
     print(1 mod -2.5)
     print(-1.5 mod -2.5)
+
+    # This is a syntax error without extra parentheses, see mod_error.oomph
+    print(4 == (1 mod 3))
+    print(1 == (4 mod 3))

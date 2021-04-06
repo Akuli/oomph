@@ -6,6 +6,14 @@ import "tokenizer.oomph" as tokenizer
 # token is e.g. "+" or "as"
 typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
 
+# TODO: shouldn't be needed
+func is_mod(ast::Expression expr) -> Bool:
+    switch expr:
+        case ast::BinaryOperator binop:
+            return binop.op == "mod"
+        case *:
+            return false
+
 func add_string(List[ast::Expression] parts, Str suffix, error::Location location):
     if parts != []:
         switch parts.last():
@@ -310,15 +318,20 @@ class Parser(List[tokenizer::Token] tokens):
                 let lhs = lhs_op_rhs.first() as ast::Expression
                 let op = lhs_op_rhs.get(1) as tokenizer::Token
                 let rhs = lhs_op_rhs.last() as ast::Expression
+                let location = ast::locate_expression(lhs).combine(ast::locate_expression(rhs))
 
                 switch lhs:
                     case ast::BinaryOperator binop:
                         if binop.op in binary and not allow_chains:
-                            ast::locate_expression(lhs).combine(ast::locate_expression(rhs)).error(
-                                "'a {binop.op} b {op.value} c' is ambiguous, please add more parentheses"
-                            )
+                            location.error("'a {binop.op} b {op.value} c' is ambiguous, please add more parentheses")
                     case *:
                         pass
+
+                if op.value == "==" and is_mod(rhs) and not is_mod(lhs):
+                    location.error(
+                        "'a == b mod c' is ambiguous, " +
+                        "use e.g. 'a == (b mod c)' or '(a mod c) == (b mod c)' instead"
+                    )
 
                 magic_list.insert(i, new ast::BinaryOperator(op.location, lhs, op.value, rhs))
             else:
