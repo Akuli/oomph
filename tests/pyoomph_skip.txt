@@ -1,0 +1,2 @@
+# Tests for self-hosted compiler only
+tests/oomphc_help.oomph
