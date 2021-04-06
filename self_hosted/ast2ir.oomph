@@ -1088,7 +1088,6 @@ class FileConverter(
     meth func_or_meth_step3(ast::FuncOrMethodDef def, ir::BasicType | null classtype):
         switch def.returntype:
             case ast::Type type:
-                # FIXME: new (auto | null)(null) doesn't work here
                 let returntype = new (ir::Type | ir::NoReturn | null)(self.get_type(type, null))
             case ast::NoReturn _:
                 returntype = new ir::NoReturn()
