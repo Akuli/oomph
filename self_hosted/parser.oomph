@@ -339,7 +339,6 @@ class Parser(List[tokenizer::Token] tokens):
                             elif how2chain == "left_operator_first":
                                 pass
                             else:
-                                print("*** {how2chain}")
                                 assert(false)
                     case *:
                         pass
