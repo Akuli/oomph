@@ -388,7 +388,7 @@ class FilePair(
         let varname = create_id("string" + self.strings.find_only(value).to_string() + shortened, value)
 
         if first_time_with_this_value:
-            let content_chars = [foreach c of value.get_utf8(): c.to_string()]
+            let content_chars = [foreach c of value.get_utf8(): "(char){c}"]
             if content_chars == []:
                 content_chars.push("0")  # empty c arrays aren't a thing
 
