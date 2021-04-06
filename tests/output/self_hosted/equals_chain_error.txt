@@ -1,0 +1,5 @@
+tests/equals_chain_error.oomph:2: error: 'a == b == c' is not supported, did you mean 'a == b and b == c'?
+
+    print(1 == 2 == 3)
+          ^^^^^^^^^^^
+

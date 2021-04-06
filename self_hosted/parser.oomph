@@ -323,7 +323,16 @@ class Parser(List[tokenizer::Token] tokens):
                 switch lhs:
                     case ast::BinaryOperator binop:
                         if binop.op in binary and not allow_chains:
-                            location.error("'a {binop.op} b {op.value} c' is ambiguous, please add more parentheses")
+                            if binop.op in ["and", "or"]:
+                                location.error(
+                                    "'a {binop.op} b {op.value} c' is ambiguous, " +
+                                    "please add more parentheses"
+                                )
+                            else:
+                                location.error(
+                                    "'a {binop.op} b {op.value} c' is not supported, " +
+                                    "did you mean 'a {binop.op} b and b {binop.op} c'?"
+                                )
                     case *:
                         pass
 
