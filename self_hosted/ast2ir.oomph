@@ -33,6 +33,16 @@ func find_variable(
     location.get().error("variable not found: {name}")
 
 
+# Returns the same result every time, regardless of order of input list
+func pick_one_autotype(List[ir::AutoType] autotypes) -> ir::AutoType:
+    # TODO: would be so nice to write 'return autotypes.min(.id)
+    let result = autotypes.first()
+    foreach autotype of autotypes:
+        if autotype.id < result.id:
+            result = autotype
+    return result
+
+
 class FunctionOrMethodConverter(
     ir::Builtins builtins,
     FileConverter file_converter,
@@ -93,9 +103,7 @@ class FunctionOrMethodConverter(
                     if resolve.autotype == autotype:
                         return resolve.actual
                 assert(not must_succeed)
-                # TODO: Return exactly one of all matching autotypes consistently
-                #return min(self.get_matching_autotype_list(type), key=id)
-                return type
+                return pick_one_autotype(self.get_matching_autotype_list(autotype))
             case *:
                 pass
 
@@ -225,7 +233,7 @@ class FunctionOrMethodConverter(
 
         switch target_type:
             case ir::UnionType target_union:
-                # FIXME: cyclicly nested unions
+                # TODO: cyclicly nested unions?
                 # TODO: simplify the spec plz
                 let result_path = new (List[ir::UnionType] | null)(null)
                 let todo_paths = [[target_union]]
