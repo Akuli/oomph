@@ -23,8 +23,8 @@ export class GenericSource(Generic generik, Type arg):
 export class BasicType(
     Str name,
     Bool refcounted,
-    List[Method] methods,  # TODO: get rid of this
-    List[Member] members,  # TODO: get rid of this
+    List[Method] methods,
+    List[Member] members,
     List[Type] | null constructor_argtypes,
     GenericSource | null generic_source,
     Str | null definition_path,  # null for builtin
