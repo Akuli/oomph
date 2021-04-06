@@ -35,10 +35,8 @@ Known bugs:
 - The `export` keyword does nothing, and all symbols are visible
 
 Missing features:
-- `or_if_null_then` method: `optional.or_if_null_then(default)` ([#80](https://github.com/Akuli/oomph/issues/80))
 - safe and unsafe (user-input) strings: would prevent a lot of security problems
 - nicer unpacking: `let [lhs, op, rhs] = list.slice(i, i+3)`
-- `[first_foo, ...other_foos]` syntax
 - functions as first-class objects
 - better error messaging
 - `>>>` prompt
@@ -65,7 +63,7 @@ Missing features:
     - js-style methods (needs lambdas)
         - idea: `foo.map(.to_string())` would be same as `foo.map(item => item.to_string())`
         - list comprehensions still needed?
-    - `list + list`
+    - `list + list` or `[first_foo, ...other_foos]` syntax? or both?
 - generics
     - defining generic classes or functions
     - tuples
@@ -80,9 +78,8 @@ Missing features:
       when it isn't, variables magically change type to get rid of `Optional`
         - Leads to `while x`, `if x` and `assert x` (or `assert(x)`)
         - Or without optional as boolean interpreting: explicit `while x != null` etc
-    - rename `Optional.get()` to `.get_not_null_value()` to make it stand out
-      in code reviews as possible bug
 - defining non-ref-counted pass-by-value classes
+    - would be useful for views into data that don't require allocations
 - exceptions (easiest to implement similar to union?)
 - compilation errors or warnings for bad/unconventional/complicated style
     - `string.length() == 0` is more complicated than `string == ""`, same for lists
@@ -92,6 +89,14 @@ Missing features:
     - using `foo` inside `switch foo:`
     - `if a != b: ... else: ...` is more complicated than `a == b` with `...` swapped
 - disallow `not a and b`? i always write it as `(not a) and b`
+    - ...except in things like this:
+        ```
+        return (
+            not foo
+            and not bar
+            and not baz
+        )
+        ```
 - warnings about unused things (unions, classes, functions, methods, variables, arguments)
 - `case Foo(Str x, Int y):`
     - combined with unused variable warnings, it is impossible to accidentally forget
@@ -110,31 +115,21 @@ Design questions to (re)think:
 - `from "lib.oomph" import foo` syntax?
     - Advantage: no need to write `lib::` in front of everything, can improve readability
     - Disadvantage: makes things more complicated in several ways
-        - Imports can't be sorted line-by-line alphabetically
         - An import can span multiple lines, with lots of stuff imported
+            - Breaks line-by-line sorting
         - More work to implement
-- `union` syntax: should it be one-line `Union(Foo, Bar)`
-    instead of `Foo` and `Bar` on separate lines?
+    - If each import is one line, imports can still be sorted line-by-line alphabetically,
+        and `from` imports will go first
 - rename `switch` to `match`? note that `match` is a beautiful variable name
-- `in` operator: `a in b` vs `b.contains(a)`
 - tempting to use `func` as variable name
-- should union types show up as such when printed, like they do? or should
-    `print(new Optional[int](null))` just print `null`?
+- union types likely shouldn't show up when printed, `print(new (int | null)(null))` just print `null`
 - name of `self`? maybe `instance` or `this`? also considered `inst`, but that's too short
 - some kind of `do,while` loops? I don't like how in Python, you need to use `break` if
     you want multiple lines of code before the condition of a loop.
-- should string lengths and indexing be done in unicode code points instead of
-  utf-8 bytes?
-    - Advantage: easier to understand
-    - Advantage: slicing or indexing never fails due to being in the middle of a
-      character
-    - Disadvantage: slightly slower in programs that input and output utf-8 strings
-        - Maybe store strings as utf-8, but somehow hopefully-not-shittily make
-          indexing work with unicode code points?
 - More agressively prevent variables from leaking: if variable defined inside
   `if`, not visible outside by default? Or at least can be overwritten with
   another `let`?
-- Negative indexes? The downside is that `thing[-n:]` (in Python syntax) doesn't do
+- Negative list indexes? The downside is that `thing[-n:]` (in Python syntax) doesn't do
   what you would expect when `n=0`.
 - Mutable objects as arguments: yes or no? Mutable aliasing can be confusing, but efficient
 
@@ -142,14 +137,12 @@ Optimization ideas:
 - avoiding allocations when an object isn't passed around and no reference
   counting is actually needed
     - In particular, `thing == []` does not have to allocate
-- strings: some kind of string views, so that `foo.remove_prefix(bar)` does not have to copy many characters of data
-    - basically #66 for strings
 - concatenating `n` strings in `O(n)` time instead of the current `O(n^2)`
     - `List[Str].join` and various other functions
-- caching `strlen` result
 - for pointer types, use C `NULL` to represent `null`, instead of a funny union
 - streams, as an alternative to lists
-    - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms
+    - doesn't seem to turn `O(n^2)` algorithms into `O(n)` algorithms, unless you e.g.
+        use only the first element of the stream
 - `(a / b).floor()` with integers `a` and `b` doesn't have to involve floats at runtime
 - `foo.split(bar).first()` creates unnecessary list, e.g. with empty `bar` this is
     linear time but could be optimized to constant time
