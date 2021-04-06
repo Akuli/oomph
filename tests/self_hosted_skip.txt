@@ -9,12 +9,10 @@ tests/autotype_method_error.oomph
 tests/autotype_not_enough_info_error.oomph
 tests/eq_error.oomph
 tests/int_eq_str_error.oomph
-tests/loop.oomph
 tests/missing_case_error.oomph
 tests/name_conflict_bug.oomph
 tests/notin_location.oomph
 tests/optional_compare_error.oomph
 tests/return_type_error.oomph
-tests/switch_in_loop.oomph
 tests/union.oomph
 tests/weird_minus_error.oomph
