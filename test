@@ -141,27 +141,12 @@ function run_tests_with_given_compiler()
             continue
         elif ! grep -q "^$file" $skiplist; then
             if [[ $file == tests/*_error.oomph ]]; then
-                run check \
-                    "$file" \
-                    "$compiler $file" \
-                    "$failure_boilerplate" \
-                    "$failure_output_dir" \
-                    should_fail
+                run check "$file" "$compiler $file" "$failure_boilerplate" "$failure_output_dir" should_fail
             elif [[ $file == tests/exit*.oomph ]]; then
                 # Do not valgrind, early exiting is supposed to "leak" memory
-                run check \
-                    "$file" \
-                    "$compiler $file" \
-                    "" \
-                    tests/output/common \
-                    should_succeed
+                run check "$file" "$compiler $file" "" tests/output/common should_succeed
             else
-                run check \
-                    "$file" \
-                    "$compiler $compiler_valgrind_arg $file" \
-                    "" \
-                    tests/output/common \
-                    should_succeed
+                run check "$file" "$compiler $compiler_valgrind_arg $file" "" tests/output/common should_succeed
             fi
         fi
     done
