@@ -3,3 +3,4 @@ tests/loop_var_leak_error.oomph:4: error: variable not found: i
     print(i)
           ^
 
+assert() failed in "self_hosted/error.oomph", line N

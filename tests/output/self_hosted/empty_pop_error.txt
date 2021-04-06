@@ -1,0 +1,3 @@
+pop from empty list
+Program 'tests/.oomph-cache/empty_pop_error_compilation0/empty_pop_error' exited with status 1
+assert() failed in "self_hosted/main.oomph", line N

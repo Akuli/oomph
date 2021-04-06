@@ -1,0 +1,3 @@
+opening file "/foo" failed (errno 13: Permission denied)
+Program 'tests/.oomph-cache/write_file_permission_error_compilation0/write_file_permission_error' exited with status 1
+assert() failed in "self_hosted/main.oomph", line N

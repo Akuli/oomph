@@ -1,0 +1,2 @@
+cyclic imports: tests/cyclic1_error.oomph --> tests/cyclic2_error.oomph --> tests/cyclic3_error.oomph --> tests/cyclic2_error.oomph
+assert() failed in "self_hosted/main.oomph", line N

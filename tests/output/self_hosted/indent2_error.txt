@@ -3,3 +3,4 @@ tests/indent2_error.oomph:4: error: indentation must be a multiple of 4 spaces
           print("lol")
     ^^^^^^
 
+assert() failed in "self_hosted/error.oomph", line N

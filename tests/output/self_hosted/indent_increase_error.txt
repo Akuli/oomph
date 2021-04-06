@@ -3,3 +3,4 @@ tests/indent_increase_error.oomph:3: error: indent without ':' at end of previou
             print("wat")
     ^^^^^^^^
 
+assert() failed in "self_hosted/error.oomph", line N

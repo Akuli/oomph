@@ -3,3 +3,4 @@ tests/leading_indent_error.oomph:1: error: should be function, class, union or t
         export func main():
     ^^^^
 
+assert() failed in "self_hosted/error.oomph", line N

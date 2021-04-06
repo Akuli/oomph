@@ -3,3 +3,4 @@ tests/wrong_args_print_error.oomph:2: error: print must be called with 1 argumen
     print("a", "b")
     ^^^^^
 
+assert() failed in "self_hosted/error.oomph", line N

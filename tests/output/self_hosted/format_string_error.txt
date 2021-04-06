@@ -3,3 +3,4 @@ tests/format_string_error.oomph:2: error: invalid syntax
     print("foo {$} bar")
                 ^
 
+assert() failed in "self_hosted/error.oomph", line N

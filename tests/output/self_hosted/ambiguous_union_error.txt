@@ -3,3 +3,4 @@ tests/ambiguous_union_error.oomph:7: error: wrong type: should be Ambiguous, but
     blah("lol")
           ^^^
 
+assert() failed in "self_hosted/error.oomph", line N

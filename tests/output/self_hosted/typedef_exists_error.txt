@@ -3,3 +3,4 @@ tests/typedef_exists_error.oomph:1: error: type 'Int' already exists
     typedef Int = Str
     ^^^^^^^
 
+assert() failed in "self_hosted/error.oomph", line N

@@ -3,3 +3,4 @@ tests/python_listcomp_error.oomph:5: error: should be ']'
     print([x+1 foreach x of foo])
                ^^^^^^^
 
+assert() failed in "self_hosted/error.oomph", line N

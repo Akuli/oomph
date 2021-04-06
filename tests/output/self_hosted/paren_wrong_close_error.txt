@@ -3,3 +3,4 @@ tests/paren_wrong_close_error.oomph:1: error: '(' and ']' don't match
     (]
      ^
 
+assert() failed in "self_hosted/error.oomph", line N

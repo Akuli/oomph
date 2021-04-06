@@ -3,3 +3,4 @@ tests/indent_error.oomph:2: error: indentation must be a multiple of 4 spaces
       print("js")
     ^^
 
+assert() failed in "self_hosted/error.oomph", line N

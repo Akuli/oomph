@@ -3,3 +3,4 @@ tests/bad_expression_error.oomph:2: error: should be an expression
     print(case)
           ^^^^
 
+assert() failed in "self_hosted/error.oomph", line N
