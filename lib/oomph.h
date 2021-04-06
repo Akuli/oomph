@@ -7,11 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
-
-#ifndef noreturn
 #include <stdnoreturn.h>
-#endif
+#include <string.h>
 
 #define REFCOUNT_HEADER int64_t refcount;
 
