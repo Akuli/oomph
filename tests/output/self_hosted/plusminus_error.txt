@@ -1,0 +1,5 @@
+tests/plusminus_error.oomph:4: error: '+-' is not supported
+
+    print(1 +- 2)
+            ^^
+

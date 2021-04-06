@@ -394,9 +394,9 @@ class Parser(List[tokenizer::Token] tokens):
                 case tokenizer::Token op1:
                     switch magic_list.get(i):
                         case tokenizer::Token op2:
-                            if op1.value == "-" and op2.value == "-":
+                            if op1.value in ["+", "-"] and op2.value == "-":
                                 op1.location.combine(op2.location).error(
-                                    "sorry, --x is not supported :("
+                                    "'{op1.value}{op2.value}' is not supported"
                                 )
                         case *:
                             pass

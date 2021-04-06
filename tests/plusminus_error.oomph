@@ -1,0 +1,4 @@
+# Sometimes people ask "does Python have +-". It doesn't, but 'x +- y' is not
+# an error; it computes 'x + (-y)'.
+export func main():
+    print(1 +- 2)
