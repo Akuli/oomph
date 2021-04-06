@@ -17,4 +17,6 @@ Compiler arguments:
 Usage: ./oomphc [compiler args] program.oomph [program args]
 ./oomphc: unknown argument '--lolwat' (see --help)
 ./oomphc: need path after -o/--outfile (see --help)
-Exit statuses: [0, 2, 2, 2]
+./oomphc: need path after -o/--outfile (see --help)
+./oomphc: need command after --valgrind (see --help)
+Exit statuses: [0, 2, 2, 2, 2, 2]

@@ -7,5 +7,7 @@ export func main():
         process::run(["./oomphc"]),
         process::run(["./oomphc", "--lolwat"]),
         process::run(["./oomphc", "-o"]),
+        process::run(["./oomphc", "--outfile"]),
+        process::run(["./oomphc", "--valgrind"]),
     ]
     print("Exit statuses: {statuses}")
