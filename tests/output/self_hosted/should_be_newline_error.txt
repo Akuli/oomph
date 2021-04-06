@@ -3,4 +3,3 @@ tests/should_be_newline_error.oomph:1: error: should be newline
     typedef Foo = Bar Baz
                       ^^^
 
-assert() failed in "self_hosted/error.oomph", line N

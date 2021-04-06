@@ -3,4 +3,3 @@ tests/assert_wrong_args_error.oomph:2: error: assert must be called with 1 argum
     assert(true, "lol")
     ^^^^^^
 
-assert() failed in "self_hosted/error.oomph", line N

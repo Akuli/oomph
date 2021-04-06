@@ -7,3 +7,6 @@ export func get_args() -> List[Str]:
     for let i = 1; i < n; i = i+1:  # skip argv[0]
         args.push(__argv_get(i))
     return args
+
+export func exit(Int status):
+    __exit(status)

@@ -293,6 +293,7 @@ export func create_builtins() -> Builtins:
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
         new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
+        new BuiltinVariable("__exit", new FunctionType([INT], null)),
         new BuiltinVariable("__get_first_char", new FunctionType([STR], STR)),
         new BuiltinVariable("__get_utf8_byte", new FunctionType([STR, INT], INT)),
         new BuiltinVariable("__hash", new FunctionType([STR, STR], STR)),

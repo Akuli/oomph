@@ -3,4 +3,3 @@ tests/invalid_token_error.oomph:2: error: invalid syntax
     lol $
         ^
 
-assert() failed in "self_hosted/error.oomph", line N

@@ -1,3 +1,2 @@
 find_only: item found multiple times
-Program 'tests/.oomph-cache/find_only_multiple_error_compilation0/find_only_multiple_error' exited with status 1
-assert() failed in "self_hosted/main.oomph", line N
+Program exited with status 1

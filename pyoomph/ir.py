@@ -52,6 +52,7 @@ visible_builtins = {
     for var in [
         BuiltinVariable("__argv_count", FunctionType([], INT)),
         BuiltinVariable("__argv_get", FunctionType([INT], STRING)),
+        BuiltinVariable("__exit", FunctionType([INT], None)),
         BuiltinVariable("__get_first_char", FunctionType([STRING], STRING)),
         BuiltinVariable("__get_utf8_byte", FunctionType([STRING, INT], INT)),
         BuiltinVariable("__hash", FunctionType([STRING, STRING], STRING)),

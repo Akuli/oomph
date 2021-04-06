@@ -3,4 +3,3 @@ tests/undef_var_error.oomph:2: error: variable not found: my_ass
     print(my_ass)
           ^^^^^^
 
-assert() failed in "self_hosted/error.oomph", line N

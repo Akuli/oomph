@@ -1,4 +1,5 @@
 import "<stdlib>/io.oomph" as io
+import "<stdlib>/process.oomph" as process
 
 # Line in file, with location pointing at BLAH:
 #
@@ -37,7 +38,7 @@ export class Location(Str path, Int lineno, Str line_prefix, Str code):
 
     meth error(Str message):
         self.print_error(message)
-        assert(false)  # TODO: better way to exit process
+        process::exit(1)
 
     meth remove_prefix(Str prefix) -> Location:
         assert(self.code.starts_with(prefix))

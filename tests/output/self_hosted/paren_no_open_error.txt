@@ -3,4 +3,3 @@ tests/paren_no_open_error.oomph:1: error: no matching '('
     )
     ^
 
-assert() failed in "self_hosted/error.oomph", line N

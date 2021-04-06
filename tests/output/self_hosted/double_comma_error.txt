@@ -3,4 +3,3 @@ tests/double_comma_error.oomph:2: error: should be an expression
     print("foo",,)
                 ^
 
-assert() failed in "self_hosted/error.oomph", line N

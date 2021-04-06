@@ -259,7 +259,9 @@ export func main():
     let exe_path = session.compilation_dir + "/" + infile_name_without_ext
     let command = get_c_compiler_command(c_paths, exe_path)
     let result = run(command, args.verbose)
-    assert(result == 0)
+    if result != 0:
+        print("C compiler failed")
+        process::exit(1)
 
     # If we have an outfile path, move the resulting executable to it and bail
     switch args.outfile:
@@ -277,7 +279,7 @@ export func main():
 
             let result = run(new Command(command, join(command)), args.verbose)
             if result != 0:
-                print("Program '{exe_path}' exited with status {result}")
-                assert(false)
+                print("Program exited with status {result}")
+                process::exit(1)
 
     session.builtins.destroy()

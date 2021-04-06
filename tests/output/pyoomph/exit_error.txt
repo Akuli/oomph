@@ -1,2 +1,2 @@
-Error: null.get() was called
+Should get printed
 Program exited with status 1
