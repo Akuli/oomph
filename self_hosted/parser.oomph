@@ -334,7 +334,7 @@ class Parser(List[tokenizer::Token] tokens):
                                 location.error(
                                     "'a {binop.op} b {op.value} c' is not supported"
                                 )
-                            elif how2chain == "left_operator_first":
+                            elif how2chain == "chaining_allowed":
                                 pass
                             else:
                                 assert(false)
