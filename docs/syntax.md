@@ -170,7 +170,7 @@ An expression is a sequence of simple expressions or operators and keywords from
 Items high in the list take precedence, and when chaining is allowed, it happens from left to right.
 For example `a+b*c/d*e` means `(a + (((b * c) / d) * e))`.
 
-Exceptions to these rules:
+There are also some exceptions to these rules:
 - `--x` with two repeated `-` tokens is disallowed, even though according to the above rules,
     it would be same as `-(-x)`.
 - `a == b mod c` is disallowed, because it doesn't mean what "a = b (mod c)" means in mathematics.
