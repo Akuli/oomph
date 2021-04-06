@@ -269,19 +269,19 @@ class Parser(List[tokenizer::Token] tokens):
         return null
 
     meth find_binary_operator(List[PrecedenceItem] magic_list, List[Str] operators) -> Int | null:
-        for let i = 0; i <= magic_list.length() - 3; i = i+1:
-            switch magic_list.get(i):
+        for let i = 1; i <= magic_list.length() - 2; i = i+1:
+            switch magic_list.get(i-1):
                 case ast::Expression expr:
                     pass
                 case *:
                     continue
-            switch magic_list.get(i+1):
+            switch magic_list.get(i):
                 case tokenizer::Token operator:
                     if operator.value not in operators:
                         continue
                 case *:
                     continue
-            switch magic_list.get(i+2):
+            switch magic_list.get(i+1):
                 case ast::Expression expr:
                     pass
                 case *:
@@ -295,15 +295,11 @@ class Parser(List[tokenizer::Token] tokens):
             let bin_or_null = self.find_binary_operator(magic_list, binary)
 
             if un_or_null != null and bin_or_null != null:
+                # Prefer binary operator if both are found in same place (needed for x - y)
                 if un_or_null.get() < bin_or_null.get():
                     bin_or_null = null
-                elif un_or_null.get() > bin_or_null.get():
-                    un_or_null = null
                 else:
-                    # TODO: error
-                    # TODO: test
-                    print("ambiguous operators")
-                    assert(false)
+                    un_or_null = null
 
             if un_or_null != null:
                 let i = un_or_null.get()
@@ -313,7 +309,7 @@ class Parser(List[tokenizer::Token] tokens):
                 magic_list.insert(i, new ast::UnaryOperator(op.location, op.value, expr))
             elif bin_or_null != null:
                 let i = bin_or_null.get()
-                let lhs_op_rhs = magic_list.delete_slice(i, i+3)
+                let lhs_op_rhs = magic_list.delete_slice(i-1, i+2)
                 let lhs = lhs_op_rhs.first() as ast::Expression
                 let op = lhs_op_rhs.get(1) as tokenizer::Token
                 let rhs = lhs_op_rhs.last() as ast::Expression
@@ -341,7 +337,7 @@ class Parser(List[tokenizer::Token] tokens):
                         "use e.g. 'a == (b mod c)' or '(a mod c) == (b mod c)' instead"
                     )
 
-                magic_list.insert(i, new ast::BinaryOperator(op.location, lhs, op.value, rhs))
+                magic_list.insert(i-1, new ast::BinaryOperator(op.location, lhs, op.value, rhs))
             else:
                 break
 
