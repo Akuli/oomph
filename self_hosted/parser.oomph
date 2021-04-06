@@ -286,7 +286,7 @@ class Parser(List[tokenizer::Token] tokens):
             return i
         return null
 
-    # TODO: make sure this errors enough
+    # TODO: warning about 'x == y mod 3' which is likely intended to be 'x mod 3 == y mod 3'
     meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] unary, List[Str] binary, Bool allow_chains):
         while magic_list.length() >= 2:
             let un_or_null = self.find_unary_operator(magic_list, unary)

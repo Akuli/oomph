@@ -1,2 +1,3 @@
 # Tests for self-hosted compiler only
+tests/andor_error.oomph
 tests/oomphc_cmdline.oomph

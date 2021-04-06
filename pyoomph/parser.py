@@ -233,29 +233,6 @@ class _Parser:
                 magic_list.extend(self.get_unary_operators())
                 magic_list.append(self.parse_simple_expression())
 
-        # A common python beginner mistake is writing "a and b or c", thinking it
-        # means "a and (b or c)"
-        assert not ((2, "and") in magic_list and (2, "or") in magic_list), (
-            "instead of 'a and b or c', write '(a and b) or c', "
-            "or write 'a and (b or c)'"
-        )
-
-        # a==b==c is not supported yet
-        # TODO: this test is broken for a == -b == c
-        # TODO: prevent other chainings as well
-        assert not any(
-            first in [(2, "=="), (2, "!=")] and second in [(2, "=="), (2, "!=")]
-            for first, second in zip(magic_list, magic_list[2:])
-        ), "chaining '==' and '!=' is not supported yet"
-
-        # Disallow a--b and --a, require a-(-b) or -(-a)
-        assert not any(
-            first in [(1, "-"), (2, "-")] and second == (1, "-")
-            for first, second in zip(magic_list, magic_list[1:])
-        )
-
-        # TODO: warning about 'x == y mod 3' which is likely intended to be 'x mod 3 == y mod 3'
-
         # each operator of a group is considered to have same precedence
         for op_group in [
             [(2, "*"), (2, "/")],

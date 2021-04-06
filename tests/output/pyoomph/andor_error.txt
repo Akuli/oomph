@@ -1,2 +1,0 @@
-AssertionError: instead of 'a and b or c', write '(a and b) or c', or write 'a and (b or c)'
-
