@@ -780,7 +780,7 @@ class FunctionOrMethodConverter(
                     else:
                         let varname = chase.type_and_name.get().name
                         let nice_type = self.get_type(chase.type_and_name.get().type)
-                        let nice_types = [nice_type]
+                        nice_types = [nice_type]
                         assert(nice_type in types_to_do)   # TODO: error
                         types_to_do.delete_only(nice_type)
 

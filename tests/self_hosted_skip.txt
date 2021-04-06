@@ -13,4 +13,3 @@ tests/missing_case_error.oomph
 tests/notin_location.oomph
 tests/optional_compare_error.oomph
 tests/return_type_error.oomph
-tests/union.oomph
