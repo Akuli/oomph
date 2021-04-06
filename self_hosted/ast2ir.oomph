@@ -1054,7 +1054,7 @@ class FileConverter(
                 self.check_type_not_exists(classdef.name, classdef.location)
                 let add_to_string_method = "to_string" not in [foreach method of classdef.body: method.name]
                 let classtype = new ir::BasicType(
-                    classdef.name, true, [], [], null, null, add_to_string_method
+                    classdef.name, true, [], [], null, null, self.path, add_to_string_method
                 )
                 # TODO: cleanup_list shouldn't be in builtins
                 self.builtins.cleanup_list.push(classtype)
