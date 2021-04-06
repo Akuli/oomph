@@ -450,7 +450,12 @@ class _Parser:
 
         if self.token_iter.peek() == ("op", "->"):
             self.get_token("op", "->")
-            returntype: Optional[ast.Type] = self.parse_type()
+            # Don't really support 'noreturn', but make sure that programs compile
+            if self.token_iter.peek() == ("keyword", "noreturn"):
+                self.get_token("keyword", "noreturn")
+                returntype: Optional[ast.Type] = None
+            else:
+                returntype = self.parse_type()
         else:
             returntype = None
 

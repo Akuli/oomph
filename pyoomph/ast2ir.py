@@ -671,7 +671,7 @@ class _FunctionOrMethodConverter:
                     types_to_do.remove(nice_type)
 
                     case_var = self.create_var(nice_type)
-                    assert varname not in self.variables
+                    assert varname not in self.variables, varname
                     self.variables[varname] = case_var
                     cases.append(ir.GetFromUnion(case_var, union_var))
                     cases.append(ir.IncRef(case_var))

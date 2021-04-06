@@ -89,7 +89,9 @@ export class SetAttribute(error::Location attribute_location, Expression obj, St
 export class SetVar(error::Location location, Str varname, Expression value)
 export class Switch(error::Location location, Expression union_obj, List[Case] cases)
 
-export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndName] args, Type | null returntype, List[Statement] body)
+export class NoReturn(error::Location location)
+
+export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndName] args, Type | NoReturn | null returntype, List[Statement] body)
 export class ClassDef(error::Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(error::Location location, Str path, Str name)
 export class TypeDef(error::Location location, Str name, Type type)

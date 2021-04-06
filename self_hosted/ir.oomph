@@ -4,8 +4,11 @@ export typedef Type = AutoType | BasicType | FunctionType | UnionType
 
 export class AutoType(Int id)
 
+# TODO: better way to make constants similar to null, true, false
+export class NoReturn()
+
 # FIXME: missing equals method
-export class FunctionType(List[Type] argtypes, Type | null returntype)
+export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype)
 
 # TODO: mappings
 export class Method(Str name, FunctionType functype)
@@ -293,7 +296,7 @@ export func create_builtins() -> Builtins:
     visible_vars.push_all([
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
         new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
-        new BuiltinVariable("__exit", new FunctionType([INT], null)),
+        new BuiltinVariable("__exit", new FunctionType([INT], new NoReturn())),
         new BuiltinVariable("__get_first_char", new FunctionType([STR], STR)),
         new BuiltinVariable("__get_utf8_byte", new FunctionType([STR, INT], INT)),
         new BuiltinVariable("__hash", new FunctionType([STR, STR], STR)),

@@ -205,11 +205,14 @@ class FunctionEmitter(
             self.file_pair.session.emit_decref(self.emit_var(var), var.type) + ";\n"
         ].join("")
 
-        if functype.returntype != null:
-            self.before_body = self.before_body + """
-            {self.file_pair.emit_type(functype.returntype.get())} retval;
-            """
-            self.after_body = self.after_body + "return retval;\n"
+        switch functype.returntype:
+            case ir::Type type:
+                self.before_body = self.before_body + """
+                {self.file_pair.emit_type(type)} retval;
+                """
+                self.after_body = self.after_body + "return retval;\n"
+            case *:
+                pass
 
         # TODO: couldn't get list comprehension to work
         let foo = new List[Str]()
@@ -254,16 +257,10 @@ class FilePair(
 ):
     # Usually can_fwd_declare_in_header should be true
     # TODO: default values of arguments
-    meth emit_type(ir::Type | null type_or_null) -> Str:
-        return self.emit_type_custom(type_or_null, true)
+    meth emit_type(ir::Type type) -> Str:
+        return self.emit_type_custom(type, true)
 
-    meth emit_type_custom(ir::Type | null type_or_null, Bool can_fwd_declare_in_header) -> Str:
-        if type_or_null == null:
-            # Function return types only
-            # TODO: handle this elsewhere?
-            return "void"
-
-        let type = type_or_null.get()
+    meth emit_type_custom(ir::Type type, Bool can_fwd_declare_in_header) -> Str:
         switch type:
             case ir::AutoType _:
                 assert(false)
@@ -372,7 +369,15 @@ class FilePair(
         if arg_decl_string == "":
             arg_decl_string = "void"
 
-        let decl = "{self.emit_type(type.returntype)} {function_name}({arg_decl_string})"
+        switch type.returntype:
+            case ir::NoReturn _:
+                let returntype = "noreturn void"
+            case null _:
+                returntype = "void"
+            case ir::Type an_actual_type:
+                returntype = self.emit_type(an_actual_type)
+
+        let decl = "{returntype} {function_name}({arg_decl_string})"
         self.function_decls = self.function_decls + decl + ";\n"
         if body != null:
             self.function_defs = self.function_defs + decl + "\{" + body.get() + "\}\n"
