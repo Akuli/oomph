@@ -52,6 +52,15 @@ noreturn void oomph_exit(int64_t status)
 	exit((int)status);
 }
 
+void oomph_assert(bool cond, struct class_Str path, int64_t lineno)
+{
+	if (!cond)
+		panic_printf("assert() failed in \"%s\", line %d", string_to_cstr(path), (int)lineno);
+}
+
+static int global_argc = -1;
+static const char *const *global_argv = NULL;
+
 noreturn void panic_printf_errno(const char *fmt, ...)
 {
 	int er = errno;
@@ -59,6 +68,9 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 	// Make sure that what is printed here goes after everything else
 	fflush(stdout);
 	fflush(stderr);
+
+	assert(global_argc != -1);
+	fprintf(stderr, "%s: ", global_argv[0]);
 
 	va_list ap;
 	va_start(ap, fmt);
@@ -71,15 +83,6 @@ noreturn void panic_printf_errno(const char *fmt, ...)
 
 	exit(1);
 }
-
-void oomph_assert(bool cond, struct class_Str path, int64_t lineno)
-{
-	if (!cond)
-		panic_printf("assert() failed in \"%s\", line %d", string_to_cstr(path), (int)lineno);
-}
-
-static int global_argc = -1;
-static const char *const *global_argv = NULL;
 
 int64_t oomph_argv_count(void)
 {
