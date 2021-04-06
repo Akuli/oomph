@@ -1,0 +1,6 @@
+# Currently, "-> noreturn" is ignored by both compilers
+func foo() -> noreturn:
+    print("Hello")
+
+export func main():
+    foo()

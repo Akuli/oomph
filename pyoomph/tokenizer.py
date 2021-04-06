@@ -20,6 +20,7 @@ TOKEN_REGEX = r'''
         | generic
         | new
         | return
+        | noreturn
         | pass
         | mod
         | and

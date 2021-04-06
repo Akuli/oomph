@@ -22,6 +22,7 @@ keywords = [
     "generic",
     "new",
     "return",
+    "noreturn",
     "pass",
     "mod",
     "and",

@@ -74,7 +74,8 @@ func get_prefix_spaces(Str string) -> Str:
 export func get_keywords() -> List[Str]:
     return [
         "let", "import", "as", "export", "func", "meth", "class", "typedef",
-        "switch", "case", "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
+        "switch", "case", "auto", "generic", "new", "return", "noreturn", "pass",
+        "mod", "and", "or", "not", "in",
         "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
     ]
 
