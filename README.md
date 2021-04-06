@@ -71,13 +71,6 @@ Missing features:
         - `Str.replace(mapping)` (I wish python had this)
 - search for type annotations i have needed to put in the python code, to
   get examples of things where oomph can be better than python+mypy
-- some nice way to check if an object is null (for at least `if` and `while`)
-    - Idea: `x := y` returns false if `x` is null, and when isn't, sets `y` to true
-        - Leads to `while x := y`, `if x := y` and `assert x := y`
-    - Idea 2: Optional interpreted as boolean tells whether it's null, and
-      when it isn't, variables magically change type to get rid of `Optional`
-        - Leads to `while x`, `if x` and `assert x` (or `assert(x)`)
-        - Or without optional as boolean interpreting: explicit `while x != null` etc
 - defining non-ref-counted pass-by-value classes
     - would be useful for views into data that don't require allocations
 - exceptions (easiest to implement similar to union?)
