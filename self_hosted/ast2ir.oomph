@@ -1247,9 +1247,6 @@ class FileConverter(
 
                 foreach method_def of classdef.body:
                     typed_method_defs.push(self.func_or_meth_step4(method_def, classtype) as ir::MethodDef)
-
-                # TODO: use classdef.export
-                self.symbols.push(new ir::Symbol(self.path, classdef.name, classtype))
                 return typed_method_defs
 
             case ast::FuncOrMethodDef funcdef:
@@ -1270,13 +1267,7 @@ export func convert_program(
         builtins,
         path,
         symbols,
-        [
-            new NamedType("Bool", builtins.BOOL),
-            new NamedType("Float", builtins.FLOAT),
-            new NamedType("Int", builtins.INT),
-            new NamedType("Str", builtins.STR),
-            new NamedType("null", builtins.NULL_TYPE),
-        ],
+        [foreach type of builtins.get_builtin_types(): new NamedType(ir::type_name(type), type)],
         [new NamedGeneric("List", builtins.LIST)],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],

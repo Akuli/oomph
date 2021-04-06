@@ -252,7 +252,7 @@ export class Builtins(
 
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
-    # Methods are empty and special to prevent reference cycles
+    # Methods are empty at first to prevent reference cycles
     let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, false))
     let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, false))
     let INT = new Type(new BasicType("Int", false, [], [], null, null, false))

@@ -991,9 +991,6 @@ class _FileConverter:
                 typed_def = self._func_or_meth_step4(method_def, classtype)
                 assert isinstance(typed_def, ir.MethodDef)
                 typed_method_defs.append(typed_def)
-
-            # TODO: use top_declaration.export
-            self.symbols.append(ir.Symbol(self.path, top_declaration.name, classtype))
             return typed_method_defs
 
         return []
