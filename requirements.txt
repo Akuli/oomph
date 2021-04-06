@@ -3,4 +3,3 @@ black
 isort
 mypy
 pyflakes
-pygments

@@ -49,6 +49,7 @@ jobs:
       with:
         python-version: "3.9"
     - run: pip install -r requirements.txt
+    - run: pip install pygments
     - shell: bash
       run: |
         for file in tests/*.oomph self_hosted/*.oomph; do
