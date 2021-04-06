@@ -11,5 +11,5 @@ export func get_args() -> List[Str]:
 export func program_name() -> Str:
     return __argv_get(0)
 
-export func exit(Int status):
+export func exit(Int status) -> noreturn:
     __exit(status)

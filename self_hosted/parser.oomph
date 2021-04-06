@@ -539,8 +539,8 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("op", "->")
             if self.peek().matches("keyword", "noreturn"):
                 # TODO: do something special with noreturn
-                self.get_token("keyword", "noreturn")
-                let returntype = new (ast::Type | null)(null)
+                let location = self.get_token("keyword", "noreturn").location
+                let returntype = new (ast::Type | ast::NoReturn | null)(new ast::NoReturn(location))
             else:
                 returntype = self.parse_type()
         else:
