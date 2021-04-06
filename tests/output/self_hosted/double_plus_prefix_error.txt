@@ -1,0 +1,5 @@
+tests/double_plus_prefix_error.oomph:3: error: should be an expression
+
+    print(++thing)
+          ^
+

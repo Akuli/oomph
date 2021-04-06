@@ -1,5 +1,0 @@
-tests/double_plus_back_error.oomph:2: error: should be an expression
-
-    print(thing++)
-                ^
-

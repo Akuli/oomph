@@ -1,5 +1,0 @@
-tests/double_minus_front_error.oomph:4: error: sorry, --x is not supported :(
-
-    print(--thing)     # This errors
-          ^^
-
