@@ -40,6 +40,7 @@ class AstTransformer(Int varname_counter):
                     new ast::GetVar(loc, index_var),
                     "<",
                     new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "length"), []),
+                    false,
                 ),
                 [
                     new ast::Statement(new ast::SetVar(
@@ -50,6 +51,7 @@ class AstTransformer(Int varname_counter):
                             new ast::GetVar(loc, index_var),
                             "+",
                             new ast::IntConstant(loc, 1),
+                            false,
                         ),
                     ))
                 ],

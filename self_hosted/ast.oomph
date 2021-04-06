@@ -64,7 +64,7 @@ export class ForLoopHeader(error::Location keyword_location, List[Statement] ini
 export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
 
 export class As(error::Location location, Expression expr, Type type)
-export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs)
+export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs, Bool parenthesized)
 export class Call(error::Location location, Expression function, List[Expression] args)
 export class Constructor(error::Location location, Type type)
 export class FloatConstant(error::Location location, Str value)  # value not converted to float in case weirdness :D

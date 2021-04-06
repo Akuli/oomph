@@ -1,0 +1,5 @@
+tests/andor_error.oomph:5: error: 'a and b or c' is ambiguous, please add more parentheses
+
+    let lolwat = x and y or z
+                 ^^^^^^^^^^^^
+

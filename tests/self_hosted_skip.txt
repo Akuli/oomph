@@ -2,7 +2,6 @@
 # - Finding unnecessary non-_error lines: ./unnecessary_skips
 # - Finding unnecessary _error lines: make oomphc && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomphc $file; done
 
-tests/andor_error.oomph
 tests/autotype_attribute_error.oomph
 tests/autotype_bug.oomph
 tests/autotype_list_eq_error.oomph
