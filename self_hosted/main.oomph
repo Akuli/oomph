@@ -195,9 +195,6 @@ func parse_args() -> Args:
             print("""{usage}
 
 Compiler arguments:
-    --help
-        This message
-
     -o, --outfile FILE
         Put executable here, don't run it
 
@@ -206,27 +203,21 @@ Compiler arguments:
         valgrind arguments
 
     -v, --verbose
-        Print lots of stuff
+        Print lost of stuff
 """)
-            process::exit(0)
+            assert(false)
         if args.last() in ["-o", "--outfile"]:
             args.pop()
-            if args == []:
-                print("{process::program_name()}: need path after -o/--outfile (see --help)")
-                process::exit(2)
             outfile = args.pop()
         elif args.last() == "--valgrind":
             args.pop()
-            if args == []:
-                print("{process::program_name()}: need command after --valgrind (see --help)")
-                process::exit(2)
             valgrind = args.last()
         elif args.last() in ["-v", "--verbose"]:
             args.pop()
             verbose = true
         elif args.last().starts_with("-"):
-            print("{process::program_name()}: unknown argument '{args.last()}' (see --help)")
-            process::exit(2)
+            print("unknown argument: {args.last()}")
+            assert(false)
         else:
             infile = args.pop()
             break
@@ -234,7 +225,7 @@ Compiler arguments:
     switch infile:
         case null _:
             print(usage)
-            process::exit(2)
+            assert(false)
         case Str s:
             return new Args(s, outfile, valgrind, verbose, args.reversed())
 

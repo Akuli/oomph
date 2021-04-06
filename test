@@ -157,7 +157,7 @@ function run_tests_with_given_compiler()
 }
 
 if [ $check_pyoomph == yes ]; then
-    run_tests_with_given_compiler "python3 -m pyoomph" "2>&1 | (grep -v 'This happened while' || true) | tail -2" tests/output/pyoomph tests/pyoomph_skip.txt
+    run_tests_with_given_compiler "python3 -m pyoomph" "2>&1 | (grep -v 'This happened while' || true) | tail -2" tests/output/pyoomph /dev/null
 fi
 
 if [ $check_self_hosted == yes ] && (
