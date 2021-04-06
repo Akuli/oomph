@@ -624,12 +624,14 @@ class FunctionOrMethodConverter(
                 self.code.push(new ir::IncRef(result))
                 return result
 
-            case ast::Constructor c:
+            case ast::Constructor _:
                 # TODO: constructor functions as first-class objects
                 assert(false)
 
-            case ast::ListComprehension lc:
-                # If this happens, then ast_transformer hasn't done its job
+            # If these cases happen, then ast_transformer hasn't done its job:
+            case ast::Parenthesized _:
+                assert(false)
+            case ast::ListComprehension _:
                 assert(false)
 
     meth do_expression_and_convert(ast::Expression expr, ir::Type type) -> ir::LocalVariable:

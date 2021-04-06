@@ -199,13 +199,8 @@ class Parser(List[tokenizer::Token] tokens):
 
         elif self.peek().matches("op", "("):
             self.get_token("op", "(")
-            result = self.parse_expression(null)
+            result = new ast::Parenthesized(self.parse_expression(null))
             self.get_token("op", ")")
-            switch result:
-                case ast::BinaryOperator binop:
-                    binop.parenthesized = true
-                case *:
-                    pass
 
         elif self.peek().matches("op", "["):
             let square_bracket = self.get_token("op", "[")
@@ -318,14 +313,14 @@ class Parser(List[tokenizer::Token] tokens):
 
                 switch lhs:
                     case ast::BinaryOperator binop:
-                        if binop.op in binary and not binop.parenthesized and not allow_chains:
+                        if binop.op in binary and not allow_chains:
                             ast::locate_expression(lhs).combine(ast::locate_expression(rhs)).error(
                                 "'a {binop.op} b {op.value} c' is ambiguous, please add more parentheses"
                             )
                     case *:
                         pass
 
-                magic_list.insert(i, new ast::BinaryOperator(op.location, lhs, op.value, rhs, false))
+                magic_list.insert(i, new ast::BinaryOperator(op.location, lhs, op.value, rhs))
             else:
                 break
 

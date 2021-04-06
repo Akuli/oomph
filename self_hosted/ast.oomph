@@ -31,6 +31,7 @@ export typedef Expression = (
     | IntConstant
     | ListComprehension
     | ListLiteral
+    | Parenthesized     # makes error handling easier in parser.oomph
     | StatementsAndExpression
     | StringConstant
     | StringFormatJoin
@@ -64,7 +65,7 @@ export class ForLoopHeader(error::Location keyword_location, List[Statement] ini
 export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
 
 export class As(error::Location location, Expression expr, Type type)
-export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs, Bool parenthesized)
+export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs)
 export class Call(error::Location location, Expression function, List[Expression] args)
 export class Constructor(error::Location location, Type type)
 export class FloatConstant(error::Location location, Str value)  # value not converted to float in case weirdness :D
@@ -73,6 +74,7 @@ export class GetVar(error::Location location, Str varname)
 export class IntConstant(error::Location location, Int value)
 export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(error::Location location, List[Expression] content)
+export class Parenthesized(Expression content)
 export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
 export class StringConstant(error::Location location, Str value)
 export class StringFormatJoin(error::Location location, List[Expression] parts)  # always >=2 parts
@@ -126,6 +128,8 @@ export func locate_expression(Expression expression) -> error::Location:
             return locate_loop_header(expr.loop_header)
         case ListLiteral expr:
             return expr.location
+        case Parenthesized parened:
+            return locate_expression(parened.content)
         case StatementsAndExpression expr:
             return expr.location
         case StringConstant expr:
