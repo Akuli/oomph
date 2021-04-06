@@ -376,6 +376,21 @@ class Parser(List[tokenizer::Token] tokens):
                 magic_list.push_all(self.get_unary_operators())
                 magic_list.push(self.parse_simple_expression(error_message.get()))
 
+        # FIXME: this nestedness sucks in many ways
+        for let i = 1; i < magic_list.length(); i = i+1:
+            switch magic_list.get(i-1):
+                case tokenizer::Token op1:
+                    switch magic_list.get(i):
+                        case tokenizer::Token op2:
+                            if op1.value == op2.value and op1.value in ["+", "-"]:
+                                op1.location.combine(op2.location).error(
+                                    "sorry, --x is not supported :("
+                                )
+                        case *:
+                            pass
+                case *:
+                    pass
+
         self.eliminate_operators(magic_list, [], ["*", "/"], true)
         self.eliminate_operators(magic_list, ["-"], ["+", "-"], true)
         self.eliminate_operators(magic_list, [], ["mod"], false)
