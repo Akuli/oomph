@@ -2,9 +2,7 @@
 # - Finding unnecessary non-_error lines: ./unnecessary_skips
 # - Finding unnecessary _error lines: make oomphc && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomphc $file; done
 
-tests/a_lib.oomph
 tests/andor_error.oomph
-tests/args.oomph
 tests/as_error.oomph
 tests/assert_error.oomph
 tests/autotype_attribute_error.oomph
@@ -12,7 +10,6 @@ tests/autotype_bug.oomph
 tests/autotype_list_eq_error.oomph
 tests/autotype_method_error.oomph
 tests/autotype_not_enough_info_error.oomph
-tests/b_lib.oomph
 tests/cyclic1_error.oomph
 tests/cyclic2_error.oomph
 tests/cyclic3_error.oomph
@@ -26,12 +23,9 @@ tests/find_first_error.oomph
 tests/find_last_error.oomph
 tests/find_only_404_error.oomph
 tests/find_only_multiple_error.oomph
-tests/hash.oomph
-tests/hello_lib.oomph
 tests/import.oomph
 tests/import_itself_error.oomph
 tests/int_eq_str_error.oomph
-tests/io.oomph
 tests/loop.oomph
 tests/missing_case_error.oomph
 tests/mkdir_assert_error.oomph
@@ -41,13 +35,10 @@ tests/newline_location.oomph
 tests/notin_location.oomph
 tests/null_get_error.oomph
 tests/optional_compare_error.oomph
-tests/process.oomph
 tests/read_file_not_exists_error.oomph
-tests/read_file_zero.oomph
 tests/return_type_error.oomph
 tests/switch_in_loop.oomph
 tests/union.oomph
-tests/union_name_conflict_bug.oomph
 tests/utf8_error.oomph
 tests/utf8_truncated_error.oomph
 tests/weird_minus_error.oomph

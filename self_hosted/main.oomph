@@ -221,7 +221,7 @@ Compiler arguments:
             print("unknown argument: {args.last()}")
             assert(false)
         else:
-            infile = args.last()
+            infile = args.pop()
             break
 
     switch infile:
