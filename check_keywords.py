@@ -26,9 +26,12 @@ self_hosted_names = subprocess.run(
     check=True,
 ).stdout.split()
 
-pyoomph_names.remove("null")  # type and keyword, appears twice
-self_hosted_names.remove("null")  # type and keyword, appears twice
-pygments_names.remove("main")  # not really builtin, but still special
+# null is type and variable, it appears twice in compiler lists
+pyoomph_names.remove("null")
+self_hosted_names.remove("null")
+
+# main is not really a built-in function, but it has special meaning
+pygments_names.remove("main")
 
 print("pyoomph:       ", sorted(pyoomph_names))
 print("self-hosted:   ", sorted(self_hosted_names))
