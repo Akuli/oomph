@@ -206,15 +206,13 @@ class FunctionEmitter(
         ].join("")
 
         switch functype.returntype:
-            case ir::NoReturn _:
-                pass
-            case null _:
-                pass
             case ir::Type type:
                 self.before_body = self.before_body + """
                 {self.file_pair.emit_type(type)} retval;
                 """
                 self.after_body = self.after_body + "return retval;\n"
+            case *:
+                pass
 
         # TODO: couldn't get list comprehension to work
         let foo = new List[Str]()
