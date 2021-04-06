@@ -1203,9 +1203,7 @@ class FileConverter(
         switch functype.returntype:
             case ir::Type rettype:
                 let non_noreturn_returntype = new (null | ir::Type)(rettype)
-            case null _:
-                non_noreturn_returntype = null
-            case ir::NoReturn _:
+            case *:
                 non_noreturn_returntype = null
 
         let converter = new FunctionOrMethodConverter(
