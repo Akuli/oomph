@@ -1,0 +1,3 @@
+Should get printed
+Program 'tests/.oomph-cache/exit_error_compilation0/exit_error' exited with status 1
+assert() failed in "self_hosted/main.oomph", line N

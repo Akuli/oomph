@@ -1,0 +1,6 @@
+import "<stdlib>/process.oomph" as process
+
+export func main():
+    print("Should get printed")
+    process::exit(1)
+    print("Should NOT get printed")

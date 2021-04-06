@@ -44,3 +44,8 @@ int64_t oomph_run_subprocess(void *args)
 	// TODO: represent signals etc nicely
 	return WIFEXITED(wstatus) ? WEXITSTATUS(wstatus) : -1;
 }
+
+noreturn void oomph_exit(int64_t status)
+{
+	exit((int)status);
+}
