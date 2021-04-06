@@ -1,0 +1,5 @@
+tests/mod_chain_error.oomph:2: error: 'a mod b mod c' is not supported
+
+    print(1 mod 2 mod 3)
+          ^^^^^^^^^^^^^
+

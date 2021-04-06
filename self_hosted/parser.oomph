@@ -289,7 +289,7 @@ class Parser(List[tokenizer::Token] tokens):
             return i
         return null
 
-    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] unary, List[Str] binary, Bool allow_chains):
+    meth eliminate_operators(List[PrecedenceItem] magic_list, List[Str] unary, List[Str] binary, Str how2chain):
         while magic_list.length() >= 2:
             let un_or_null = self.find_unary_operator(magic_list, unary)
             let bin_or_null = self.find_binary_operator(magic_list, binary)
@@ -317,17 +317,27 @@ class Parser(List[tokenizer::Token] tokens):
 
                 switch lhs:
                     case ast::BinaryOperator binop:
-                        if binop.op in binary and not allow_chains:
-                            if binop.op in ["and", "or"]:
-                                location.error(
-                                    "'a {binop.op} b {op.value} c' is ambiguous, " +
-                                    "please add more parentheses"
-                                )
-                            else:
+                        if binop.op in binary:
+                            # TODO: enum
+                            if how2chain == "same_only":
+                                if binop.op != op.value:
+                                    location.error(
+                                        "'a {binop.op} b {op.value} c' is ambiguous, " +
+                                        "please add more parentheses"
+                                    )
+                            elif how2chain == "bool":
                                 location.error(
                                     "'a {binop.op} b {op.value} c' is not supported, " +
                                     "did you mean 'a {binop.op} b and b {binop.op} c'?"
                                 )
+                            elif how2chain == "no_chaining":
+                                location.error(
+                                    "'a {binop.op} b {op.value} c' is not supported"
+                                )
+                            elif how2chain == "chaining_allowed":
+                                pass
+                            else:
+                                assert(false)
                     case *:
                         pass
 
@@ -403,15 +413,15 @@ class Parser(List[tokenizer::Token] tokens):
                 case *:
                     pass
 
-        self.eliminate_operators(magic_list, [], ["*", "/"], true)
-        self.eliminate_operators(magic_list, ["-"], ["+", "-"], true)
-        self.eliminate_operators(magic_list, [], ["mod"], false)
-        self.eliminate_operators(magic_list, [], ["==", "!="], false)
-        self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="], false)
+        self.eliminate_operators(magic_list, [], ["*", "/"], "chaining_allowed")
+        self.eliminate_operators(magic_list, ["-"], ["+", "-"], "chaining_allowed")
+        self.eliminate_operators(magic_list, [], ["mod"], "no_chaining")
+        self.eliminate_operators(magic_list, [], ["==", "!="], "bool")
+        self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="], "bool")
         self.eliminate_as(magic_list)
-        self.eliminate_operators(magic_list, [], ["in", "not in"], false)
-        self.eliminate_operators(magic_list, ["not"], [], false)
-        self.eliminate_operators(magic_list, [], ["and", "or"], false)
+        self.eliminate_operators(magic_list, [], ["in", "not in"], "bool")
+        self.eliminate_operators(magic_list, ["not"], [], "bool")
+        self.eliminate_operators(magic_list, [], ["and", "or"], "same_only")
 
         if magic_list.length() != 1:
             print(magic_list)
