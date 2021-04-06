@@ -27,7 +27,7 @@ export class BasicType(
     List[Member] members,  # TODO: get rid of this
     List[Type] | null constructor_argtypes,
     GenericSource | null generic_source,
-    Str | null definition_path,
+    Str | null definition_path,  # null for builtin
     Bool create_to_string_method,
 ):
     # Helps with reference cycles
