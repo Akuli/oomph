@@ -21,13 +21,13 @@ export class GenericSource(Generic generik, Type arg):
         return self.generik == other.generik and self.arg == other.arg
 
 export class BasicType(
-    # TODO: definition path
     Str name,
     Bool refcounted,
     List[Method] methods,  # TODO: get rid of this
     List[Member] members,  # TODO: get rid of this
     List[Type] | null constructor_argtypes,
     GenericSource | null generic_source,
+    Str | null definition_path,
     Bool create_to_string_method,
 ):
     # Helps with reference cycles
@@ -37,7 +37,7 @@ export class BasicType(
     meth equals(BasicType other) -> Bool:
         let result = (
             self.name == other.name
-            # FIXME: and self.definition_path == other.definition_path
+            and self.definition_path == other.definition_path
             and self.generic_source == other.generic_source
         )
         return result
@@ -112,6 +112,7 @@ export func type_name(Type type) -> Str:
             return "<function type>"
         case UnionType union:
             # Don't use custom names for 'Foo | null'
+            # TODO: is custom_name ever set in this case?
             if union.custom_name == null or (
                 union.type_members.length() == 2
                 and union.type_members.first() == union.builtins.NULL_TYPE
@@ -127,8 +128,7 @@ export func type_id_string(Type type) -> Str:
             assert(false)
         case BasicType basictype:
             if basictype.generic_source == null:
-                # FIXME: return self.name + str(self.definition_path)
-                return basictype.name
+                return basictype.name + "@" + basictype.definition_path.to_string()
             let source = basictype.generic_source.get()
             return source.generik.name + type_id_string(source.arg)
         case UnionType union:
@@ -214,6 +214,7 @@ export class Builtins(
             [],
             new List[Type](),  # FIXME: [] doesn't work
             new GenericSource(generik, arg),
+            null,
             false,
         )
         let r = new Type(result)  # TODO: get rid of this
@@ -252,11 +253,11 @@ export class Builtins(
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     # Methods are empty at first to prevent reference cycles
-    let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, false))
-    let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, false))
-    let INT = new Type(new BasicType("Int", false, [], [], null, null, false))
-    let NULL_TYPE = new Type(new BasicType("null", false, [], [], null, null, false))
-    let STR = new Type(new BasicType("Str", true, [], [], null, null, false))
+    let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, null, false))
+    let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, null, false))
+    let INT = new Type(new BasicType("Int", false, [], [], null, null, null, false))
+    let NULL_TYPE = new Type(new BasicType("null", false, [], [], null, null, null, false))
+    let STR = new Type(new BasicType("Str", true, [], [], null, null, null, false))
 
     let LIST = new Generic("List")
 
