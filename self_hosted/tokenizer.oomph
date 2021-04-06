@@ -70,14 +70,6 @@ func get_prefix_spaces(Str string) -> Str:
         string = string.remove_prefix(" ")
     return " ".repeat(result)
 
-# Exported for CI checks (same keywords are mentioned in many places)
-export func get_keywords() -> List[Str]:
-    return [
-        "let", "import", "as", "export", "func", "meth", "class", "typedef",
-        "switch", "case", "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
-        "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
-    ]
-
 func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token]:
     assert("\n" not in line_prefix)
 
@@ -94,7 +86,11 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
         "+", "-", "*", "/",
         "=", "|", "\n",
     ]
-    let keyword_list = get_keywords()
+    let keyword_list = [
+        "let", "import", "as", "export", "func", "meth", "class", "typedef",
+        "switch", "case", "auto", "generic", "new", "return", "pass", "mod", "and", "or", "not", "in",
+        "if", "elif", "else", "while", "for", "foreach", "of", "continue", "break",
+    ]
 
     # Adding initial newline helps error when file starts with space (weird corner case)
     let result = [

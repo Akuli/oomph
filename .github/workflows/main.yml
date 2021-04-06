@@ -14,15 +14,6 @@ jobs:
         python-version: "3.9"
     - run: pip install -r requirements.txt
     - run: ./lint --check
-  check_keywords:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v1
-      with:
-        python-version: "3.9"
-    - run: pip install -r requirements.txt
-    - run: python3 check_keywords.py
   build:
     strategy:
       matrix:
