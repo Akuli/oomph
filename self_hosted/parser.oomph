@@ -413,8 +413,8 @@ class Parser(List[tokenizer::Token] tokens):
                 case *:
                     pass
 
-        self.eliminate_operators(magic_list, [], ["*", "/"], "left_operator_first")
-        self.eliminate_operators(magic_list, ["-"], ["+", "-"], "left_operator_first")
+        self.eliminate_operators(magic_list, [], ["*", "/"], "chaining_allowed")
+        self.eliminate_operators(magic_list, ["-"], ["+", "-"], "chaining_allowed")
         self.eliminate_operators(magic_list, [], ["mod"], "no_chaining")
         self.eliminate_operators(magic_list, [], ["==", "!="], "bool")
         self.eliminate_operators(magic_list, [], ["<", ">", "<=", ">="], "bool")
