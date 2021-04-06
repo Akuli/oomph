@@ -165,7 +165,7 @@ An expression is a sequence of simple expressions or operators and keywords from
 6. `as` (the right side is a type, not an expression)
 7. `in`, `not in` (it is an error to chain these)
 8. `not`
-9. `and`, `or` (it is an error to chain these)
+9. `and`, `or` (chaining is special: `a and b or c` is an error, but `a and b and c`, `a or b or c` are fine)
 
 Items high in the list take precedence, and when chaining is allowed, it happens from left to right.
 For example `a+b*c/d*e` means `(a + (((b * c) / d) * e))`.
