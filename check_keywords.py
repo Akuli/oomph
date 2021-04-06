@@ -14,10 +14,7 @@ pygments_names = (
     + oomph_pygments_lexer.keywords_but_not_really
 )
 pyoomph_names = (
-    pyoomph.tokenizer.TOKEN_REGEX.split(r"\b")[1]
-    .strip("() ")
-    .replace("|", " ")
-    .split()
+    pyoomph.tokenizer.TOKEN_REGEX.split(r"\b")[1].strip("() ").replace("|", " ").split()
     + [k for k in pyoomph.ir.visible_builtins.keys() if not k.startswith("__")]
     + list(pyoomph.types.builtin_types.keys())
     + list(pyoomph.types.builtin_generic_types.keys())
