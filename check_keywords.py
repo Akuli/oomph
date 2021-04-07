@@ -45,6 +45,6 @@ pygments_names.remove("main")
 print("pyoomph:       ", sorted(pyoomph_names))
 print("self-hosted:   ", sorted(self_hosted_names))
 print("pygments lexer:", sorted(pygments_names))
-print("pygments lexer:", sorted(vscode_names))
+print("oomph-vscode:  ", sorted(vscode_names))
 
 assert sorted(pyoomph_names) == sorted(self_hosted_names) == sorted(pygments_names) == sorted(vscode_names)
