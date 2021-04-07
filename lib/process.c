@@ -32,6 +32,7 @@ int64_t oomph_run_subprocess(void *args)
 		case 0:  // child
 			execvp(argarr[0], argarr);
 			// It shouldn't return, if it returns anyway then it failed
+			// FIXME: this doesn't abort the parent process
 			panic_printf_errno("execvp() failed");
 		default:  // parent
 			break;

@@ -32,6 +32,8 @@ jobs:
           ./download-tcc
         fi
     - run: ./test
+    - run: ./oomph --verbose -o oomph self_hosted/main.oomph
+    - run: ./test --self-hosted
     - run: python3 check_keywords.py
   lexer_test:
     runs-on: ubuntu-latest

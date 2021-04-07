@@ -1,0 +1,13 @@
+import "<stdlib>/process.oomph" as process
+
+export func main():
+    # FIXME: prints between commands appear after command output (missing flushing?)
+    let statuses = [
+        process::run(["./oomph", "--help"]),
+        process::run(["./oomph"]),
+        process::run(["./oomph", "--lolwat"]),
+        process::run(["./oomph", "-o"]),
+        process::run(["./oomph", "--outfile"]),
+        process::run(["./oomph", "--valgrind"]),
+    ]
+    print("Exit statuses: {statuses}")

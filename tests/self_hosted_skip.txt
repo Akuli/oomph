@@ -1,5 +1,5 @@
 # How to update this list:
-# - Finding unnecessary _error lines: make oomphc && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomphc $file; done
+# - Finding unnecessary _error lines: make oomph && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomph $file; done
 
 tests/autotype_attribute_error.oomph
 tests/autotype_list_eq_error.oomph

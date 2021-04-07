@@ -3,4 +3,4 @@ tests/andor_error.oomph
 tests/equals_chain_error.oomph
 tests/mod_chain_error.oomph
 tests/mod_error.oomph
-tests/oomphc_cmdline.oomph
+tests/oomph_cmdline.oomph
