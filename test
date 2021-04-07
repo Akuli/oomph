@@ -166,7 +166,7 @@ if [ $check_self_hosted == yes ] && (
     # Run all self-hosted tests with same compiler (speeds up a LOT)
     echo "Compiling self-hosted compiler"
     make oomph
-    run_tests_with_given_compiler "./oomph" "2>&1" tests/output/self_hosted tests/self_hosted_skip.txt
+    run_tests_with_given_compiler ./oomph "2>&1" tests/output/self_hosted tests/self_hosted_skip.txt
 fi
 
 status=0
