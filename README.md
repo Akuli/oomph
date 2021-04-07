@@ -1,6 +1,6 @@
 # oomph
 This is yet another attempt at making a usable programming language.
-Oomph compiles to C and aims to be a high-level language, but faster than Python.
+Oomph is a high-level language, but it compiles to C and aims to be faster than Python.
 
     sudo apt install libssl-dev
     git clone https://github.com/Akuli/oomph
