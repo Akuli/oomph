@@ -1,7 +1,4 @@
 typedef Ambiguous = Str | (Str | Int)
 
-func blah(Ambiguous a):
-    pass
-
 export func main():
-    blah("lol")
+    pass
