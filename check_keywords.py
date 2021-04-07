@@ -28,12 +28,13 @@ self_hosted_names = subprocess.run(
 ).stdout.split()
 
 vscode_names = []
-for item in json.load(open("./oomph-vscode/syntaxes/oomph.tmLanguage.json"))["repository"]["keywords"]["patterns"]:
+for item in json.load(open("./oomph-vscode/syntaxes/oomph.tmLanguage.json"))[
+    "repository"
+]["keywords"]["patterns"]:
     pattern = item["match"]
-    pattern = pattern[pattern.find("(")+1:pattern.rfind(")")]
+    pattern = pattern[pattern.index("(") + 1 : pattern.rindex(")")]
     vscode_names.extend(pattern.split("|"))
 
-    
 
 # null is type and variable, it appears twice in compiler lists
 pyoomph_names.remove("null")
@@ -47,4 +48,9 @@ print("self-hosted:   ", sorted(self_hosted_names))
 print("pygments lexer:", sorted(pygments_names))
 print("oomph-vscode:  ", sorted(vscode_names))
 
-assert sorted(pyoomph_names) == sorted(self_hosted_names) == sorted(pygments_names) == sorted(vscode_names)
+assert (
+    sorted(pyoomph_names)
+    == sorted(self_hosted_names)
+    == sorted(pygments_names)
+    == sorted(vscode_names)
+)
