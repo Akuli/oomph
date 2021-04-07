@@ -37,9 +37,30 @@
       ]
     },
     "strings": {
-      "name": "string.quoted.double.oomph",
-      "begin": "\"",
-      "end": "\"",
+      "patterns": [
+        {
+          "name": "string.quoted.triple.oomph",
+          "begin": "\"{3}",
+          "end": "\"{3}|{",
+          "patterns": [
+            {
+              "include": "#string_guts"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.oomph",
+          "begin": "\"|}",
+          "end": "\"|{",
+          "patterns": [
+            {
+              "include": "#string_guts"
+            }
+          ]
+        }
+      ]
+    },
+    "string_guts": {
       "patterns": [
         {
           "name": "constant.character.escape.oomph",
