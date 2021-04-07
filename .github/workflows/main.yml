@@ -31,11 +31,10 @@ jobs:
         if [ ${{ matrix.compiler }} == tcc ]; then
           ./download-tcc
         fi
-    - run: ./test --pyoomph
-    - run: make oomph
-    - run: ./test --self-hosted
+    - run: ./test
     - run: ./oomph --verbose -o oomph self_hosted/main.oomph
     - run: ./test --self-hosted
+    - run: python3 check_keywords.py
   lexer_test:
     runs-on: ubuntu-latest
     steps:
