@@ -19,31 +19,6 @@ Oomph compiles to C and aims to be a high-level language, but faster than Python
 - To valgrind-check everything, run `./test --valgrind` (very slow)
 
 
-## Learning Oomph
-
-- There are short example programs in `tests`.
-- Some things are implemented in Oomph. See `builtins.oomph` and `stdlib`.
-- The `self_hosted/` directory is an Oomph compiler written in Oomph.
-- Docs:
-    - [Unions](docs/implicit-conversions.md)
-    - [Syntax](docs/syntax.md)
-    - [Automatic Types](docs/auto.md)
-    - [Implicit conversions](docs/implicit-conversions.md)
-
-
-## Two compilers
-
-Currently there's two compilers:
-- `pyoomph` is an Oomph compiler written in Python.
-- The self-hosted Oomph compiler is written in Oomph.
-
-The self-hosted compiler can compile itself:
-
-    ./oomph -o oomph self_hosted/main.oomph
-
-Currently `make oomph` uses pyoomph to compile the self-hosted compiler.
-
-
 ## Why Oomph?
 
 Oomph aims to be a small and simple language, with little boilerplate and few "gotchas".
@@ -121,6 +96,31 @@ These Python gotchas **don't exist in Oomph**:
 Python gotchas that exist in Oomph (but fixing is planned):
 - Modifying a list while looping over it doesn't behave like you would expect.
     Try `for item in the_list: the_list.remove(item)` in Python, for example.
+
+
+## Learning Oomph
+
+- There are short example programs in `tests`.
+- Some things are implemented in Oomph. See `builtins.oomph` and `stdlib`.
+- The `self_hosted/` directory is an Oomph compiler written in Oomph.
+- Docs:
+    - [Unions](docs/implicit-conversions.md)
+    - [Syntax](docs/syntax.md)
+    - [Automatic Types](docs/auto.md)
+    - [Implicit conversions](docs/implicit-conversions.md)
+
+
+## Two compilers
+
+Currently there's two compilers:
+- `pyoomph` is an Oomph compiler written in Python.
+- The self-hosted Oomph compiler is written in Oomph.
+
+The self-hosted compiler can compile itself:
+
+    ./oomph -o oomph self_hosted/main.oomph
+
+Currently `make oomph` uses pyoomph to compile the self-hosted compiler.
 
 
 ## Editor support
