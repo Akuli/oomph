@@ -1,4 +1,4 @@
-Usage: ./oomphc [compiler args] program.oomph [program args]
+Usage: ./oomph [compiler args] program.oomph [program args]
 
 Compiler arguments:
     --help
@@ -14,9 +14,9 @@ Compiler arguments:
     -v, --verbose
         Print lots of stuff
 
-Usage: ./oomphc [compiler args] program.oomph [program args]
-./oomphc: unknown argument '--lolwat' (see --help)
-./oomphc: need path after -o/--outfile (see --help)
-./oomphc: need path after -o/--outfile (see --help)
-./oomphc: need command after --valgrind (see --help)
+Usage: ./oomph [compiler args] program.oomph [program args]
+./oomph: unknown argument '--lolwat' (see --help)
+./oomph: need path after -o/--outfile (see --help)
+./oomph: need path after -o/--outfile (see --help)
+./oomph: need command after --valgrind (see --help)
 Exit statuses: [0, 2, 2, 2, 2, 2]

@@ -7,15 +7,28 @@ This is yet another attempt at making a usable programming language.
     python3 -m venv env
     . env/bin/activate
     pip install -r requirements.txt
-    ./test
-    python3 -m pyoomph tests/hello.oomph   # compile and run hello world file
+    make oomph
+    ./oomph tests/hello.oomph   # compile and run hello world file
 
 - If you delete or rename files in `lib/`, you may need to run `make clean`.
 - Run `./lint` and `./test` to check stuff e.g. before commit.
 - If `./test` fails because test output changes as expected, run `./test --fix`
 - If you changed only the self-hosted compiler, you can use `./test --self-hosted`
     to test only that. There's also `--pyoomph`.
-- To valgrind-check everything, run `./test --valgrind`
+- To valgrind-check everything, run `./test --valgrind` (very slow)
+
+
+## Two compilers
+
+Currently there's two compilers:
+- `pyoomph` is an Oomph compiler written in Python.
+- The self-hosted Oomph compiler is written in Oomph.
+
+The self-hosted compiler can compile itself:
+
+    ./oomph -o oomph self_hosted/main.oomph
+
+Currently `make oomph` uses pyoomph to compile the self-hosted compiler.
 
 
 ## The language
@@ -139,12 +152,6 @@ Optimization ideas:
 - `(a / b).floor()` with integers `a` and `b` doesn't have to involve floats at runtime
 - `foo.split(bar).first()` creates unnecessary list, e.g. with empty `bar` this is
     linear time but could be optimized to constant time
-
-
-## Self-hosted compiler
-
-Very wip. The `./test` script runs working tests.
-There's a list of tests that don't work at `tests/self_hosted_skip.txt`.
 
 
 ## Editor support
