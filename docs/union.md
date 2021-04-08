@@ -185,6 +185,6 @@ However, this is not always the case,
 see [#120](https://github.com/Akuli/oomph/issues/120) for example.
 In those cases, you can use `new` with a union type. After writing
 
-    let foo = 123 as Int | Str,
+    let foo = 123 as Int | Str
 
 the variable `foo` has type `Int | Str`, with `Int` as the active member having value `123`.
