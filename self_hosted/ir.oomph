@@ -17,6 +17,7 @@ export class Member(Str name, Type type)
 export class Generic(Str name)
 export class GenericSource(Generic generik, Type arg):
     # TODO: some kind of handy way to say "do equality checks by value"
+    # TODO: this equals method still needed?
     meth equals(GenericSource other) -> Bool:
         return self.generik == other.generik and self.arg == other.arg
 
@@ -35,12 +36,10 @@ export class BasicType(
         return "<BasicType: {self.name}>"
 
     meth equals(BasicType other) -> Bool:
-        let result = (
-            self.name == other.name
-            and self.definition_path == other.definition_path
-            and self.generic_source == other.generic_source
-        )
-        return result
+        if self.generic_source == null and other.generic_source == null:
+            return (self.name == other.name and self.definition_path == other.definition_path)
+        else:
+            return (self.generic_source == other.generic_source)
 
 
 export class UnionType(
