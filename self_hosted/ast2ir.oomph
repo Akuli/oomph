@@ -655,11 +655,10 @@ class FunctionOrMethodConverter(
                                 "left side of 'as not' must have union type, not {ir::type_name(value.type)}"
                             )
 
-                else:
-                    if value.type == target_type:
-                        ass.location.error(
-                            "unnecessary 'as' conversion from {ir::type_name(value.type)} to {ir::type_name(target_type)}"
-                        )
+                elif value.type == target_type:
+                    ass.location.error(
+                        "unnecessary 'as' conversion from {ir::type_name(value.type)} to {ir::type_name(target_type)}"
+                    )
 
                 return self.union_conversion(value, target_type)
 
