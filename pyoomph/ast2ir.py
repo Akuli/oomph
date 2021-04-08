@@ -684,10 +684,7 @@ class _FunctionOrMethodConverter:
                     raw_type, varname = case.type_and_varname
                     case_type = self.get_type(raw_type)
 
-                    if isinstance(case_type, UnionType):
-                        nice_types = set(case_type.type_members)
-                    else:
-                        nice_types = {case_type}
+                    nice_types = _type_members(case_type)
                     assert nice_types.issubset(types_to_do), case_type
                     types_to_do -= nice_types
 

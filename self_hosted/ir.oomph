@@ -59,14 +59,14 @@ export class UnionType(
 export func make_union(
     Builtins builtins,
     List[Type] type_members,
-    error::Location location,
+    error::Location | null location,
 ) -> UnionType:
     type_members = type_members.reversed().reversed()   # TODO: better way to copy list
 
     # check no duplicates
     for let i = 0; i < type_members.length(); i = i+1:
         if type_members.get(i) in type_members.slice(0, i):
-            location.error("repeated union member '{type_name(type_members.get(i))}'")
+            location.get().error("repeated union member '{type_name(type_members.get(i))}'")
 
     # FIXME: sort the type members consistently
 
@@ -425,6 +425,7 @@ export typedef Instruction = (
     | InstantiateUnion
     | IntConstant
     | MethodCall
+    | Panic
     | PointersEqual
     | Return
     | SetAttribute
@@ -445,6 +446,7 @@ export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, error::Location location)
+export class Panic(Str message, error::Location location)
 export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
 export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)

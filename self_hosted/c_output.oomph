@@ -123,9 +123,7 @@ class FunctionEmitter(
                 let union = get.union_var.type as ir::UnionType
                 let membernum = union.type_members.find_only(get.result.type)
                 return """
-                if ({self.emit_var(get.union_var)}.membernum != {membernum})
-                    panic_printf("'as' failed");   // TODO: better message?
-
+                assert({self.emit_var(get.union_var)}.membernum == {membernum});
                 {self.emit_var(get.result)} = {self.emit_var(get.union_var)}.val.item{membernum};
                 """
 
@@ -140,6 +138,11 @@ class FunctionEmitter(
                             # Pointer type
                             return self.emit_var(unset.var) + " = NULL;\n"
                         return ""
+
+            case ir::Panic panic:
+                return """
+                panic_printf("%s", string_to_cstr({self.file_pair.emit_string(panic.message)}));
+                """
 
             case ir::GotoLabel label:
                 return emit_label(self.get_label_name(label))
@@ -527,23 +530,38 @@ class FilePair(
                 \};
                 """)
 
-                if n == 2 and union.type_members.first() == self.session.builtins.NULL_TYPE:
-                    # Create .get() method only for 'null | Foo' unions
-                    let itemtype = union.type_members.last()
-                    let itemtype_code = self.emit_type(itemtype)
-                    self.function_decls = self.function_decls + (
-                        "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                    )
-                    self.function_defs = self.function_defs + """
-                    {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                    \{
-                        if (obj.membernum == 0)
-                            panic_printf("null.get() was called");
-                        assert(obj.membernum == 1);
-                        {self.session.emit_incref("obj.val.item1", itemtype)};
-                        return obj.val.item1;
-                    \}
-                    """
+                if self.session.builtins.NULL_TYPE in union.type_members:
+                    assert(self.session.builtins.NULL_TYPE == union.type_members.first())
+                    # FIXME: copy pasta
+                    if n == 2:
+                        let itemtype = union.type_members.last()
+                        let itemtype_code = self.emit_type(itemtype)
+                        self.function_decls = self.function_decls + "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
+                        self.function_defs = self.function_defs + """
+                        {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
+                        \{
+                            if (obj.membernum == 0)
+                                panic_printf("null.get() was called");
+                            assert(obj.membernum == 1);
+                            {self.session.emit_incref("obj.val.item1", itemtype)};
+                            return obj.val.item1;
+                        \}
+                        """
+                    else:
+                        let itemtype = ir::make_union(self.session.builtins, union.type_members.slice(1, union.type_members.length()), null)
+                        let itemtype_code = self.emit_type(itemtype)
+                        self.function_decls = self.function_decls + "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
+                        self.function_defs = self.function_defs + """
+                        {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
+                        \{
+                            if (obj.membernum == 0)
+                                panic_printf("null.get() was called");
+                            {itemtype_code} res = \{ .membernum = obj.membernum - 1 \};
+                            memcpy(&res.val, &obj.val, sizeof res.val);  // FIXME: is haxor
+                            {self.session.emit_incref("res", itemtype)};
+                            return res;
+                        \}
+                        """
 
             case ir::BasicType basictype:
                 if basictype.generic_source == null:

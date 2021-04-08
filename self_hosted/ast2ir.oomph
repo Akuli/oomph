@@ -43,6 +43,16 @@ func pick_one_autotype(List[ir::AutoType] autotypes) -> ir::AutoType:
     return result
 
 
+func get_type_members(ir::Type type) -> List[ir::Type]:
+    switch type:
+        case ir::UnionType union:
+            return union.type_members
+        case ir::AutoType _:
+            assert(false)
+        case *:
+            return [type]
+
+
 class FunctionOrMethodConverter(
     ir::Builtins builtins,
     FileConverter file_converter,
@@ -217,6 +227,50 @@ class FunctionOrMethodConverter(
 
         return new TypePair(type1, type2)
 
+    meth union_conversion(ir::LocalVariable var, ir::Type target_type) -> ir::LocalVariable:
+        let conversion_result = self.create_var(target_type, var.location)
+
+        switch var.type:
+            case ir::UnionType union_vartype:
+                let bool_var = self.create_var(self.builtins.BOOL, var.location)
+                let end_code = new List[ir::Instruction]()
+                let done_label = self.create_goto_label()
+
+                foreach member of union_vartype.type_members:
+                    if member in get_type_members(target_type):
+                        let label = self.create_goto_label()
+                        self.code.push(new ir::UnionMemberCheck(bool_var, var, member))
+                        self.code.push(new ir::GotoIf(label, self.bool_constant("true", var.location)))
+
+                        let get_result = self.create_var(member, var.location)
+                        end_code.push(label)
+                        end_code.push(new ir::GetFromUnion(get_result, var))
+                        end_code.push(new ir::IncRef(get_result))
+                        switch target_type:
+                            case ir::UnionType u:
+                                end_code.push(new ir::InstantiateUnion(conversion_result, get_result))
+                            case *:
+                                end_code.push(new ir::VarCpy(conversion_result, get_result))
+                        end_code.push(new ir::IncRef(conversion_result))
+                        end_code.push(new ir::GotoIf(done_label, self.bool_constant("true", var.location)))
+
+                self.code.push(new ir::Panic("'as' failed", var.location))   # TODO: better error message?
+                self.code.push_all(end_code)
+                self.code.push(done_label)
+                return conversion_result
+
+            case *:
+                switch target_type:
+                    case ir::UnionType target_union:
+                        assert(var.type in target_union.type_members)  # TODO: error
+                        self.code.push(new ir::InstantiateUnion(conversion_result, var))
+                        self.code.push(new ir::IncRef(conversion_result))
+                        return conversion_result
+                    case *:
+                        # TODO: uncommenting this causes funny corner case and test fail
+                        #assert(var.type == target_type)
+                        return var
+
     meth implicit_conversion_if_possible(
         ir::LocalVariable var,
         ir::Type target_type,
@@ -225,46 +279,13 @@ class FunctionOrMethodConverter(
         var.type = pair.first
         target_type = pair.second
 
-        if var.type == target_type:
-            return var
-
-        if target_type == self.builtins.FLOAT and var.type == self.builtins.INT:
+        if var.type == self.builtins.INT and target_type == self.builtins.FLOAT:
             return self.create_special_call("int2float", [var])
 
-        switch target_type:
-            case ir::UnionType target_union:
-                # TODO: cyclicly nested unions?
-                # TODO: simplify the spec plz
-                let result_path = new (List[ir::UnionType] | null)(null)
-                let todo_paths = [[target_union]]
-                while todo_paths != []:
-                    let path = todo_paths.pop()
-                    foreach member of path.last().type_members:
-                        if member == var.type:
-                            if result_path != null:
-                                # ambiguous implicit conversion
-                                return null
-                            result_path = path
-                        else:
-                            switch member:
-                                case ir::UnionType member_union:
-                                    let copy = path.reversed().reversed()  # FIXME lol
-                                    copy.push(member_union)
-                                    todo_paths.push(copy)
-                                case *:
-                                    pass
-
-                if result_path == null:
-                    return null
-
-                foreach union_type of result_path.get().reversed():
-                    let new_var = self.create_var(union_type, var.location)
-                    self.code.push(new ir::InstantiateUnion(new_var, var))
-                    self.code.push(new ir::IncRef(var))
-                    var = new_var
-                return var
-            case *:
+        foreach member of get_type_members(var.type):
+            if member not in get_type_members(target_type):
                 return null
+        return self.union_conversion(var, target_type)
 
     meth implicit_conversion(ir::LocalVariable var, ir::Type type) -> ir::LocalVariable:
         let result = self.implicit_conversion_if_possible(var, type)
@@ -626,11 +647,13 @@ class FunctionOrMethodConverter(
                 return self.do_expression(sae.expression)
 
             case ast::As ass:
-                let lhs = self.do_expression(ass.expr)
-                let result = self.create_var(self.get_type(ass.type), location)
-                self.code.push(new ir::GetFromUnion(result, lhs))
-                self.code.push(new ir::IncRef(result))
-                return result
+                let value = self.do_expression(ass.expr)
+                let target_type = self.get_type(ass.type)
+                if value.type == target_type:
+                    ass.location.error(
+                        "unnecessary 'as' conversion from {ir::type_name(value.type)} to {ir::type_name(target_type)}"
+                    )
+                return self.union_conversion(value, target_type)
 
             case ast::Constructor _:
                 # TODO: constructor functions as first-class objects
@@ -787,18 +810,21 @@ class FunctionOrMethodConverter(
                         types_to_do = []
                     else:
                         let varname = chase.type_and_name.get().name
-                        let nice_type = self.get_type(chase.type_and_name.get().type)
-                        nice_types = [nice_type]
-                        assert(nice_type in types_to_do)   # TODO: error
-                        types_to_do.delete_only(nice_type)
+                        let case_type = self.get_type(chase.type_and_name.get().type)
 
-                        let case_var = self.create_var(
-                            nice_type, chase.type_and_name.get().name_location
-                        )
-                        # TODO: assert varname not in self.variables
+                        nice_types = get_type_members(case_type)
+                        foreach t of nice_types:
+                            # TODO: error if not found
+                            types_to_do.delete_only(t)
+
+                        self.push_code()
+                        let case_var = self.union_conversion(union_var, case_type)
+                        let case_code = self.pop_code()
+
+                        cases.push_all(case_code)
+                        # TODO: error
+                        assert(varname not in [foreach v of self.variables: v.name])
                         self.variables.push(new NamedVariable(varname, case_var))
-                        cases.push(new ir::GetFromUnion(case_var, union_var))
-                        cases.push(new ir::IncRef(case_var))
 
                     cases.push_all(self.do_block(chase.body))
                     cases.push(new ir::GotoIf(done_label, self.bool_constant("true", chase.location)))
@@ -951,7 +977,7 @@ class FunctionOrMethodConverter(
                     self.get_rid_of_auto_in_var(pointer_check.rhs)
                     self.get_rid_of_auto_in_var(pointer_check.result)
 
-                case ir::GotoLabel label:
+                case ir::GotoLabel | ir::Panic _:
                     pass
 
 
@@ -1081,9 +1107,9 @@ class FileConverter(
         switch top_declaration:
             # TODO: copy pasta
             case ast::TypeDef def:
-                let the_type = self.get_named_type(def.name)
-                self.symbols.push(new ir::Symbol(self.path, def.name, the_type))
-                switch the_type:
+                let type = self.get_named_type(def.name)
+                self.symbols.push(new ir::Symbol(self.path, def.name, type))
+                switch type:
                     case ir::UnionType union_type:
                         # use typedef name in error messages
                         assert(union_type.custom_name == null)
