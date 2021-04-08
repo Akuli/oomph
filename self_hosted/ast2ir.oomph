@@ -270,7 +270,7 @@ class FunctionOrMethodConverter(
                         self.code.push(new ir::IncRef(conversion_result))
                         return conversion_result
                     case *:
-                        # TODO: uncommenting this causes funny corner case and test fail
+                        # TODO: uncommenting this causes funny autotype corner case and test fail
                         #assert(var.type == target_type)
                         return var
 

@@ -423,9 +423,7 @@ class FilePair(
         assert(self.struct == null)
 
         switch type:
-            case ir::AutoType _:
-                assert(false)
-            case ir::FunctionType _:
+            case ir::AutoType | ir::FunctionType _:
                 assert(false)
             case ir::UnionType union:
                 # TODO: enumerate
