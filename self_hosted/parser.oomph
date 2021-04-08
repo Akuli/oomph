@@ -296,19 +296,19 @@ class Parser(List[tokenizer::Token] tokens):
 
             if un_or_null != null and bin_or_null != null:
                 # Prefer binary operator if both are found in same place (needed for x - y)
-                if un_or_null.get() < bin_or_null.get():
+                if (un_or_null as not null) < (bin_or_null as not null):
                     bin_or_null = null
                 else:
                     un_or_null = null
 
             if un_or_null != null:
-                let i = un_or_null.get()
+                let i = un_or_null as not null
                 let op_and_expr = magic_list.delete_slice(i, i+2)
                 let op = op_and_expr.first() as tokenizer::Token
                 let expr = op_and_expr.last() as ast::Expression
                 magic_list.insert(i, new ast::UnaryOperator(op.location, op.value, expr))
             elif bin_or_null != null:
-                let i = bin_or_null.get()
+                let i = bin_or_null as not null
                 let lhs_op_rhs = magic_list.delete_slice(i-1, i+2)
                 let lhs = lhs_op_rhs.first() as ast::Expression
                 let op = lhs_op_rhs.get(1) as tokenizer::Token
@@ -389,7 +389,7 @@ class Parser(List[tokenizer::Token] tokens):
         ]
 
         let magic_list = self.get_unary_operators()
-        magic_list.push(self.parse_simple_expression(error_message.get()))
+        magic_list.push(self.parse_simple_expression(error_message as not null))
         while self.peek().value in binary_ops:
             let op_token = self.tokens.pop()
             magic_list.push(op_token)
@@ -397,7 +397,7 @@ class Parser(List[tokenizer::Token] tokens):
                 magic_list.push(self.parse_type())
             else:
                 magic_list.push_all(self.get_unary_operators())
-                magic_list.push(self.parse_simple_expression(error_message.get()))
+                magic_list.push(self.parse_simple_expression(error_message as not null))
 
         # FIXME: this nestedness sucks in many ways
         for let i = 1; i < magic_list.length(); i = i+1:
@@ -661,7 +661,7 @@ export func parse_file(
 
     while parser.tokens != [] and parser.peek().matches("keyword", "import"):
         assert(stdlib_path != null)
-        result.push(parser.parse_import(path, stdlib_path.get()))
+        result.push(parser.parse_import(path, stdlib_path as not null))
     while parser.tokens != []:
         result.push(parser.parse_toplevel())
 

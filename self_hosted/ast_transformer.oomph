@@ -145,12 +145,12 @@ class AstTransformer(Int varname_counter):
                 let header = loop.loop_header as ast::ForLoopHeader
                 header.init = self.visit_statements(header.init)
                 if header.cond != null:
-                    header.cond = self.visit_expression(header.cond.get()) as ast::Expression | null
+                    header.cond = self.visit_expression(header.cond as not null) as ast::Expression | null
                 header.incr = self.visit_statements(header.incr)
                 loop.body = self.visit_statements(loop.body)
             case ast::Return ret:
                 if ret.value != null:
-                    ret.value = self.visit_expression(ret.value.get()) as ast::Expression | null
+                    ret.value = self.visit_expression(ret.value as not null) as ast::Expression | null
             case ast::SetAttribute setattr:
                 setattr.obj = self.visit_expression(setattr.obj)
                 setattr.value = self.visit_expression(setattr.value)

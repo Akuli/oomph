@@ -14,12 +14,12 @@ func get_simple_identifier(Str code) -> Str | null:
     if match == null:
         return null
 
-    let result = match.get()
+    let result = match as not null
     while true:
         let match = starts_with_any(code.remove_prefix(result), continue_chars.split(""))
         if match == null:
             return result
-        result = result + match.get()
+        result = result + (match as not null)
 
 func get_identifier(Str code) -> Str | null:
     switch get_simple_identifier(code):
@@ -27,7 +27,7 @@ func get_identifier(Str code) -> Str | null:
             let remaining = code.remove_prefix(s)
             if remaining.starts_with("::"):
                 # TODO: better error handling for foo::123
-                return s + "::" + get_simple_identifier(remaining.remove_prefix("::")).get()
+                return s + "::" + (get_simple_identifier(remaining.remove_prefix("::")) as not null)
             return s
         case *:
             return null
@@ -117,7 +117,7 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
         let op = starts_with_any(code, op_list)
         if op != null:
             let token_type = "op"
-            let token_value = op.get()
+            let token_value = op as not null
 
         elif code.starts_with(" "):
             if result != [] and result.last().matches("op", "\n"):
@@ -151,7 +151,7 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
         else:
             let id = get_identifier(code)
             if id != null:
-                token_value = id.get()
+                token_value = id as not null
                 if token_value in keyword_list:
                     token_type = "keyword"
                 else:

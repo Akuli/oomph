@@ -73,7 +73,9 @@ export func make_union(
     # check no duplicates
     for let i = 0; i < flattened.length(); i = i+1:
         if flattened.get(i) in flattened.slice(0, i):
-            location.get().error("repeated union member '{type_name(flattened.get(i))}'")
+            (location as not null).error(
+                "repeated union member '{type_name(flattened.get(i))}'"
+            )
 
     # FIXME: sort the type members consistently
 
@@ -121,7 +123,7 @@ export func type_name(Type type) -> Str:
                 return "(" + [
                     foreach t of union.type_members: type_name(t)
                 ].join(" | ") + ")"
-            return union.custom_name.get()
+            return union.custom_name as not null
 
 export func type_id_string(Type type) -> Str:
     switch type:
@@ -130,7 +132,7 @@ export func type_id_string(Type type) -> Str:
         case BasicType basictype:
             if basictype.generic_source == null:
                 return basictype.name + "@" + basictype.definition_path.to_string()
-            let source = basictype.generic_source.get()
+            let source = basictype.generic_source as not null
             return source.generik.name + type_id_string(source.arg)
         case UnionType union:
             return [foreach m of union.type_members: type_id_string(m)].join("|")
