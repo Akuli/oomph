@@ -12,4 +12,4 @@ trap 'rm -rvf "$dir"' EXIT
 valgrind --tool=callgrind --callgrind-out-file=$dir/callgrind.out "$@"
 gprof2dot $dir/callgrind.out --format=callgrind --output=$dir/graph.gvz
 dot -Tpng $dir/graph.gvz -o $dir/image.png
-eom $dir/image.png
+xdg-open $dir/image.png
