@@ -1,7 +1,7 @@
 hello
-Bar(123, (null | Str)("lol"))
+Bar(123, (Str | null)("lol"))
 123
-(null | Str)("lol")
-Lol 123 (null | Str)("lol")
-FooBar(Bar(123, (null | Str)("lol")))
-Bar from switch: Bar(123, (null | Str)("lol"))
+(Str | null)("lol")
+Lol 123 (Str | null)("lol")
+FooBar(Bar(123, (Str | null)("lol")))
+Bar from switch: Bar(123, (Str | null)("lol"))

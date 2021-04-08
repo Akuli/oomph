@@ -93,16 +93,8 @@ class UnionType(Type):
         assert len(self.type_members) >= 2
         assert len(self.type_members) == len(set(self.type_members))
 
-        # Consistent order, with null first if any (used in rest of compiler)
-        # TODO: is that still necessary?
-        self.type_members.sort(
-            key=(
-                lambda member: (
-                    1 if member == NULL_TYPE else 2,
-                    member.get_id_string(),
-                )
-            )
-        )
+        # Consistent order
+        self.type_members.sort(key=(lambda member: member.get_id_string()))
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)

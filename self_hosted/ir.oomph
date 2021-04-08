@@ -79,11 +79,6 @@ export func make_union(
 
     # FIXME: sort the type members consistently
 
-    # Rest of the code relies on null being first when detecting 'Foo | null' unions
-    if builtins.NULL_TYPE in flattened:
-        flattened.delete_only(builtins.NULL_TYPE)
-        flattened.insert(0, builtins.NULL_TYPE)
-
     return new UnionType(flattened, null, builtins)
 
 

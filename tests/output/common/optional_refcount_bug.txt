@@ -1,1 +1,1 @@
-(null | Str)("a")
+(Str | null)("a")
