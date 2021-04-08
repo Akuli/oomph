@@ -181,6 +181,9 @@ To use it in an editor:
     Note that you should not have the virtual env activated when doing this,
     unless you have installed Porcupine into it.
 
+### Visual Studio Code
+
+Copy the `oomph-vscode` directory into `~/.vscode/extensions` (might be `.vscode-server` if using WSL)
 
 ## TCC
 
