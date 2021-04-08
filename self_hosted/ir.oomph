@@ -117,7 +117,7 @@ export func type_name(Type type) -> Str:
         case UnionType union:
             # Don't use custom names for 'Foo | null'
             # TODO: is custom_name ever set in this case?
-            if union.custom_name == null or union.builtins.NULL_TYPE in union.type_members.first():
+            if union.custom_name == null or union.builtins.NULL_TYPE in union.type_members:
                 return "(" + [
                     foreach t of union.type_members: type_name(t)
                 ].join(" | ") + ")"
