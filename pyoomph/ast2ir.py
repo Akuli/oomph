@@ -529,7 +529,16 @@ class _FunctionOrMethodConverter:
         if isinstance(expr, ast.As):
             value = self.do_expression(expr.expr)
             target_type = self.get_type(expr.type)
-            assert value.type != target_type, "unnecessary 'as'"
+            if expr.as_not:
+                assert isinstance(value.type, ir.UnionType)
+                assert target_type in value.type.type_members
+                new_members = set(value.type.type_members) - {target_type}
+                if len(new_members) >= 2:
+                    target_type = ir.UnionType(list(new_members))
+                else:
+                    [target_type] = new_members
+            else:
+                assert value.type != target_type, "unnecessary 'as'"
             return self.union_conversion(value, target_type)
 
         if isinstance(expr, ast.Constructor):
