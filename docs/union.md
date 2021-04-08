@@ -45,7 +45,7 @@ whether `null` is the active member of `message`.
 
 Recall that `message` has type `Str | null`.
 However, when the `else` runs, the active member of `message` can't be `null`.
-Here `as not null` converts converts from `Str | null` to `Str`.
+Here `as not null` converts from `Str | null` to `Str`.
 
     export func main():
         foo(null)       # prints "No message"
