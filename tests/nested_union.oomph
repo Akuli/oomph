@@ -7,3 +7,8 @@ typedef Nested = Foo | (Bar | Baz)
 export func main():
     print(new Flat(new Bar()))
     print(new Nested(new Bar()))
+
+    # There should be no difference between Flat and Nested.
+    # We ensure that by convering Flat to Nested and Nested to Flat.
+    new List[Flat]().push_all(new List[Nested]())
+    new List[Nested]().push_all(new List[Flat]())

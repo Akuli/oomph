@@ -3,4 +3,5 @@ tests/andor_error.oomph
 tests/equals_chain_error.oomph
 tests/mod_chain_error.oomph
 tests/mod_error.oomph
+tests/nested_union.oomph  # two typedef names for same union is weird
 tests/oomph_cmdline.oomph

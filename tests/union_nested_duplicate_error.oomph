@@ -1,0 +1,4 @@
+typedef Bad = Str | (Str | Int)
+
+export func main():
+    pass
