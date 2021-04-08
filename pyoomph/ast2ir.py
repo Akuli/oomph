@@ -678,7 +678,7 @@ class _FunctionOrMethodConverter:
 
                 if case.type_and_varname is None:
                     assert types_to_do
-                    nice_types = set(types_to_do)
+                    nice_types = types_to_do.copy()
                     types_to_do.clear()
                 else:
                     raw_type, varname = case.type_and_varname

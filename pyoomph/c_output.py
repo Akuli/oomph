@@ -145,12 +145,6 @@ class _FunctionEmitter:
             return f"""
             panic_printf("%s", string_to_cstr({self.file_pair.emit_string(ins.message)}));
             """
-            assert isinstance(ins.union.type, ir.UnionType)
-            membernum = ins.union.type.type_members.index(ins.result.type)
-            return f"""
-            assert({self.emit_var(ins.union)}.membernum == {membernum});
-            {self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};
-            """
 
         if isinstance(ins, ir.GotoLabel):
             return _emit_label(self.get_label_name(ins))
@@ -541,7 +535,7 @@ class _FilePair:
                         if (obj.membernum == 0)
                             panic_printf("null.get() was called");
 
-                        {itemtype_code} res = {{ .membernum = obj.membernum - 1, }};
+                        {itemtype_code} res = {{ .membernum = obj.membernum - 1 }};
                         memcpy(&res.val, &obj.val, sizeof res.val);  // FIXME: is haxor
                         {self.session.emit_incref('res', itemtype)};
                         return res;
