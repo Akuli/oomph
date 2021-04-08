@@ -100,7 +100,6 @@ Python gotchas that also exist in Oomph (but fixing is planned):
 
 ## Learning Oomph
 
-```suggestion
 Example code:
 - There are short example programs in `tests`.
 - Some things are implemented in Oomph. See `builtins.oomph` and `stdlib`.
