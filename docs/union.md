@@ -81,6 +81,7 @@ and that too gives a runtime error if called with the wrong active member:
 In general, `as` can do any conversions with unions:
 it can convert from a union type to a non-union like in the above example,
 or vice versa, or from one union type to another.
+It is an error if neither of the types is a union type.
 
 
 ## Switch
