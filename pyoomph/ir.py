@@ -258,6 +258,11 @@ class GetFromUnion(Instruction):
     union: LocalVariable
 
 
+@dataclass(eq=False)
+class Panic(Instruction):
+    message: str
+
+
 # Check is it possible to call GetFromUnion with result var of given member type
 @dataclass(eq=False)
 class UnionMemberCheck(Instruction):

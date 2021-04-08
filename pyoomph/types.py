@@ -115,7 +115,7 @@ class UnionType(Type):
         return "|".join(member.get_id_string() for member in self.type_members)
 
     # Equal unions may have different names, Type.__hash__ isn't good
-    def __hash__(self):
+    def __hash__(self) -> int:
         result = 0
         for member in self.type_members:
             result ^= hash(member)

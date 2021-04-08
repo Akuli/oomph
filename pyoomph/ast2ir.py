@@ -26,6 +26,12 @@ class ConversionError(Exception):
     pass
 
 
+def _type_members(the_type: Type) -> Set[Type]:
+    if isinstance(the_type, UnionType):
+        return set(the_type.type_members)
+    return {the_type}
+
+
 class _FunctionOrMethodConverter:
     def __init__(
         self,
@@ -151,21 +157,57 @@ class _FunctionOrMethodConverter:
             return (generic.get_type(type1_arg), generic.get_type(type2_arg))
         return (type1, type2)
 
+    # TODO: make sure this logic isn't duplicated elsewhere
+    def union_conversion(
+        self, var: ir.LocalVariable, target_type: Type
+    ) -> ir.LocalVariable:
+        conversion_result = self.create_var(target_type)
+
+        if not isinstance(var.type, UnionType):
+            if not isinstance(target_type, UnionType):
+                # Uncommenting this causes funny corner case and test fail
+                #assert var.type == target_type, (var.type, target_type)
+                return var
+            assert var.type in target_type.type_members
+            self.code.append(ir.InstantiateUnion(conversion_result, var))
+            self.code.append(ir.IncRef(conversion_result))
+            return conversion_result
+
+        bool_var = self.create_var(BOOL)
+        end_code: List[ir.Instruction] = []
+        done_label = ir.GotoLabel()
+
+        for member in var.type.type_members:
+            if member in _type_members(target_type):
+                label = ir.GotoLabel()
+                self.code.append(ir.UnionMemberCheck(bool_var, var, member))
+                self.code.append(ir.Goto(label, bool_var))
+
+                get_result = self.create_var(member)
+                end_code.append(label)
+                end_code.append(ir.GetFromUnion(get_result, var))
+                end_code.append(ir.IncRef(get_result))
+                if isinstance(target_type, UnionType):
+                    end_code.append(ir.InstantiateUnion(conversion_result, get_result))
+                else:
+                    end_code.append(ir.VarCpy(conversion_result, get_result))
+                end_code.append(ir.IncRef(conversion_result))
+                end_code.append(ir.Goto(done_label, ir.visible_builtins["true"]))
+
+        self.code.append(ir.Panic("'as' failed"))  # TODO: better error message?
+        self.code.extend(end_code)
+        self.code.append(done_label)
+        return conversion_result
+
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
         var.type, target_type = self._do_the_autotype_thing(var.type, target_type)
-        if var.type == target_type:
-            return var
 
-        if target_type is FLOAT and var.type is INT:
+        if var.type is INT and target_type is FLOAT:
             return self.create_special_call("int2float", [var])
-
-        if isinstance(target_type, UnionType) and var.type in target_type.type_members:
-            new_var = self.create_var(target_type)
-            self.code.append(ir.InstantiateUnion(new_var, var))
-            self.code.append(ir.IncRef(var))
-            return new_var
+        if _type_members(var.type).issubset(_type_members(target_type)):
+            return self.union_conversion(var, target_type)
 
         raise ConversionError(
             f"can't implicitly convert from {var.type.name} to {target_type.name}"
@@ -487,11 +529,9 @@ class _FunctionOrMethodConverter:
             return self.do_binary_op(expr)
 
         if isinstance(expr, ast.As):
-            lhs = self.do_expression(expr.expr)
-            result = self.create_var(self.get_type(expr.type))
-            self.code.append(ir.GetFromUnion(result, lhs))
-            self.code.append(ir.IncRef(result))
-            return result
+            return self.union_conversion(
+                self.do_expression(expr.expr), self.get_type(expr.type)
+            )
 
         if isinstance(expr, ast.Constructor):
             raise NotImplementedError(f"constructor as object: {expr}")
@@ -515,43 +555,6 @@ class _FunctionOrMethodConverter:
             return self.do_expression(expr.expression)
 
         raise NotImplementedError(expr)
-
-    # Does something unspecified if var has union type with active member not in target_type
-    # TODO: make sure this logic isn't duplicated elsewhere
-    def union_conversion(
-        self, var: ir.LocalVariable, target_type: Type
-    ) -> ir.LocalVariable:
-        end_code: List[ir.Instruction] = []
-        bool_var = self.create_var(BOOL)
-        conversion_result = self.create_var(target_type)
-        done_label = ir.GotoLabel()
-
-        for member in (
-            var.type.type_members if isinstance(var.type, UnionType) else [var.type]
-        ):
-            if member in (
-                target_type.type_members
-                if isinstance(target_type, UnionType)
-                else [target_type]
-            ):
-                label = ir.GotoLabel()
-                self.code.append(ir.UnionMemberCheck(bool_var, var, member))
-                self.code.append(ir.Goto(label, bool_var))
-
-                get_result = self.create_var(member)
-                end_code.append(label)
-                end_code.append(ir.GetFromUnion(get_result, var))
-                if isinstance(target_type, UnionType):
-                    end_code.append(ir.InstantiateUnion(conversion_result, get_result))
-                else:
-                    end_code.append(ir.VarCpy(conversion_result, get_result))
-                end_code.append(ir.Goto(done_label, ir.visible_builtins["true"]))
-
-        self.code.extend(end_code)
-        # TODO: add panic here
-        self.code.append(done_label)
-        self.code.append(ir.IncRef(conversion_result))
-        return conversion_result
 
     def do_statement(self, stmt: ast.Statement) -> None:
         if isinstance(stmt, ast.Call):
@@ -801,7 +804,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.union)
-            elif isinstance(ins, ir.GotoLabel):
+            elif isinstance(ins, (ir.GotoLabel, ir.Panic)):
                 pass
             else:
                 raise NotImplementedError(ins)

@@ -127,9 +127,7 @@ class _FunctionEmitter:
             assert isinstance(ins.union.type, ir.UnionType)
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"""
-            if ({self.emit_var(ins.union)}.membernum != {membernum})
-                panic_printf("'as' failed");   // TODO: better message?
-
+            assert({self.emit_var(ins.union)}.membernum == {membernum});
             {self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};
             """
 
@@ -142,6 +140,17 @@ class _FunctionEmitter:
                 # Must not run for non-refcounted unions or optionals
                 return ""
             return f"{self.emit_var(ins.var)} = NULL;\n"
+
+        if isinstance(ins, ir.Panic):
+            return f"""
+            panic_printf("%s", string_to_cstr({self.file_pair.emit_string(ins.message)}));
+            """
+            assert isinstance(ins.union.type, ir.UnionType)
+            membernum = ins.union.type.type_members.index(ins.result.type)
+            return f"""
+            assert({self.emit_var(ins.union)}.membernum == {membernum});
+            {self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};
+            """
 
         if isinstance(ins, ir.GotoLabel):
             return _emit_label(self.get_label_name(ins))
