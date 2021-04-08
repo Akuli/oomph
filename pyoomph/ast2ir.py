@@ -529,8 +529,11 @@ class _FunctionOrMethodConverter:
             return self.do_binary_op(expr)
 
         if isinstance(expr, ast.As):
+            value = self.do_expression(expr.expr)
+            target_type = self.get_type(expr.type)
+            assert value.type != target_type, "unnecessary 'as'"
             return self.union_conversion(
-                self.do_expression(expr.expr), self.get_type(expr.type)
+                value, target_type
             )
 
         if isinstance(expr, ast.Constructor):
