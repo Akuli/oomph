@@ -123,11 +123,11 @@ This makes the defined function or type visible in other files when the file is 
 
 An argument definition of a function, method or class is a type followed by a simple identifier.
 
-A type is a non-union type or multiple `|`-separated non-union types. A non-union type can be:
+A type is a possibly parenthesized non-union type or multiple `|`-separated non-union types.
+A non-union type can be:
 - [Automatic type](auto.md): the keyword `auto`.
 - Generic type: an identifier followed by a `[]`-parenthesized type.
 - Named type: an identifier.
-- Any parenthesized type.
 
 A statement can be:
 - If statement: the keyword `if` followed by an expression, then a block of statements,
