@@ -386,12 +386,6 @@ class _Parser:
         return [result]
 
     def parse_type_without_unions(self) -> ast.Type:
-        if self.token_iter.peek() == ("op", "("):
-            self.get_token("op", "(")
-            result = self.parse_type()
-            self.get_token("op", ")")
-            return result
-
         if self.token_iter.peek() == ("keyword", "auto"):
             self.get_token("keyword", "auto")
             return ast.AutoType()

@@ -555,12 +555,6 @@ class Parser(List[tokenizer::Token] tokens):
         return [result]
 
     meth parse_type_without_unions() -> ast::Type:
-        if self.peek().matches("op", "("):
-            self.get_token("op", "(")
-            let result = self.parse_type()
-            self.get_token("op", ")")
-            return result
-
         if self.peek().matches("keyword", "auto"):
             return new ast::AutoType(self.get_token("keyword", "auto").location)
 
