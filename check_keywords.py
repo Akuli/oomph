@@ -1,7 +1,7 @@
 # Builtins, keywords etc are mentioned in many places that can't just import
 # them from one central place. This test ensures that they stay in sync.
-import subprocess
 import json
+import subprocess
 import sys
 
 import oomph_pygments_lexer
