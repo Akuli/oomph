@@ -223,11 +223,12 @@ class _Parser:
             ("keyword", "and"),
             ("keyword", "or"),
             ("keyword", "as"),
+            ("keyword", "as not"),
             ("keyword", "mod"),
         }:
             keyword = self.get_token()[1]
             magic_list.append((2, keyword))
-            if keyword == "as":
+            if keyword in ["as", "as not"]:
                 magic_list.append(self.parse_type())
             else:
                 magic_list.extend(self.get_unary_operators())
@@ -240,7 +241,7 @@ class _Parser:
             [(2, "mod")],
             [(2, "=="), (2, "!=")],
             [(2, "<"), (2, ">"), (2, "<="), (2, ">=")],
-            [(2, "as")],
+            [(2, "as"), (2, "as not")],
             [(2, "in"), (2, "not in")],
             [(1, "not")],
             [(2, "and"), (2, "or")],
@@ -260,10 +261,12 @@ class _Parser:
                 elif op_kind == 2:  # Binary operator
                     lhs = magic_list[where - 1]
                     rhs = magic_list[where + 1]
-                    if op_string == "as":
+                    if op_string in ["as", "as not"]:
                         assert isinstance(lhs, ast.Expression)
                         assert isinstance(rhs, ast.Type)
-                        result: ast.Expression = ast.As(lhs, rhs)
+                        result: ast.Expression = ast.As(
+                            lhs, rhs, (op_string == "as not")
+                        )
                     else:
                         assert isinstance(lhs, ast.Expression)
                         assert isinstance(rhs, ast.Expression)
@@ -386,12 +389,6 @@ class _Parser:
         return [result]
 
     def parse_type_without_unions(self) -> ast.Type:
-        if self.token_iter.peek() == ("op", "("):
-            self.get_token("op", "(")
-            result = self.parse_type()
-            self.get_token("op", ")")
-            return result
-
         if self.token_iter.peek() == ("keyword", "auto"):
             self.get_token("keyword", "auto")
             return ast.AutoType()
@@ -473,7 +470,14 @@ class _Parser:
             name = self.get_token("identifier")[1]
             assert "::" not in name
             self.get_token("op", "=")
+
+            parens = self.token_iter.peek() == ("op", "(")
+            if parens:
+                self.get_token("op", "(")
             the_type = self.parse_type()
+            if parens:
+                self.get_token("op", ")")
+
             self.get_token("op", "\n")
             return ast.TypeDef(name, the_type)
 

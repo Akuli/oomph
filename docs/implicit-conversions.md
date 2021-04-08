@@ -16,15 +16,21 @@ Implicit conversion rules are applied in these situations (and more is planned):
     - If neither conversion succeeds, a compilation error occurs.
 - The operators `and`, `or`, `not` implicitly convert all values to type `Bool`.
 
+To define how exactly an implicit conversion happens, we define the **type members** of a
+type like this:
+    - The type members of a [union type](union.md) are those non-union types that were
+        combined together with `|` to make the union type.
+        For example, `Str` and `null` are the two type members of `Str | null`.
+    - Any other type has only one type member, the type itself.
+        For example, `Str` is the only type member of `Str`.
+
 Implicitly converting an object to a type follows these rules:
 - If the object already has the desired type, then nothing happens; the
     original object is the result of the conversion.
 - If the type to convert to is `Float` and the object has type `Int`,
     the integer will be converted to a float at runtime.
-- If the type to convert to is a union type, with the type of the object as a
-    member, then the result of the conversion is a new instance of the union
-    type. Nested unions are allowed when they are not ambiguous. If the desired
-    type itself is a union type, then its members are ignored.
+- If every type member of the original type is also a type member of the desired type,
+    then the rules of the [as](union.md#as) keyword are used.
 - Otherwise, the implicit conversion fails.
 
 There are also a few additional rules that apply only when automatic types are involved.
@@ -33,26 +39,6 @@ See [the documentation on automatic types](auto.md).
 These rules are intentionally weak. For example, unlike in many other programming
 languages, `1 == "2"` is an error: even though the `==` operator does implicit
 conversions, nothing can implicitly convert between `Int` and `Str`.
-
-To understand what "when they are not ambiguous" means, consider the following example:
-
-```python
-class Foo()
-class Bar()
-
-union Inner:
-    Foo
-    Bar
-
-union Outer:
-    Foo
-    Inner
-```
-
-Now an instance of `Foo` cannot be implicitly converted to type `Outer`,
-as it could mean `Outer(foo)` or `Outer(Inner(foo))`.
-However, an instance of `Bar` can be implicitly converted to type `Outer`,
-and that means `Outer(Inner(bar))`.
 
 There are some special cases:
 - If the argument of the built-in `print` function is not a string, its `.to_string()`

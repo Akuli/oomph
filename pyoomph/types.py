@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 # Describes how exactly a type was created from a generic
@@ -48,6 +48,9 @@ class Type:
         return f"<{type(self).__name__}: {self.name}>"
 
     def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Type):
+            return False
+
         if isinstance(self, AutoType) or isinstance(other, AutoType):
             return self is other
         if isinstance(self, UnionType) or isinstance(other, UnionType):
@@ -56,14 +59,13 @@ class Type:
                 and isinstance(other, UnionType)
                 and self.type_members == other.type_members
             )
-        return (
-            isinstance(other, Type)
-            and self.name == other.name
-            and self.definition_path == other.definition_path
-            and self.generic_origin == other.generic_origin
-        )
+        if self.generic_origin is not None or other.generic_origin is not None:
+            return self.generic_origin == other.generic_origin
+        return self.name == other.name and self.definition_path == other.definition_path
 
     def __hash__(self) -> int:
+        if self.generic_origin is not None:
+            return hash(self.generic_origin.arg)
         return hash(self.name)
 
 
@@ -76,36 +78,42 @@ class AutoType(Type):
 
 
 class UnionType(Type):
-    def __init__(self, type_members: Set[Type]):
+    def __init__(self, type_members: List[Type]):
         super().__init__("", True)
         self.custom_name: Optional[str] = None
 
-        assert len(type_members) >= 2
+        # Don't allow nested unions
+        # TODO: what if member is autotype and gets later substituted with union?
+        self.type_members: List[Type] = []
+        for member in type_members:
+            if isinstance(member, UnionType):
+                self.type_members.extend(member.type_members)
+            else:
+                self.type_members.append(member)
+        assert len(self.type_members) >= 2
+        assert len(self.type_members) == len(set(self.type_members))
 
-        # Consistent order, with null first if any (used in lib/)
-        # TODO: no longer used in lib/
-        self.type_members = sorted(type_members, key=(lambda t: t.get_id_string()))
-        if NULL_TYPE in self.type_members:
-            self.type_members.remove(NULL_TYPE)
-            self.type_members.insert(0, NULL_TYPE)
+        # Consistent order
+        self.type_members.sort(key=(lambda member: member.get_id_string()))
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
-        if len(self.type_members) == 2 and self.type_members[0] == NULL_TYPE:
-            self.methods["get"] = FunctionType([self], self.type_members[1])
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
 
-    @property
-    def name(self) -> str:
-        # Don't use custom names for 'Foo | null'
-        if "get" in self.methods or self.custom_name is None:
-            return "(%s)" % " | ".join(t.name for t in self.type_members)
-        return self.custom_name
-
     def get_id_string(self) -> str:
         return "|".join(member.get_id_string() for member in self.type_members)
+
+    # Equal unions may have different typedef names, Type.__hash__ isn't good
+    def __hash__(self) -> int:
+        return hash(tuple(self.type_members))
+
+    @property
+    def name(self) -> str:
+        if self.custom_name is None:
+            return "(%s)" % " | ".join(t.name for t in self.type_members)
+        return self.custom_name
 
 
 # does NOT inherit from type, optional isn't a type even though optional[str] is

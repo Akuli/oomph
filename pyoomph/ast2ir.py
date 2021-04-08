@@ -26,6 +26,12 @@ class ConversionError(Exception):
     pass
 
 
+def _type_members(the_type: Type) -> Set[Type]:
+    if isinstance(the_type, UnionType):
+        return set(the_type.type_members)
+    return {the_type}
+
+
 class _FunctionOrMethodConverter:
     def __init__(
         self,
@@ -151,48 +157,66 @@ class _FunctionOrMethodConverter:
             return (generic.get_type(type1_arg), generic.get_type(type2_arg))
         return (type1, type2)
 
+    # TODO: make sure this logic isn't duplicated elsewhere
+    def union_conversion(
+        self, var: ir.LocalVariable, target_type: Type
+    ) -> ir.LocalVariable:
+        conversion_result = self.create_var(target_type)
+
+        if not isinstance(var.type, UnionType):
+            if not isinstance(target_type, UnionType):
+                # Uncommenting this causes funny corner case and test fail
+                # assert var.type == target_type, (var.type, target_type)
+                return var
+            assert var.type in target_type.type_members
+            self.code.append(ir.InstantiateUnion(conversion_result, var))
+            self.code.append(ir.IncRef(conversion_result))
+            return conversion_result
+
+        bool_var = self.create_var(BOOL)
+        end_code: List[ir.Instruction] = []
+        done_label = ir.GotoLabel()
+
+        for member in var.type.type_members:
+            if member in _type_members(target_type):
+                label = ir.GotoLabel()
+                self.code.append(ir.UnionMemberCheck(bool_var, var, member))
+                self.code.append(ir.Goto(label, bool_var))
+
+                with self.code_to_separate_list() as end_code_stuff:
+                    self.code.append(label)
+                    get_result = self.create_var(member)  # must be after label
+                    self.code.append(ir.GetFromUnion(get_result, var))
+                    self.code.append(ir.IncRef(get_result))
+                    if isinstance(target_type, UnionType):
+                        self.code.append(
+                            ir.InstantiateUnion(conversion_result, get_result)
+                        )
+                    else:
+                        self.code.append(ir.VarCpy(conversion_result, get_result))
+                    self.code.append(ir.IncRef(conversion_result))
+                    self.code.append(ir.Goto(done_label, ir.visible_builtins["true"]))
+
+                end_code.extend(end_code_stuff)
+
+        self.code.append(ir.Panic("'as' failed"))  # TODO: better error message?
+        self.code.extend(end_code)
+        self.code.append(done_label)
+        return conversion_result
+
     def implicit_conversion(
         self, var: ir.LocalVariable, target_type: Type
     ) -> ir.LocalVariable:
         var.type, target_type = self._do_the_autotype_thing(var.type, target_type)
-        if var.type == target_type:
-            return var
 
-        if target_type is FLOAT and var.type is INT:
+        if var.type is INT and target_type is FLOAT:
             return self.create_special_call("int2float", [var])
+        if _type_members(var.type).issubset(_type_members(target_type)):
+            return self.union_conversion(var, target_type)
 
-        if not isinstance(target_type, UnionType):
-            raise ConversionError(
-                f"can't implicitly convert {var.type.name} to {target_type.name}"
-            )
-
-        # FIXME: cyclicly nested unions
-        result_path: Optional[List[UnionType]] = None
-        todo_paths = [[target_type]]
-        while todo_paths:
-            path = todo_paths.pop()
-            for member in path[-1].type_members:
-                if member == var.type:
-                    if result_path is not None:
-                        raise ConversionError(
-                            "ambiguous implicit conversion "
-                            f"from {var.type.name} to {target_type.name}"
-                        )
-                    result_path = path
-                elif isinstance(member, UnionType):
-                    todo_paths.append(path + [member])
-
-        if result_path is None:
-            raise ConversionError(
-                f"can't implicitly convert from {var.type.name} to {target_type.name}"
-            )
-
-        for union in reversed(result_path):
-            new_var = self.create_var(union)
-            self.code.append(ir.InstantiateUnion(new_var, var))
-            self.code.append(ir.IncRef(var))
-            var = new_var
-        return var
+        raise ConversionError(
+            f"can't implicitly convert from {var.type.name} to {target_type.name}"
+        )
 
     # Can be called multiple times, that doesn't matter
     def do_args(
@@ -284,7 +308,7 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(call.func, ast.Constructor):
             the_class = self.get_type(call.func.type)
-            assert the_class.constructor_argtypes is not None
+            assert the_class.constructor_argtypes is not None, the_class.name
             args = self.do_args(
                 list(map(self.do_expression, call.args)),
                 the_class.constructor_argtypes,
@@ -474,15 +498,8 @@ class _FunctionOrMethodConverter:
             return result
 
         if isinstance(expr, ast.Call):
-            if isinstance(expr.func, ast.Constructor):
-                union_type = self.get_type(expr.func.type)
-                if isinstance(union_type, UnionType):
-                    assert len(expr.args) == 1
-                    obj = self.do_expression(expr.args[0])
-                    return self.implicit_conversion(obj, union_type)
-
             call = self.do_call(expr, True)
-            assert call is not None, f"return value of void function {expr.func} used"
+            assert call is not None, f"function does not return a value: {expr.func}"
             return call
 
         if isinstance(expr, ast.GetVar):
@@ -510,11 +527,19 @@ class _FunctionOrMethodConverter:
             return self.do_binary_op(expr)
 
         if isinstance(expr, ast.As):
-            lhs = self.do_expression(expr.expr)
-            result = self.create_var(self.get_type(expr.type))
-            self.code.append(ir.GetFromUnion(result, lhs))
-            self.code.append(ir.IncRef(result))
-            return result
+            value = self.do_expression(expr.expr)
+            target_type = self.get_type(expr.type)
+            if expr.as_not:
+                assert isinstance(value.type, ir.UnionType)
+                assert target_type in value.type.type_members
+                new_members = set(value.type.type_members) - {target_type}
+                if len(new_members) >= 2:
+                    target_type = ir.UnionType(list(new_members))
+                else:
+                    [target_type] = new_members
+            else:
+                assert value.type != target_type, "unnecessary 'as'"
+            return self.union_conversion(value, target_type)
 
         if isinstance(expr, ast.Constructor):
             raise NotImplementedError(f"constructor as object: {expr}")
@@ -646,7 +671,7 @@ class _FunctionOrMethodConverter:
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
             assert isinstance(union_var.type, UnionType)
-            types_to_do = union_var.type.type_members.copy()
+            types_to_do = set(union_var.type.type_members)
 
             done_label = ir.GotoLabel()
             member_check = self.create_var(BOOL)
@@ -661,20 +686,19 @@ class _FunctionOrMethodConverter:
                     nice_types = types_to_do.copy()
                     types_to_do.clear()
                 else:
-                    ugly_type, varname = case.type_and_varname
-                    nice_type = self.get_type(ugly_type)
-                    nice_types = [nice_type]
-                    assert nice_type in types_to_do, (
-                        nice_type,
-                        nice_type.definition_path,
-                    )
-                    types_to_do.remove(nice_type)
+                    raw_type, varname = case.type_and_varname
+                    case_type = self.get_type(raw_type)
 
-                    case_var = self.create_var(nice_type)
+                    nice_types = _type_members(case_type)
+                    assert nice_types.issubset(types_to_do), case_type
+                    types_to_do -= nice_types
+
+                    with self.code_to_separate_list() as case_code:
+                        case_var = self.union_conversion(union_var, case_type)
+
+                    cases.extend(case_code)
                     assert varname not in self.variables, varname
                     self.variables[varname] = case_var
-                    cases.append(ir.GetFromUnion(case_var, union_var))
-                    cases.append(ir.IncRef(case_var))
 
                 cases.extend(self.do_block(case.body))
                 cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
@@ -785,7 +809,7 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.union)
-            elif isinstance(ins, ir.GotoLabel):
+            elif isinstance(ins, (ir.GotoLabel, ir.Panic)):
                 pass
             else:
                 raise NotImplementedError(ins)
@@ -837,11 +861,12 @@ class _FileConverter:
         elif isinstance(raw_type, ast.NamedType):
             return self.get_named_type(raw_type.name)
         elif isinstance(raw_type, ast.UnionType):
-            types = [
-                (recursing_callback or self.get_type)(item) for item in raw_type.unioned
-            ]
-            assert len(types) == len(set(types)), "duplicate union members"
-            return UnionType(set(types))
+            return UnionType(
+                [
+                    (recursing_callback or self.get_type)(item)
+                    for item in raw_type.unioned
+                ]
+            )
         elif isinstance(raw_type, ast.GenericType):
             return self._generic_types[raw_type.name].get_type(
                 (recursing_callback or self.get_type)(raw_type.arg)

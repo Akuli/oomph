@@ -1,0 +1,5 @@
+tests/as_not_need_union_error.oomph:2: error: left side of 'as not' must have union type, not Int
+
+    print(1 as not Str)
+          ^
+

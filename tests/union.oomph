@@ -21,9 +21,9 @@ func print_thing(Thing thing):
             print("  it's not a Foo")
 
 export func main():
-    print_thing(new Thing(new Foo(69)))
-    print_thing(new Thing(new Bar()))
-    print_thing(new Thing(new Baz()))
+    print_thing(new Foo(69))
+    print_thing(new Bar())
+    print_thing(new Baz())
 
     print("\nWith implicit conversions:\n")
     print_thing(new Foo(69))
@@ -32,10 +32,10 @@ export func main():
 
     let f1 = new Foo(1)
     let f2 = new Foo(1)
-    print(new Thing(f1) == new Thing(f1))
-    print(new Thing(f1) == new Thing(f2))
-    print(new Thing(f1) == f1)
-    print(new Thing(f1) == f2)
-    print(f1 == new Thing(f1))
-    print(f1 == new Thing(f2))
-    print(f1 == new Thing(new Bar()))
+    print((f1 as Thing) == (f1 as Thing))
+    print((f1 as Thing) == (f2 as Thing))
+    print((f1 as Thing) == f1)
+    print((f1 as Thing) == f2)
+    print(f1 == (f1 as Thing))
+    print(f1 == (f2 as Thing))
+    print(f1 == (new Bar() as Thing))

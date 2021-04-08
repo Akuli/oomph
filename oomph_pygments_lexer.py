@@ -57,8 +57,8 @@ class CustomLexer(RegexLexer):
 
     tokens = {
         "root": [
-            (r'("|\})' + oneline_string_content + r'("|\{)', String),
             (r'("""|\})' + multiline_string_content + r'("""|\{)', String),
+            (r'("|\})' + oneline_string_content + r'("|\{)', String),
             # keyword and builtins
             (r"\b(%s)\b" % "|".join(keywords + keywords_but_not_really), Keyword),
             (r"\b(%s)\b" % "|".join(builtins), Name.Builtin),

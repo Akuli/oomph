@@ -1,0 +1,3 @@
+export func main():
+    let foo = (123 as Str | Int) as not Str
+    print(foo + 1)

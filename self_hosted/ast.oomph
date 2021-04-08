@@ -64,7 +64,7 @@ export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
 export class ForLoopHeader(error::Location keyword_location, List[Statement] init, Expression | null cond, List[Statement] incr)
 export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
 
-export class As(error::Location location, Expression expr, Type type)
+export class As(error::Location location, Expression expr, Type type, Bool as_not)
 export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs)
 export class Call(error::Location location, Expression function, List[Expression] args)
 export class Constructor(error::Location location, Type type)

@@ -1,5 +1,5 @@
 func foo() -> Str | null:
-    return new (Str | null)("aaa".split("").first())
+    return "aaa".split("").first()
 
 export func main():
     print(foo())

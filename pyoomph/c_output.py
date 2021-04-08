@@ -127,9 +127,7 @@ class _FunctionEmitter:
             assert isinstance(ins.union.type, ir.UnionType)
             membernum = ins.union.type.type_members.index(ins.result.type)
             return f"""
-            if ({self.emit_var(ins.union)}.membernum != {membernum})
-                panic_printf("'as' failed");   // TODO: better message?
-
+            assert({self.emit_var(ins.union)}.membernum == {membernum});
             {self.emit_var(ins.result)} = {self.emit_var(ins.union)}.val.item{membernum};
             """
 
@@ -142,6 +140,11 @@ class _FunctionEmitter:
                 # Must not run for non-refcounted unions or optionals
                 return ""
             return f"{self.emit_var(ins.var)} = NULL;\n"
+
+        if isinstance(ins, ir.Panic):
+            return f"""
+            panic_printf("%s", string_to_cstr({self.file_pair.emit_string(ins.message)}));
+            """
 
         if isinstance(ins, ir.GotoLabel):
             return _emit_label(self.get_label_name(ins))
@@ -506,23 +509,6 @@ class _FilePair:
                 short membernum;
             }};
             """
-
-            if "get" in the_type.methods:
-                itemtype = the_type.type_members[1]
-                itemtype_code = self.emit_type(itemtype)
-                self.function_decls += (
-                    f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                )
-                self.function_defs += f"""
-                {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                {{
-                    if (obj.membernum == 0)
-                        panic_printf("null.get() was called");
-                    assert(obj.membernum == 1);
-                    {self.session.emit_incref('obj.val.item1', itemtype)};
-                    return obj.val.item1;
-                }}
-                """
 
         elif the_type.generic_origin is not None:
             itemtype = the_type.generic_origin.arg

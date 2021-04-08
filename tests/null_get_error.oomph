@@ -1,2 +1,0 @@
-export func main():
-    new (Str | null)(null).get()

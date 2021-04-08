@@ -4,17 +4,17 @@ class Baz()
 typedef FooBarBaz = Foo | Bar | Baz
 
 export func main():
-    let thing = new FooBarBaz(new Foo())
+    let thing = new Foo() as FooBarBaz
     for let i = 0; ; i = i + 1:
         switch thing:
             case Foo f:
                 print("Foo on iteration {i}: {f}")
-                thing = new FooBarBaz(new Bar())
+                thing = new Bar()
                 continue
                 print("Should not happen")
             case Bar b:
                 print("Bar on iteration {i}: {b}")
-                thing = new FooBarBaz(new Baz())
+                thing = new Baz()
             case Baz b:
                 print("Baz on iteration {i}: {b}")
                 break

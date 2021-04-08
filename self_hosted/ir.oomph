@@ -17,6 +17,7 @@ export class Member(Str name, Type type)
 export class Generic(Str name)
 export class GenericSource(Generic generik, Type arg):
     # TODO: some kind of handy way to say "do equality checks by value"
+    # TODO: this equals method still needed?
     meth equals(GenericSource other) -> Bool:
         return self.generik == other.generik and self.arg == other.arg
 
@@ -35,12 +36,10 @@ export class BasicType(
         return "<BasicType: {self.name}>"
 
     meth equals(BasicType other) -> Bool:
-        let result = (
-            self.name == other.name
-            and self.definition_path == other.definition_path
-            and self.generic_source == other.generic_source
-        )
-        return result
+        if self.generic_source == null and other.generic_source == null:
+            return (self.name == other.name and self.definition_path == other.definition_path)
+        else:
+            return (self.generic_source == other.generic_source)
 
 
 export class UnionType(
@@ -59,23 +58,28 @@ export class UnionType(
 export func make_union(
     Builtins builtins,
     List[Type] type_members,
-    error::Location location,
+    error::Location | null location,
 ) -> UnionType:
-    type_members = type_members.reversed().reversed()   # TODO: better way to copy list
+    let flattened = []
+    foreach member of type_members:
+        switch member:
+            case UnionType union:
+                flattened.push_all(union.type_members)
+            case *:
+                flattened.push(member)
+
+    assert(flattened.length() >= 2)
 
     # check no duplicates
-    for let i = 0; i < type_members.length(); i = i+1:
-        if type_members.get(i) in type_members.slice(0, i):
-            location.error("repeated union member '{type_name(type_members.get(i))}'")
+    for let i = 0; i < flattened.length(); i = i+1:
+        if flattened.get(i) in flattened.slice(0, i):
+            (location as not null).error(
+                "repeated union member '{type_name(flattened.get(i))}'"
+            )
 
     # FIXME: sort the type members consistently
 
-    # Rest of the code relies on null being first when detecting 'Foo | null' unions
-    if builtins.NULL_TYPE in type_members:
-        type_members.delete_only(builtins.NULL_TYPE)
-        type_members.insert(0, builtins.NULL_TYPE)
-
-    return new UnionType(type_members, null, builtins)
+    return new UnionType(flattened, null, builtins)
 
 
 export func is_refcounted(Type type) -> Bool:
@@ -84,7 +88,7 @@ export func is_refcounted(Type type) -> Bool:
             assert(false)
         case BasicType basictype:
             return basictype.refcounted
-        case FunctionType functype:
+        case FunctionType _:
             return false
         case UnionType _:
             return true
@@ -92,15 +96,12 @@ export func is_refcounted(Type type) -> Bool:
 
 export func get_constructor_argtypes(Type type) -> List[Type] | null:
     switch type:
-        case AutoType autotype:
+        case AutoType _:
             assert(false)
         case BasicType basictype:
             return basictype.constructor_argtypes
-        case FunctionType functype:
+        case FunctionType | UnionType _:
             return null
-        case UnionType uniontype:
-            # Special-cased in ast2ir
-            assert(false)
 
 export func type_name(Type type) -> Str:
     switch type:
@@ -109,18 +110,13 @@ export func type_name(Type type) -> Str:
         case BasicType basic:
             return basic.name
         case FunctionType functype:
-            return "<function type>"
+            return "<function type>"  # TODO
         case UnionType union:
-            # Don't use custom names for 'Foo | null'
-            # TODO: is custom_name ever set in this case?
-            if union.custom_name == null or (
-                union.type_members.length() == 2
-                and union.type_members.first() == union.builtins.NULL_TYPE
-            ):
+            if union.custom_name == null:
                 return "(" + [
                     foreach t of union.type_members: type_name(t)
                 ].join(" | ") + ")"
-            return union.custom_name.get()
+            return union.custom_name as not null
 
 export func type_id_string(Type type) -> Str:
     switch type:
@@ -129,22 +125,20 @@ export func type_id_string(Type type) -> Str:
         case BasicType basictype:
             if basictype.generic_source == null:
                 return basictype.name + "@" + basictype.definition_path.to_string()
-            let source = basictype.generic_source.get()
+            let source = basictype.generic_source as not null
             return source.generik.name + type_id_string(source.arg)
         case UnionType union:
             return [foreach m of union.type_members: type_id_string(m)].join("|")
-        case FunctionType functype:
+        case FunctionType _:
             assert(false)   # TODO
 
 export func get_generic_source(Type type) -> GenericSource | null:
     switch type:
-        case AutoType autotype:
+        case AutoType _:
             assert(false)
         case BasicType basictype:
             return basictype.generic_source
-        case FunctionType functype:
-            return null
-        case UnionType uniontype:
+        case FunctionType | UnionType _:
             return null
 
 
@@ -182,7 +176,7 @@ export class Builtins(
             # TODO: 'thing.methods = []' doesn't work
             type.methods = new List[Method]()
             type.members = new List[Member]()
-            type.constructor_argtypes = new (List[Type] | null)(null)
+            type.constructor_argtypes = null as List[Type] | null
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:
@@ -217,7 +211,7 @@ export class Builtins(
             null,
             false,
         )
-        let r = new Type(result)  # TODO: get rid of this
+        let r = result as Type  # TODO: get rid of this
         methods.push_all([
             new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
             new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
@@ -253,11 +247,11 @@ export class Builtins(
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     # Methods are empty at first to prevent reference cycles
-    let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, null, false))
-    let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, null, false))
-    let INT = new Type(new BasicType("Int", false, [], [], null, null, null, false))
-    let NULL_TYPE = new Type(new BasicType("null", false, [], [], null, null, null, false))
-    let STR = new Type(new BasicType("Str", true, [], [], null, null, null, false))
+    let BOOL = new BasicType("Bool", false, [], [], null, null, null, false) as Type
+    let FLOAT = new BasicType("Float", false, [], [], null, null, null, false) as Type
+    let INT = new BasicType("Int", false, [], [], null, null, null, false) as Type
+    let NULL_TYPE = new BasicType("null", false, [], [], null, null, null, false) as Type
+    let STR = new BasicType("Str", true, [], [], null, null, null, false) as Type
 
     let LIST = new Generic("List")
 
@@ -368,24 +362,17 @@ export func create_builtins() -> Builtins:
 
 export func get_methods(Type type, Builtins builtins) -> List[Method]:
     switch type:
-        case AutoType a:
+        case AutoType _:
             assert(false)
         case BasicType basictype:
             return basictype.methods
-        case FunctionType functype:
+        case FunctionType _:
             return []
         case UnionType union:
-            let methods = [
+            return [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
-            if (
-                union.type_members.length() == 2
-                and union.type_members.first() == builtins.NULL_TYPE
-            ):
-                let item_type = union.type_members.last()
-                methods.push(new Method("get", new FunctionType([new Type(union)], item_type)))
-            return methods
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
     foreach method of get_methods(type, builtins):
@@ -425,6 +412,7 @@ export typedef Instruction = (
     | InstantiateUnion
     | IntConstant
     | MethodCall
+    | Panic
     | PointersEqual
     | Return
     | SetAttribute
@@ -445,6 +433,7 @@ export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, error::Location location)
+export class Panic(Str message, error::Location location)
 export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
 export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)

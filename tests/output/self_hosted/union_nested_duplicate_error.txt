@@ -1,0 +1,5 @@
+tests/union_nested_duplicate_error.oomph:2: error: repeated union member 'Str'
+
+    typedef Bad = Str | Inner
+                  ^^^^^^^^^^^
+

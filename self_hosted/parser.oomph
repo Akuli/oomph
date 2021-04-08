@@ -296,19 +296,19 @@ class Parser(List[tokenizer::Token] tokens):
 
             if un_or_null != null and bin_or_null != null:
                 # Prefer binary operator if both are found in same place (needed for x - y)
-                if un_or_null.get() < bin_or_null.get():
+                if (un_or_null as not null) < (bin_or_null as not null):
                     bin_or_null = null
                 else:
                     un_or_null = null
 
             if un_or_null != null:
-                let i = un_or_null.get()
+                let i = un_or_null as not null
                 let op_and_expr = magic_list.delete_slice(i, i+2)
                 let op = op_and_expr.first() as tokenizer::Token
                 let expr = op_and_expr.last() as ast::Expression
                 magic_list.insert(i, new ast::UnaryOperator(op.location, op.value, expr))
             elif bin_or_null != null:
-                let i = bin_or_null.get()
+                let i = bin_or_null as not null
                 let lhs_op_rhs = magic_list.delete_slice(i-1, i+2)
                 let lhs = lhs_op_rhs.first() as ast::Expression
                 let op = lhs_op_rhs.get(1) as tokenizer::Token
@@ -351,30 +351,31 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 break
 
+    meth eliminate_one_as(List[PrecedenceItem] magic_list) -> Bool:
+        for let i = 0; i < magic_list.length(); i = i+1:
+            switch magic_list.get(i):
+                case tokenizer::Token op:
+                    if op.value in ["as", "as not"]:
+                        # TODO: improve errors
+                        assert(0 <= i-1 and i+1 < magic_list.length())
+                        let expr = magic_list.get(i-1) as ast::Expression
+                        let type = magic_list.get(i+1) as ast::Type
+                        magic_list.delete_slice(i-1, i+2)
+                        magic_list.insert(i-1, new ast::As(op.location, expr, type, (op.value == "as not")))
+                        return true
+                case *:
+                    pass
+
+        return false
+
     meth eliminate_as(List[PrecedenceItem] magic_list):
-        let keep_going = true  # TODO: this sucks
-        while keep_going:
-            keep_going = false
-            for let i = 0; i < magic_list.length(); i = i+1:
-                switch magic_list.get(i):
-                    case tokenizer::Token op:
-                        if op.value == "as":
-                            # TODO: improve errors
-                            assert(0 <= i-1 and i+1 < magic_list.length())
-                            let expr = magic_list.get(i-1) as ast::Expression
-                            let type = magic_list.get(i+1) as ast::Type
-                            magic_list.delete_slice(i-1, i+2)
-                            magic_list.insert(i-1, new ast::As(op.location, expr, type))
-                            # Continue from beginning of list
-                            keep_going = true
-                            break
-                    case *:
-                        pass
+        while self.eliminate_one_as(magic_list):
+            pass
 
     meth get_unary_operators() -> List[PrecedenceItem]:
         return [
             while self.peek().matches("keyword", "not") or self.peek().matches("op", "-"):
-                new PrecedenceItem(self.tokens.pop())
+                self.tokens.pop() as PrecedenceItem
         ]
 
     meth parse_expression(Str | null error_message) -> ast::Expression:
@@ -384,19 +385,19 @@ class Parser(List[tokenizer::Token] tokens):
         let binary_ops = [
             "+", "-", "*", "/",
             "==", "!=", "<", ">", "<=", ">=",
-            "mod", "as", "in", "not in", "and", "or",
+            "mod", "as", "as not", "in", "not in", "and", "or",
         ]
 
         let magic_list = self.get_unary_operators()
-        magic_list.push(self.parse_simple_expression(error_message.get()))
+        magic_list.push(self.parse_simple_expression(error_message as not null))
         while self.peek().value in binary_ops:
             let op_token = self.tokens.pop()
             magic_list.push(op_token)
-            if op_token.value == "as":
+            if op_token.value in ["as", "as not"]:
                 magic_list.push(self.parse_type())
             else:
                 magic_list.push_all(self.get_unary_operators())
-                magic_list.push(self.parse_simple_expression(error_message.get()))
+                magic_list.push(self.parse_simple_expression(error_message as not null))
 
         # FIXME: this nestedness sucks in many ways
         for let i = 1; i < magic_list.length(); i = i+1:
@@ -473,7 +474,7 @@ class Parser(List[tokenizer::Token] tokens):
         let case_keyword = self.get_token("keyword", "case")
         if self.peek().matches("op", "*"):
             self.get_token("op", "*")
-            let type_and_varname = new (ast::TypeAndName | null)(null)
+            let type_and_varname = null as ast::TypeAndName | null
         else:
             type_and_varname = self.parse_type_and_name()
         let body = self.parse_block_of_statements()
@@ -494,7 +495,7 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("op", ";")
 
             if self.peek().matches("op", ";"):
-                let cond = new (ast::Expression | null)(null)
+                let cond = null as ast::Expression | null
             else:
                 cond = self.parse_expression(null)
             self.get_token("op", ";")
@@ -533,7 +534,7 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 else_body = []
 
-            return [new ast::Statement(new ast::If(ifs, else_body))]
+            return [new ast::If(ifs, else_body) as ast::Statement]
 
         if (
             self.peek().matches("keyword", "while")
@@ -542,25 +543,19 @@ class Parser(List[tokenizer::Token] tokens):
         ):
             let header = self.parse_loop_header()
             let body = self.parse_block_of_statements()
-            return [new ast::Statement(new ast::Loop(header, body))]
+            return [new ast::Loop(header, body) as ast::Statement]
 
         if self.peek().matches("keyword", "switch"):
             let location = self.get_token("keyword", "switch").location
             let union_obj = self.parse_expression(null)
             let cases = self.parse_block_of_cases()
-            return [new ast::Statement(new ast::Switch(location, union_obj, cases))]
+            return [new ast::Switch(location, union_obj, cases) as ast::Statement]
 
         let result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")
         return [result]
 
     meth parse_type_without_unions() -> ast::Type:
-        if self.peek().matches("op", "("):
-            self.get_token("op", "(")
-            let result = self.parse_type()
-            self.get_token("op", ")")
-            return result
-
         if self.peek().matches("keyword", "auto"):
             return new ast::AutoType(self.get_token("keyword", "auto").location)
 
@@ -599,7 +594,7 @@ class Parser(List[tokenizer::Token] tokens):
             if self.peek().matches("keyword", "noreturn"):
                 # TODO: do something special with noreturn
                 let location = self.get_token("keyword", "noreturn").location
-                let returntype = new (ast::Type | ast::NoReturn | null)(new ast::NoReturn(location))
+                let returntype = new ast::NoReturn(location) as ast::Type | ast::NoReturn | null
             else:
                 returntype = self.parse_type()
         else:
@@ -641,7 +636,14 @@ class Parser(List[tokenizer::Token] tokens):
             if "::" in name_token.value:
                 name_token.location.error("typedef name must not contain '::'")
             self.get_token("op", "=")
+
+            let parens = self.peek().matches("op", "(")
+            if parens:
+                self.get_token("op", "(")
             let type = self.parse_type()
+            if parens:
+                self.get_token("op", ")")
+
             self.get_token("op", "\n")
             return new ast::TypeDef(location, name_token.value, type)
 
@@ -659,7 +661,7 @@ export func parse_file(
 
     while parser.tokens != [] and parser.peek().matches("keyword", "import"):
         assert(stdlib_path != null)
-        result.push(parser.parse_import(path, stdlib_path.get()))
+        result.push(parser.parse_import(path, stdlib_path as not null))
     while parser.tokens != []:
         result.push(parser.parse_toplevel())
 

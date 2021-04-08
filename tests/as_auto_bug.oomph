@@ -1,7 +1,5 @@
-typedef Foo = Str | Int
-
 export func main():
     let foos = []
     foreach foo of foos:
         print(foo as Str)
-    foos.push(new Foo("lol"))
+    foos.push("lol" as Str | Int)

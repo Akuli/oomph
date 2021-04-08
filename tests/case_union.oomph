@@ -1,0 +1,11 @@
+func foo(Str | Int | Bool value):
+    switch value:
+        case Str | Int string_or_int:
+            print("It's a string or an integer: {string_or_int}")
+        case Bool boolean:
+            print("It's a boolean: {boolean}")
+
+export func main():
+    foo("lol")
+    foo(69)
+    foo(true)

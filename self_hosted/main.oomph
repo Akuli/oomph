@@ -52,9 +52,9 @@ func join(List[Str] args) -> Str:
 class Command(List[Str] command, Str human_readable)
 
 func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
-    let cc = new (Str | null)(null)
-    let cflags = new (Str | null)(null)
-    let ldflags = new (Str | null)(null)
+    let cc = null as Str | null
+    let cflags = null as Str | null
+    let ldflags = null as Str | null
 
     foreach line of io::read_file("obj/compile_info.txt").remove_suffix("\n").split("\n"):
         if line.starts_with("cc="):
@@ -67,8 +67,8 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
             print("bad line in obj/compile_info.txt: {line}")
             assert(false)
 
-    let before_files = [cc.get()]
-    before_files.push_all(split(cflags.get()))
+    let before_files = [cc as not null]
+    before_files.push_all(split(cflags as not null))
     before_files.push_all([
         # FIXME: hard-coded list of globbing obj/*.o
         "obj/io.o",
@@ -80,7 +80,7 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
     ])
 
     let after_files = ["-o", exepath]
-    after_files.push_all(split(ldflags.get()))
+    after_files.push_all(split(ldflags as not null))
     after_files.push_all(["-I", "."])
 
     let all_args = []
@@ -165,7 +165,7 @@ func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> Lis
             )
             if uncompiled_dependency == null:
                 break
-            candidate_unit = uncompiled_dependency.get()
+            candidate_unit = uncompiled_dependency as not null
 
             let cyclic = candidate_unit in breadcrumbs
             breadcrumbs.push(candidate_unit)
@@ -183,8 +183,8 @@ class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str]
 
 func parse_args() -> Args:
     let usage = "Usage: {process::program_name()} [compiler args] program.oomph [program args]"
-    let infile = new (Str | null)(null)
-    let outfile = new (Str | null)(null)
+    let infile = null as Str | null
+    let outfile = null as Str | null
     let valgrind = ""
     let verbose = false
 
@@ -220,7 +220,7 @@ Compiler arguments:
             if args == []:
                 print("{process::program_name()}: need command after --valgrind (see --help)")
                 process::exit(2)
-            valgrind = args.last()
+            valgrind = args.pop()
         elif args.last() in ["-v", "--verbose"]:
             args.pop()
             verbose = true

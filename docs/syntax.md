@@ -65,7 +65,7 @@ Once tokenized according to the above rules, the stream of tokens must be modifi
 1. Newline tokens and indentation tokens (that is, newlines and spaces not inside strings)
     inside `(` `)` or `[` `]` are ignored.
 2. When the keywords `not` and `in` appear consecutively, as two separate tokens,
-    they are replaced with one `not in` token.
+    they are replaced with one `not in` token. In the same way, `as not` is combined into one token.
 3. Newlines are cleaned up.
 4. If there is `:` operator followed by a newline and an indentation,
    all those tokens are replaced with one token signifying the beginning of a block.
@@ -110,13 +110,17 @@ A toplevel declaration can be:
   unless the string starts with `<stdlib>/`;
   in that case, it's interpreted relative to Oomph's standard library directory.
 - A typedef: the keyword `typedef` followed by a simple identifier, then the `=` operator,
-    then a type and a newline token. It is an error if the type exists already.
+    then a possibly parenthesized type and a newline token. It is an error if a type
+    with the given name exists already.
 - A class definition: the keyword `class` followed by a simple identifier,
   then parenthesized and comma-separated argument definitions,
   and then optionally a block of method definitions.
   A method definition is just like a function definition, but starting with `func` instead of `meth`.
-- A function definition, starting with the keyword `func`, then a simple identifier,
-  then parenthesized and comma-separated argument definitions, then a block of statements.
+- A function definition, starting with the keyword `func`,
+  then a simple identifier,
+  then parenthesized and comma-separated argument definitions,
+  then optionally `->` followed by a return type or the `noreturn` keyword,
+  then a block of statements.
 
 There may be an `export` keyword in front of any toplevel declaration.
 This makes the defined function or type visible in other files when the file is imported.
@@ -127,7 +131,6 @@ A type is a non-union type or multiple `|`-separated non-union types. A non-unio
 - [Automatic type](auto.md): the keyword `auto`.
 - Generic type: an identifier followed by a `[]`-parenthesized type.
 - Named type: an identifier.
-- Any parenthesized type.
 
 A statement can be:
 - If statement: the keyword `if` followed by an expression, then a block of statements,
@@ -162,7 +165,7 @@ An expression is a sequence of simple expressions or operators and keywords from
 3. `mod`
 4. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
 5. `<`, `>`, `<=`, `>=` (it is an error to chain these)
-6. `as` (the right side is a type, not an expression)
+6. `as`, `as not` (the right side is a type, not an expression)
 7. `in`, `not in` (it is an error to chain these)
 8. `not`
 9. `and`, `or` (chaining different keywords, e.g. `a and b or c`, is an error)

@@ -1,7 +1,0 @@
-# optional is special-cased
-typedef Foo = Int | null
-typedef Bar = Int | Str
-
-export func main():
-    print(new Foo(123))
-    print(new Bar(123))

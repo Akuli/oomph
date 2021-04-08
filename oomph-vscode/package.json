@@ -1,0 +1,34 @@
+{
+  "name": "oomph",
+  "displayName": "oomph",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.55.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "oomph",
+        "aliases": [
+          "Oomph",
+          "oomph"
+        ],
+        "extensions": [
+          "oomph"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "oomph",
+        "scopeName": "source.oomph",
+        "path": "./syntaxes/oomph.tmLanguage.json"
+      }
+    ]
+  }
+}
