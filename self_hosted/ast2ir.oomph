@@ -243,17 +243,17 @@ class FunctionOrMethodConverter(
                         self.code.push(new ir::UnionMemberCheck(bool_var, var, member))
                         self.code.push(new ir::GotoIf(label, bool_var))
 
+                        self.push_code()
+                        self.code.push(label)  # must be before create_var
                         let get_result = self.create_var(member, var.location)
-                        end_code.push(label)
-                        end_code.push(new ir::GetFromUnion(get_result, var))
-                        end_code.push(new ir::IncRef(get_result))
+                        self.code.push(new ir::GetFromUnion(get_result, var))
+                        self.code.push(new ir::IncRef(get_result))
                         switch target_type:
                             case ir::UnionType u:
-                                end_code.push(new ir::InstantiateUnion(conversion_result, get_result))
+                                self.code.push(new ir::InstantiateUnion(conversion_result, get_result))
                             case *:
-                                end_code.push(new ir::VarCpy(conversion_result, get_result))
-                        end_code.push(new ir::IncRef(conversion_result))
-                        self.push_code()
+                                self.code.push(new ir::VarCpy(conversion_result, get_result))
+                        self.code.push(new ir::IncRef(conversion_result))
                         self.code.push(new ir::GotoIf(done_label, self.bool_constant("true", var.location)))
                         end_code.push_all(self.pop_code())
 

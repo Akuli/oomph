@@ -183,16 +183,19 @@ class _FunctionOrMethodConverter:
                 self.code.append(ir.UnionMemberCheck(bool_var, var, member))
                 self.code.append(ir.Goto(label, bool_var))
 
-                get_result = self.create_var(member)
-                end_code.append(label)
-                end_code.append(ir.GetFromUnion(get_result, var))
-                end_code.append(ir.IncRef(get_result))
-                if isinstance(target_type, UnionType):
-                    end_code.append(ir.InstantiateUnion(conversion_result, get_result))
-                else:
-                    end_code.append(ir.VarCpy(conversion_result, get_result))
-                end_code.append(ir.IncRef(conversion_result))
-                end_code.append(ir.Goto(done_label, ir.visible_builtins["true"]))
+                with self.code_to_separate_list() as end_code_stuff:
+                    self.code.append(label)
+                    get_result = self.create_var(member)  # must be after label
+                    self.code.append(ir.GetFromUnion(get_result, var))
+                    self.code.append(ir.IncRef(get_result))
+                    if isinstance(target_type, UnionType):
+                        self.code.append(ir.InstantiateUnion(conversion_result, get_result))
+                    else:
+                        self.code.append(ir.VarCpy(conversion_result, get_result))
+                    self.code.append(ir.IncRef(conversion_result))
+                    self.code.append(ir.Goto(done_label, ir.visible_builtins["true"]))
+
+                end_code.extend(end_code_stuff)
 
         self.code.append(ir.Panic("'as' failed"))  # TODO: better error message?
         self.code.extend(end_code)
