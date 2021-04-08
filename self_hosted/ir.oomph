@@ -17,6 +17,7 @@ export class Member(Str name, Type type)
 export class Generic(Str name)
 export class GenericSource(Generic generik, Type arg):
     # TODO: some kind of handy way to say "do equality checks by value"
+    # TODO: this equals method still needed?
     meth equals(GenericSource other) -> Bool:
         return self.generik == other.generik and self.arg == other.arg
 
@@ -35,12 +36,10 @@ export class BasicType(
         return "<BasicType: {self.name}>"
 
     meth equals(BasicType other) -> Bool:
-        let result = (
-            self.name == other.name
-            and self.definition_path == other.definition_path
-            and self.generic_source == other.generic_source
-        )
-        return result
+        if self.generic_source == null and other.generic_source == null:
+            return (self.name == other.name and self.definition_path == other.definition_path)
+        else:
+            return (self.generic_source == other.generic_source)
 
 
 export class UnionType(
@@ -59,23 +58,31 @@ export class UnionType(
 export func make_union(
     Builtins builtins,
     List[Type] type_members,
-    error::Location location,
+    error::Location | null location,
 ) -> UnionType:
-    type_members = type_members.reversed().reversed()   # TODO: better way to copy list
+    let flattened = []
+    foreach member of type_members:
+        switch member:
+            case UnionType union:
+                flattened.push_all(union.type_members)
+            case *:
+                flattened.push(member)
+
+    assert(flattened.length() >= 2)
 
     # check no duplicates
-    for let i = 0; i < type_members.length(); i = i+1:
-        if type_members.get(i) in type_members.slice(0, i):
-            location.error("repeated union member '{type_name(type_members.get(i))}'")
+    for let i = 0; i < flattened.length(); i = i+1:
+        if flattened.get(i) in flattened.slice(0, i):
+            location.get().error("repeated union member '{type_name(flattened.get(i))}'")
 
     # FIXME: sort the type members consistently
 
     # Rest of the code relies on null being first when detecting 'Foo | null' unions
-    if builtins.NULL_TYPE in type_members:
-        type_members.delete_only(builtins.NULL_TYPE)
-        type_members.insert(0, builtins.NULL_TYPE)
+    if builtins.NULL_TYPE in flattened:
+        flattened.delete_only(builtins.NULL_TYPE)
+        flattened.insert(0, builtins.NULL_TYPE)
 
-    return new UnionType(type_members, null, builtins)
+    return new UnionType(flattened, null, builtins)
 
 
 export func is_refcounted(Type type) -> Bool:
@@ -379,11 +386,11 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
-            if (
-                union.type_members.length() == 2
-                and union.type_members.first() == builtins.NULL_TYPE
-            ):
-                let item_type = union.type_members.last()
+            if union.type_members.first() == builtins.NULL_TYPE:
+                if union.type_members.length() == 2:
+                    let item_type = union.type_members.last()
+                else:
+                    item_type = make_union(builtins, union.type_members.slice(1, union.type_members.length()), null)
                 methods.push(new Method("get", new FunctionType([new Type(union)], item_type)))
             return methods
 
@@ -425,6 +432,7 @@ export typedef Instruction = (
     | InstantiateUnion
     | IntConstant
     | MethodCall
+    | Panic
     | PointersEqual
     | Return
     | SetAttribute
@@ -445,6 +453,7 @@ export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, error::Location location)
+export class Panic(Str message, error::Location location)
 export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
 export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)

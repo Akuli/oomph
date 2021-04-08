@@ -1,2 +1,2 @@
 Flat(Bar())
-Nested((Bar | Baz)(Bar()))
+Nested(Bar())
