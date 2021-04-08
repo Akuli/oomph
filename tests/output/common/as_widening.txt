@@ -1,1 +1,1 @@
-(Str | Int)("Hello")
+(Int | Str)("Hello")

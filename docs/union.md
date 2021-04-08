@@ -170,10 +170,11 @@ When a union contains many types, it's often convenient to
 combine multiple types into the same `case`, like this:
 
     func foo(Str | Int | Bool value):
-        case Bool boolean:
-            print("It's a boolean")
-        case Str | Int string_or_int:
-            print("It's a string or an integer")
+        switch value:
+            case Str | Int string_or_int:
+                print("It's a string or an integer")
+            case Bool boolean:
+                print("It's a boolean")
 
 
 ## Converting to union type
