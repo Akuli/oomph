@@ -93,11 +93,7 @@ class FunctionOrMethodConverter(
         return matches
 
     meth resolve_autotype(ir::AutoType autotype, ir::Type actual):
-        switch actual:
-            case ir::AutoType _:
-                assert(false)
-            case *:
-                pass
+        assert(not is_autotype(actual))
 
         foreach pair of self.resolved_autotypes:
             if pair.autotype == autotype:
@@ -108,15 +104,12 @@ class FunctionOrMethodConverter(
             self.resolved_autotypes.push(new AutoTypeResolve(matching, actual))
 
     meth substitute_autotypes(ir::Type type, Bool must_succeed) -> ir::Type:
-        switch type:
-            case ir::AutoType autotype:
-                foreach resolve of self.resolved_autotypes:
-                    if resolve.autotype == autotype:
-                        return resolve.actual
-                assert(not must_succeed)
-                return pick_one_autotype(self.get_matching_autotype_list(autotype))
-            case *:
-                pass
+        if is_autotype(type):
+            foreach resolve of self.resolved_autotypes:
+                if resolve.autotype == type:
+                    return resolve.actual
+            assert(not must_succeed)
+            return pick_one_autotype(self.get_matching_autotype_list(type as ir::AutoType))
 
         let source = ir::get_generic_source(type)
         if source == null:
@@ -662,10 +655,8 @@ class FunctionOrMethodConverter(
                 # TODO: constructor functions as first-class objects
                 assert(false)
 
-            # If these cases happen, then ast_transformer hasn't done its job:
-            case ast::Parenthesized _:
-                assert(false)
-            case ast::ListComprehension _:
+            case ast::Parenthesized | ast::ListComprehension _:
+                # ast_transformer hasn't done its job
                 assert(false)
 
     meth do_expression_and_convert(ast::Expression expr, ir::Type type) -> ir::LocalVariable:
@@ -925,7 +916,7 @@ class FunctionOrMethodConverter(
 
         foreach ins of self.code:
             switch ins:
-                # TODO: combining multiple cases together
+                # TODO: https://github.com/Akuli/oomph/issues/145
                 case ir::IncRef ins2:
                     self.get_rid_of_auto_in_var(ins2.var)
                 case ir::DecRef ins2:
