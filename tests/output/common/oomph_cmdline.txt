@@ -1,0 +1,22 @@
+Usage: ./oomph [compiler args] program.oomph [program args]
+
+Compiler arguments:
+    --help
+        This message
+
+    -o, --outfile FILE
+        Put executable here, don't run it
+
+    --valgrind COMMAND  (don't use with --outfile)
+        Run program with valgrind, e.g. '--valgrind valgrind' runs with no
+        valgrind arguments
+
+    -v, --verbose
+        Print lots of stuff
+
+Usage: ./oomph [compiler args] program.oomph [program args]
+./oomph: unknown argument '--lolwat' (see --help)
+./oomph: need path after -o/--outfile (see --help)
+./oomph: need path after -o/--outfile (see --help)
+./oomph: need command after --valgrind (see --help)
+Exit statuses: [0, 2, 2, 2, 2, 2]

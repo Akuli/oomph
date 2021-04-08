@@ -105,8 +105,11 @@ class UnionType(Type):
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
-        if len(self.type_members) == 2 and self.type_members[0] == NULL_TYPE:
-            self.methods["get"] = FunctionType([self], self.type_members[1])
+        if self.type_members[0] == NULL_TYPE:
+            if len(self.type_members) == 2:
+                self.methods["get"] = FunctionType([self], self.type_members[1])
+            else:
+                self.methods["get"] = FunctionType([self], UnionType(self.type_members[1:]))
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
