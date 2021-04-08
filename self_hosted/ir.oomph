@@ -62,6 +62,7 @@ export func make_union(
     error::Location | null location,
 ) -> UnionType:
     type_members = type_members.reversed().reversed()   # TODO: better way to copy list
+    assert(type_members.length() >= 2)
 
     # check no duplicates
     for let i = 0; i < type_members.length(); i = i+1:
@@ -379,11 +380,11 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
-            if (
-                union.type_members.length() == 2
-                and union.type_members.first() == builtins.NULL_TYPE
-            ):
-                let item_type = union.type_members.last()
+            if union.type_members.first() == builtins.NULL_TYPE:
+                if union.type_members.length() == 2:
+                    let item_type = union.type_members.last()
+                else:
+                    item_type = make_union(builtins, union.type_members.slice(1, union.type_members.length()), null)
                 methods.push(new Method("get", new FunctionType([new Type(union)], item_type)))
             return methods
 
