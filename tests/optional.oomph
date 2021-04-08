@@ -2,13 +2,15 @@ func show(Str | null x):
     print("show: {x} {x == null}")
 
 export func main():
-    let x = new (Str | null)("lol" + "wat")
+    let x = ("lol" + "wat") as Str | null
     print("main: {x} {x == null}")
     show(x)
     show(null)
 
-    print(new (Str | null)(null) == new (Str | null)(null))
-    print(new (Str | null)(null) == null)
-    print(null == new (Str | null)(null))
+    print((null as Str | null) == (null as Str | null))
+    print((null as Str | null) == null)
+    print(null == (null as Str | null))
+    print(null == null)
+
     print(x == null)
     print(x == "lolwat")

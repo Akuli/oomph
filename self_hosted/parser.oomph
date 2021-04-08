@@ -473,7 +473,7 @@ class Parser(List[tokenizer::Token] tokens):
         let case_keyword = self.get_token("keyword", "case")
         if self.peek().matches("op", "*"):
             self.get_token("op", "*")
-            let type_and_varname = new (ast::TypeAndName | null)(null)
+            let type_and_varname = null as ast::TypeAndName | null
         else:
             type_and_varname = self.parse_type_and_name()
         let body = self.parse_block_of_statements()
@@ -494,7 +494,7 @@ class Parser(List[tokenizer::Token] tokens):
             self.get_token("op", ";")
 
             if self.peek().matches("op", ";"):
-                let cond = new (ast::Expression | null)(null)
+                let cond = null as ast::Expression | null
             else:
                 cond = self.parse_expression(null)
             self.get_token("op", ";")
@@ -600,7 +600,7 @@ class Parser(List[tokenizer::Token] tokens):
             if self.peek().matches("keyword", "noreturn"):
                 # TODO: do something special with noreturn
                 let location = self.get_token("keyword", "noreturn").location
-                let returntype = new (ast::Type | ast::NoReturn | null)(new ast::NoReturn(location))
+                let returntype = new ast::NoReturn(location) as ast::Type | ast::NoReturn | null
             else:
                 returntype = self.parse_type()
         else:

@@ -189,7 +189,7 @@ export class Builtins(
             # TODO: 'thing.methods = []' doesn't work
             type.methods = new List[Method]()
             type.members = new List[Member]()
-            type.constructor_argtypes = new (List[Type] | null)(null)
+            type.constructor_argtypes = null as List[Type] | null
 
     meth get_visible_var(Str name) -> BuiltinVariable:
         foreach var of self.visible_vars:

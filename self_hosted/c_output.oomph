@@ -522,14 +522,14 @@ class FilePair(
                 """
 
                 let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
-                self.struct = new (Str | null)("""
+                self.struct = """
                 struct class_{self.id} \{
                     union \{
                         {union_members}
                     \} val;
                     short membernum;
                 \};
-                """)
+                """ as Str | null
 
                 if self.session.builtins.NULL_TYPE in union.type_members:
                     assert(self.session.builtins.NULL_TYPE == union.type_members.first())
@@ -574,12 +574,12 @@ class FilePair(
                     let member_increfs = [foreach m of basictype.members: self.session.emit_incref("obj->memb_{m.name}", m.type) + ";\n"].join("")
                     let member_decrefs = [foreach m of basictype.members: self.session.emit_decref("obj->memb_{m.name}", m.type) + ";\n"].join("")
 
-                    self.struct = new (Str | null)("""
+                    self.struct = """
                     struct class_{self.id} \{
                         REFCOUNT_HEADER
                         {struct_members}
                     \};
-                    """)
+                    """ as Str | null
                     self.function_decls = self.function_decls + """
                     {self.emit_type(basictype)} ctor_{self.id}({constructor_args});
                     void dtor_{self.id}(void *ptr);
@@ -653,9 +653,9 @@ class FilePair(
                         defines = defines + "#define {pair.first()} {pair.last()}\n"
                         undefs = undefs + "#undef {name_without_args}\n"
 
-                    self.struct = new (Str | null)(
+                    self.struct = (
                         defines + io::read_file("lib/generic/list.h") + undefs
-                    )
+                    ) as Str | null
 
                     foreach method of ir::get_methods(basictype, self.session.builtins):
                         self.define_function(

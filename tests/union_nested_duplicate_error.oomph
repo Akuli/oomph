@@ -1,4 +1,5 @@
-typedef Bad = Str | (Str | Int)
+typedef Inner = Str | Int
+typedef Bad = Str | Inner
 
 export func main():
     pass
