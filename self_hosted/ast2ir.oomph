@@ -817,8 +817,18 @@ class FunctionOrMethodConverter(
 
                         nice_types = get_type_members(case_type)
                         foreach t of nice_types:
-                            # TODO: error if not found
-                            types_to_do.delete_only(t)
+                            if t in types_to_do:
+                                types_to_do.delete_only(t)
+                            else:
+                                # TODO: test this
+                                # TODO: types_to_do isn't necessarily union_type.type_members
+                                let message = "{ir::type_name(union_type)} does not include {ir::type_name(t)}"
+                                switch case_type:
+                                    case ir::UnionType _:
+                                        message = message + ", which is a member of {ir::type_name(case_type)}"
+                                    case *:
+                                        pass
+                                chase.location.error(message)
 
                         self.push_code()
                         let case_var = self.union_conversion(union_var, case_type)
