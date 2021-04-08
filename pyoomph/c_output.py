@@ -535,7 +535,7 @@ class _FilePair:
                         if (obj.membernum == 0)
                             panic_printf("null.get() was called");
 
-                        {itemtype_code} res = {{ .membernum = obj.membernum - 1, }};
+                        {itemtype_code} res = {{ .membernum = obj.membernum - 1 }};
                         memcpy(&res.val, &obj.val, sizeof res.val);  // FIXME: is haxor
                         {self.session.emit_incref('res', itemtype)};
                         return res;
