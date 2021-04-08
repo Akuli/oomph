@@ -166,7 +166,7 @@ class _FunctionOrMethodConverter:
         if not isinstance(var.type, UnionType):
             if not isinstance(target_type, UnionType):
                 # Uncommenting this causes funny corner case and test fail
-                #assert var.type == target_type, (var.type, target_type)
+                # assert var.type == target_type, (var.type, target_type)
                 return var
             assert var.type in target_type.type_members
             self.code.append(ir.InstantiateUnion(conversion_result, var))

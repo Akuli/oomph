@@ -109,7 +109,9 @@ class UnionType(Type):
             if len(self.type_members) == 2:
                 self.methods["get"] = FunctionType([self], self.type_members[1])
             else:
-                self.methods["get"] = FunctionType([self], UnionType(self.type_members[1:]))
+                self.methods["get"] = FunctionType(
+                    [self], UnionType(self.type_members[1:])
+                )
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"

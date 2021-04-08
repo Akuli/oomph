@@ -520,9 +520,7 @@ class _FilePair:
                 if len(the_type.type_members) == 2:
                     itemtype = the_type.type_members[1]
                     itemtype_code = self.emit_type(itemtype)
-                    self.function_decls += (
-                        f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                    )
+                    self.function_decls += f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
                     self.function_defs += f"""
                     {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
                     {{
@@ -536,9 +534,7 @@ class _FilePair:
                 else:
                     itemtype = UnionType(the_type.type_members[1:])
                     itemtype_code = self.emit_type(itemtype)
-                    self.function_decls += (
-                        f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                    )
+                    self.function_decls += f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
                     self.function_defs += f"""
                     {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
                     {{
