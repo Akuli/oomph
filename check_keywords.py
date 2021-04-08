@@ -42,6 +42,7 @@ self_hosted_names.remove("null")
 
 # main is not really a built-in function, but it has special meaning
 pygments_names.remove("main")
+vscode_names.remove("main")
 
 print("pyoomph:       ", sorted(pyoomph_names))
 print("self-hosted:   ", sorted(self_hosted_names))
