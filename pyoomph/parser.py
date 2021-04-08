@@ -400,6 +400,10 @@ class _Parser:
         return ast.NamedType(name)
 
     def parse_type(self) -> ast.Type:
+        parens = self.token_iter.peek() == ('op', '(')
+        if parens:
+            self.get_token('op', '(')
+
         first_member = self.parse_type_without_unions()
         if self.token_iter.peek() != ("op", "|"):
             return first_member
@@ -408,6 +412,9 @@ class _Parser:
         while self.token_iter.peek() == ("op", "|"):
             self.get_token("op", "|")
             result.unioned.append(self.parse_type_without_unions())
+
+        if parens:
+            self.get_token('op', ')')
         return result
 
     def parse_funcdef_arg(self) -> Tuple[ast.Type, str]:

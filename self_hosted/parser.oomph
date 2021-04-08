@@ -569,6 +569,10 @@ class Parser(List[tokenizer::Token] tokens):
         return new ast::NamedType(name_token.location, name_token.value)
 
     meth parse_type() -> ast::Type:
+        let parens = self.peek().matches("op", "(")
+        if parens:
+            self.get_token("op", "(")
+
         let first_member = self.parse_type_without_unions()
         if not self.peek().matches("op", "|"):
             return first_member
@@ -577,6 +581,9 @@ class Parser(List[tokenizer::Token] tokens):
         while self.peek().matches("op", "|"):
             self.get_token("op", "|")
             result.push(self.parse_type_without_unions())
+
+        if parens:
+            self.get_token("op", ")")
         return new ast::UnionType(result)
 
     meth parse_type_and_name() -> ast::TypeAndName:
