@@ -22,10 +22,10 @@ Oomph is a high-level language, but it compiles to C and aims to be faster than 
 ## Why Oomph?
 
 Oomph aims to be a small and simple language, with little boilerplate and few "gotchas".
-I will compare Oomph to Python, because it's a programming language with similar goals.
+I will compare Oomph to Python, because it's a programming language with somewhat similar goals.
 
 Oomph code is short. For example, `class Foo(Int number, Str message)`
-is valid Oomph code that corresponds to 4 lines of Python code:
+is valid line of Oomph code that corresponds to 4 lines of Python code:
 
 ```python
 class Foo:
@@ -67,14 +67,14 @@ These Python gotchas **don't exist in Oomph**:
         [implicit namespace package](https://www.python.org/dev/peps/pep-0420/). There's
         no warning, but it's bad practice, and Python will just do something weird when
         it imports your code.
-    - If `baz.py` does `import foo.bar`, then any other file that imports `foo` will also
+    - If any file does `import foo.bar`, then **all** files that import `foo` will also
         get `foo.bar`. Then those other files might rely on `foo.bar` without actually
         importing it, and they break in surprising ways when someone removes
-        `import foo.bar` from `baz.py`.
+        `import foo.bar` from a seemingly unrelated file.
 - Many beginners think that `10^2 == 100`. In Python, `10^2 = 8` and `10**2 = 100`.
 - I have seen a beginner writing `x**2 + y*+2`, where `*+` should be `**`.
     It's valid Python code, and Python interprets `+2` as `2`.
-- In Python, `--x` and `++x` are not syntax errors. Both of those evaluate to `x`,
+- In Python, `--x` and `++x` don't work like you expect, but they are not syntax errors either. Both of those evaluate to `x`,
     without incrementing or decrementing anything.
 - Python's error messages are terrible. For example:
     - `TypeError: NoneType object is not iterable` means that you are trying to `for` loop
@@ -93,21 +93,24 @@ These Python gotchas **don't exist in Oomph**:
     (Oomph clearly separates imported modules and variables, so a variable named
     `path` works fine even if you `import "<stdlib>/path.oomph" as path`)
 
-Python gotchas that exist in Oomph (but fixing is planned):
+Python gotchas that also exist in Oomph (but fixing is planned):
 - Modifying a list while looping over it doesn't behave like you would expect.
     Try `for item in the_list: the_list.remove(item)` in Python, for example.
 
 
 ## Learning Oomph
 
+```suggestion
+Example code:
 - There are short example programs in `tests`.
 - Some things are implemented in Oomph. See `builtins.oomph` and `stdlib`.
 - The `self_hosted/` directory is an Oomph compiler written in Oomph.
-- Docs:
-    - [Unions](docs/implicit-conversions.md)
-    - [Syntax](docs/syntax.md)
-    - [Automatic Types](docs/auto.md)
-    - [Implicit conversions](docs/implicit-conversions.md)
+
+Docs:
+- [Unions](docs/implicit-conversions.md)
+- [Syntax](docs/syntax.md)
+- [Automatic Types](docs/auto.md)
+- [Implicit conversions](docs/implicit-conversions.md)
 
 
 ## Two compilers
@@ -133,8 +136,8 @@ Copy the `oomph-vscode` directory into `~/.vscode/extensions` (might be `.vscode
 
 [Porcupine](https://github.com/Akuli/porcupine) is an editor I made.
 With small modifications, these instructions should also work with any other editor that
-uses [Pygments](https://pygments.org/) for syntax highlighting (although I'm not aware
-of any).
+uses [Pygments](https://pygments.org/) for syntax highlighting
+(although I haven't seen many such editors).
 
 1. Go to "Settings" in Porcupine's menubar then "Config Files", then `filetypes.toml`.
 2. Add this to the file:
