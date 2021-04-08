@@ -94,6 +94,7 @@ class UnionType(Type):
         assert len(self.type_members) == len(set(self.type_members))
 
         # Consistent order, with null first if any (used in rest of compiler)
+        # TODO: is that still necessary?
         self.type_members.sort(
             key=(
                 lambda member: (
@@ -105,13 +106,6 @@ class UnionType(Type):
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
-        if self.type_members[0] == NULL_TYPE:
-            if len(self.type_members) == 2:
-                self.methods["get"] = FunctionType([self], self.type_members[1])
-            else:
-                self.methods["get"] = FunctionType(
-                    [self], UnionType(self.type_members[1:])
-                )
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
@@ -126,7 +120,7 @@ class UnionType(Type):
     @property
     def name(self) -> str:
         # Don't use custom names for 'Foo | null'
-        if "get" in self.methods or self.custom_name is None:
+        if NULL_TYPE in self.type_members or self.custom_name is None:
             return "(%s)" % " | ".join(t.name for t in self.type_members)
         return self.custom_name
 

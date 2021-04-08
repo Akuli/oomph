@@ -529,39 +529,6 @@ class FilePair(
                 \};
                 """ as Str | null
 
-                if self.session.builtins.NULL_TYPE in union.type_members:
-                    assert(self.session.builtins.NULL_TYPE == union.type_members.first())
-                    # FIXME: copy pasta
-                    if n == 2:
-                        let itemtype = union.type_members.last()
-                        let itemtype_code = self.emit_type(itemtype)
-                        self.function_decls = self.function_decls + "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                        self.function_defs = self.function_defs + """
-                        {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                        \{
-                            if (obj.membernum == 0)
-                                panic_printf("null as not null was called");
-                            assert(obj.membernum == 1);
-                            {self.session.emit_incref("obj.val.item1", itemtype)};
-                            return obj.val.item1;
-                        \}
-                        """
-                    else:
-                        let itemtype = ir::make_union(self.session.builtins, union.type_members.slice(1, union.type_members.length()), null)
-                        let itemtype_code = self.emit_type(itemtype)
-                        self.function_decls = self.function_decls + "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                        self.function_defs = self.function_defs + """
-                        {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                        \{
-                            if (obj.membernum == 0)
-                                panic_printf("null as not null was called");
-                            {itemtype_code} res = \{ .membernum = obj.membernum - 1 \};
-                            memcpy(&res.val, &obj.val, sizeof res.val);  // FIXME: is haxor
-                            {self.session.emit_incref("res", itemtype)};
-                            return res;
-                        \}
-                        """
-
             case ir::BasicType basictype:
                 if basictype.generic_source == null:
                     let struct_members = [foreach m of basictype.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")

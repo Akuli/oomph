@@ -510,38 +510,6 @@ class _FilePair:
             }};
             """
 
-            if "get" in the_type.methods:
-                if len(the_type.type_members) == 2:
-                    itemtype = the_type.type_members[1]
-                    itemtype_code = self.emit_type(itemtype)
-                    self.function_decls += f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                    self.function_defs += f"""
-                    {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                    {{
-                        if (obj.membernum == 0)
-                            panic_printf("null.get() was called");
-                        assert(obj.membernum == 1);
-                        {self.session.emit_incref('obj.val.item1', itemtype)};
-                        return obj.val.item1;
-                    }}
-                    """
-                else:
-                    itemtype = UnionType(the_type.type_members[1:])
-                    itemtype_code = self.emit_type(itemtype)
-                    self.function_decls += f"{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                    self.function_defs += f"""
-                    {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                    {{
-                        if (obj.membernum == 0)
-                            panic_printf("null.get() was called");
-
-                        {itemtype_code} res = {{ .membernum = obj.membernum - 1 }};
-                        memcpy(&res.val, &obj.val, sizeof res.val);  // FIXME: is haxor
-                        {self.session.emit_incref('res', itemtype)};
-                        return res;
-                    }}
-                    """
-
         elif the_type.generic_origin is not None:
             itemtype = the_type.generic_origin.arg
             c_path, h_path = _generic_paths[the_type.generic_origin.generic]

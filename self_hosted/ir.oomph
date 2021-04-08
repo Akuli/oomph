@@ -376,17 +376,10 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
         case FunctionType _:
             return []
         case UnionType union:
-            let methods = [
+            return [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
-            if union.type_members.first() == builtins.NULL_TYPE:
-                if union.type_members.length() == 2:
-                    let item_type = union.type_members.last()
-                else:
-                    item_type = make_union(builtins, union.type_members.slice(1, union.type_members.length()), null)
-                methods.push(new Method("get", new FunctionType([union as Type], item_type)))
-            return methods
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
     foreach method of get_methods(type, builtins):
