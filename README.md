@@ -284,18 +284,3 @@ Optimization ideas:
 - `(a / b).floor()` with integers `a` and `b` doesn't have to involve floats at runtime
 - `foo.split(bar).first()` creates unnecessary list, e.g. with empty `bar` this is
     linear time but could be optimized to constant time
-
-
-## TCC
-
-I like to use tcc when developing oomph.
-It compiles much faster than gcc, even though it doesn't optimize as well.
-
-```
-./download-tcc
-make clean
-```
-
-Now `make`, `./test` etc will use the downloaded tinycc.
-Currently you need `make clean` because the Makefile isn't clever enough to realize that
-the C compiler changed and everything has to be recompiled.
