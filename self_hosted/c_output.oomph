@@ -140,6 +140,7 @@ class FunctionEmitter(
                         return ""
 
             case ir::Panic panic:
+                # TODO: include file name and line number
                 return """
                 panic_printf("%s", string_to_cstr({self.file_pair.emit_string(panic.message)}));
                 """
