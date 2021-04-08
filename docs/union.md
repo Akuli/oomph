@@ -6,7 +6,7 @@ Consider this Oomph code:
         if message == null:
             print("No message")
         else:
-            print(message.get())
+            print(message as not null)
 
     export func main():
         foo(null)       # prints "No message"
@@ -41,11 +41,11 @@ This ensures that `message == null` is a valid way to check
 whether `null` is the active member of `message`.
 
     else:
-        print(message.get())
+        print(message as not null)
 
 Recall that `message` has type `Str | null`.
 However, when the `else` runs, the active member of `message` can't be `null`.
-The `.get()` method converts from `Str | null` to `Str`.
+Here `as not null` converts from `Str | null` to `Str`.
 
     export func main():
         foo(null)       # prints "No message"
@@ -57,8 +57,6 @@ but they are [implicitly converted](implicit-conversions.md) to type `Str | null
 
 ## As
 
-Only unions involving `null` have a `.get()` method;
-other unions don't have it.
 To access the `Int` of `Str | Int`, knowing that's the active member, you can use `as`:
 
     func blah(Str | Int thing):
@@ -68,11 +66,10 @@ To access the `Int` of `Str | Int`, knowing that's the active member, you can us
         blah(123)       # prints "124"
         blah("lol")     # runtime error
 
-In fact, `message.get()` in the first example is a shorthand for `message as Str`,
-and that too gives a runtime error if called with the wrong active member:
+Of course, `as not` also gives a runtime error if called with the wrong active member:
 
     func greet(Str | null name):
-        print("Hello " + name.get())
+        print("Hello " + (name as not null))
 
     export func main():
         greet("World")  # prints "Hello World"
@@ -84,9 +81,16 @@ or vice versa, or from one union type to another.
 It is an error if neither of the types is a union type.
 
 
+## As not
+
+If `foo` has type `Int | Str`, then `foo as not Int` is same as `foo as Str`.
+The left side of `as` must have union type; `1 as not Str` is an error,
+because even though it makes sense, it wouldn't be useful.
+
+
 ## Switch
 
-For union types like `SomeType | null`, you can use `== null` and `.get()`.
+For union types like `SomeType | null`, you can use `== null` and `as not null`.
 For other unions, you can use `as`, but that fails at runtime
 if the active member isn't what you specified.
 To also check which member is active, use `switch`:

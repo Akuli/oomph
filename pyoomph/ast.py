@@ -113,6 +113,7 @@ class BinaryOperator(Expression):
 class As(Expression):
     expr: Expression
     type: Type
+    as_not: bool
 
 
 # Run statements and evaluate expression. Useful for list comprehensions.

@@ -1,0 +1,6 @@
+func foo(Str | Int | Bool thing):
+    print(thing as Str)
+
+export func main():
+    let thingy = "lol" as Str | Int | Bool | null
+    foo(thingy as not null)

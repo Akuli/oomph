@@ -366,7 +366,7 @@ class FilePair(
                 # TODO: zip
                 assert(names.length() == type.argtypes.length())
                 arg_decls = [
-                    for let i = 0; i < argnames.get().length(); i = i+1:
+                    for let i = 0; i < names.length(); i = i+1:
                     self.emit_type(type.argtypes.get(i)) + " " + names.get(i)
                 ]
 
@@ -385,7 +385,7 @@ class FilePair(
         let decl = "{returntype} {function_name}({arg_decl_string})"
         self.function_decls = self.function_decls + decl + ";\n"
         if body != null:
-            self.function_defs = self.function_defs + decl + "\{" + body.get() + "\}\n"
+            self.function_defs = self.function_defs + decl + "\{" + (body as not null) + "\}\n"
 
     meth emit_string(Str value) -> Str:
         let first_time_with_this_value = value not in self.strings
@@ -529,39 +529,6 @@ class FilePair(
                 \};
                 """ as Str | null
 
-                if self.session.builtins.NULL_TYPE in union.type_members:
-                    assert(self.session.builtins.NULL_TYPE == union.type_members.first())
-                    # FIXME: copy pasta
-                    if n == 2:
-                        let itemtype = union.type_members.last()
-                        let itemtype_code = self.emit_type(itemtype)
-                        self.function_decls = self.function_decls + "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                        self.function_defs = self.function_defs + """
-                        {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                        \{
-                            if (obj.membernum == 0)
-                                panic_printf("null.get() was called");
-                            assert(obj.membernum == 1);
-                            {self.session.emit_incref("obj.val.item1", itemtype)};
-                            return obj.val.item1;
-                        \}
-                        """
-                    else:
-                        let itemtype = ir::make_union(self.session.builtins, union.type_members.slice(1, union.type_members.length()), null)
-                        let itemtype_code = self.emit_type(itemtype)
-                        self.function_decls = self.function_decls + "{itemtype_code} meth_{self.id}_get(struct class_{self.id} obj);"
-                        self.function_defs = self.function_defs + """
-                        {itemtype_code} meth_{self.id}_get(struct class_{self.id} obj)
-                        \{
-                            if (obj.membernum == 0)
-                                panic_printf("null.get() was called");
-                            {itemtype_code} res = \{ .membernum = obj.membernum - 1 \};
-                            memcpy(&res.val, &obj.val, sizeof res.val);  // FIXME: is haxor
-                            {self.session.emit_incref("res", itemtype)};
-                            return res;
-                        \}
-                        """
-
             case ir::BasicType basictype:
                 if basictype.generic_source == null:
                     let struct_members = [foreach m of basictype.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")
@@ -626,8 +593,8 @@ class FilePair(
                         """
 
                 else:
-                    assert(basictype.generic_source.get().generik == self.session.builtins.LIST)
-                    let itemtype = basictype.generic_source.get().arg
+                    assert((basictype.generic_source as not null).generik == self.session.builtins.LIST)
+                    let itemtype = (basictype.generic_source as not null).arg
                     let macros = [
                         ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(basictype)}"],
                         ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(basictype)}"],
@@ -797,7 +764,7 @@ export class Session(
             if file_pair.struct == null:
                 let struct = ""
             else:
-                struct = file_pair.struct.get()
+                struct = file_pair.struct as not null
 
             let h_code = (
                 "#include <lib/oomph.h>\n"

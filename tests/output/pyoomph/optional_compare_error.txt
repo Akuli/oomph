@@ -1,2 +1,2 @@
-TypeError: (null | Int) > (null | Int)
+TypeError: (Int | null) > (Int | null)
 

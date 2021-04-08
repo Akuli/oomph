@@ -65,7 +65,7 @@ Once tokenized according to the above rules, the stream of tokens must be modifi
 1. Newline tokens and indentation tokens (that is, newlines and spaces not inside strings)
     inside `(` `)` or `[` `]` are ignored.
 2. When the keywords `not` and `in` appear consecutively, as two separate tokens,
-    they are replaced with one `not in` token.
+    they are replaced with one `not in` token. In the same way, `as not` is combined into one token.
 3. Newlines are cleaned up.
 4. If there is `:` operator followed by a newline and an indentation,
    all those tokens are replaced with one token signifying the beginning of a block.
@@ -165,7 +165,7 @@ An expression is a sequence of simple expressions or operators and keywords from
 3. `mod`
 4. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
 5. `<`, `>`, `<=`, `>=` (it is an error to chain these)
-6. `as` (the right side is a type, not an expression)
+6. `as`, `as not` (the right side is a type, not an expression)
 7. `in`, `not in` (it is an error to chain these)
 8. `not`
 9. `and`, `or` (chaining different keywords, e.g. `a and b or c`, is an error)

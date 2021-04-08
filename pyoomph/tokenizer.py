@@ -128,7 +128,9 @@ def _ignore_whitespace_in_parens(
     assert not paren_stack
 
 
-def _combine_not_in(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
+def _combine_not_in_and_as_not(
+    tokens: Iterator[Tuple[str, str]]
+) -> Iterator[Tuple[str, str]]:
     while True:
         head, tokens = more_itertools.spy(tokens, 2)
         if not head:
@@ -136,6 +138,10 @@ def _combine_not_in(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, st
 
         if head == [("keyword", "not"), ("keyword", "in")]:
             yield ("keyword", "not in")
+            next(tokens)
+            next(tokens)
+        elif head == [("keyword", "as"), ("keyword", "not")]:
+            yield ("keyword", "as not")
             next(tokens)
             next(tokens)
         else:
@@ -204,7 +210,7 @@ def _clean_newlines(tokens: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, st
 def tokenize(code: str) -> Iterator[Tuple[str, str]]:
     tokens = raw_tokenize(code)
     tokens = _ignore_whitespace_in_parens(tokens)
-    tokens = _combine_not_in(tokens)
+    tokens = _combine_not_in_and_as_not(tokens)
     tokens = _clean_newlines(tokens)
     tokens = _find_blocks(tokens)
     tokens = _clean_newlines(tokens)

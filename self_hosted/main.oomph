@@ -67,8 +67,8 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
             print("bad line in obj/compile_info.txt: {line}")
             assert(false)
 
-    let before_files = [cc.get()]
-    before_files.push_all(split(cflags.get()))
+    let before_files = [cc as not null]
+    before_files.push_all(split(cflags as not null))
     before_files.push_all([
         # FIXME: hard-coded list of globbing obj/*.o
         "obj/io.o",
@@ -80,7 +80,7 @@ func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
     ])
 
     let after_files = ["-o", exepath]
-    after_files.push_all(split(ldflags.get()))
+    after_files.push_all(split(ldflags as not null))
     after_files.push_all(["-I", "."])
 
     let all_args = []
@@ -165,7 +165,7 @@ func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> Lis
             )
             if uncompiled_dependency == null:
                 break
-            candidate_unit = uncompiled_dependency.get()
+            candidate_unit = uncompiled_dependency as not null
 
             let cyclic = candidate_unit in breadcrumbs
             breadcrumbs.push(candidate_unit)
