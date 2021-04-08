@@ -29,9 +29,8 @@ Implicitly converting an object to a type follows these rules:
     original object is the result of the conversion.
 - If the type to convert to is `Float` and the object has type `Int`,
     the integer will be converted to a float at runtime.
-- If one of the two types is a union type and every type member of the original type
-    is also a type member of the desired type, then the rules of the [as](union.md#as)
-    keyword are used.
+- If every type member of the original type is also a type member of the desired type,
+    then the rules of the [as](union.md#as) keyword are used.
 - Otherwise, the implicit conversion fails.
 
 There are also a few additional rules that apply only when automatic types are involved.
