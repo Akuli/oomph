@@ -1,0 +1,5 @@
+tests/no_constructor_error.oomph:4: error: type 'IHaveNoConstructor' has no constructor
+
+    print(new IHaveNoConstructor("ha"))
+          ^^^
+

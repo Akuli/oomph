@@ -52,9 +52,9 @@ func join(List[Str] args) -> Str:
 class Command(List[Str] command, Str human_readable)
 
 func get_c_compiler_command(List[Str] c_paths, Str exepath) -> Command:
-    let cc = new (Str | null)(null)
-    let cflags = new (Str | null)(null)
-    let ldflags = new (Str | null)(null)
+    let cc = null as Str | null
+    let cflags = null as Str | null
+    let ldflags = null as Str | null
 
     foreach line of io::read_file("obj/compile_info.txt").remove_suffix("\n").split("\n"):
         if line.starts_with("cc="):
@@ -183,8 +183,8 @@ class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str]
 
 func parse_args() -> Args:
     let usage = "Usage: {process::program_name()} [compiler args] program.oomph [program args]"
-    let infile = new (Str | null)(null)
-    let outfile = new (Str | null)(null)
+    let infile = null as Str | null
+    let outfile = null as Str | null
     let valgrind = ""
     let verbose = false
 

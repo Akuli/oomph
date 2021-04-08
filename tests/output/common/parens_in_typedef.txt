@@ -1,0 +1,3 @@
+Foo("lol")
+Foo(123)
+Foo(true)

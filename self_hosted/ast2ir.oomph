@@ -320,7 +320,7 @@ class FunctionOrMethodConverter(
 
     meth do_call(ast::Call call, Bool must_return_value) -> ir::LocalVariable | null:
         let args = [foreach arg of call.args: self.do_expression(arg)]
-        let result_var = new (ir::LocalVariable | null)(null)
+        let result_var = null as ir::LocalVariable | null
 
         switch call.function:
             case ast::GetAttribute method:
@@ -381,14 +381,13 @@ class FunctionOrMethodConverter(
                 self.code.push(new ir::FunctionCall(function, args, result_var))
 
             case ast::Constructor constructor:
-                # TODO: is this special-casing really needed?
-                let the_class = self.get_type(constructor.type)
-                args = self.do_args(
-                    args,
-                    ir::get_constructor_argtypes(the_class).get(),  # TODO: error
-                    constructor.location,
-                )
-                result_var = self.create_var(the_class, call.location)
+                let type = self.get_type(constructor.type)
+                let argtypes = ir::get_constructor_argtypes(type)
+                if argtypes == null:
+                    constructor.location.error("type '{ir::type_name(type)}' has no constructor")
+
+                args = self.do_args(args, argtypes.get(), constructor.location)
+                result_var = self.create_var(type, call.location)
                 self.code.push(new ir::ConstructorCall(result_var.get(), args))
 
             case *:
@@ -506,18 +505,18 @@ class FunctionOrMethodConverter(
                     lhs_var,
                     rhs_evaluation,
                     [
-                        new ir::Instruction(new ir::VarCpy(
+                        new ir::VarCpy(
                             result_var, self.builtins.get_visible_var("false")
-                        ))
+                        ) as ir::Instruction
                     ],
                 )
             else:
                 self.do_if(
                     lhs_var,
                     [
-                        new ir::Instruction(new ir::VarCpy(
+                        new ir::VarCpy(
                             result_var, self.builtins.get_visible_var("true")
-                        ))
+                        ) as ir::Instruction
                     ],
                     rhs_evaluation,
                 )
@@ -551,7 +550,7 @@ class FunctionOrMethodConverter(
             case ast::ListLiteral list:
                 let content = [foreach expr of list.content: self.do_expression(expr)]
                 if content == []:
-                    let content_type = new ir::Type(self.create_autotype())
+                    let content_type = self.create_autotype() as ir::Type
                 else:
                     content_type = content.first().type
                     foreach member of content:
@@ -578,19 +577,7 @@ class FunctionOrMethodConverter(
                 return result
 
             case ast::Call call:
-                # FIXME: nested switches suck
-                switch call.function:
-                    case ast::Constructor constructor:
-                        switch self.get_type(constructor.type):
-                            case ir::UnionType union_type:
-                                assert(call.args.length() == 1)  # TODO: error
-                                let obj = self.do_expression(call.args.first())
-                                return self.implicit_conversion(obj, union_type)
-                            case *:
-                                pass
-                    case *:
-                        pass
-
+                # TODO: error?
                 return self.do_call(call, true).get()
 
             case ast::GetVar getvar:
@@ -728,10 +715,10 @@ class FunctionOrMethodConverter(
 
                 if if_statement.ifs_and_elifs.length() >= 2:
                     let otherwise = self.do_block([
-                        new ast::Statement(new ast::If(
+                        new ast::If(
                             if_statement.ifs_and_elifs.slice(1, if_statement.ifs_and_elifs.length()),
                             if_statement.else_block,
-                        ))
+                        ) as ast::Statement
                     ])
                 else:
                     otherwise = self.do_block(if_statement.else_block)
@@ -995,8 +982,8 @@ func create_pointers_equal_method(ir::Builtins builtins, ir::Type classtype, err
         ir::get_method(classtype, "equals", builtins),
         [self_var, other_var],
         [
-            new ir::Instruction(new ir::PointersEqual(self_var, other_var, result_var)),
-            new ir::Instruction(new ir::Return(result_var)),
+            new ir::PointersEqual(self_var, other_var, result_var) as ir::Instruction,
+            new ir::Return(result_var) as ir::Instruction,
         ]
     )
 
@@ -1117,7 +1104,7 @@ class FileConverter(
                     case ir::UnionType union_type:
                         # use typedef name in error messages
                         assert(union_type.custom_name == null)
-                        union_type.custom_name = new (Str | null)(def.name)
+                        union_type.custom_name = def.name as Str | null
                     case *:
                         pass
             case ast::ClassDef def:
@@ -1128,7 +1115,7 @@ class FileConverter(
     meth func_or_meth_step3(ast::FuncOrMethodDef def, ir::BasicType | null classtype):
         switch def.returntype:
             case ast::Type type:
-                let returntype = new (ir::Type | ir::NoReturn | null)(self.get_type(type, null))
+                let returntype = self.get_type(type, null) as ir::Type | ir::NoReturn | null
             case ast::NoReturn _:
                 returntype = new ir::NoReturn()
             case null _:
@@ -1173,7 +1160,7 @@ class FileConverter(
                 ])
                 # TODO: is it possible to specify this when creating classtype?
                 # TODO: auto types not working at all here
-                classtype.constructor_argtypes = new (List[ir::Type] | null)(new List[ir::Type]())
+                classtype.constructor_argtypes = new List[ir::Type]() as List[ir::Type] | null
                 classtype.constructor_argtypes.get().push_all([
                     foreach member of classtype.members: member.type
                 ])
@@ -1182,12 +1169,12 @@ class FileConverter(
                     # TODO: do this in ir instead?
                     classtype.methods.push(new ir::Method(
                         "to_string",
-                        new ir::FunctionType([new ir::Type(classtype)], self.builtins.STR)
+                        new ir::FunctionType([classtype as ir::Type], self.builtins.STR)
                     ))
                 if "equals" not in [foreach method of classdef.body: method.name]:
                     classtype.methods.push(new ir::Method(
                         "equals", new ir::FunctionType(
-                            [new ir::Type(classtype), new ir::Type(classtype)],
+                            [classtype as ir::Type, classtype as ir::Type],
                             self.builtins.BOOL
                         )
                     ))
@@ -1232,7 +1219,7 @@ class FileConverter(
             # TODO: is this necessary?
             let copied_var = new ir::LocalVariable(type, local_var_counter, arg_location)
             local_var_counter = local_var_counter + 1
-            body.push(new ir::Instruction(new ir::VarCpy(copied_var, argvar)))
+            body.push(new ir::VarCpy(copied_var, argvar) as ir::Instruction)
             body.push(new ir::IncRef(copied_var))
 
             foreach named_var of local_vars:
@@ -1242,15 +1229,15 @@ class FileConverter(
         # TODO: this sucks
         switch functype.returntype:
             case ir::Type rettype:
-                let non_noreturn_returntype = new (null | ir::Type)(rettype)
+                let returntype_without_noreturn = rettype as ir::Type | null
             case *:
-                non_noreturn_returntype = null
+                returntype_without_noreturn = null
 
         let converter = new FunctionOrMethodConverter(
             self.builtins,
             self,
             local_vars,
-            non_noreturn_returntype,
+            returntype_without_noreturn,
             [], [], [], [], [],
             0, 0,
             local_var_counter,
@@ -1279,9 +1266,9 @@ class FileConverter(
 
                 let typed_method_defs = []
                 if "equals" not in [foreach method of classdef.body: method.name]:
-                    typed_method_defs.push(new ir::ToplevelDeclaration(
-                        create_pointers_equal_method(self.builtins, classtype, classdef.location)
-                    ))
+                    typed_method_defs.push(create_pointers_equal_method(
+                        self.builtins, classtype, classdef.location
+                    ) as ir::ToplevelDeclaration)
 
                 foreach method_def of classdef.body:
                     typed_method_defs.push(self.func_or_meth_step4(method_def, classtype) as ir::MethodDef)

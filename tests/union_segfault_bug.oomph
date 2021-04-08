@@ -1,4 +1,2 @@
-typedef Foo = Str | Int
-
 export func main():
-    print(new Foo("a") == new Foo(1))
+    print(("a" as Str | Int) == (1 as Str | Int))

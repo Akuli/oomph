@@ -16,15 +16,15 @@ class AstTransformer(Int varname_counter):
         let index_var = self.get_var_name()
 
         let body = [
-            new ast::Statement(new ast::Let(
+            new ast::Let(
                 loc,
                 header.varname,
                 new ast::Call(
                     loc,
                     new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "get"),
-                    [new ast::Expression(new ast::GetVar(loc, index_var))],
+                    [new ast::GetVar(loc, index_var) as ast::Expression],
                 ),
-            ))
+            ) as ast::Statement
         ]
         body.push_all(loop.body)
 
@@ -32,8 +32,8 @@ class AstTransformer(Int varname_counter):
             new ast::ForLoopHeader(
                 loc,
                 [
-                    new ast::Statement(new ast::Let(loc, index_var, new ast::IntConstant(loc, 0))),
-                    new ast::Statement(new ast::Let(loc, list_var, header.list)),
+                    new ast::Let(loc, index_var, new ast::IntConstant(loc, 0)) as ast::Statement,
+                    new ast::Let(loc, list_var, header.list) as ast::Statement,
                 ],
                 new ast::BinaryOperator(
                     loc,
@@ -42,7 +42,7 @@ class AstTransformer(Int varname_counter):
                     new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "length"), []),
                 ),
                 [
-                    new ast::Statement(new ast::SetVar(
+                    new ast::SetVar(
                         loc,
                         index_var,
                         new ast::BinaryOperator(
@@ -51,7 +51,7 @@ class AstTransformer(Int varname_counter):
                             "+",
                             new ast::IntConstant(loc, 1),
                         ),
-                    ))
+                    ) as ast::Statement
                 ],
             ),
             body
@@ -63,17 +63,17 @@ class AstTransformer(Int varname_counter):
         return self.visit_expression(new ast::StatementsAndExpression(
             loc,
             [
-                new ast::Statement(new ast::Let(loc, var, new ast::ListLiteral(loc, []))),
-                new ast::Statement(new ast::Loop(
+                new ast::Let(loc, var, new ast::ListLiteral(loc, [])) as ast::Statement,
+                new ast::Loop(
                     listcomp.loop_header,
                     [
-                        new ast::Statement(new ast::Call(
+                        new ast::Call(
                             loc,
                             new ast::GetAttribute(loc, new ast::GetVar(loc, var), "push"),
                             [listcomp.value],
-                        ))
+                        ) as ast::Statement
                     ],
-                )),
+                ) as ast::Statement,
             ],
             new ast::GetVar(loc, var),
         ))
@@ -145,12 +145,12 @@ class AstTransformer(Int varname_counter):
                 let header = loop.loop_header as ast::ForLoopHeader
                 header.init = self.visit_statements(header.init)
                 if header.cond != null:
-                    header.cond = new (ast::Expression | null)(self.visit_expression(header.cond.get()))
+                    header.cond = self.visit_expression(header.cond.get()) as ast::Expression | null
                 header.incr = self.visit_statements(header.incr)
                 loop.body = self.visit_statements(loop.body)
             case ast::Return ret:
                 if ret.value != null:
-                    ret.value = new (ast::Expression | null)(self.visit_expression(ret.value.get()))
+                    ret.value = self.visit_expression(ret.value.get()) as ast::Expression | null
             case ast::SetAttribute setattr:
                 setattr.obj = self.visit_expression(setattr.obj)
                 setattr.value = self.visit_expression(setattr.value)

@@ -1,4 +1,4 @@
 typedef NumberOrNot = Int | null
 
 export func main():
-    print(new NumberOrNot(123))
+    print(123 as NumberOrNot)
