@@ -1,4 +1,4 @@
-typedef Ambiguous = Str | (Str | Int)
+typedef Bad = Str | (Str | Int)
 
 export func main():
     pass

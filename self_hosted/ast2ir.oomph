@@ -47,8 +47,9 @@ func get_type_members(ir::Type type) -> List[ir::Type]:
     switch type:
         case ir::UnionType union:
             return union.type_members
-        case ir::AutoType _:
-            assert(false)
+        # FIXME: somehow this gets called with auto types
+#        case ir::AutoType _:
+#            assert(false)
         case *:
             return [type]
 
@@ -240,7 +241,7 @@ class FunctionOrMethodConverter(
                     if member in get_type_members(target_type):
                         let label = self.create_goto_label()
                         self.code.push(new ir::UnionMemberCheck(bool_var, var, member))
-                        self.code.push(new ir::GotoIf(label, self.bool_constant("true", var.location)))
+                        self.code.push(new ir::GotoIf(label, bool_var))
 
                         let get_result = self.create_var(member, var.location)
                         end_code.push(label)
@@ -252,7 +253,9 @@ class FunctionOrMethodConverter(
                             case *:
                                 end_code.push(new ir::VarCpy(conversion_result, get_result))
                         end_code.push(new ir::IncRef(conversion_result))
-                        end_code.push(new ir::GotoIf(done_label, self.bool_constant("true", var.location)))
+                        self.push_code()
+                        self.code.push(new ir::GotoIf(done_label, self.bool_constant("true", var.location)))
+                        end_code.push_all(self.pop_code())
 
                 self.code.push(new ir::Panic("'as' failed", var.location))   # TODO: better error message?
                 self.code.push_all(end_code)

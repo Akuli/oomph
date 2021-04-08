@@ -1,6 +1,7 @@
 # How to update this list:
 # - Finding unnecessary _error lines: make oomph && for file in $(grep -v '^#' tests/self_hosted_skip.txt); do echo "*** $file"; ./oomph $file; done
 
+tests/as_widening.oomph   # union members not sorted properly
 tests/autotype_attribute_error.oomph
 tests/autotype_list_eq_error.oomph
 tests/autotype_method_error.oomph

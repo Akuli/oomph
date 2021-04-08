@@ -1,0 +1,5 @@
+tests/unnecessary_as_error.oomph:2: error: unnecessary 'as' conversion from Str to Str
+
+    print("Hello" as Str)
+                  ^^
+
