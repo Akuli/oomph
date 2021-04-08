@@ -351,25 +351,37 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 break
 
+    meth eliminate_one_as(List[PrecedenceItem] magic_list) -> Bool:
+        for let i = 0; i < magic_list.length(); i = i+1:
+            switch magic_list.get(i):
+                case tokenizer::Token op:
+                    if op.value == "as":
+                        let type_index = i+1
+                        let as_not = false
+
+                        switch magic_list.get(type_index):
+                            case tokenizer::Token token:
+                                if token.matches("keyword", "not"):
+                                    type_index = i+2
+                                    as_not = true
+                            case *:
+                                pass
+
+                        # TODO: improve errors
+                        assert(0 <= i-1 and type_index < magic_list.length())
+                        let expr = magic_list.get(i-1) as ast::Expression
+                        let type = magic_list.get(type_index) as ast::Type
+                        magic_list.delete_slice(i-1, type_index + 1)
+                        magic_list.insert(i-1, new ast::As(op.location, expr, type, as_not))
+                        return true
+                case *:
+                    pass
+
+        return false
+
     meth eliminate_as(List[PrecedenceItem] magic_list):
-        let keep_going = true  # TODO: this sucks
-        while keep_going:
-            keep_going = false
-            for let i = 0; i < magic_list.length(); i = i+1:
-                switch magic_list.get(i):
-                    case tokenizer::Token op:
-                        if op.value == "as":
-                            # TODO: improve errors
-                            assert(0 <= i-1 and i+1 < magic_list.length())
-                            let expr = magic_list.get(i-1) as ast::Expression
-                            let type = magic_list.get(i+1) as ast::Type
-                            magic_list.delete_slice(i-1, i+2)
-                            magic_list.insert(i-1, new ast::As(op.location, expr, type))
-                            # Continue from beginning of list
-                            keep_going = true
-                            break
-                    case *:
-                        pass
+        while self.eliminate_one_as(magic_list):
+            pass
 
     meth get_unary_operators() -> List[PrecedenceItem]:
         return [
@@ -393,6 +405,8 @@ class Parser(List[tokenizer::Token] tokens):
             let op_token = self.tokens.pop()
             magic_list.push(op_token)
             if op_token.value == "as":
+                if self.peek().matches("keyword", "not"):
+                    magic_list.push(self.tokens.pop())
                 magic_list.push(self.parse_type())
             else:
                 magic_list.push_all(self.get_unary_operators())

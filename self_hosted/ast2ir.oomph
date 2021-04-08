@@ -632,10 +632,35 @@ class FunctionOrMethodConverter(
             case ast::As ass:
                 let value = self.do_expression(ass.expr)
                 let target_type = self.get_type(ass.type)
-                if value.type == target_type:
-                    ass.location.error(
-                        "unnecessary 'as' conversion from {ir::type_name(value.type)} to {ir::type_name(target_type)}"
-                    )
+
+                if ass.as_not:
+                    switch value.type:
+                        case ir::UnionType u:
+                            if target_type not in u.type_members:
+                                value.location.error(
+                                    "left side of 'as not' has union type '{ir::type_name(u)}', "
+                                    + "which doesn't have member '{ir::type_name(target_type)}'"
+                                )
+
+                            let new_members = u.type_members.reversed().reversed()  # TODO: copy method
+                            new_members.delete_only(target_type)
+
+                            if new_members.length() >= 2:
+                                target_type = ir::make_union(self.builtins, new_members, null)
+                            else:
+                                target_type = new_members.first()
+
+                        case *:
+                            value.location.error(
+                                "left side of 'as not' must have union type, not {ir::type_name(value.type)}"
+                            )
+
+                else:
+                    if value.type == target_type:
+                        ass.location.error(
+                            "unnecessary 'as' conversion from {ir::type_name(value.type)} to {ir::type_name(target_type)}"
+                        )
+
                 return self.union_conversion(value, target_type)
 
             case ast::Constructor _:
