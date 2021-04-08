@@ -110,7 +110,8 @@ A toplevel declaration can be:
   unless the string starts with `<stdlib>/`;
   in that case, it's interpreted relative to Oomph's standard library directory.
 - A typedef: the keyword `typedef` followed by a simple identifier, then the `=` operator,
-    then a type and a newline token. It is an error if the type exists already.
+    then a possibly parenthesized type and a newline token. It is an error if a type
+    with the given name exists already.
 - A class definition: the keyword `class` followed by a simple identifier,
   then parenthesized and comma-separated argument definitions,
   and then optionally a block of method definitions.
@@ -123,8 +124,7 @@ This makes the defined function or type visible in other files when the file is 
 
 An argument definition of a function, method or class is a type followed by a simple identifier.
 
-A type is a possibly parenthesized non-union type or multiple `|`-separated non-union types.
-A non-union type can be:
+A type is a non-union type or multiple `|`-separated non-union types. A non-union type can be:
 - [Automatic type](auto.md): the keyword `auto`.
 - Generic type: an identifier followed by a `[]`-parenthesized type.
 - Named type: an identifier.
