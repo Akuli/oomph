@@ -189,7 +189,9 @@ class _FunctionOrMethodConverter:
                     self.code.append(ir.GetFromUnion(get_result, var))
                     self.code.append(ir.IncRef(get_result))
                     if isinstance(target_type, UnionType):
-                        self.code.append(ir.InstantiateUnion(conversion_result, get_result))
+                        self.code.append(
+                            ir.InstantiateUnion(conversion_result, get_result)
+                        )
                     else:
                         self.code.append(ir.VarCpy(conversion_result, get_result))
                     self.code.append(ir.IncRef(conversion_result))
@@ -535,9 +537,7 @@ class _FunctionOrMethodConverter:
             value = self.do_expression(expr.expr)
             target_type = self.get_type(expr.type)
             assert value.type != target_type, "unnecessary 'as'"
-            return self.union_conversion(
-                value, target_type
-            )
+            return self.union_conversion(value, target_type)
 
         if isinstance(expr, ast.Constructor):
             raise NotImplementedError(f"constructor as object: {expr}")
