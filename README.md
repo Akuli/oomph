@@ -157,6 +157,10 @@ uses [Pygments](https://pygments.org/) for syntax highlighting
     Note that you should not have the Oomph virtual env activated when doing this,
     unless you installed Porcupine into it.
 
+### Other editors
+
+If you can make something that works, please create a pull request.
+
 
 ## TCC
 
