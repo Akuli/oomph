@@ -903,7 +903,7 @@ class FunctionOrMethodConverter(
 
         foreach ins of self.code:
             switch ins:
-                # TODO: https://github.com/Akuli/oomph/issues/145
+                # TODO: union attribs https://github.com/Akuli/oomph/issues/145
                 case ir::IncRef ins2:
                     self.get_rid_of_auto_in_var(ins2.var)
                 case ir::DecRef ins2:
