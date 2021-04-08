@@ -374,7 +374,7 @@ class Parser(List[tokenizer::Token] tokens):
     meth get_unary_operators() -> List[PrecedenceItem]:
         return [
             while self.peek().matches("keyword", "not") or self.peek().matches("op", "-"):
-                new PrecedenceItem(self.tokens.pop())
+                self.tokens.pop() as PrecedenceItem
         ]
 
     meth parse_expression(Str | null error_message) -> ast::Expression:
@@ -533,7 +533,7 @@ class Parser(List[tokenizer::Token] tokens):
             else:
                 else_body = []
 
-            return [new ast::Statement(new ast::If(ifs, else_body))]
+            return [new ast::If(ifs, else_body) as ast::Statement]
 
         if (
             self.peek().matches("keyword", "while")
@@ -542,13 +542,13 @@ class Parser(List[tokenizer::Token] tokens):
         ):
             let header = self.parse_loop_header()
             let body = self.parse_block_of_statements()
-            return [new ast::Statement(new ast::Loop(header, body))]
+            return [new ast::Loop(header, body) as ast::Statement]
 
         if self.peek().matches("keyword", "switch"):
             let location = self.get_token("keyword", "switch").location
             let union_obj = self.parse_expression(null)
             let cases = self.parse_block_of_cases()
-            return [new ast::Statement(new ast::Switch(location, union_obj, cases))]
+            return [new ast::Switch(location, union_obj, cases) as ast::Statement]
 
         let result = self.parse_oneline_ish_statement()
         self.get_token("op", "\n")

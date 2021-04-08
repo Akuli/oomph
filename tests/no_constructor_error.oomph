@@ -1,0 +1,4 @@
+typedef IHaveNoConstructor = Int | Str
+
+export func main():
+    print(new IHaveNoConstructor("ha"))

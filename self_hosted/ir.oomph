@@ -103,11 +103,8 @@ export func get_constructor_argtypes(Type type) -> List[Type] | null:
             assert(false)
         case BasicType basictype:
             return basictype.constructor_argtypes
-        case FunctionType functype:
+        case FunctionType | UnionType _:
             return null
-        case UnionType uniontype:
-            # Special-cased in ast2ir
-            assert(false)
 
 export func type_name(Type type) -> Str:
     switch type:
@@ -224,7 +221,7 @@ export class Builtins(
             null,
             false,
         )
-        let r = new Type(result)  # TODO: get rid of this
+        let r = result as Type  # TODO: get rid of this
         methods.push_all([
             new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
             new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
@@ -260,11 +257,11 @@ export class Builtins(
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     # Methods are empty at first to prevent reference cycles
-    let BOOL = new Type(new BasicType("Bool", false, [], [], null, null, null, false))
-    let FLOAT = new Type(new BasicType("Float", false, [], [], null, null, null, false))
-    let INT = new Type(new BasicType("Int", false, [], [], null, null, null, false))
-    let NULL_TYPE = new Type(new BasicType("null", false, [], [], null, null, null, false))
-    let STR = new Type(new BasicType("Str", true, [], [], null, null, null, false))
+    let BOOL = new BasicType("Bool", false, [], [], null, null, null, false) as Type
+    let FLOAT = new BasicType("Float", false, [], [], null, null, null, false) as Type
+    let INT = new BasicType("Int", false, [], [], null, null, null, false) as Type
+    let NULL_TYPE = new BasicType("null", false, [], [], null, null, null, false) as Type
+    let STR = new BasicType("Str", true, [], [], null, null, null, false) as Type
 
     let LIST = new Generic("List")
 
@@ -391,7 +388,7 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
                     let item_type = union.type_members.last()
                 else:
                     item_type = make_union(builtins, union.type_members.slice(1, union.type_members.length()), null)
-                methods.push(new Method("get", new FunctionType([new Type(union)], item_type)))
+                methods.push(new Method("get", new FunctionType([union as Type], item_type)))
             return methods
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:

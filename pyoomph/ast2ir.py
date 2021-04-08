@@ -498,15 +498,8 @@ class _FunctionOrMethodConverter:
             return result
 
         if isinstance(expr, ast.Call):
-            if isinstance(expr.func, ast.Constructor):
-                union_type = self.get_type(expr.func.type)
-                if isinstance(union_type, UnionType):
-                    assert len(expr.args) == 1
-                    obj = self.do_expression(expr.args[0])
-                    return self.implicit_conversion(obj, union_type)
-
             call = self.do_call(expr, True)
-            assert call is not None, f"return value of void function {expr.func} used"
+            assert call is not None, f"function does not return a value: {expr.func}"
             return call
 
         if isinstance(expr, ast.GetVar):
