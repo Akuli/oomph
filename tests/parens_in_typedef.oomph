@@ -1,0 +1,10 @@
+typedef Foo = (
+    Str
+    | Int
+    | Bool
+)
+
+export func main():
+    print("lol" as Foo)
+    print(123 as Foo)
+    print(true as Foo)

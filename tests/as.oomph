@@ -1,5 +1,4 @@
 class Foo(Int value)
-typedef Bar = Foo | Str
 
 export func main():
-    print(new Bar(new Foo(123)) as Foo)
+    print((new Foo(123) as Foo | Str) as Foo)
