@@ -116,8 +116,11 @@ A toplevel declaration can be:
   then parenthesized and comma-separated argument definitions,
   and then optionally a block of method definitions.
   A method definition is just like a function definition, but starting with `func` instead of `meth`.
-- A function definition, starting with the keyword `func`, then a simple identifier,
-  then parenthesized and comma-separated argument definitions, then a block of statements.
+- A function definition, starting with the keyword `func`,
+  then a simple identifier,
+  then parenthesized and comma-separated argument definitions,
+  then optionally `->` followed by a return type or the `noreturn` keyword,
+  then a block of statements.
 
 There may be an `export` keyword in front of any toplevel declaration.
 This makes the defined function or type visible in other files when the file is imported.
