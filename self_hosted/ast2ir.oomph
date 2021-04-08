@@ -1129,7 +1129,7 @@ class FileConverter(
                 switch type:
                     case ir::UnionType union_type:
                         # use typedef name in error messages
-                        assert(union_type.custom_name == null)
+                        assert(union_type.custom_name == null)  # TODO: may fail
                         union_type.custom_name = def.name as Str | null
                     case *:
                         pass

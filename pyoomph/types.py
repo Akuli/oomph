@@ -119,8 +119,7 @@ class UnionType(Type):
 
     @property
     def name(self) -> str:
-        # Don't use custom names for 'Foo | null'
-        if NULL_TYPE in self.type_members or self.custom_name is None:
+        if self.custom_name is None:
             return "(%s)" % " | ".join(t.name for t in self.type_members)
         return self.custom_name
 

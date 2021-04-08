@@ -117,9 +117,7 @@ export func type_name(Type type) -> Str:
         case FunctionType functype:
             return "<function type>"  # TODO
         case UnionType union:
-            # Don't use custom names for 'Foo | null'
-            # TODO: is custom_name ever set in this case?
-            if union.custom_name == null or union.builtins.NULL_TYPE in union.type_members:
+            if union.custom_name == null:
                 return "(" + [
                     foreach t of union.type_members: type_name(t)
                 ].join(" | ") + ")"

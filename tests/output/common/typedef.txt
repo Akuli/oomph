@@ -1,1 +1,1 @@
-(null | Int)(123)
+NumberOrNot(123)
