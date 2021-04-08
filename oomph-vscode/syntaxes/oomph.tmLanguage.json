@@ -20,7 +20,7 @@
       "patterns": [
         {
           "name": "keyword.control.oomph",
-          "match": "\\b(let|import|as|export|func|meth|class|typedef|switch|case|auto|generic|new|return|pass|mod|and|or|not|in|if|elif|else|while|for|foreach|of|continue|break)\\b"
+          "match": "\\b(let|import|as|export|func|meth|class|typedef|switch|case|auto|generic|new|return|noreturn|pass|mod|and|or|not|in|if|elif|else|while|for|foreach|of|continue|break)\\b"
         },
         {
           "name": "constant.other.oomph",
@@ -28,7 +28,7 @@
         },
         {
           "name": "support.class.oomph",
-          "match": "\\b(Bool|Int|List|Str)\\b"
+          "match": "\\b(Bool|Int|Float|List|Str)\\b"
         },
         {
           "name": "support.function.oomph",
