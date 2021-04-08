@@ -122,12 +122,10 @@ class AstTransformer(Int varname_counter):
 
     meth visit_statement(ast::Statement stmt) -> ast::Statement:
         switch stmt:
-            case ast::Break _:
+            case ast::Break | ast::Continue | ast::Pass _:
                 pass
             case ast::Call call:
                 return self.visit_expression(call) as ast::Call
-            case ast::Continue _:
-                pass
             case ast::If if_statement:
                 foreach pair of if_statement.ifs_and_elifs:
                     pair.cond = self.visit_expression(pair.cond)
@@ -150,8 +148,6 @@ class AstTransformer(Int varname_counter):
                     header.cond = self.visit_expression(header.cond.get()) as ast::Expression | null
                 header.incr = self.visit_statements(header.incr)
                 loop.body = self.visit_statements(loop.body)
-            case ast::Pass _:
-                pass
             case ast::Return ret:
                 if ret.value != null:
                     ret.value = self.visit_expression(ret.value.get()) as ast::Expression | null
@@ -173,9 +169,7 @@ class AstTransformer(Int varname_counter):
         switch decl:
             case ast::FuncOrMethodDef fdef:
                 fdef.body = self.visit_statements(fdef.body)
-            case ast::TypeDef _:
-                pass
-            case ast::Import _:
+            case ast::TypeDef | ast::Import _:
                 pass
             case ast::ClassDef classdef:
                 foreach fdef of classdef.body:
