@@ -226,16 +226,17 @@ func ignore_whitespace_in_parens(List[Token] tokens) -> List[Token]:
         )
     return result
 
-func combine_not_in(List[Token] tokens) -> List[Token]:
+func combine_not_in_and_as_not(List[Token] tokens) -> List[Token]:
     let result = []
     for let i = 0; i < tokens.length(); :
-        if (
-            i+1 < tokens.length()
-            and tokens.get(i).matches("keyword", "not")
-            and tokens.get(i+1).matches("keyword", "in")
+        if i+1 < tokens.length() and (
+            (tokens.get(i).matches("keyword", "not") and tokens.get(i+1).matches("keyword", "in"))
+            or (tokens.get(i).matches("keyword", "as") and tokens.get(i+1).matches("keyword", "not"))
         ):
-            let combined = tokens.get(i).location.combine(tokens.get(i+1).location)
-            result.push(new Token("keyword", "not in", combined))
+            let first = tokens.get(i).value
+            let second = tokens.get(i+1).value
+            let combined_location = tokens.get(i).location.combine(tokens.get(i+1).location)
+            result.push(new Token("keyword", "{first} {second}", combined_location))
             i = i + 2
         else:
             result.push(tokens.get(i))
@@ -305,6 +306,6 @@ export func tokenize(Str code, Str path, Int initial_lineno, Str initial_line_pr
     return clean_newlines(
         find_blocks(
         clean_newlines(
-        combine_not_in(
+        combine_not_in_and_as_not(
         ignore_whitespace_in_parens(
         raw_tokenize(code, path, initial_lineno, initial_line_prefix))))))
