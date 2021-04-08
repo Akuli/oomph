@@ -7,16 +7,17 @@ func starts_with_any(Str s, List[Str] prefixes) -> Str | null:
     return null
 
 func get_simple_identifier(Str code) -> Str | null:
-    let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-    let continue_chars = first_chars + "0123456789"
+    let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".split("")
+    let continue_chars = "0123456789".split("")
+    continue_chars.push_all(first_chars)
 
-    let match = starts_with_any(code, first_chars.split(""))
+    let match = starts_with_any(code, first_chars)
     if match == null:
         return null
 
     let result = match as not null
     while true:
-        let match = starts_with_any(code.remove_prefix(result), continue_chars.split(""))
+        let match = starts_with_any(code.remove_prefix(result), continue_chars)
         if match == null:
             return result
         result = result + (match as not null)
