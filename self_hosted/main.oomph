@@ -220,7 +220,7 @@ Compiler arguments:
             if args == []:
                 print("{process::program_name()}: need command after --valgrind (see --help)")
                 process::exit(2)
-            valgrind = args.last()
+            valgrind = args.pop()
         elif args.last() in ["-v", "--verbose"]:
             args.pop()
             verbose = true
