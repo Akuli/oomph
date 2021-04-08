@@ -125,14 +125,19 @@ Currently `make oomph` uses pyoomph to compile the self-hosted compiler.
 
 ## Editor support
 
-There is `oomph_pygments_lexer.py` for syntax highlighting.
-To use it in an editor:
-1. Make sure that you are using an editor that supports [Pygments](https://pygments.org/),
-    such as [Porcupine](https://github.com/Akuli/porcupine) (I made it).
-    If you want syntax highlighting in an editor that doesn't use Pygments,
-    you can make a pull request that makes Oomph support
-    the syntax highlighting library that the editor uses.
-2. Configure the editor. At the time of writing this, I use the following config in Porcupine's `filetypes.toml`:
+### Visual Studio Code
+
+Copy the `oomph-vscode` directory into `~/.vscode/extensions` (might be `.vscode-server` if using WSL)
+
+### Porcupine
+
+[Porcupine](https://github.com/Akuli/porcupine) is an editor I made.
+With small modifications, these instructions should also work with any other editor that
+uses [Pygments](https://pygments.org/) for syntax highlighting (although I'm not aware
+of any).
+
+1. Go to "Settings" in Porcupine's menubar then "Config Files", then `filetypes.toml`.
+2. Add this to the file:
     ```toml
     [Oomph]
     filename_patterns = ["*.oomph"]
@@ -140,15 +145,15 @@ To use it in an editor:
     comment_prefix = '#'
     autoindent_regexes = {dedent = 'return( .+)?|break|pass|continue', indent = '.*:'}
     ```
-3. Start the editor so that it can import `oomph_pygments_lexer`.
+3. Restart Porcupine so that it can import `oomph_pygments_lexer`. It comes with Oomph.
     Python imports from the current working directory when using the `-m` switch,
-    so with Porcupine, you can do:
+    so you can do this:
     ```
     cd path/to/oomph
     python3 -m porcupine
     ```
-    Note that you should not have the virtual env activated when doing this,
-    unless you have installed Porcupine into it.
+    Note that you should not have the Oomph virtual env activated when doing this,
+    unless you installed Porcupine into it.
 
 
 ## TCC
@@ -278,37 +283,6 @@ Optimization ideas:
 - `foo.split(bar).first()` creates unnecessary list, e.g. with empty `bar` this is
     linear time but could be optimized to constant time
 
-
-## Editor support
-
-There is `oomph_pygments_lexer.py` for syntax highlighting.
-To use it in an editor:
-1. Make sure that you are using an editor that supports [Pygments](https://pygments.org/),
-    such as [Porcupine](https://github.com/Akuli/porcupine) (I made it).
-    If you want syntax highlighting in an editor that doesn't use Pygments,
-    you can make a pull request that makes Oomph support
-    the syntax highlighting library that the editor uses.
-2. Configure the editor. At the time of writing this, I use the following config in Porcupine's `filetypes.toml`:
-    ```toml
-    [Oomph]
-    filename_patterns = ["*.oomph"]
-    pygments_lexer = 'oomph_pygments_lexer.CustomLexer'
-    comment_prefix = '#'
-    autoindent_regexes = {dedent = 'return( .+)?|break|pass|continue', indent = '.*:'}
-    ```
-3. Start the editor so that it can import `oomph_pygments_lexer`.
-    Python imports from the current working directory when using the `-m` switch,
-    so with Porcupine, you can do:
-    ```
-    cd path/to/oomph
-    python3 -m porcupine
-    ```
-    Note that you should not have the virtual env activated when doing this,
-    unless you have installed Porcupine into it.
-
-### Visual Studio Code
-
-Copy the `oomph-vscode` directory into `~/.vscode/extensions` (might be `.vscode-server` if using WSL)
 
 ## TCC
 
