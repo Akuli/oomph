@@ -1,10 +1,9 @@
 class IntConstant()
-typedef PrecedenceItem = IntConstant | Str
 
 export func main():
-    let magic_list = new List[PrecedenceItem]()
-    magic_list.push(new PrecedenceItem(new IntConstant()))
-    magic_list.push(new PrecedenceItem("+"))
+    let magic_list = new List[IntConstant | Str]()
+    magic_list.push(new IntConstant())
+    magic_list.push("+")
     for let j = 0; j < 10; j = j+1:
         foreach value of magic_list:
             switch value:

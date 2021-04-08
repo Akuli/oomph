@@ -6,8 +6,8 @@ func do_nothing(Thing thing) -> Thing:
     return thing
 
 func make_thing() -> Thing:
-    return new Thing(new Bar())
+    return new Bar() as Thing
 
 export func main():
-    do_nothing(new Thing(new Foo()))
+    do_nothing(new Foo() as Thing)
     make_thing()

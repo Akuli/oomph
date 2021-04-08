@@ -308,7 +308,7 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(call.func, ast.Constructor):
             the_class = self.get_type(call.func.type)
-            assert the_class.constructor_argtypes is not None
+            assert the_class.constructor_argtypes is not None, the_class.name
             args = self.do_args(
                 list(map(self.do_expression, call.args)),
                 the_class.constructor_argtypes,

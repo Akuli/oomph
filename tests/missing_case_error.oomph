@@ -1,6 +1,4 @@
-typedef Foo = Int | Str
-
 export func main():
-    switch new Foo(1):
+    switch (1 as Int | Str):
         case Int i:
             print("Lol")

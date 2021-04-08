@@ -9,8 +9,8 @@ export func main():
     print(b.optional_thing)
     b.lol()
 
-    print(new hello::FooBar(b))
-    switch new hello::FooBar(b):
+    print(b as hello::FooBar)
+    switch (b as hello::FooBar):
         case hello::TypeDeffedFoo f:
             print("Foo from switch: {f}")
         case hello::Bar b2:  # TODO: let it shadow?

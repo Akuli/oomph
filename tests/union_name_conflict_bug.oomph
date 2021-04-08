@@ -4,7 +4,7 @@ typedef Blah = Str | Bool
 
 class FooBar():
     meth bar() -> lib::Blah:
-        return new lib::Blah(123)
+        return 123 as lib::Blah
     meth baz(Blah top_decl):
         switch top_decl:
             case Str s:
