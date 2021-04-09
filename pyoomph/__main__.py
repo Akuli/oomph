@@ -151,10 +151,7 @@ def compute_compilation_order(
             ]
             if not uncompiled_dependencies:
                 break
-            if verbose:
-                print(
-                    f"Noticed dependency: {candidate_unit.source_path} --> {uncompiled_dependencies[0].source_path}"
-                )
+
             candidate_unit = uncompiled_dependencies[0]
             if candidate_unit in breadcrumbs:
                 message = (
