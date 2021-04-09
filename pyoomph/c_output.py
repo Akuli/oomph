@@ -380,6 +380,7 @@ class _FilePair:
                 .refcount = -1,
                 .data = (char[]){{ {array_content or "0"} }},
                 .malloced = false,
+                .len = {len(value.encode("utf-8"))},
             }};
             static {self.emit_type(STRING)} {self.strings[value]} = {{
                 .buf = &{self.strings[value]}_buf,

@@ -8,12 +8,21 @@ const char *string_data(struct class_Str s)
 	return s.buf->data + s.offset;
 }
 
+static size_t how_much_to_allocate(size_t len)
+{
+	size_t result = 1;
+	while (result < len)
+		result *= 2;
+	return result;
+}
+
 static struct StringBuf *alloc_buf(size_t len)
 {
-	struct StringBuf *res = malloc(sizeof(*res) + len);
+	struct StringBuf *res = malloc(sizeof(*res) + how_much_to_allocate(len));
 	assert(res);
 	res->data = res->flex;
-	res->malloced = false;
+	res->malloced = false;  // not a separate malloc
+	res->len = len;
 	res->refcount = 1;
 	return res;
 }
@@ -22,7 +31,7 @@ void string_buf_destructor(void *ptr)
 {
 	struct StringBuf *buf = ptr;
 	if (buf->malloced)
-		free((char*)buf->data);
+		free(buf->data);
 	free(buf);
 }
 
@@ -34,7 +43,7 @@ bool meth_Str_equals(struct class_Str a, struct class_Str b)
 struct class_Str data_to_string(const char *data, size_t len)
 {
 	struct StringBuf *buf = alloc_buf(len);
-	memcpy(buf->flex, data, len);
+	memcpy(buf->data, data, len);
 	return (struct class_Str){ .buf = buf, .nbytes = len, .offset = 0 };
 }
 
@@ -57,10 +66,33 @@ char *string_to_cstr(struct class_Str s)
 
 struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str2)
 {
-	// TODO: optimize?
+	assert(str1.offset + str1.nbytes <= str1.buf->len);
+	if (str1.offset + str1.nbytes == str1.buf->len && str1.offset <= str1.nbytes) {
+		// We can grow the buffer to fit str2 too
+		// Don't do this when str1 is tiny part at end of buf, see tests/huge_malloc_bug.oomph
+		size_t newlen = str1.buf->len + str2.nbytes;
+		if (str1.buf->malloced) {
+			if (how_much_to_allocate(newlen) > how_much_to_allocate(str1.buf->len)) {
+				str1.buf->data = realloc(str1.buf->data, how_much_to_allocate(newlen));
+				assert(str1.buf->data);
+			}
+		} else {
+			char *newdata = malloc(how_much_to_allocate(newlen));
+			assert(newdata);
+			memcpy(newdata, str1.buf->data, str1.buf->len);
+			str1.buf->data = newdata;
+		}
+		str1.buf->malloced = true;
+		memcpy(str1.buf->data + str1.buf->len, string_data(str2), str2.nbytes);
+		str1.buf->len += str2.nbytes;
+
+		incref(str1.buf);
+		return (struct class_Str){ .buf = str1.buf, .nbytes = str1.nbytes + str2.nbytes, .offset = str1.offset };
+	}
+
 	struct StringBuf *buf = alloc_buf(str1.nbytes + str2.nbytes);
-	memcpy(buf->flex, string_data(str1), str1.nbytes);
-	memcpy(buf->flex + str1.nbytes, string_data(str2), str2.nbytes);
+	memcpy(buf->data, string_data(str1), str1.nbytes);
+	memcpy(buf->data + str1.nbytes, string_data(str2), str2.nbytes);
 	return (struct class_Str){ .buf = buf, .nbytes = str1.nbytes + str2.nbytes, .offset = 0 };
 }
 
@@ -69,8 +101,8 @@ void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf)
 	// TODO: optimize?
 	struct class_Str old = *res;
 	struct StringBuf *buf = alloc_buf(old.nbytes + strlen(suf));
-	memcpy(buf->flex, string_data(old), old.nbytes);
-	memcpy(buf->flex + old.nbytes, suf, strlen(suf));
+	memcpy(buf->data, string_data(old), old.nbytes);
+	memcpy(buf->data + old.nbytes, suf, strlen(suf));
 	string_decref(*res);
 	*res = (struct class_Str){ .buf = buf, .nbytes = old.nbytes + strlen(suf), .offset = 0 };
 }
