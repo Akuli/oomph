@@ -163,19 +163,17 @@ class FunctionEmitter(
             self.labels.push(label)
         return "label" + self.labels.find_only(label).to_string()
 
-    # Usually, declare and need_decref should both be true
-    meth add_local_var(ir::LocalVariable var, Bool declare, Bool need_decref):
+    meth add_local_var(ir::LocalVariable var, Bool declare_and_decref):
         assert(var not in self.local_vars)
+        let name = "var" + self.local_vars.length().to_string()
         self.local_vars.push(var)
-        let name = self.emit_var(var)
 
-        if declare:
+        if declare_and_decref:
             # TODO: add UnSets in ast2ir?
             self.before_body = self.before_body + """
             {self.file_pair.emit_type(var.type)} {name};
             """ + self.emit_instruction(new ir::UnSet(var))
 
-        if need_decref:
             assert(var not in self.need_decref)
             self.need_decref.push(var)
 
@@ -183,7 +181,7 @@ class FunctionEmitter(
         switch var:
             case ir::LocalVariable local_var:
                 if local_var not in self.local_vars:
-                    self.add_local_var(local_var, true, true)
+                    self.add_local_var(local_var, true)
                 return "var" + self.local_vars.find_only(local_var).to_string()
             case *:
                 return self.file_pair.emit_var(var)
@@ -200,7 +198,7 @@ class FunctionEmitter(
                 body = mdef.body
 
         foreach var of argvars:
-            self.add_local_var(var, false, false)
+            self.add_local_var(var, false)
 
         let body_instructions = self.emit_body(body)
         # TODO: is reversing still needed?
