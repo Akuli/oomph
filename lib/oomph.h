@@ -116,9 +116,4 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 #define oomph_null 0
 #define oomph_true true
 
-// self-hosted can't use builtins.oomph yet
-#ifdef SELF_HOSTED
-	#define meth_Bool_to_string(b) cstr_to_string((b) ? "true" : "false")
-#endif
-
 #endif   // LIB_H
