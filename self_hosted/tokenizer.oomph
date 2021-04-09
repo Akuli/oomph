@@ -7,16 +7,17 @@ func starts_with_any(Str s, List[Str] prefixes) -> Str | null:
     return null
 
 func get_simple_identifier(Str code) -> Str | null:
-    let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_"
-    let continue_chars = first_chars + "0123456789"
+    let first_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_".split("")
+    let continue_chars = "0123456789".split("")
+    continue_chars.push_all(first_chars)
 
-    let match = starts_with_any(code, first_chars.split(""))
+    let match = starts_with_any(code, first_chars)
     if match == null:
         return null
 
     let result = match as not null
     while true:
-        let match = starts_with_any(code.remove_prefix(result), continue_chars.split(""))
+        let match = starts_with_any(code.remove_prefix(result), continue_chars)
         if match == null:
             return result
         result = result + (match as not null)
@@ -46,21 +47,24 @@ func get_int(Str code) -> Str:
             case null _:
                 return result
 
+# This is somewhat perf critical, changing it made compilation time go 0m40,250s --> 0m7,260s
 func extract_string(Str code, Str quotes, error::Location location) -> Str:
-    let result = quotes
+    let full_code = code
+    code = code.remove_prefix(quotes)
 
     while true:
-        if code.remove_prefix(result).starts_with(quotes):
-            return result + quotes
+        if code.starts_with(quotes):
+            code = code.remove_prefix(quotes)
+            return full_code.remove_suffix(code)
 
         # Ignore backslash-escaped quotes, and actually, any backslash-escaped char
-        if code.remove_prefix(result).starts_with("\\"):
-            result = result + "\\"
+        if code.starts_with("\\"):
+            code = code.remove_prefix("\\")
+            if code == "":
+                location.error("string does not terminate")
 
-        if code == result:
-            location.error("string does not terminate")
-        result = result + code.remove_prefix(result).split("").first()
-        if code == result:
+        code = code.remove_prefix(__get_first_char(code)) # TODO: optimize .split("").first()
+        if code == "":
             location.error("string does not terminate")
 
 func get_prefix_spaces(Str string) -> Str:

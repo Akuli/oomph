@@ -320,7 +320,6 @@ class _FilePair:
             "__Str___contains",
             "__Str_center_pad",
             "__Str_count",
-            "__Str_ends_with",
             "__Str_from_start_to_substring",
             "__Str_get_utf8",
             "__Str_left_pad",
@@ -332,7 +331,6 @@ class _FilePair:
             "__Str_right_pad",
             "__Str_right_trim",
             "__Str_split",
-            "__Str_starts_with",
             "__Str_trim",
         }:
             # Class implemented in C, method implemented in builtins.oomph

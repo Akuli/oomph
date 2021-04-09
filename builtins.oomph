@@ -21,12 +21,6 @@ func __Str_repeat(Str self, Int n) -> Str:
         doubling = doubling + doubling
     return result
 
-func __Str_starts_with(Str self, Str prefix) -> Bool:
-    return prefix == "" or self.remove_prefix(prefix) != self
-
-func __Str_ends_with(Str self, Str suffix) -> Bool:
-    return suffix == "" or self.remove_suffix(suffix) != self
-
 func __Str___contains(Str self, Str substring) -> Bool:
     return (self == "" and substring == "") or __slice_until_substring(self, substring) != self
 
