@@ -1,4 +1,5 @@
-import "error.oomph" as error
+import "location.oomph" as location
+typedef Location = location::Location
 
 func starts_with_any(Str s, List[Str] prefixes) -> Str | null:
     foreach prefix of prefixes:
@@ -34,7 +35,7 @@ func get_identifier(Str code) -> Str | null:
             return null
 
 # TODO: enums for type
-export class Token(Str type, Str value, error::Location location):
+export class Token(Str type, Str value, Location location):
     meth matches(Str type, Str value) -> Bool:
         return self.type == type and self.value == value
 
@@ -48,7 +49,7 @@ func get_int(Str code) -> Str:
                 return result
 
 # This is somewhat perf critical, changing it made compilation time go 0m40,250s --> 0m7,260s
-func extract_string(Str code, Str quotes, error::Location location) -> Str:
+func extract_string(Str code, Str quotes, Location location) -> Str:
     let full_code = code
     code = code.remove_prefix(quotes)
 
@@ -103,7 +104,7 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
 
     # Adding initial newline helps error when file starts with space (weird corner case)
     let result = [
-        new Token("op", "\n", new error::Location(path, lineno, line_prefix, ""))
+        new Token("op", "\n", new Location(path, lineno, line_prefix, ""))
     ]
 
     # For optimizing this, try to put most frequently needed things first, except when
@@ -140,7 +141,7 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
 
         elif code.starts_with("\""):
             let rest_of_line = code.split("\n").first()
-            let location = new error::Location(path, lineno, line_prefix, rest_of_line)
+            let location = new Location(path, lineno, line_prefix, rest_of_line)
             if code.starts_with("\"\"\""):
                 token_type = "multiline_string"
                 token_value = extract_string(code, "\"\"\"", location)
@@ -179,10 +180,10 @@ func raw_tokenize(Str code, Str path, Int lineno, Str line_prefix) -> List[Token
                         token_value = int_value + "." + get_int(remaining.remove_prefix("."))
 
                 else:
-                    new error::Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")
+                    new Location(path, lineno, line_prefix, code.split("\n").first()).error("invalid syntax")
 
         if token_type != "skip":
-            let location = new error::Location(path, lineno, line_prefix, token_value)
+            let location = new Location(path, lineno, line_prefix, token_value)
 
             if token_type == "int" and token_value.starts_with("0") and token_value != "0":
                 location.error("leading zeros are not allowed")

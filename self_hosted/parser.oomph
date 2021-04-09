@@ -1,7 +1,8 @@
 import "<stdlib>/path.oomph" as path
 import "ast.oomph" as ast
-import "error.oomph" as error
+import "location.oomph" as location
 import "tokenizer.oomph" as tokenizer
+typedef Location = location::Location
 
 # token is e.g. "+" or "as"
 typedef PrecedenceItem = ast::Expression | ast::Type | tokenizer::Token
@@ -14,7 +15,7 @@ func is_mod(ast::Expression expr) -> Bool:
         case *:
             return false
 
-func add_string(List[ast::Expression] parts, Str suffix, error::Location location):
+func add_string(List[ast::Expression] parts, Str suffix, Location location):
     if parts != []:
         switch parts.last():
             case ast::StringConstant old:
@@ -120,7 +121,7 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("end_block", "")
         return result
 
-    meth tokenize_and_parse_expression(Str code, error::Location location) -> ast::Expression:
+    meth tokenize_and_parse_expression(Str code, Location location) -> ast::Expression:
         let parser = new Parser(tokenizer::tokenize(
             code, location.path, location.lineno, location.line_prefix
         ).reversed())
@@ -130,7 +131,7 @@ class Parser(List[tokenizer::Token] tokens):
         return result
 
     # the location contains all we need to know about the string
-    meth do_string_contents(error::Location string_location) -> ast::Expression:
+    meth do_string_contents(Location string_location) -> ast::Expression:
         let result = []
         let escapes = [
             # TODO: oneline and multiline strings should allow different escapes
@@ -156,7 +157,7 @@ class Parser(List[tokenizer::Token] tokens):
             elif location.code.starts_with("\{"):
                 assert("\}" in location.code)
                 let code = location.code.split("\}").first().remove_prefix("\{")
-                let code_location = new error::Location(
+                let code_location = new Location(
                     location.path, location.lineno, location.line_prefix + "\{", code
                 )
                 assert("\n" not in code)  # TODO: reconsider? might be useful in multiline strings
@@ -585,7 +586,7 @@ class Parser(List[tokenizer::Token] tokens):
         let arg = self.get_token_by_type("id")
         return new ast::TypeAndName(type, arg.value, arg.location)
 
-    meth parse_function_or_method(error::Location func_or_meth_location) -> ast::FuncOrMethodDef:
+    meth parse_function_or_method(Location func_or_meth_location) -> ast::FuncOrMethodDef:
         let name = self.get_token_by_type("id").value
         let args = self.parse_commasep_types_and_names_in_parens()
 

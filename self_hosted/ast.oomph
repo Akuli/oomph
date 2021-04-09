@@ -1,12 +1,13 @@
-import "error.oomph" as error
+import "location.oomph" as location
+typedef Location = location::Location
 
 export typedef Type = AutoType | GenericType | NamedType | UnionType
-export class AutoType(error::Location location)
-export class GenericType(error::Location location, Str name, Type arg)
-export class NamedType(error::Location location, Str name)
+export class AutoType(Location location)
+export class GenericType(Location location, Str name, Type arg)
+export class NamedType(Location location, Str name)
 export class UnionType(List[Type] unioned)  # always 2 or more unioned types
 
-export func locate_type(Type type) -> error::Location:
+export func locate_type(Type type) -> Location:
     switch type:
         case AutoType autotype:
             return autotype.location
@@ -53,59 +54,59 @@ export typedef Statement = (
 # In ToplevelDeclaration, FuncOrMethodDef is always function definition
 export typedef ToplevelDeclaration = ClassDef | FuncOrMethodDef | Import | TypeDef
 
-export class TypeAndName(Type type, Str name, error::Location name_location)
+export class TypeAndName(Type type, Str name, Location name_location)
 
 # 'case *' means that type_and_varname is null
-export class Case(error::Location location, TypeAndName | null type_and_name, List[Statement] body)
-export class ConditionAndBody(error::Location location, Expression cond, List[Statement] body)
+export class Case(Location location, TypeAndName | null type_and_name, List[Statement] body)
+export class ConditionAndBody(Location location, Expression cond, List[Statement] body)
 
 export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
 # for init; cond; incr
-export class ForLoopHeader(error::Location keyword_location, List[Statement] init, Expression | null cond, List[Statement] incr)
-export class ForeachLoopHeader(error::Location keyword_location, Str varname, Expression list)
+export class ForLoopHeader(Location keyword_location, List[Statement] init, Expression | null cond, List[Statement] incr)
+export class ForeachLoopHeader(Location keyword_location, Str varname, Expression list)
 
-export class As(error::Location location, Expression expr, Type type, Bool as_not)
-export class BinaryOperator(error::Location location, Expression lhs, Str op, Expression rhs)
-export class Call(error::Location location, Expression function, List[Expression] args)
-export class Constructor(error::Location location, Type type)
-export class FloatConstant(error::Location location, Str value)  # value not converted to float in case weirdness :D
-export class GetAttribute(error::Location attribute_location, Expression obj, Str attribute)
-export class GetVar(error::Location location, Str varname)
-export class IntConstant(error::Location location, Int value)
+export class As(Location location, Expression expr, Type type, Bool as_not)
+export class BinaryOperator(Location location, Expression lhs, Str op, Expression rhs)
+export class Call(Location location, Expression function, List[Expression] args)
+export class Constructor(Location location, Type type)
+export class FloatConstant(Location location, Str value)  # value not converted to float in case weirdness :D
+export class GetAttribute(Location attribute_location, Expression obj, Str attribute)
+export class GetVar(Location location, Str varname)
+export class IntConstant(Location location, Int value)
 export class ListComprehension(LoopHeader loop_header, Expression value)
-export class ListLiteral(error::Location location, List[Expression] content)
+export class ListLiteral(Location location, List[Expression] content)
 export class Parenthesized(Expression content)
-export class StatementsAndExpression(error::Location location, List[Statement] statements, Expression expression)
-export class StringConstant(error::Location location, Str value)
-export class StringFormatJoin(error::Location location, List[Expression] parts)  # always >=2 parts
-export class UnaryOperator(error::Location location, Str op, Expression obj)
+export class StatementsAndExpression(Location location, List[Statement] statements, Expression expression)
+export class StringConstant(Location location, Str value)
+export class StringFormatJoin(Location location, List[Expression] parts)  # always >=2 parts
+export class UnaryOperator(Location location, Str op, Expression obj)
 
-export class Break(error::Location location)
-export class Continue(error::Location location)
+export class Break(Location location)
+export class Continue(Location location)
 export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
-export class Let(error::Location location, Str varname, Expression value)
+export class Let(Location location, Str varname, Expression value)
 export class Loop(LoopHeader loop_header, List[Statement] body)
-export class Pass(error::Location location)
-export class Return(error::Location location, Expression | null value)
-export class SetAttribute(error::Location attribute_location, Expression obj, Str attribute, Expression value)
-export class SetVar(error::Location location, Str varname, Expression value)
-export class Switch(error::Location location, Expression union_obj, List[Case] cases)
+export class Pass(Location location)
+export class Return(Location location, Expression | null value)
+export class SetAttribute(Location attribute_location, Expression obj, Str attribute, Expression value)
+export class SetVar(Location location, Str varname, Expression value)
+export class Switch(Location location, Expression union_obj, List[Case] cases)
 
-export class NoReturn(error::Location location)
+export class NoReturn(Location location)
 
-export class FuncOrMethodDef(error::Location location, Str name, List[TypeAndName] args, Type | NoReturn | null returntype, List[Statement] body)
-export class ClassDef(error::Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
-export class Import(error::Location location, Str path, Str name)
-export class TypeDef(error::Location location, Str name, Type type)
+export class FuncOrMethodDef(Location location, Str name, List[TypeAndName] args, Type | NoReturn | null returntype, List[Statement] body)
+export class ClassDef(Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
+export class Import(Location location, Str path, Str name)
+export class TypeDef(Location location, Str name, Type type)
 
-export func locate_loop_header(LoopHeader loop_header) -> error::Location:
+export func locate_loop_header(LoopHeader loop_header) -> Location:
     switch loop_header:
         case ForLoopHeader header:
             return header.keyword_location
         case ForeachLoopHeader header:
             return header.keyword_location
 
-export func locate_expression(Expression expression) -> error::Location:
+export func locate_expression(Expression expression) -> Location:
     switch expression:
         case As expr:
             return locate_expression(expr.expr).combine(locate_type(expr.type))

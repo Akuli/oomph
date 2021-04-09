@@ -1,6 +1,7 @@
 import "ast.oomph" as ast
-import "error.oomph" as error
 import "ir.oomph" as ir
+import "location.oomph" as location
+typedef Location = location::Location
 
 # TODO: mappings and tuples
 class NamedVariable(Str name, ir::Variable var)
@@ -25,7 +26,7 @@ func is_autotype(ir::Type type) -> Bool:
 func find_variable(
     List[NamedVariable] variables,
     Str name,
-    error::Location | null location,  # if user can make variable not found, then must be non-null
+    Location | null location,  # if user can make variable not found, then must be non-null
 ) -> ir::Variable:
     foreach named_var of variables:
         if named_var.name == name:
@@ -68,7 +69,7 @@ class FunctionOrMethodConverter(
     Int goto_label_counter,
     Int local_var_counter,
 ):
-    meth create_var(ir::Type type, error::Location location) -> ir::LocalVariable:
+    meth create_var(ir::Type type, Location location) -> ir::LocalVariable:
         self.local_var_counter = self.local_var_counter + 1
         let result = new ir::LocalVariable(type, self.local_var_counter, location)
 
@@ -79,7 +80,7 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::UnSet(result))
         return result
 
-    meth get_var(Str name, error::Location | null location) -> ir::Variable:
+    meth get_var(Str name, Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
@@ -297,7 +298,7 @@ class FunctionOrMethodConverter(
     meth do_args(
         List[ir::LocalVariable] args,
         List[ir::Type] target_types,
-        error::Location func_location,
+        Location func_location,
     ) -> List[ir::LocalVariable]:
         if args.length() != target_types.length():
             if target_types.length() == 1:
@@ -401,12 +402,12 @@ class FunctionOrMethodConverter(
     meth not_(ir::LocalVariable obj) -> ir::LocalVariable:
         return self.create_special_call("bool_not", [obj])
 
-    meth bool_constant(Str which, error::Location location) -> ir::LocalVariable:
+    meth bool_constant(Str which, Location location) -> ir::LocalVariable:
         let result = self.create_var(self.builtins.BOOL, location)
         self.code.push(new ir::VarCpy(result, self.builtins.get_visible_var("true")))
         return result
 
-    meth do_binary_op_typed(ir::LocalVariable lhs, Str op, error::Location op_location, ir::LocalVariable rhs) -> ir::LocalVariable:
+    meth do_binary_op_typed(ir::LocalVariable lhs, Str op, Location op_location, ir::LocalVariable rhs) -> ir::LocalVariable:
         if op in ["in", "not in"]:
             let result_var = self.create_var(self.builtins.BOOL, op_location)
             self.code.push(new ir::MethodCall(
@@ -999,7 +1000,7 @@ class FunctionOrMethodConverter(
 
 
 # TODO: do this in c
-func create_pointers_equal_method(ir::Builtins builtins, ir::Type classtype, error::Location location) -> ir::MethodDef:
+func create_pointers_equal_method(ir::Builtins builtins, ir::Type classtype, Location location) -> ir::MethodDef:
     let self_var = new ir::LocalVariable(classtype, 0, location)
     let other_var = new ir::LocalVariable(classtype, 1, location)
     let result_var = new ir::LocalVariable(builtins.BOOL, 2, location)
@@ -1028,7 +1029,7 @@ class FileConverter(
             assert(named_var.name != name)
         self.variables.push(new NamedVariable(name, var))
 
-    meth get_var(Str name, error::Location | null location) -> ir::Variable:
+    meth get_var(Str name, Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
     meth get_named_type(Str name) -> ir::Type:
@@ -1074,7 +1075,7 @@ class FileConverter(
                 print("no generic type named {generic_type.name}")
                 assert(false)  # TODO: error
 
-    meth check_type_not_exists(Str name, error::Location location):
+    meth check_type_not_exists(Str name, Location location):
         if (
             name in [foreach t of self.types: t.name]
             or name in [foreach t of self.typedef_laziness: t.name]

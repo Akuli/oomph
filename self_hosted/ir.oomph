@@ -1,4 +1,5 @@
-import "error.oomph" as error
+import "location.oomph" as location
+typedef Location = location::Location
 
 export typedef Type = AutoType | BasicType | FunctionType | UnionType
 
@@ -58,7 +59,7 @@ export class UnionType(
 export func make_union(
     Builtins builtins,
     List[Type] type_members,
-    error::Location | null location,
+    Location | null location,
 ) -> UnionType:
     let flattened = []
     foreach member of type_members:
@@ -145,7 +146,7 @@ export func get_generic_source(Type type) -> GenericSource | null:
 export typedef Variable = BuiltinVariable | FileVariable | LocalVariable
 export class BuiltinVariable(Str name, Type type)
 export class FileVariable(Str name, Type type)
-export class LocalVariable(Type type, Int id, error::Location location)
+export class LocalVariable(Type type, Int id, Location location)
 
 # TODO: this sucks
 export func var_type(Variable var) -> Type:
@@ -432,8 +433,8 @@ export class GotoIf(GotoLabel label, LocalVariable cond)
 export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
-export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, error::Location location)
-export class Panic(Str message, error::Location location)
+export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, Location location)
+export class Panic(Str message, Location location)
 export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
 export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)
