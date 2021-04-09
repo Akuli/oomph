@@ -180,23 +180,31 @@ struct class_Str oomph_get_first_char(struct class_Str s)
 	return slice_from_start(s, p);
 }
 
+// Not implemented in oomph because this is perf critical for self-hosted compiler
+bool meth_Str_starts_with(struct class_Str s, struct class_Str pre)
+{
+	return s.nbytes >= pre.nbytes &&
+		memcmp(string_data(s), string_data(pre), pre.nbytes) == 0;
+}
+
+bool meth_Str_ends_with(struct class_Str s, struct class_Str suf)
+{
+	return s.nbytes >= suf.nbytes &&
+		memcmp(string_data(s) + s.nbytes - suf.nbytes, string_data(suf), suf.nbytes) == 0;
+}
+
 struct class_Str meth_Str_remove_prefix(struct class_Str s, struct class_Str pre)
 {
-	if (s.nbytes >= pre.nbytes && memcmp(string_data(s), string_data(pre), pre.nbytes) == 0)
-	{
+	if (meth_Str_starts_with(s, pre))
 		return slice_to_end(s, pre.nbytes);
-	}
 	string_incref(s);
 	return s;
 }
 
 struct class_Str meth_Str_remove_suffix(struct class_Str s, struct class_Str suf)
 {
-	if (s.nbytes >= suf.nbytes &&
-		memcmp(string_data(s) + s.nbytes - suf.nbytes, string_data(suf), suf.nbytes) == 0)
-	{
+	if (meth_Str_ends_with(s, suf))
 		return slice_from_start(s, s.nbytes - suf.nbytes);
-	}
 	string_incref(s);
 	return s;
 }
