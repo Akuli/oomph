@@ -177,6 +177,19 @@ Currently you need `make clean` because the Makefile isn't clever enough to real
 the C compiler changed and everything has to be recompiled.
 
 
+## Profiler
+
+I use the `./profiler` script for profiling Oomph programs:
+
+```
+$ sudo apt install valgrind
+$ python3 -m pip install gprof2dot
+$ make oomph && ./profiler ./oomph --verbose -o /tmp/a self_hosted/main.oomph
+```
+
+This creates `perf.png` in the current working directory.
+
+
 ## Stuff I wrote before I used Github issues with this project
 
 Known bugs:
