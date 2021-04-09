@@ -43,7 +43,7 @@ bool meth_Str_equals(struct class_Str a, struct class_Str b)
 struct class_Str data_to_string(const char *data, size_t len)
 {
 	struct StringBuf *buf = alloc_buf(len);
-	memcpy(buf->flex, data, len);
+	memcpy(buf->data, data, len);
 	return (struct class_Str){ .buf = buf, .nbytes = len, .offset = 0 };
 }
 
@@ -91,8 +91,8 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 	}
 
 	struct StringBuf *buf = alloc_buf(str1.nbytes + str2.nbytes);
-	memcpy(buf->flex, string_data(str1), str1.nbytes);
-	memcpy(buf->flex + str1.nbytes, string_data(str2), str2.nbytes);
+	memcpy(buf->data, string_data(str1), str1.nbytes);
+	memcpy(buf->data + str1.nbytes, string_data(str2), str2.nbytes);
 	return (struct class_Str){ .buf = buf, .nbytes = str1.nbytes + str2.nbytes, .offset = 0 };
 }
 
@@ -101,8 +101,8 @@ void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf)
 	// TODO: optimize?
 	struct class_Str old = *res;
 	struct StringBuf *buf = alloc_buf(old.nbytes + strlen(suf));
-	memcpy(buf->flex, string_data(old), old.nbytes);
-	memcpy(buf->flex + old.nbytes, suf, strlen(suf));
+	memcpy(buf->data, string_data(old), old.nbytes);
+	memcpy(buf->data + old.nbytes, suf, strlen(suf));
 	string_decref(*res);
 	*res = (struct class_Str){ .buf = buf, .nbytes = old.nbytes + strlen(suf), .offset = 0 };
 }
