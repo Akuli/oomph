@@ -5,3 +5,4 @@ env/
 test_out/
 oomph
 tinycc/
+perf.png
