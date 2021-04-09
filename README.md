@@ -181,11 +181,9 @@ the C compiler changed and everything has to be recompiled.
 
 I use the `./profiler` script for profiling Oomph programs:
 
-```
-$ sudo apt install valgrind
-$ python3 -m pip install gprof2dot
-$ make oomph && ./profiler ./oomph --verbose -o /tmp/a self_hosted/main.oomph
-```
+    $ sudo apt install valgrind
+    $ python3 -m pip install gprof2dot
+    $ make oomph && ./profiler ./oomph --verbose -o /tmp/a self_hosted/main.oomph
 
 This creates `perf.png` in the current working directory.
 
