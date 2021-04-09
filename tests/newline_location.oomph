@@ -1,9 +1,9 @@
 # foo
-import "../self_hosted/error.oomph" as error
+import "../self_hosted/location.oomph" as location
 
 export func main():
     # TODO: something like Python's __file__
-    let newline = new error::Location(
+    let newline = new location::Location(
         "tests/newline_location.oomph", 1, "# foo", "\n"
     )
     newline.print_error("this error is right where a newline is")
