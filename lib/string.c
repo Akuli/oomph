@@ -64,31 +64,22 @@ char *string_to_cstr(struct class_Str s)
 	return res;
 }
 
-#define likely(x)   __builtin_expect(!!(x), 1)
-#define unlikely(x) __builtin_expect(!!(x), 0)
-//#define likely(x)   (x)
-//#define unlikely(x) (x)
-
 struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str2)
 {
 	assert(str1.offset + str1.nbytes <= str1.buf->len);
-	if (likely(str1.offset + str1.nbytes == str1.buf->len)) {
+	if (str1.offset + str1.nbytes == str1.buf->len) {
 		// We can grow the buffer to fit str2 too
 		size_t newlen = str1.buf->len + str2.nbytes;
-		if (likely(str1.buf->malloced)) {
-			if (unlikely(how_much_to_allocate(newlen) > how_much_to_allocate(str1.buf->len))) {
+		if (str1.buf->malloced) {
+			if (how_much_to_allocate(newlen) > how_much_to_allocate(str1.buf->len)) {
 				str1.buf->data = realloc(str1.buf->data, how_much_to_allocate(newlen));
 				assert(str1.buf->data);
-//				printf("fast realloc\n");
-			} else {
-//				printf("fast no alloc\n");
 			}
 		} else {
 			char *newdata = malloc(how_much_to_allocate(newlen));
 			assert(newdata);
 			memcpy(newdata, str1.buf->data, str1.buf->len);
 			str1.buf->data = newdata;
-//			printf("fast malloc\n");
 		}
 		str1.buf->malloced = true;
 		memcpy(str1.buf->data + str1.buf->len, string_data(str2), str2.nbytes);
@@ -98,7 +89,6 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 		return (struct class_Str){ .buf = str1.buf, .nbytes = str1.nbytes + str2.nbytes, .offset = str1.offset };
 	}
 
-//	printf("slow\n");
 	struct StringBuf *buf = alloc_buf(str1.nbytes + str2.nbytes);
 	memcpy(buf->flex, string_data(str1), str1.nbytes);
 	memcpy(buf->flex + str1.nbytes, string_data(str2), str2.nbytes);
