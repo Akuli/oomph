@@ -1,0 +1,7 @@
+export func main():
+    let part = "hello".repeat(500)
+    let string = part + part
+
+    # This should not allocate a huge amount of mem
+    for let i = 0; i < 1000000; i = i+1:
+        string = (string + part).remove_prefix(part)
