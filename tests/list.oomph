@@ -8,6 +8,10 @@ export func main():
     print(a)
     print(a.length())
 
+    print("set method returned {a.set(2, 12345)}")
+    print(a)
+    print(a.length())
+
     for let i = 0; i < a.length(); i = i+1:
         print(a.get(i))
     print(a)

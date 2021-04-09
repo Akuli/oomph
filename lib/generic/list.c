@@ -101,6 +101,15 @@ static void validate_index(TYPE self, int64_t i)
 		panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
 }
 
+ITEMTYPE METHOD(set)(TYPE self, int64_t i, ITEMTYPE value)
+{
+	validate_index(self, i);
+	ITEMTYPE old = self->data[i];
+	self->data[i] = value;
+	INCREF_ITEM(value);
+	return old;
+}
+
 ITEMTYPE METHOD(get)(TYPE self, int64_t i)
 {
 	validate_index(self, i);
