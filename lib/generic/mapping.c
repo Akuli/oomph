@@ -30,9 +30,10 @@ void DESTRUCTOR(void *ptr)
 
 uint32_t hash(struct class_Str s)
 {
-	// FIXME
-	assert(s.nbytes != 0);
-	return s.nbytes;
+	uint32_t h = (uint32_t)meth_Str_hash(s);
+	if (h == 0)   // 0 has special meaning in mapping
+		h = 69;
+	return h;
 }
 
 
