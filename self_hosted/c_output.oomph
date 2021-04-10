@@ -520,7 +520,15 @@ class FilePair(
         """ as Str | null
 
     meth define_generic_type(ir::BasicType type):
-        assert((type.generic_source as not null).generik == self.session.builtins.LIST)
+        if (type.generic_source as not null).generik == self.session.builtins.LIST:
+            let c_path = "lib/generic/list.c"
+            let h_path = "lib/generic/list.h"
+        elif (type.generic_source as not null).generik == self.session.builtins.MAPPING:
+            c_path = "lib/generic/mapping.c"
+            h_path = "lib/generic/mapping.h"
+        else:
+            assert(false)
+
         let itemtype = (type.generic_source as not null).arg
         let macros = [
             ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(type)}"],
@@ -546,9 +554,7 @@ class FilePair(
             undefs = undefs + "#undef {name_without_args}\n"
 
         assert(self.struct == null)
-        self.struct = (
-            defines + io::read_file("lib/generic/list.h") + undefs
-        ) as Str | null
+        self.struct = (defines + io::read_file(h_path) + undefs) as Str | null
 
         foreach method of ir::get_methods(type, self.session.builtins):
             self.define_function(
@@ -564,12 +570,7 @@ class FilePair(
             + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);"
             + undefs
         )
-        self.function_defs = (
-            self.function_defs
-            + defines
-            + io::read_file("lib/generic/list.c")
-            + undefs
-        )
+        self.function_defs = self.function_defs + defines + io::read_file(c_path) + undefs
 
     meth define_simple_type(ir::BasicType type):
         let struct_members = [foreach m of type.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")

@@ -7,7 +7,7 @@ struct TYPE_STRUCT {
 #define concat(a, b) a##b
 	struct concat(TYPE_STRUCT, _entry) {
 #undef concat
-		unsigned int hash;   // -1 if entry is unused
+		unsigned int hash;   // 0 if entry is unused
 		struct class_Str key;
 		ITEMTYPE value;
 	} *entries;

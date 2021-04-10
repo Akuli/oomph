@@ -122,36 +122,42 @@ class Generic:
     name: str
 
     def get_type(self, generic_arg: Type) -> Type:
-        assert self is LIST
         result = Type(f"{self.name}[{generic_arg.name}]", True)
-        result.constructor_argtypes = []
-        # TODO: hide __contains better?
-        result.methods["__contains"] = FunctionType([result, generic_arg], BOOL)
-        result.methods["delete_at_index"] = FunctionType([result, INT], generic_arg)
-        result.methods["delete_slice"] = FunctionType([result, INT, INT], result)
-        result.methods["ends_with"] = FunctionType([result, result], BOOL)
-        result.methods["find_first"] = FunctionType([result, generic_arg], INT)
-        result.methods["find_last"] = FunctionType([result, generic_arg], INT)
-        result.methods["find_only"] = FunctionType([result, generic_arg], INT)
-        result.methods["first"] = FunctionType([result], generic_arg)
-        result.methods["delete_first"] = FunctionType([result, generic_arg], None)
-        result.methods["delete_last"] = FunctionType([result, generic_arg], None)
-        result.methods["delete_only"] = FunctionType([result, generic_arg], None)
-        result.methods["get"] = FunctionType([result, INT], generic_arg)
-        result.methods["insert"] = FunctionType([result, INT, generic_arg], None)
-        result.methods["last"] = FunctionType([result], generic_arg)
-        result.methods["length"] = FunctionType([result], INT)
-        result.methods["pop"] = FunctionType([result], generic_arg)
-        result.methods["push"] = FunctionType([result, generic_arg], None)
-        result.methods["push_all"] = FunctionType([result, result], None)
-        result.methods["reversed"] = FunctionType([result], result)
-        result.methods["set"] = FunctionType([result, INT, generic_arg], generic_arg)
-        result.methods["slice"] = FunctionType([result, INT, INT], result)
-        result.methods["starts_with"] = FunctionType([result, result], BOOL)
-        result.methods["to_string"] = FunctionType([result], STRING)
-        # TODO: this is only for strings, but List[auto] may become List[Str] later
-        # if generic_arg is STRING:
-        result.methods["join"] = FunctionType([result, STRING], STRING)
+        if self is LIST:
+            result.constructor_argtypes = []
+            # TODO: hide __contains better?
+            result.methods["__contains"] = FunctionType([result, generic_arg], BOOL)
+            result.methods["delete_at_index"] = FunctionType([result, INT], generic_arg)
+            result.methods["delete_slice"] = FunctionType([result, INT, INT], result)
+            result.methods["ends_with"] = FunctionType([result, result], BOOL)
+            result.methods["find_first"] = FunctionType([result, generic_arg], INT)
+            result.methods["find_last"] = FunctionType([result, generic_arg], INT)
+            result.methods["find_only"] = FunctionType([result, generic_arg], INT)
+            result.methods["first"] = FunctionType([result], generic_arg)
+            result.methods["delete_first"] = FunctionType([result, generic_arg], None)
+            result.methods["delete_last"] = FunctionType([result, generic_arg], None)
+            result.methods["delete_only"] = FunctionType([result, generic_arg], None)
+            result.methods["get"] = FunctionType([result, INT], generic_arg)
+            result.methods["insert"] = FunctionType([result, INT, generic_arg], None)
+            result.methods["last"] = FunctionType([result], generic_arg)
+            result.methods["length"] = FunctionType([result], INT)
+            result.methods["pop"] = FunctionType([result], generic_arg)
+            result.methods["push"] = FunctionType([result, generic_arg], None)
+            result.methods["push_all"] = FunctionType([result, result], None)
+            result.methods["reversed"] = FunctionType([result], result)
+            result.methods["set"] = FunctionType(
+                [result, INT, generic_arg], generic_arg
+            )
+            result.methods["slice"] = FunctionType([result, INT, INT], result)
+            result.methods["starts_with"] = FunctionType([result, result], BOOL)
+            result.methods["to_string"] = FunctionType([result], STRING)
+            # TODO: this is only for strings, but List[auto] may become List[Str] later
+            # if generic_arg is STRING:
+            result.methods["join"] = FunctionType([result, STRING], STRING)
+        elif self is MAPPING:
+            result.constructor_argtypes = []
+        else:
+            raise NotImplementedError
         result.generic_origin = GenericSource(self, generic_arg)
 
         result.methods["equals"] = FunctionType([result, result], BOOL)
@@ -159,6 +165,7 @@ class Generic:
 
 
 LIST = Generic("List")
+MAPPING = Generic("Mapping")
 
 
 @dataclass(eq=False)
@@ -228,4 +235,4 @@ STRING.methods["to_string"] = FunctionType([STRING], STRING)  # does nothing
 STRING.methods["trim"] = FunctionType([STRING], STRING)
 
 builtin_types = {typ.name: typ for typ in [INT, FLOAT, BOOL, STRING, NULL_TYPE]}
-builtin_generic_types = {gen.name: gen for gen in [LIST]}
+builtin_generic_types = {gen.name: gen for gen in [LIST, MAPPING]}

@@ -1320,7 +1320,7 @@ export func convert_program(
         path,
         symbols,
         [foreach type of builtins.get_builtin_types(): new NamedType(ir::type_name(type), type)],
-        [new NamedGeneric("List", builtins.LIST)],
+        [foreach gen of builtins.get_builtin_generics(): new NamedGeneric(gen.name, gen)],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],
     )

@@ -12,6 +12,7 @@ from pyoomph.types import (
     FLOAT,
     INT,
     LIST,
+    MAPPING,
     NULL_TYPE,
     STRING,
     AutoType,
@@ -237,7 +238,10 @@ class _FunctionEmitter:
 
 
 _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generic"
-_generic_paths = {LIST: (_generic_dir / "list.c", _generic_dir / "list.h")}
+_generic_paths = {
+    LIST: (_generic_dir / "list.c", _generic_dir / "list.h"),
+    MAPPING: (_generic_dir / "mapping.c", _generic_dir / "mapping.h"),
+}
 
 
 # Represents .c and .h file, and possibly *the* type defined in those.
