@@ -201,7 +201,7 @@ export class Builtins(
         return [self.LIST, self.MAPPING]
 
     # TODO: this is in a weird place
-    meth generic2type(Generic generik, List[Type] args) -> Type:
+    meth generic2type(Generic generik, List[Type] args, Location | null location) -> Type:
         let source = new GenericSource(generik, args)
         let result = new BasicType(
             generik.name + "[" + [foreach arg of args: type_name(arg)].join(",") + "]",
@@ -252,8 +252,10 @@ export class Builtins(
             let keytype = args.first()
             let valtype = args.last()
             if "hash" not in [foreach m of get_methods(keytype, self): m.name]:
-                print("mapping key type must be hashable, but {type_name(keytype)} doesn't have a .hash() method")
-                assert(false)
+                (location as not null).error(
+                    "mapping key type must be hashable, but "
+                    + "{type_name(keytype)} doesn't have a .hash() method"
+                )
             result.methods.push_all([
                 new Method("delete", new FunctionType([r, keytype], null)),
                 new Method("get", new FunctionType([r, keytype], valtype)),
@@ -326,7 +328,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
         new BuiltinVariable("__remove_prefix", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
-        new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, [STR])], INT)),
+        new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, [STR], null)], INT)),
         new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__utf8_len", new FunctionType([STR], INT)),
         new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
@@ -351,7 +353,7 @@ export func create_builtins() -> Builtins:
         new Method("count", new FunctionType([STR, STR], INT)),
         new Method("ends_with", new FunctionType([STR, STR], BOOL)),
         new Method("equals", new FunctionType([STR, STR], BOOL)),
-        new Method("get_utf8", new FunctionType([STR], result.generic2type(LIST, [INT]))),
+        new Method("get_utf8", new FunctionType([STR], result.generic2type(LIST, [INT], null))),
         new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("left_trim", new FunctionType([STR], STR)),
         new Method("length", new FunctionType([STR], INT)),
@@ -362,7 +364,7 @@ export func create_builtins() -> Builtins:
         new Method("replace", new FunctionType([STR, STR, STR], STR)),
         new Method("right_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("right_trim", new FunctionType([STR], STR)),
-        new Method("split", new FunctionType([STR, STR], result.generic2type(LIST, [STR]))),
+        new Method("split", new FunctionType([STR, STR], result.generic2type(LIST, [STR], null))),
         new Method("starts_with", new FunctionType([STR, STR], BOOL)),
         new Method("to_float", new FunctionType([STR], FLOAT)),
         new Method("to_int", new FunctionType([STR], INT)),

@@ -116,10 +116,11 @@ class FunctionOrMethodConverter(
         if source == null:
             return type
 
+        # TODO: provide location here?
         return self.builtins.generic2type((source as not null).generik, [
             foreach arg of (source as not null).args:
                 self.substitute_autotypes(arg, must_succeed)
-        ])
+        ], null)
 
     meth create_autotype() -> ir::AutoType:
         self.autotype_counter = self.autotype_counter + 1
@@ -176,7 +177,7 @@ class FunctionOrMethodConverter(
                 return resolve.actual
         return null
 
-    meth do_the_autotype_thing(ir::Type type1, ir::Type type2) -> TypePair:
+    meth do_the_autotype_thing(ir::Type type1, ir::Type type2, Location location) -> TypePair:
         if is_autotype(type1) and is_autotype(type2):
             if type1 != type2:
                 let actual_type1 = self.lookup_autotype(type1 as ir::AutoType)
@@ -220,11 +221,11 @@ class FunctionOrMethodConverter(
                     let pairs = [
                         # TODO: zip
                         for let i = 0; i < source1.args.length(); i = i+1:
-                            self.do_the_autotype_thing(source1.args.get(i), source2.args.get(i))
+                            self.do_the_autotype_thing(source1.args.get(i), source2.args.get(i), location)
                     ]
                     return new TypePair(
-                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first]),
-                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second]),
+                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first], location),
+                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second], location),
                     )
 
         return new TypePair(type1, type2)
@@ -279,7 +280,7 @@ class FunctionOrMethodConverter(
         ir::LocalVariable var,
         ir::Type target_type,
     ) -> ir::LocalVariable | null:
-        let pair = self.do_the_autotype_thing(var.type, target_type)
+        let pair = self.do_the_autotype_thing(var.type, target_type, var.location)
         var.type = pair.first
         target_type = pair.second
 
@@ -565,7 +566,7 @@ class FunctionOrMethodConverter(
                         assert(member.type == content_type)  # TODO: error
 
                 let list_var = self.create_var(
-                    self.builtins.generic2type(self.builtins.LIST, [content_type]), location
+                    self.builtins.generic2type(self.builtins.LIST, [content_type], location), location
                 )
                 self.code.push(new ir::ConstructorCall(list_var, []))
                 foreach item_var of content:
@@ -1055,7 +1056,7 @@ class FileConverter(
                             let args = [foreach a of generic_type.args: self.get_type(a, null)]
                         else:
                             args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
-                        return self.builtins.generic2type(named_generic.generik, args)
+                        return self.builtins.generic2type(named_generic.generik, args, generic_type.location)
                 print("no generic type named {generic_type.name}")
                 assert(false)  # TODO: error
 
