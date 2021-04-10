@@ -50,12 +50,6 @@ class PRNG(Int state, List[Str] strings):
         return self.strings.get(self.get_number(self.strings.length()))
 
 
-func ensure_lists_contain_same_items(List[Str] a, List[Str] b):
-    b = b.reversed().reversed()  # make copy, lol
-    foreach item of a:
-        b.delete_first(item)
-    assert(b == [])
-
 func get_strings() -> List[Str]:
     let result = []
     foreach word of io::read_file("self_hosted/ast2ir.oomph").replace("\n", " ").split(" "):
@@ -66,13 +60,11 @@ func get_strings() -> List[Str]:
 
 export func main():
     let prng = new PRNG(1234, get_strings())
-    let n = 8  # number of buckets
 
-    let n = 3000
     let mapping1 = new Mapping[Str, Str]()
     let mapping2 = new ShitMapping([])
 
-    for let i = 0; i < n; i = i+1:
+    for let i = 0; i < 3000; i = i+1:
         let operation = prng.get_number(3)
 
         if operation == 0:
@@ -99,6 +91,6 @@ export func main():
                 assert(not mapping1.has_key(key))
 
         assert(mapping1.length() == mapping2.length())
-#        ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
+        # TODO: ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
 
     print("ok")
