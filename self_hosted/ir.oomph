@@ -251,6 +251,9 @@ export class Builtins(
             assert(args.length() == 2)   # TODO: error
             let keytype = args.first()
             let valtype = args.last()
+            if "hash" not in [foreach m of get_methods(keytype, self): m.name]:
+                print("mapping key type must be hashable, but {type_name(keytype)} doesn't have a .hash() method")
+                assert(false)
             result.methods.push_all([
                 new Method("delete", new FunctionType([r, keytype], null)),
                 new Method("get", new FunctionType([r, keytype], valtype)),
@@ -369,20 +372,30 @@ export func create_builtins() -> Builtins:
 
     (BOOL as BasicType).methods.push_all([
         new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
+        new Method("hash", new FunctionType([BOOL], INT)),
         new Method("to_string", new FunctionType([BOOL], STR)),
     ])
 
     (INT as BasicType).methods.push_all([
         new Method("equals", new FunctionType([INT, INT], BOOL)),
+        new Method("hash", new FunctionType([INT], INT)),
         new Method("to_string", new FunctionType([INT], STR)),
     ])
 
     (NULL_TYPE as BasicType).methods.push_all([
         new Method("equals", new FunctionType([NULL_TYPE, NULL_TYPE], BOOL)),
+        new Method("hash", new FunctionType([NULL_TYPE], INT)),
         new Method("to_string", new FunctionType([NULL_TYPE], STR)),
     ])
 
     return result
+
+# TODO: stdlib?
+func all(List[Bool] things) -> Bool:
+    foreach thing of things:
+        if not thing:
+            return false
+    return true
 
 export func get_methods(Type type, Builtins builtins) -> List[Method]:
     switch type:
@@ -406,10 +419,16 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
             return []
 
         case UnionType union:
-            return [
+            let result = [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
+            if all([
+                foreach t of union.type_members:
+                    "hash" in [foreach m of get_methods(t, builtins): m.name]
+            ]):
+                result.push(new Method("hash", new FunctionType([type, type], builtins.INT)))
+            return result
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
     foreach method of get_methods(type, builtins):

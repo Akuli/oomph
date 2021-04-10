@@ -1,8 +1,6 @@
 #include <assert.h>
 
-#define concat(a, b) a##b
-typedef struct concat(TYPE_STRUCT, _entry) Entry;
-#undef concat
+typedef struct INTERNAL_NAME(entry) Entry;
 
 TYPE CONSTRUCTOR(void)
 {
@@ -20,7 +18,7 @@ void DESTRUCTOR(void *ptr)
 	TYPE map = ptr;
 	for (size_t i = 0; i < map->nentries; i++) {
 		if (map->entries[i].hash != 0) {
-			string_decref(map->entries[i].key);
+			DECREF_KEY(map->entries[i].key);
 			DECREF_VALUE(map->entries[i].value);
 		}
 	}
@@ -28,7 +26,7 @@ void DESTRUCTOR(void *ptr)
 	free(map);
 }
 
-uint32_t hash(KEYTYPE key)
+static uint32_t hash(KEYTYPE key)
 {
 	uint32_t h = (uint32_t)KEYTYPE_METHOD(hash)(key);
 	if (h == 0)   // 0 has special meaning in mapping
@@ -55,7 +53,7 @@ static void add_entry(TYPE map, Entry e, bool check, bool incr)
 	}
 
 	map->entries[i] = e;
-	string_incref(e.key);
+	INCREF_KEY(e.key);
 	INCREF_VALUE(e.value);
 	if (incr)
 		map->len++;
@@ -104,6 +102,8 @@ bool METHOD(has_key)(TYPE map, KEYTYPE key)
 	return false;
 }
 
+#define ERROR(msg, key) panic_printf("%s: %s", (msg), string_to_cstr(KEYTYPE_METHOD(to_string)((key))))
+
 VALUETYPE METHOD(get)(TYPE map, KEYTYPE key)
 {
 	// avoid % 0
@@ -119,7 +119,7 @@ VALUETYPE METHOD(get)(TYPE map, KEYTYPE key)
 		}
 	}
 
-	panic_printf("key not found from mapping: %s", string_to_cstr(key));
+	ERROR("Mapping.get(): key not found", key);
 }
 
 void METHOD(delete)(TYPE map, KEYTYPE key)
@@ -130,13 +130,13 @@ void METHOD(delete)(TYPE map, KEYTYPE key)
 
 	uint32_t h = hash(key);
 	size_t i = h % map->nentries;
-	for (; map->entries[i].hash != h || !VALUETYPE_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
+	for (; map->entries[i].hash != h || !KEYTYPE_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
 	{
 		if (map->entries[i].hash == 0)
 			goto error404;
 	}
 
-	string_decref(map->entries[i].key);
+	DECREF_KEY(map->entries[i].key);
 	DECREF_VALUE(map->entries[i].value);
 	map->entries[i].hash = 0;
 	map->len--;
@@ -151,7 +151,7 @@ void METHOD(delete)(TYPE map, KEYTYPE key)
 	return;
 
 error404:
-	panic_printf("key not found from mapping: %s", string_to_cstr(key));
+	ERROR("Mapping.delete(): key not found", key);
 }
 
 int64_t METHOD(length)(TYPE map)

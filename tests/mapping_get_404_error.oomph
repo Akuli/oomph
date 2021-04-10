@@ -1,0 +1,2 @@
+export func main():
+    print(new Mapping[Str, Int]().get("hello"))

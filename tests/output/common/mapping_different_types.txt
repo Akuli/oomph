@@ -1,0 +1,7 @@
+456.789
+lol
+hello
+false
+lol
+value of null
+bar

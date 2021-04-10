@@ -1,0 +1,34 @@
+class Foo()
+
+# All Bars are equal
+class Bar():
+    meth equals(Bar other) -> Bool:
+        return true
+    meth hash() -> Int:
+        return 69
+
+export func main():
+    let int_keys = new Mapping[Int, Float]()
+    int_keys.set(123, 456.789)
+    print(int_keys.get(123))
+
+    let bool_keys = new Mapping[Bool, Str]()
+    bool_keys.set(true, "lol")
+    print(bool_keys.get(true))
+
+    let pointer_keys = new Mapping[Foo, Str]()
+    let foo1 = new Foo()
+    let foo2 = new Foo()
+    pointer_keys.set(foo1, "hello")
+    print(pointer_keys.get(foo1))
+    print(pointer_keys.has_key(foo2))
+
+    let custom_eq_keys = new Mapping[Bar, Str]()
+    custom_eq_keys.set(new Bar(), "lol")
+    print(custom_eq_keys.get(new Bar()))
+
+    let union_keys = new Mapping[Str | null, Str]()
+    union_keys.set(null, "value of null")
+    union_keys.set("foo", "bar")
+    print(union_keys.get(null))
+    print(union_keys.get("foo"))

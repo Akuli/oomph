@@ -71,9 +71,12 @@ void oomph_io_write_file(struct class_Str path, struct class_Str content);
 void oomph_print(struct class_Str str);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
+#define meth_Bool_hash(a) (a)   // 0 or 1
 #define meth_Float_equals(a, b) ((a)==(b))
 #define meth_Int_equals(a, b) ((a)==(b))
+#define meth_Int_hash(a) (a)
 #define meth_null_equals(a, b) true
+#define meth_null_hash(n) 69
 #define meth_null_to_string(n) cstr_to_string("null")
 bool meth_Str_equals(struct class_Str a, struct class_Str b);
 double meth_Str_to_float(struct class_Str s);

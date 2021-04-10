@@ -1,0 +1,2 @@
+export func main():
+    new Mapping[Str, Int]().delete("hello")

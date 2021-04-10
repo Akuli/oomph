@@ -432,6 +432,13 @@ class FilePair(
                     return meth_{member_cnames.get(i)}_equals(a.val.item{i}, b.val.item{i});
                 """
         ].join("")
+        let hash_cases = [
+            for let i = 0; i < n; i = i+1:
+                """
+                case {i}:
+                    return meth_{member_cnames.get(i)}_hash(obj.val.item{i});
+                """
+        ].join("")
 
         # TODO: can decls be emitted automatically?
         self.function_decls = self.function_decls + """
@@ -506,6 +513,20 @@ class FilePair(
         \}
         """
 
+        if "hash" in [foreach m of ir::get_methods(union, self.session.builtins): m.name]:
+            self.function_decls = self.function_decls + """
+            int64_t meth_{self.id}_hash(struct class_{self.id} obj);
+            """
+            self.function_defs = self.function_defs + """
+            int64_t meth_{self.id}_hash(struct class_{self.id} obj) \{
+                switch(obj.membernum) \{
+                    {hash_cases}
+                    default:
+                        panic_printf("internal error in union hash");
+                \}
+            \}
+            """
+
         let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
         assert(self.struct == null)
         self.struct = """
@@ -520,11 +541,12 @@ class FilePair(
     meth define_generic_type(ir::BasicType type):
         let source = type.generic_source as not null
         if source.generik == self.session.builtins.LIST:
+            assert(source.args.length() == 1)
             let c_path = "lib/generic/list.c"
             let h_path = "lib/generic/list.h"
-            assert(source.args.length() == 1)
             let args = [new NamedType("ITEM", source.args.first())]
         elif source.generik == self.session.builtins.MAPPING:
+            assert(source.args.length() == 2)
             c_path = "lib/generic/mapping.c"
             h_path = "lib/generic/mapping.h"
             args = [
@@ -540,6 +562,7 @@ class FilePair(
             ["TYPE", "struct class_{self.session.get_type_c_name(type)} *"],
             ["TYPE_STRUCT", "class_{self.session.get_type_c_name(type)}"],
             ["METHOD(name)", "meth_{self.session.get_type_c_name(type)}_##name"],
+            ["INTERNAL_NAME(name)", "{self.session.get_type_c_name(type)}_##name"],
         ]
         foreach arg of args:
             macros.push_all([
@@ -550,9 +573,9 @@ class FilePair(
                 ["DECREF_{arg.name}(val)", self.session.emit_decref("(val)", arg.type)],
             ])
             if arg.type == self.session.builtins.STR:
-                macros.push(["ITEMTYPE_IS_STRING", "1"])
+                macros.push(["{arg.name}TYPE_IS_STRING", "1"])
             else:
-                macros.push(["ITEMTYPE_IS_STRING", "0"])
+                macros.push(["{arg.name}TYPE_IS_STRING", "0"])
 
         let defines = "\n"
         let undefs = "\n"

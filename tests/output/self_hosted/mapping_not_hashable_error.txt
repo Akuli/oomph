@@ -1,0 +1,2 @@
+mapping key type must be hashable, but List[Int] doesn't have a .hash() method
+./oomph: assert() failed in "self_hosted/ir.oomph", line N
