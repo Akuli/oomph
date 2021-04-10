@@ -390,6 +390,8 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
                     result.push(new Method("to_string", new FunctionType([type], builtins.STR)))
                 elif addition == "equals":
                     result.push(new Method("equals", new FunctionType([type, type], builtins.BOOL)))
+                elif addition == "hash":
+                    result.push(new Method("hash", new FunctionType([type], builtins.INT)))
                 else:
                     assert(false)
             return result

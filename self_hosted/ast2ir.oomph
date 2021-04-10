@@ -1082,10 +1082,14 @@ class FileConverter(
                                 self.types.push(new NamedType(name, type))
 
             case ast::ClassDef classdef:
-                let methods_to_create = ["to_string", "equals"]
+                let methods_to_create = ["to_string", "equals", "hash"]
                 foreach method of classdef.body:
                     if method.name in methods_to_create:
                         methods_to_create.delete_only(method.name)
+
+                # The auto-created hash assumes pointer equals(), aka not-user-defined equals()
+                if "equals" not in methods_to_create and "hash" in methods_to_create:
+                    methods_to_create.delete_only("hash")
 
                 self.check_type_not_exists(classdef.name, classdef.location)
                 let classtype = new ir::BasicType(
