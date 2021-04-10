@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 
 # Describes how exactly a type was created from a generic
@@ -18,8 +18,7 @@ class Type:
         name: str,
         refcounted: bool,
         definition_path: Optional[pathlib.Path] = None,
-        *,
-        create_to_string_method: bool = False,
+        methods_to_create: Optional[Set[str]] = None,
     ):
         self._name = name
         self.refcounted = refcounted
@@ -28,9 +27,15 @@ class Type:
         self.members: List[Tuple[Type, str]] = []
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
-        self.create_to_string_method = create_to_string_method
-        if create_to_string_method:
-            self.methods["to_string"] = FunctionType([self], STRING)
+        self.methods_to_create = methods_to_create or set()
+
+        for method in self.methods_to_create:
+            if method == "to_string":
+                self.methods["to_string"] = FunctionType([self], STRING)
+            elif method == "equals":
+                self.methods["equals"] = FunctionType([self, self], BOOL)
+            else:
+                raise NotImplementedError(method)
 
     # To make the name more overridable
     @property

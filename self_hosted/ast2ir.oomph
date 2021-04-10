@@ -990,29 +990,8 @@ class FunctionOrMethodConverter(
                     self.get_rid_of_auto_in_var(member_check.result)
                     self.get_rid_of_auto_in_var(member_check.union_var)
 
-                case ir::PointersEqual pointer_check:
-                    self.get_rid_of_auto_in_var(pointer_check.lhs)
-                    self.get_rid_of_auto_in_var(pointer_check.rhs)
-                    self.get_rid_of_auto_in_var(pointer_check.result)
-
                 case ir::GotoLabel | ir::Panic _:
                     pass
-
-
-# TODO: do this in c
-func create_pointers_equal_method(ir::Builtins builtins, ir::Type classtype, Location location) -> ir::MethodDef:
-    let self_var = new ir::LocalVariable(classtype, 0, location)
-    let other_var = new ir::LocalVariable(classtype, 1, location)
-    let result_var = new ir::LocalVariable(builtins.BOOL, 2, location)
-    return new ir::MethodDef(
-        "equals",
-        ir::get_method(classtype, "equals", builtins),
-        [self_var, other_var],
-        [
-            new ir::PointersEqual(self_var, other_var, result_var) as ir::Instruction,
-            new ir::Return(result_var) as ir::Instruction,
-        ]
-    )
 
 
 class FileConverter(
@@ -1103,10 +1082,14 @@ class FileConverter(
                                 self.types.push(new NamedType(name, type))
 
             case ast::ClassDef classdef:
+                let methods_to_create = ["to_string", "equals"]
+                foreach method of classdef.body:
+                    if method.name in methods_to_create:
+                        methods_to_create.delete_only(method.name)
+
                 self.check_type_not_exists(classdef.name, classdef.location)
-                let add_to_string_method = "to_string" not in [foreach method of classdef.body: method.name]
                 let classtype = new ir::BasicType(
-                    classdef.name, true, [], [], null, null, self.path, add_to_string_method
+                    classdef.name, true, [], [], null, null, self.path, methods_to_create
                 )
                 # TODO: cleanup_list shouldn't be in builtins
                 self.builtins.cleanup_list.push(classtype)
@@ -1117,7 +1100,7 @@ class FileConverter(
                 self.check_type_not_exists(type_def.name, type_def.location)
                 self.typedef_laziness.push(new NamedAstType(type_def.name, type_def.type))
 
-            case ast::FuncOrMethodDef funcdef:
+            case ast::FuncOrMethodDef _:
                 # TODO: check not exists
                 pass
 
@@ -1191,20 +1174,6 @@ class FileConverter(
                 (classtype.constructor_argtypes as not null).push_all([
                     foreach member of classtype.members: member.type
                 ])
-
-                if classtype.create_to_string_method:
-                    # TODO: do this in ir instead?
-                    classtype.methods.push(new ir::Method(
-                        "to_string",
-                        new ir::FunctionType([classtype as ir::Type], self.builtins.STR)
-                    ))
-                if "equals" not in [foreach method of classdef.body: method.name]:
-                    classtype.methods.push(new ir::Method(
-                        "equals", new ir::FunctionType(
-                            [classtype as ir::Type, classtype as ir::Type],
-                            self.builtins.BOOL
-                        )
-                    ))
 
                 foreach method_def of classdef.body:
                     let self_location = classdef.location   # a bit weird
@@ -1291,15 +1260,10 @@ class FileConverter(
                         break
                 assert(found)
 
-                let typed_method_defs = []
-                if "equals" not in [foreach method of classdef.body: method.name]:
-                    typed_method_defs.push(create_pointers_equal_method(
-                        self.builtins, classtype, classdef.location
-                    ) as ir::ToplevelDeclaration)
-
-                foreach method_def of classdef.body:
-                    typed_method_defs.push(self.func_or_meth_step4(method_def, classtype) as ir::MethodDef)
-                return typed_method_defs
+                return [
+                    foreach method_def of classdef.body:
+                        self.func_or_meth_step4(method_def, classtype)
+                ]
 
             case ast::FuncOrMethodDef funcdef:
                 return [self.func_or_meth_step4(funcdef, null)]

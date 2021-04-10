@@ -110,9 +110,6 @@ class _FunctionEmitter:
         if isinstance(ins, ir.SetAttribute):
             return f"{self.emit_var(ins.obj)}->memb_{ins.attribute} = {self.emit_var(ins.value)};\n"
 
-        if isinstance(ins, ir.PointersEqual):
-            return f"{self.emit_var(ins.result)} = ({self.emit_var(ins.lhs)} == {self.emit_var(ins.rhs)});\n"
-
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
             membernum = ins.result.type.type_members.index(ins.value.type)
@@ -596,30 +593,38 @@ class _FilePair:
         }}
         """
 
-        if the_type.create_to_string_method:
-            self.function_decls += f"""
-            struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} obj);
-            """
-            concats = [
-                f"""
-                tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
-                oomph_string_concat_inplace(&res, tmp);
-                string_decref(tmp);
+        for name in the_type.methods_to_create:
+            if name == "to_string":
+                self.function_decls += f"""
+                struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} obj);
                 """
-                for typ, nam in the_type.members
-            ]
-            concat_comma = 'oomph_string_concat_inplace_cstr(&res, ", ");'
-            self.function_defs += f"""
-            struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} self)
-            {{
-                struct class_Str res = {self.emit_string(the_type.name)};
-                struct class_Str tmp;
-                oomph_string_concat_inplace_cstr(&res, "(");
-                {concat_comma.join(concats)}
-                oomph_string_concat_inplace_cstr(&res, ")");
-                return res;
-            }}
-            """
+                concats = [
+                    f"""
+                    tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
+                    oomph_string_concat_inplace(&res, tmp);
+                    string_decref(tmp);
+                    """
+                    for typ, nam in the_type.members
+                ]
+                concat_comma = 'oomph_string_concat_inplace_cstr(&res, ", ");'
+                self.function_defs += f"""
+                struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} self)
+                {{
+                    struct class_Str res = {self.emit_string(the_type.name)};
+                    struct class_Str tmp;
+                    oomph_string_concat_inplace_cstr(&res, "(");
+                    {concat_comma.join(concats)}
+                    oomph_string_concat_inplace_cstr(&res, ")");
+                    return res;
+                }}
+                """
+            elif name == "equals":
+                self.function_decls += f"""
+                // pointer equality
+                #define meth_{self.id}_equals(a, b) ((a) == (b))
+                """
+            else:
+                raise NotImplementedError(name)
 
     # Must not be called multiple times for the same _FilePair
     def define_type(self, the_type: Type) -> None:

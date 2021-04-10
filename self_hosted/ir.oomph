@@ -30,7 +30,7 @@ export class BasicType(
     List[Type] | null constructor_argtypes,
     GenericSource | null generic_source,
     Str | null definition_path,  # null for builtin
-    Bool create_to_string_method,
+    List[Str] methods_to_create,
 ):
     # Helps with reference cycles
     meth to_string() -> Str:
@@ -211,7 +211,7 @@ export class Builtins(
             new List[Type](),  # FIXME: [] doesn't work
             new GenericSource(generik, arg),
             null,
-            false,
+            [],
         )
         let r = result as Type  # TODO: get rid of this
 
@@ -263,11 +263,11 @@ export class Builtins(
 # TODO: custom constructors
 export func create_builtins() -> Builtins:
     # Methods are empty at first to prevent reference cycles
-    let BOOL = new BasicType("Bool", false, [], [], null, null, null, false) as Type
-    let FLOAT = new BasicType("Float", false, [], [], null, null, null, false) as Type
-    let INT = new BasicType("Int", false, [], [], null, null, null, false) as Type
-    let NULL_TYPE = new BasicType("null", false, [], [], null, null, null, false) as Type
-    let STR = new BasicType("Str", true, [], [], null, null, null, false) as Type
+    let BOOL = new BasicType("Bool", false, [], [], null, null, null, []) as Type
+    let FLOAT = new BasicType("Float", false, [], [], null, null, null, []) as Type
+    let INT = new BasicType("Int", false, [], [], null, null, null, []) as Type
+    let NULL_TYPE = new BasicType("null", false, [], [], null, null, null, []) as Type
+    let STR = new BasicType("Str", true, [], [], null, null, null, []) as Type
 
     let LIST = new Generic("List")
     let MAPPING = new Generic("Mapping")
@@ -382,10 +382,21 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
     switch type:
         case AutoType _:
             assert(false)
+
         case BasicType basictype:
-            return basictype.methods
+            let result = basictype.methods.reversed().reversed()  # TODO: better way to copy
+            foreach addition of basictype.methods_to_create:
+                if addition == "to_string":
+                    result.push(new Method("to_string", new FunctionType([type], builtins.STR)))
+                elif addition == "equals":
+                    result.push(new Method("equals", new FunctionType([type, type], builtins.BOOL)))
+                else:
+                    assert(false)
+            return result
+
         case FunctionType _:
             return []
+
         case UnionType union:
             return [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
@@ -431,7 +442,6 @@ export typedef Instruction = (
     | IntConstant
     | MethodCall
     | Panic
-    | PointersEqual
     | Return
     | SetAttribute
     | StringConstant
@@ -452,7 +462,6 @@ export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, Location location)
 export class Panic(Str message, Location location)
-export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
 export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)
 export class StringConstant(Str value, LocalVariable var)

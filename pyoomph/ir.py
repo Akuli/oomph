@@ -189,19 +189,6 @@ class FloatConstant(Instruction):
     value: str
 
 
-# Can't be a function call because arguments can be many different types
-@dataclass(eq=False)
-class PointersEqual(Instruction):
-    lhs: LocalVariable
-    rhs: LocalVariable
-    result: LocalVariable
-
-    def __post_init__(self) -> None:
-        assert self.lhs.type.refcounted
-        assert self.rhs.type.refcounted
-        assert self.result.type == BOOL
-
-
 @dataclass(eq=False)
 class InstantiateUnion(Instruction):
     result: LocalVariable
