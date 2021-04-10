@@ -885,12 +885,7 @@ class _FileConverter:
             methods_to_create = {"to_string", "equals"} - {
                 method.name for method in top_declaration.body
             }
-            classtype = Type(
-                top_declaration.name,
-                True,
-                self.path,
-                methods_to_create,
-            )
+            classtype = Type(top_declaration.name, True, self.path, methods_to_create)
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
 

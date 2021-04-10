@@ -615,7 +615,7 @@ class _FilePair:
                 }}
                 """
             elif name == "equals":
-                self.function_decls = self.function_decls + f"""
+                self.function_decls += f"""
                 // pointer equality
                 #define meth_{self.id}_equals(a, b) ((a) == (b))
                 """
