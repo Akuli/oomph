@@ -1103,10 +1103,13 @@ class FileConverter(
                                 self.types.push(new NamedType(name, type))
 
             case ast::ClassDef classdef:
+                let methods2add = []
+                if "to_string" not in [foreach method of classdef.body: method.name]:
+                    methods2add.push("to_string")
+
                 self.check_type_not_exists(classdef.name, classdef.location)
-                let add_to_string_method = "to_string" not in [foreach method of classdef.body: method.name]
                 let classtype = new ir::BasicType(
-                    classdef.name, true, [], [], null, null, self.path, add_to_string_method
+                    classdef.name, true, [], [], null, null, self.path, methods2add
                 )
                 # TODO: cleanup_list shouldn't be in builtins
                 self.builtins.cleanup_list.push(classtype)
@@ -1192,12 +1195,6 @@ class FileConverter(
                     foreach member of classtype.members: member.type
                 ])
 
-                if classtype.create_to_string_method:
-                    # TODO: do this in ir instead?
-                    classtype.methods.push(new ir::Method(
-                        "to_string",
-                        new ir::FunctionType([classtype as ir::Type], self.builtins.STR)
-                    ))
                 if "equals" not in [foreach method of classdef.body: method.name]:
                     classtype.methods.push(new ir::Method(
                         "equals", new ir::FunctionType(

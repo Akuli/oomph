@@ -610,29 +610,32 @@ class FilePair(
         \}
         """
 
-        if type.create_to_string_method:
-            self.function_decls = self.function_decls + """
-            struct class_Str meth_{self.id}_to_string({self.emit_type(type)} obj);
-            """
-            let concats = [
-                foreach m of type.members:
-                    """
-                    tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
-                    oomph_string_concat_inplace(&res, tmp);
-                    string_decref(tmp);
-                    """
-            ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
-            self.function_defs = self.function_defs + """
-            struct class_Str meth_{self.id}_to_string({self.emit_type(type)} self)
-            \{
-                struct class_Str res = {self.emit_string(type.name)};
-                struct class_Str tmp;
-                oomph_string_concat_inplace_cstr(&res, "(");
-                {concats}
-                oomph_string_concat_inplace_cstr(&res, ")");
-                return res;
-            \}
-            """
+        foreach name of type.methods_to_create:
+            if name == "to_string":
+                self.function_decls = self.function_decls + """
+                struct class_Str meth_{self.id}_to_string({self.emit_type(type)} obj);
+                """
+                let concats = [
+                    foreach m of type.members:
+                        """
+                        tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
+                        oomph_string_concat_inplace(&res, tmp);
+                        string_decref(tmp);
+                        """
+                ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
+                self.function_defs = self.function_defs + """
+                struct class_Str meth_{self.id}_to_string({self.emit_type(type)} self)
+                \{
+                    struct class_Str res = {self.emit_string(type.name)};
+                    struct class_Str tmp;
+                    oomph_string_concat_inplace_cstr(&res, "(");
+                    {concats}
+                    oomph_string_concat_inplace_cstr(&res, ")");
+                    return res;
+                \}
+                """
+            else:
+                assert(false)
 
     # Must not be called multiple times for the same FilePair
     meth define_type(ir::Type type):
