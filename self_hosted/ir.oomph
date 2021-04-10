@@ -347,6 +347,7 @@ export func create_builtins() -> Builtins:
         new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("left_trim", new FunctionType([STR], STR)),
         new Method("length", new FunctionType([STR], INT)),
+        new Method("hash", new FunctionType([STR], INT)),
         new Method("remove_prefix", new FunctionType([STR, STR], STR)),
         new Method("remove_suffix", new FunctionType([STR, STR], STR)),
         new Method("repeat", new FunctionType([STR, INT], STR)),

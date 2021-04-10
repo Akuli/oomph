@@ -81,6 +81,7 @@ int64_t meth_Float_ceil(double d);
 int64_t meth_Float_floor(double d);
 int64_t meth_Float_round(double d);
 int64_t meth_Float_truncate(double d);
+int64_t meth_Str_hash(struct class_Str s);
 int64_t meth_Str_length(struct class_Str s);
 int64_t meth_Str_to_int(struct class_Str s);
 struct class_Str meth_Float_to_string(double d);
