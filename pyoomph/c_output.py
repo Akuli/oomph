@@ -19,7 +19,6 @@ from pyoomph.types import (
     Type,
     UnionType,
     builtin_types,
-    GenericSource
 )
 
 
@@ -552,8 +551,7 @@ class _FilePair:
             or "void"
         )
         member_assignments = "".join(
-            f"obj->memb_{name} = arg_{name};\n"
-            for the_type, name in the_type.members
+            f"obj->memb_{name} = arg_{name};\n" for the_type, name in the_type.members
         )
         member_increfs = "".join(
             self.session.emit_incref(f"arg_{name}", the_type) + ";\n"
