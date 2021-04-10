@@ -105,10 +105,6 @@ class FunctionEmitter(
             case ir::SetAttribute setattr:
                 return "{self.emit_var(setattr.obj)}->memb_{setattr.attribute} = {self.emit_var(setattr.value)};\n"
 
-            # TODO: this still in use?
-            case ir::PointersEqual eq:
-                return "{self.emit_var(eq.result)} = ({self.emit_var(eq.lhs)} == {self.emit_var(eq.rhs)});\n"
-
             case ir::InstantiateUnion inst:
                 let union = inst.result.type as ir::UnionType
                 let membernum = union.type_members.find_only(inst.value.type)
@@ -632,6 +628,17 @@ class FilePair(
                     {concats}
                     oomph_string_concat_inplace_cstr(&res, ")");
                     return res;
+                \}
+                """
+            elif name == "equals":
+                self.function_decls = self.function_decls + """
+                bool meth_{self.id}_equals({self.emit_type(type)} a, {self.emit_type(type)} b);
+                """
+                self.function_defs = self.function_defs + """
+                bool meth_{self.id}_equals({self.emit_type(type)} a, {self.emit_type(type)} b)
+                \{
+                    // pointer equality
+                    return a == b;
                 \}
                 """
             else:

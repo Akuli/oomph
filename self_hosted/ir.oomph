@@ -372,6 +372,8 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
             foreach addition of basictype.methods_to_create:
                 if addition == "to_string":
                     result.push(new Method("to_string", new FunctionType([type], builtins.STR)))
+                elif addition == "equals":
+                    result.push(new Method("equals", new FunctionType([type, type], builtins.BOOL)))
                 else:
                     assert(false)
             return result
@@ -424,7 +426,6 @@ export typedef Instruction = (
     | IntConstant
     | MethodCall
     | Panic
-    | PointersEqual
     | Return
     | SetAttribute
     | StringConstant
@@ -445,7 +446,6 @@ export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)
 export class MethodCall(LocalVariable obj, Str method_name, List[LocalVariable] args, LocalVariable | null result, Location location)
 export class Panic(Str message, Location location)
-export class PointersEqual(LocalVariable lhs, LocalVariable rhs, LocalVariable result)
 export class Return(LocalVariable | null value)
 export class SetAttribute(LocalVariable obj, Str attribute, LocalVariable value)
 export class StringConstant(Str value, LocalVariable var)
