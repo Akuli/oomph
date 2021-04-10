@@ -86,23 +86,6 @@ void METHOD(set)(TYPE map, KEYTYPE key, VALUETYPE value)
 	add_entry(map, (Entry){ hash(key), key, value }, true, true);
 }
 
-// TODO: this sucked in python 2 and it sucks here too
-bool METHOD(has_key)(TYPE map, KEYTYPE key)
-{
-	// avoid % 0
-	if (map->len != 0) {
-		uint32_t h = hash(key);
-		for (size_t i = h % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
-		{
-			Entry e = map->entries[i];
-			if (e.hash == h && KEYTYPE_METHOD(equals)(e.key, key))
-				return true;
-		}
-	}
-	return false;
-}
-
-// TODO: use this for more stuff?
 static Entry *find(TYPE map, KEYTYPE key, uint32_t keyhash)
 {
 	// avoid % 0
@@ -115,6 +98,12 @@ static Entry *find(TYPE map, KEYTYPE key, uint32_t keyhash)
 			return &map->entries[i];
 	}
 	return NULL;
+}
+
+// TODO: this sucked in python 2 and it sucks here too
+bool METHOD(has_key)(TYPE map, KEYTYPE key)
+{
+	return find(map, key, hash(key)) != NULL;
 }
 
 #define ERROR(msg, key) panic_printf("%s: %s", (msg), string_to_cstr(KEYTYPE_METHOD(to_string)((key))))
