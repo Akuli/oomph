@@ -7,6 +7,7 @@ struct INTERNAL_NAME(entry) {
 struct TYPE_STRUCT {
 	REFCOUNT_HEADER
 	size_t len;
-	size_t nentries;
+	size_t nentries;   // never zero
 	struct INTERNAL_NAME(entry) *entries;
+	struct INTERNAL_NAME(entry) flex[];   // just for mallocing struct and entries with one allocation
 };

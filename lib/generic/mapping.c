@@ -1,15 +1,18 @@
 #include <assert.h>
+#include <string.h>
 
 typedef struct INTERNAL_NAME(entry) Entry;
 
 TYPE CONSTRUCTOR(void)
 {
-	TYPE map = malloc(sizeof(*map));
+	size_t n = 8;
+	TYPE map = malloc(sizeof(*map) + n*sizeof(map->flex[0]));
 	assert(map);
 	map->refcount = 1;
 	map->len = 0;
-	map->nentries = 0;
-	map->entries = NULL;
+	map->nentries = n;
+	map->entries = map->flex;
+	memset(map->entries, 0, sizeof(map->entries[0]) * n);
 	return map;
 }
 
@@ -22,7 +25,8 @@ void DESTRUCTOR(void *ptr)
 			DECREF_VALUE(map->entries[i].value);
 		}
 	}
-	free(map->entries);
+	if (map->entries != map->flex)
+		free(map->entries);
 	free(map);
 }
 
@@ -38,7 +42,6 @@ static uint32_t hash(KEYTYPE key)
 static void add_entry(TYPE map, Entry e, bool check, bool incr)
 {
 	assert(e.hash != 0);
-	assert(map->nentries != 0);
 
 	uint32_t i = e.hash % map->nentries;
 	while (map->entries[i].hash != 0) {
@@ -62,9 +65,7 @@ static void add_entry(TYPE map, Entry e, bool check, bool incr)
 static void grow(TYPE map)
 {
 	size_t oldn = map->nentries;
-#define max(a, b) ((a)>(b) ? (a) : (b))
-	map->nentries = max(oldn, 1)*2;
-#undef max
+	map->nentries *= 2;
 
 	// TODO: can use realloc?
 	Entry *oldlist = map->entries;
@@ -75,7 +76,9 @@ static void grow(TYPE map)
 		if (oldlist[i].hash != 0)
 			add_entry(map, oldlist[i], false, false);
 	}
-	free(oldlist);
+
+	if (oldlist != map->flex)
+		free(oldlist);
 }
 
 void METHOD(set)(TYPE map, KEYTYPE key, VALUETYPE value)
@@ -88,10 +91,6 @@ void METHOD(set)(TYPE map, KEYTYPE key, VALUETYPE value)
 
 static Entry *find(TYPE map, KEYTYPE key, uint32_t keyhash)
 {
-	// avoid % 0
-	if (map->len == 0)
-		return NULL;
-
 	for (size_t i = keyhash % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 	{
 		if (map->entries[i].hash == keyhash && KEYTYPE_METHOD(equals)(map->entries[i].key, key))
@@ -120,16 +119,12 @@ VALUETYPE METHOD(get)(TYPE map, KEYTYPE key)
 
 void METHOD(delete)(TYPE map, KEYTYPE key)
 {
-	// avoid % 0
-	if (map->len == 0)
-		goto error404;
-
 	uint32_t h = hash(key);
 	size_t i = h % map->nentries;
 	for (; map->entries[i].hash != h || !KEYTYPE_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
 	{
 		if (map->entries[i].hash == 0)
-			goto error404;
+			ERROR("Mapping.delete(): key not found", key);
 	}
 
 	DECREF_KEY(map->entries[i].key);
@@ -144,10 +139,6 @@ void METHOD(delete)(TYPE map, KEYTYPE key)
 		map->entries[k].hash = 0;
 		add_entry(map, e, false, false);
 	}
-	return;
-
-error404:
-	ERROR("Mapping.delete(): key not found", key);
 }
 
 int64_t METHOD(length)(TYPE map)
