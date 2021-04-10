@@ -33,10 +33,27 @@ func hash(Str key) -> Int:
     return key.length()  # lol
 class Entry(Str key, Str value, Int hash)
 class Mapping(List[Entry | null] entries, Int item_count):
-    meth add_entry(Entry entry, Bool check_if_exists_and_update_length):
+    meth grow():
+        let old_entry_count = self.entries.length()
+        if old_entry_count == 0:
+            let new_entry_count = 2
+        else:
+            new_entry_count = old_entry_count * 2
+
+        # TODO: can we somehow add more space to end of list?
+        let old_entries = self.entries
+        self.entries = new List[Entry | null]()
+        while self.entries.length() < new_entry_count:
+            self.entries.push(null as Entry | null)
+
+        foreach entry of old_entries:
+            if entry != null:
+                self.add_entry(entry as not null, false)
+
+    meth add_entry(Entry entry, Bool check_if_exists_and_update_item_count):
         let i = entry.hash mod self.entries.length()
         while self.entries.get(i) != null:
-            if check_if_exists_and_update_length:
+            if check_if_exists_and_update_item_count:
                 let existing_entry = self.entries.get(i) as not null
                 if existing_entry.hash == entry.hash and existing_entry.key == entry.key:
                     existing_entry.value = entry.value
@@ -45,13 +62,19 @@ class Mapping(List[Entry | null] entries, Int item_count):
             i = i+1 mod self.entries.length()
 
         self.entries.set(i, entry)
-        if check_if_exists_and_update_length:
+        if check_if_exists_and_update_item_count:
             self.item_count = self.item_count + 1
 
     meth set(Str key, Str value):
+        let magic_number = 0.7   # TODO: do experiments to find best possible value
+        if self.item_count + 1 > magic_number*self.entries.length():
+            self.grow()
         self.add_entry(new Entry(key, value, hash(key)), true)
 
     meth get(Str key) -> Str | null:
+        if self.entries.length() == 0:   # avoid mod 0
+            return null
+
         let h = hash(key)
         for let i = h mod self.entries.length(); self.entries.get(i) != null; i = i+1:
             let entry = self.entries.get(i) as not null
@@ -60,7 +83,10 @@ class Mapping(List[Entry | null] entries, Int item_count):
         return null
 
     meth delete(Str key) -> Bool:
-        let n = self.entries.length()
+        let n = self.entries.length()   # TODO: get rid of this?
+        if n == 0:
+            return false
+
         let i = hash(key) mod n
         while true:
             if self.entries.get(i) == null:
@@ -128,7 +154,7 @@ export func main():
     let n = 8  # number of buckets
 
     let n = 3000
-    let mapping1 = new Mapping([for let i = 0; i < n; i = i+1: null as Entry | null], 0)
+    let mapping1 = new Mapping([], 0)
     let mapping2 = new ShitMapping([])
 
     for let i = 0; i < n; i = i+1:
