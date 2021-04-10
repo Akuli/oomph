@@ -237,6 +237,8 @@ func trim_leading_underscores(Str s) -> Str:
     return s
 
 
+class NamedType(Str name, ir::Type type)  # TODO: tuples
+
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class FilePair(
@@ -516,31 +518,41 @@ class FilePair(
         """ as Str | null
 
     meth define_generic_type(ir::BasicType type):
-        if (type.generic_source as not null).generik == self.session.builtins.LIST:
+        let source = type.generic_source as not null
+        if source.generik == self.session.builtins.LIST:
             let c_path = "lib/generic/list.c"
             let h_path = "lib/generic/list.h"
-        elif (type.generic_source as not null).generik == self.session.builtins.MAPPING:
+            assert(source.args.length() == 1)
+            let args = [new NamedType("ITEM", source.args.first())]
+        elif source.generik == self.session.builtins.MAPPING:
             c_path = "lib/generic/mapping.c"
             h_path = "lib/generic/mapping.h"
+            args = [
+                new NamedType("KEY", source.args.first()),
+                new NamedType("VALUE", source.args.last()),
+            ]
         else:
             assert(false)
 
-        let itemtype = (type.generic_source as not null).arg
         let macros = [
             ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(type)}"],
             ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(type)}"],
             ["TYPE", "struct class_{self.session.get_type_c_name(type)} *"],
             ["TYPE_STRUCT", "class_{self.session.get_type_c_name(type)}"],
             ["METHOD(name)", "meth_{self.session.get_type_c_name(type)}_##name"],
-            ["ITEMTYPE", self.emit_type_custom(itemtype, false)],
-            ["ITEMTYPE_METHOD(name)", "meth_{self.session.get_type_c_name(itemtype)}_##name"],
-            ["INCREF_ITEM(val)", self.session.emit_incref("(val)", itemtype)],
-            ["DECREF_ITEM(val)", self.session.emit_decref("(val)", itemtype)],
         ]
-        if itemtype == self.session.builtins.STR:
-            macros.push(["ITEMTYPE_IS_STRING", "1"])
-        else:
-            macros.push(["ITEMTYPE_IS_STRING", "0"])
+        foreach arg of args:
+            macros.push_all([
+                # TODO: rename these macros
+                ["{arg.name}TYPE", self.emit_type_custom(arg.type, false)],
+                ["{arg.name}TYPE_METHOD(name)", "meth_{self.session.get_type_c_name(arg.type)}_##name"],
+                ["INCREF_{arg.name}(val)", self.session.emit_incref("(val)", arg.type)],
+                ["DECREF_{arg.name}(val)", self.session.emit_decref("(val)", arg.type)],
+            ])
+            if arg.type == self.session.builtins.STR:
+                macros.push(["ITEMTYPE_IS_STRING", "1"])
+            else:
+                macros.push(["ITEMTYPE_IS_STRING", "0"])
 
         let defines = "\n"
         let undefs = "\n"

@@ -9,7 +9,7 @@ struct TYPE_STRUCT {
 #undef concat
 		uint32_t hash;   // 0 if entry is unused
 		struct class_Str key;
-		ITEMTYPE value;
+		VALUETYPE value;
 	} *entries;
 };
 

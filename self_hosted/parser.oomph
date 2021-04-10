@@ -68,7 +68,7 @@ class Parser(List[tokenizer::Token] tokens):
             path = path::parent(path_of_this_file) + "/" + string
         return new ast::Import(import_token.location, path, name)
 
-    # TODO: these are a bit copy/pasta
+    # TODO: parse_commasep_... methods are a bit copy/pasta
     meth parse_commasep_expression_in_parens(Str left, Str right) -> List[ast::Expression]:
         self.get_token("op", left)
         let result = []
@@ -94,6 +94,18 @@ class Parser(List[tokenizer::Token] tokens):
                 result.push(self.parse_type_and_name())
         self.get_token("op", ")")
         return result
+
+    # Weirdly returns location, can't easily return 2 values yet
+    meth parse_one_or_more_commasep_types_in_square_brackets(List[ast::Type] result) -> Location:
+        let start = self.get_token("op", "[")
+        result.push(self.parse_type())
+        while self.peek().matches("op", ","):
+            self.get_token("op", ",")
+            if self.peek().matches("op", "]"):
+                break
+            result.push(self.parse_type())
+        let end = self.get_token("op", "]")
+        return start.location.combine(end.location)
 
     meth parse_block_of_statements() -> List[ast::Statement]:
         self.get_token("begin_block", ":")
@@ -562,11 +574,9 @@ class Parser(List[tokenizer::Token] tokens):
 
         let name_token = self.get_token_by_type("id")
         if self.peek().matches("op", "["):
-            self.get_token("op", "[")
-            let arg = self.parse_type()
-            let close = self.get_token("op", "]")
-            let location = name_token.location.combine(close.location)
-            return new ast::GenericType(location, name_token.value, arg)
+            let args = []
+            let location = self.parse_one_or_more_commasep_types_in_square_brackets(args)
+            return new ast::GenericType(location, name_token.value, args)
 
         return new ast::NamedType(name_token.location, name_token.value)
 

@@ -21,16 +21,16 @@ void DESTRUCTOR(void *ptr)
 	for (size_t i = 0; i < map->nentries; i++) {
 		if (map->entries[i].hash != 0) {
 			string_decref(map->entries[i].key);
-			DECREF_ITEM(map->entries[i].value);
+			DECREF_VALUE(map->entries[i].value);
 		}
 	}
 	free(map->entries);
 	free(map);
 }
 
-uint32_t hash(struct class_Str s)
+uint32_t hash(KEYTYPE key)
 {
-	uint32_t h = (uint32_t)meth_Str_hash(s);
+	uint32_t h = (uint32_t)KEYTYPE_METHOD(hash)(key);
 	if (h == 0)   // 0 has special meaning in mapping
 		h = 69;
 	return h;
@@ -44,10 +44,10 @@ static void add_entry(TYPE map, Entry e, bool check, bool incr)
 
 	uint32_t i = e.hash % map->nentries;
 	while (map->entries[i].hash != 0) {
-		if (check && map->entries[i].hash == e.hash && meth_Str_equals(map->entries[i].key, e.key)) {
-			DECREF_ITEM(map->entries[i].value);
+		if (check && map->entries[i].hash == e.hash && KEYTYPE_METHOD(equals)(map->entries[i].key, e.key)) {
+			DECREF_VALUE(map->entries[i].value);
 			map->entries[i].value = e.value;
-			INCREF_ITEM(map->entries[i].value);
+			INCREF_VALUE(map->entries[i].value);
 			return;
 		}
 		// Jump over this entry
@@ -56,7 +56,7 @@ static void add_entry(TYPE map, Entry e, bool check, bool incr)
 
 	map->entries[i] = e;
 	string_incref(e.key);
-	INCREF_ITEM(e.value);
+	INCREF_VALUE(e.value);
 	if (incr)
 		map->len++;
 }
@@ -80,7 +80,7 @@ static void grow(TYPE map)
 	free(oldlist);
 }
 
-void METHOD(set)(TYPE map, struct class_Str key, ITEMTYPE value)
+void METHOD(set)(TYPE map, KEYTYPE key, VALUETYPE value)
 {
 	float magic = 0.7;   // TODO: do experiments to find best possible value
 	if (map->len+1 > magic*map->nentries)
@@ -89,7 +89,7 @@ void METHOD(set)(TYPE map, struct class_Str key, ITEMTYPE value)
 }
 
 // TODO: this sucked in python 2 and it sucks here too
-bool METHOD(has_key)(TYPE map, struct class_Str key)
+bool METHOD(has_key)(TYPE map, KEYTYPE key)
 {
 	// avoid % 0
 	if (map->len != 0) {
@@ -97,14 +97,14 @@ bool METHOD(has_key)(TYPE map, struct class_Str key)
 		for (size_t i = h % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 		{
 			Entry e = map->entries[i];
-			if (e.hash == h && meth_Str_equals(e.key, key))
+			if (e.hash == h && KEYTYPE_METHOD(equals)(e.key, key))
 				return true;
 		}
 	}
 	return false;
 }
 
-ITEMTYPE METHOD(get)(TYPE map, struct class_Str key)
+VALUETYPE METHOD(get)(TYPE map, KEYTYPE key)
 {
 	// avoid % 0
 	if (map->len != 0) {
@@ -112,8 +112,8 @@ ITEMTYPE METHOD(get)(TYPE map, struct class_Str key)
 		for (size_t i = h % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 		{
 			Entry e = map->entries[i];
-			if (e.hash == h && meth_Str_equals(e.key, key)) {
-				INCREF_ITEM(e.value);
+			if (e.hash == h && KEYTYPE_METHOD(equals)(e.key, key)) {
+				INCREF_VALUE(e.value);
 				return e.value;
 			}
 		}
@@ -122,7 +122,7 @@ ITEMTYPE METHOD(get)(TYPE map, struct class_Str key)
 	panic_printf("key not found from mapping: %s", string_to_cstr(key));
 }
 
-void METHOD(delete)(TYPE map, struct class_Str key)
+void METHOD(delete)(TYPE map, KEYTYPE key)
 {
 	// avoid % 0
 	if (map->len == 0)
@@ -130,14 +130,14 @@ void METHOD(delete)(TYPE map, struct class_Str key)
 
 	uint32_t h = hash(key);
 	size_t i = h % map->nentries;
-	for (; map->entries[i].hash != h || !ITEMTYPE_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
+	for (; map->entries[i].hash != h || !VALUETYPE_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
 	{
 		if (map->entries[i].hash == 0)
 			goto error404;
 	}
 
 	string_decref(map->entries[i].key);
-	DECREF_ITEM(map->entries[i].value);
+	DECREF_VALUE(map->entries[i].value);
 	map->entries[i].hash = 0;
 	map->len--;
 

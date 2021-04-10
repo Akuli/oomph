@@ -69,7 +69,7 @@ export func main():
     let n = 8  # number of buckets
 
     let n = 3000
-    let mapping1 = new Mapping[Str]()
+    let mapping1 = new Mapping[Str, Str]()
     let mapping2 = new ShitMapping([])
 
     for let i = 0; i < n; i = i+1:
