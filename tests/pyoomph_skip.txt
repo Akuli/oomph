@@ -1,15 +1,8 @@
 # Tests for self-hosted compiler only
 tests/andor_error.oomph
 tests/equals_chain_error.oomph
+tests/mapping_not_hashable_error.oomph  # output depends on c compiler
 tests/mod_chain_error.oomph
 tests/mod_error.oomph
 tests/nested_union.oomph  # two typedef names for same union is weird
 tests/oomph_cmdline.oomph
-
-# TODO: pyoomph mapping
-tests/mapping_delete_404_error.oomph
-tests/mapping_different_types.oomph
-tests/mapping_get_404_error.oomph
-tests/mapping_not_hashable_error.oomph
-tests/mapping.oomph
-tests/string.oomph

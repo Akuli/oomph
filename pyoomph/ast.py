@@ -18,7 +18,7 @@ class AutoType(Type):
 @dataclass(eq=False)
 class GenericType(Type):
     name: str
-    arg: Type
+    args: List[Type]
 
 
 @dataclass(eq=False)

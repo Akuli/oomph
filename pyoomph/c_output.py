@@ -408,6 +408,14 @@ class _FilePair:
             """
             for num, typ in enumerate(the_type.type_members)
         )
+        hash_cases = "".join(
+            f"""
+            case {num}:
+                return meth_{self.session.get_type_c_name(typ)}_hash(obj.val.item{num});
+            """
+            for num, typ in enumerate(the_type.type_members)
+        )
+
         # TODO: can decls be emitted automatically?
         self.function_decls += f"""
         struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
@@ -493,6 +501,21 @@ class _FilePair:
         }}
         """
 
+        if "hash" in the_type.methods:
+            self.function_decls += f"""
+            int64_t meth_{self.id}_hash(struct class_{self.id} obj);
+            """
+            self.function_defs += f"""
+            int64_t meth_{self.id}_hash(struct class_{self.id} obj)
+            {{
+                switch(obj.membernum){{
+                    {hash_cases}
+                    default:
+                        panic_printf("internal error in union hash");
+                }}
+            }}
+            """
+
         union_members = "".join(
             f"\t{self.emit_type(the_type)} item{index};\n"
             for index, the_type in enumerate(the_type.type_members)
@@ -510,7 +533,18 @@ class _FilePair:
 
     def _define_generic_type(self, the_type: Type) -> None:
         assert the_type.generic_origin is not None
-        itemtype = the_type.generic_origin.arg
+        if the_type.generic_origin.generic == LIST:
+            assert len(the_type.generic_origin.args) == 1
+            args = [("ITEM", the_type.generic_origin.args[0])]
+        elif the_type.generic_origin.generic == MAPPING:
+            assert len(the_type.generic_origin.args) == 2
+            args = [
+                ("KEY", the_type.generic_origin.args[0]),
+                ("VALUE", the_type.generic_origin.args[1]),
+            ]
+        else:
+            raise RuntimeError(f"unknown generic: {the_type.generic_origin.generic}")
+
         c_path, h_path = _generic_paths[the_type.generic_origin.generic]
         macro_dict = {
             "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
@@ -518,12 +552,25 @@ class _FilePair:
             "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
             "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
             "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
-            "ITEMTYPE": self.emit_type(itemtype, can_fwd_declare_in_header=False),
-            "ITEMTYPE_IS_STRING": str(int(itemtype == STRING)),
-            "ITEMTYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(itemtype)}_##name",
-            "INCREF_ITEM(val)": self.session.emit_incref("(val)", itemtype),
-            "DECREF_ITEM(val)": self.session.emit_decref("(val)", itemtype),
+            "INTERNAL_NAME(name)": f"{self.session.get_type_c_name(the_type)}_##name",
         }
+        for arg_name, arg_type in args:
+            macro_dict.update(
+                {
+                    f"{arg_name}TYPE": self.emit_type(
+                        arg_type, can_fwd_declare_in_header=False
+                    ),
+                    f"{arg_name}TYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(arg_type)}_##name",
+                    f"INCREF_{arg_name}(val)": self.session.emit_incref(
+                        "(val)", arg_type
+                    ),
+                    f"DECREF_{arg_name}(val)": self.session.emit_decref(
+                        "(val)", arg_type
+                    ),
+                    f"{arg_name}TYPE_IS_STRING": str(int(arg_type == STRING)),
+                }
+            )
+
         defines = "".join(
             f"\n#define {key} {value}\n" for key, value in macro_dict.items()
         )
@@ -623,6 +670,12 @@ class _FilePair:
                 // pointer equality
                 #define meth_{self.id}_equals(a, b) ((a) == (b))
                 """
+            elif name == "hash":
+                self.function_decls += f"""
+                // on my system, last 5 bits of malloc()ed pointers seem to always be zero
+                #define meth_{self.id}_hash(ptr) (((int64_t)(intptr_t)(ptr))>>5)
+                """
+
             else:
                 raise NotImplementedError(name)
 
