@@ -29,16 +29,6 @@ class ShitMapping(List[ShitEntry] entries):
         return self.entries.length()
 
 
-func set_to_list(List[Entry | null] list, Int i, Entry | null item) -> Entry | null:
-    let old = list.get(i)
-    list.delete_at_index(i)
-    list.insert(i, item)
-    return old
-
-func swap(List[Entry | null] list, Int a, Int b):
-    set_to_list(list, b, set_to_list(list, a, list.get(b)))
-
-
 func hash(Str key) -> Int:
     return key.length()  # lol
 class Entry(Str key, Str value, Int hash)
@@ -53,7 +43,7 @@ class Mapping(List[Entry | null] entries):
                 return
             # Jump over this entry
             i = i+1 mod self.entries.length()   # TODO: improve
-        set_to_list(self.entries, i, new Entry(key, value, h))
+        self.entries.set(i, new Entry(key, value, h))
 
     meth get(Str key) -> Str | null:
         let h = hash(key)
@@ -73,11 +63,11 @@ class Mapping(List[Entry | null] entries):
                 break
             i = i+1 mod n
 
-        set_to_list(self.entries, i, null)
+        self.entries.set(i, null)
 
         # Delete and .set() everything that might rely on jumping over the item at i
         for let k = i+1 mod n; self.entries.get(k) != null; k = k+1 mod n:
-            let entry = set_to_list(self.entries, k, null) as not null
+            let entry = self.entries.set(k, null) as not null
             self.set(entry.key, entry.value)
         return true
 
