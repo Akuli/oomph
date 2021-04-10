@@ -632,14 +632,8 @@ class FilePair(
                 """
             elif name == "equals":
                 self.function_decls = self.function_decls + """
-                bool meth_{self.id}_equals({self.emit_type(type)} a, {self.emit_type(type)} b);
-                """
-                self.function_defs = self.function_defs + """
-                bool meth_{self.id}_equals({self.emit_type(type)} a, {self.emit_type(type)} b)
-                \{
-                    // pointer equality
-                    return a == b;
-                \}
+                // pointer equality
+                #define meth_{self.id}_equals(a, b) ((a) == (b))
                 """
             else:
                 assert(false)
