@@ -390,232 +390,241 @@ class _FilePair:
             """
         return self.strings[value]
 
-    # Must not be called multiple times for the same _FilePair
-    def define_type(self, the_type: Type) -> None:
-        assert self.struct is None
-
-        if isinstance(the_type, UnionType):
-            to_string_cases = "".join(
-                f"""
-                case {num}:
-                    valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
-                    break;
-                """
-                for num, typ in enumerate(the_type.type_members)
-            )
-            equals_cases = "".join(
-                f"""
-                case {num}:
-                    return meth_{self.session.get_type_c_name(typ)}_equals(
-                        a.val.item{num}, b.val.item{num});
-                """
-                for num, typ in enumerate(the_type.type_members)
-            )
-            # TODO: can decls be emitted automatically?
-            self.function_decls += f"""
-            struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
-            bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
+    def _define_union(self, the_type: UnionType) -> None:
+        to_string_cases = "".join(
+            f"""
+            case {num}:
+                valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
+                break;
             """
-            type_name_code = self.emit_string(the_type.name)
-            self.function_defs += f"""
-            struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
-            {{
-                struct class_Str valstr;
-                switch(obj.membernum) {{
-                    {to_string_cases}
-                    default:
-                        panic_printf(
-                            "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                            string_to_cstr({type_name_code}), (int)obj.membernum);
-                }}
+            for num, typ in enumerate(the_type.type_members)
+        )
+        equals_cases = "".join(
+            f"""
+            case {num}:
+                return meth_{self.session.get_type_c_name(typ)}_equals(
+                    a.val.item{num}, b.val.item{num});
+            """
+            for num, typ in enumerate(the_type.type_members)
+        )
+        # TODO: can decls be emitted automatically?
+        self.function_decls += f"""
+        struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
+        bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
+        """
+        type_name_code = self.emit_string(the_type.name)
+        self.function_defs += f"""
+        struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
+        {{
+            struct class_Str valstr;
+            switch(obj.membernum) {{
+                {to_string_cases}
+                default:
+                    panic_printf(
+                        "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                        string_to_cstr({type_name_code}), (int)obj.membernum);
+            }}
 
+            struct class_Str res = {self.emit_string(the_type.name)};
+            // TODO: missing incref, although doesn't matter since these
+            //       strings are not reference counted
+            oomph_string_concat_inplace_cstr(&res, "(");
+            oomph_string_concat_inplace(&res, valstr);
+            oomph_string_concat_inplace_cstr(&res, ")");
+            string_decref(valstr);
+            return res;
+        }}
+
+        bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
+        {{
+            if (a.membernum != b.membernum)
+                return false;
+            switch(a.membernum) {{
+                {equals_cases}
+                default:
+                    panic_printf(
+                        "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                        string_to_cstr({type_name_code}), (int)a.membernum);
+            }}
+        }}
+        """
+
+        # To incref/decref unions, we need to know the value of membernum
+        # and incref/decref the correct member of the union. This
+        # union-specific function handles that.
+        incref_cases = "".join(
+            f"""
+            case {num}:
+                {self.session.emit_incref(f"obj.val.item{num}", typ)};
+                break;
+            """
+            for num, typ in enumerate(the_type.type_members)
+        )
+        decref_cases = "".join(
+            f"""
+            case {num}:
+                {self.session.emit_decref(f"obj.val.item{num}", typ)};
+                break;
+            """
+            for num, typ in enumerate(the_type.type_members)
+        )
+
+        self.function_decls += f"""
+        void incref_{self.id}(struct class_{self.id} obj);
+        void decref_{self.id}(struct class_{self.id} obj);
+        """
+        self.function_defs += f"""
+        void incref_{self.id}(struct class_{self.id} obj) {{
+            switch(obj.membernum) {{
+                {incref_cases}
+                default:
+                    assert(0);
+            }}
+        }}
+        void decref_{self.id}(struct class_{self.id} obj) {{
+            switch(obj.membernum) {{
+                case -1:   // variable not in use
+                    break;
+                {decref_cases}
+                default:
+                    assert(0);
+            }}
+        }}
+        """
+
+        union_members = "".join(
+            f"\t{self.emit_type(the_type)} item{index};\n"
+            for index, the_type in enumerate(the_type.type_members)
+        )
+
+        assert self.struct is None
+        self.struct = f"""
+        struct class_{self.id} {{
+            union {{
+                {union_members}
+            }} val;
+            short membernum;
+        }};
+        """
+
+    def _define_generic_type(self, the_type: Type) -> None:
+        assert the_type.generic_origin is not None
+        itemtype = the_type.generic_origin.arg
+        c_path, h_path = _generic_paths[the_type.generic_origin.generic]
+        macro_dict = {
+            "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
+            "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
+            "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
+            "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
+            "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
+            "ITEMTYPE": self.emit_type(itemtype, can_fwd_declare_in_header=False),
+            "ITEMTYPE_IS_STRING": str(int(itemtype == STRING)),
+            "ITEMTYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(itemtype)}_##name",
+            "INCREF_ITEM(val)": self.session.emit_incref("(val)", itemtype),
+            "DECREF_ITEM(val)": self.session.emit_decref("(val)", itemtype),
+        }
+        defines = "".join(
+            f"\n#define {key} {value}\n" for key, value in macro_dict.items()
+        )
+        undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in macro_dict)
+        assert self.struct is None
+        self.struct = defines + h_path.read_text("utf-8") + undefs
+        for name, functype in the_type.methods.items():
+            self.define_function(
+                f"meth_{self.session.get_type_c_name(the_type)}_{name}", functype
+            )
+        self.function_decls += (
+            defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
+        )
+        self.function_defs += defines + c_path.read_text("utf-8") + undefs
+
+    def _define_simple_type(self, the_type: Type) -> None:
+        struct_members = "".join(
+            f"{self.emit_type(the_type)} memb_{name};\n"
+            for the_type, name in the_type.members
+        )
+        constructor_args = (
+            ",".join(
+                f"{self.emit_type(the_type)} arg_{name}"
+                for the_type, name in the_type.members
+            )
+            or "void"
+        )
+        member_assignments = "".join(
+            f"obj->memb_{name} = arg_{name};\n" for the_type, name in the_type.members
+        )
+        member_increfs = "".join(
+            self.session.emit_incref(f"arg_{name}", the_type) + ";\n"
+            for the_type, name in the_type.members
+        )
+        member_decrefs = "".join(
+            self.session.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
+            for typ, nam in the_type.members
+        )
+
+        assert self.struct is None
+        self.struct = f"""
+        struct class_{self.id} {{
+            REFCOUNT_HEADER
+            {struct_members}
+        }};
+        """
+        self.function_decls += f"""
+        {self.emit_type(the_type)} ctor_{self.id}({constructor_args});
+        void dtor_{self.id}(void *ptr);
+        """
+        self.function_defs += f"""
+        {self.emit_type(the_type)} ctor_{self.id}({constructor_args})
+        {{
+            {self.emit_type(the_type)} obj = malloc(sizeof(*obj));
+            assert(obj);
+            obj->refcount = 1;
+            {member_assignments}
+            {member_increfs}
+            return obj;
+        }}
+
+        void dtor_{self.id}(void *ptr)
+        {{
+            struct class_{self.id} *obj = ptr;
+            {member_decrefs}
+            free(obj);
+        }}
+        """
+
+        if the_type.create_to_string_method:
+            self.function_decls += f"""
+            struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} obj);
+            """
+            concats = [
+                f"""
+                tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
+                oomph_string_concat_inplace(&res, tmp);
+                string_decref(tmp);
+                """
+                for typ, nam in the_type.members
+            ]
+            concat_comma = 'oomph_string_concat_inplace_cstr(&res, ", ");'
+            self.function_defs += f"""
+            struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} self)
+            {{
                 struct class_Str res = {self.emit_string(the_type.name)};
-                // TODO: missing incref, although doesn't matter since these
-                //       strings are not reference counted
+                struct class_Str tmp;
                 oomph_string_concat_inplace_cstr(&res, "(");
-                oomph_string_concat_inplace(&res, valstr);
+                {concat_comma.join(concats)}
                 oomph_string_concat_inplace_cstr(&res, ")");
-                string_decref(valstr);
                 return res;
             }}
-
-            bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
-            {{
-                if (a.membernum != b.membernum)
-                    return false;
-                switch(a.membernum) {{
-                    {equals_cases}
-                    default:
-                        panic_printf(
-                            "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                            string_to_cstr({type_name_code}), (int)a.membernum);
-                }}
-            }}
             """
 
-            # To incref/decref unions, we need to know the value of membernum
-            # and incref/decref the correct member of the union. This
-            # union-specific function handles that.
-            incref_cases = "".join(
-                f"""
-                case {num}:
-                    {self.session.emit_incref(f"obj.val.item{num}", typ)};
-                    break;
-                """
-                for num, typ in enumerate(the_type.type_members)
-            )
-            decref_cases = "".join(
-                f"""
-                case {num}:
-                    {self.session.emit_decref(f"obj.val.item{num}", typ)};
-                    break;
-                """
-                for num, typ in enumerate(the_type.type_members)
-            )
-
-            self.function_decls += f"""
-            void incref_{self.id}(struct class_{self.id} obj);
-            void decref_{self.id}(struct class_{self.id} obj);
-            """
-            self.function_defs += f"""
-            void incref_{self.id}(struct class_{self.id} obj) {{
-                switch(obj.membernum) {{
-                    {incref_cases}
-                    default:
-                        assert(0);
-                }}
-            }}
-            void decref_{self.id}(struct class_{self.id} obj) {{
-                switch(obj.membernum) {{
-                    case -1:   // variable not in use
-                        break;
-                    {decref_cases}
-                    default:
-                        assert(0);
-                }}
-            }}
-            """
-
-            union_members = "".join(
-                f"\t{self.emit_type(the_type)} item{index};\n"
-                for index, the_type in enumerate(the_type.type_members)
-            )
-            self.struct = f"""
-            struct class_{self.id} {{
-                union {{
-                    {union_members}
-                }} val;
-                short membernum;
-            }};
-            """
-
+    # Must not be called multiple times for the same _FilePair
+    def define_type(self, the_type: Type) -> None:
+        if isinstance(the_type, UnionType):
+            self._define_union(the_type)
         elif the_type.generic_origin is not None:
-            itemtype = the_type.generic_origin.arg
-            c_path, h_path = _generic_paths[the_type.generic_origin.generic]
-            macro_dict = {
-                "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
-                "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
-                "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
-                "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
-                "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
-                "ITEMTYPE": self.emit_type(itemtype, can_fwd_declare_in_header=False),
-                "ITEMTYPE_IS_STRING": str(int(itemtype == STRING)),
-                "ITEMTYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(itemtype)}_##name",
-                "INCREF_ITEM(val)": self.session.emit_incref("(val)", itemtype),
-                "DECREF_ITEM(val)": self.session.emit_decref("(val)", itemtype),
-            }
-            defines = "".join(
-                f"\n#define {key} {value}\n" for key, value in macro_dict.items()
-            )
-            undefs = "".join(f"\n#undef {key.split('(')[0]}\n" for key in macro_dict)
-            self.struct = defines + h_path.read_text("utf-8") + undefs
-            for name, functype in the_type.methods.items():
-                self.define_function(
-                    f"meth_{self.session.get_type_c_name(the_type)}_{name}", functype
-                )
-            self.function_decls += (
-                defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
-            )
-            self.function_defs += defines + c_path.read_text("utf-8") + undefs
-
+            self._define_generic_type(the_type)
         else:
-            struct_members = "".join(
-                f"{self.emit_type(the_type)} memb_{name};\n"
-                for the_type, name in the_type.members
-            )
-            constructor_args = (
-                ",".join(
-                    f"{self.emit_type(the_type)} arg_{name}"
-                    for the_type, name in the_type.members
-                )
-                or "void"
-            )
-            member_assignments = "".join(
-                f"obj->memb_{name} = arg_{name};\n"
-                for the_type, name in the_type.members
-            )
-            member_increfs = "".join(
-                self.session.emit_incref(f"arg_{name}", the_type) + ";\n"
-                for the_type, name in the_type.members
-            )
-            member_decrefs = "".join(
-                self.session.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
-                for typ, nam in the_type.members
-            )
-
-            self.struct = f"""
-            struct class_{self.id} {{
-                REFCOUNT_HEADER
-                {struct_members}
-            }};
-            """
-            self.function_decls += f"""
-            {self.emit_type(the_type)} ctor_{self.id}({constructor_args});
-            void dtor_{self.id}(void *ptr);
-            """
-            self.function_defs += f"""
-            {self.emit_type(the_type)} ctor_{self.id}({constructor_args})
-            {{
-                {self.emit_type(the_type)} obj = malloc(sizeof(*obj));
-                assert(obj);
-                obj->refcount = 1;
-                {member_assignments}
-                {member_increfs}
-                return obj;
-            }}
-
-            void dtor_{self.id}(void *ptr)
-            {{
-                struct class_{self.id} *obj = ptr;
-                {member_decrefs}
-                free(obj);
-            }}
-            """
-
-            if the_type.create_to_string_method:
-                self.function_decls += f"""
-                struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} obj);
-                """
-                concats = [
-                    f"""
-                    tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
-                    oomph_string_concat_inplace(&res, tmp);
-                    string_decref(tmp);
-                    """
-                    for typ, nam in the_type.members
-                ]
-                concat_comma = 'oomph_string_concat_inplace_cstr(&res, ", ");'
-                self.function_defs += f"""
-                struct class_Str meth_{self.id}_to_string({self.emit_type(the_type)} self)
-                {{
-                    struct class_Str res = {self.emit_string(the_type.name)};
-                    struct class_Str tmp;
-                    oomph_string_concat_inplace_cstr(&res, "(");
-                    {concat_comma.join(concats)}
-                    oomph_string_concat_inplace_cstr(&res, ")");
-                    return res;
-                }}
-                """
+            self._define_simple_type(the_type)
 
     def emit_toplevel_declaration(
         self, top_declaration: ir.ToplevelDeclaration
