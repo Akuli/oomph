@@ -246,7 +246,12 @@ export class Builtins(
                 new Method("join", new FunctionType([r, self.STR], self.STR)),
             ])
         elif generik == self.MAPPING:
-            pass
+            result.methods.push_all([
+                new Method("get", new FunctionType([r, self.STR], arg)),
+                new Method("has_key", new FunctionType([r, self.STR], self.BOOL)),
+                new Method("length", new FunctionType([r], self.INT)),
+                new Method("set", new FunctionType([r, self.STR, arg], null)),
+            ])
         else:
             assert(false)
 

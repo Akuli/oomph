@@ -1,0 +1,130 @@
+import "<stdlib>/io.oomph" as io
+
+class ShitEntry(Str key, Str value)
+class ShitMapping(List[ShitEntry] entries):
+    meth set(Str key, Str value):
+        foreach entry of self.entries:
+            if entry.key == key:
+                entry.value = value
+                return
+        self.entries.push(new ShitEntry(key, value))
+
+    meth get(Str key) -> Str | null:
+        foreach entry of self.entries:
+            if entry.key == key:
+                return entry.value
+        return null
+
+    meth delete(Str key) -> Bool:
+        foreach entry of self.entries:
+            if entry.key == key:
+                self.entries.delete_only(entry)
+                return true
+        return false
+
+    meth keys() -> List[Str]:
+        return [foreach entry of self.entries: entry.key]
+
+    meth length() -> Int:
+        return self.entries.length()
+
+
+#class Mapping(List[Entry | null] entries, Int item_count):
+#    meth delete(Str key) -> Bool:
+#        let n = self.entries.length()   # TODO: get rid of this?
+#        if n == 0:
+#            return false
+#
+#        let i = hash(key) mod n
+#        while true:
+#            if self.entries.get(i) == null:
+#                return false
+#            if (self.entries.get(i) as not null).key == key:
+#                break
+#            i = i+1 mod n
+#
+#        self.entries.set(i, null)
+#        self.item_count = self.item_count - 1
+#
+#        # Delete and add back everything that might rely on jumping over the item at i
+#        for let k = i+1 mod n; self.entries.get(k) != null; k = k+1 mod n:
+#            self.add_entry(self.entries.set(k, null) as not null, false)
+#        return true
+#
+#    meth keys() -> List[Str]:
+#        let result = []
+#        foreach entry of self.entries:
+#            if entry != null:
+#                result.push((entry as not null).key)
+#        return result
+
+
+func pow(Int a, Int b) -> Int:
+    assert(b >= 0)
+    let result = 1
+    for let i = 0; i < b; i = i+1:
+        result = result * a
+    return result
+
+
+class PRNG(Int state, List[Str] strings):
+    meth get_number(Int range_end) -> Int:
+        # from linux rand(3) man page
+        # sticking to mod 32 because oomph doesn't have unsigneds
+        let new_state = self.state*1103515245 + 12345
+        assert(new_state >= 0)
+        self.state = new_state mod pow(2, 32)
+        return self.state mod range_end
+
+    meth get_string() -> Str:
+        return self.strings.get(self.get_number(self.strings.length()))
+
+
+func ensure_lists_contain_same_items(List[Str] a, List[Str] b):
+    b = b.reversed().reversed()  # make copy, lol
+    foreach item of a:
+        b.delete_first(item)
+    assert(b == [])
+
+func get_strings() -> List[Str]:
+    let result = []
+    foreach word of io::read_file("self_hosted/ast2ir.oomph").replace("\n", " ").split(" "):
+        if word != "":
+            result.push(word)
+    return result
+
+
+export func main():
+    let prng = new PRNG(1234, get_strings())
+    let n = 8  # number of buckets
+
+    let n = 3000
+    let mapping1 = new Mapping[Str]()
+    let mapping2 = new ShitMapping([])
+
+    for let i = 0; i < n; i = i+1:
+        let operation = prng.get_number(3)
+
+        if operation == 0:
+            # Set
+            let key = prng.get_string()
+            let value = prng.get_string()
+            mapping1.set(key, value)
+            mapping2.set(key, value)
+        elif operation == 1:
+            # Get
+            let key = prng.get_string()
+            if mapping2.get(key) == null:
+                assert(not mapping1.has_key(key))
+            else:
+                assert(mapping1.has_key(key))
+                assert(mapping1.get(key) == (mapping2.get(key) as not null))
+#        elif operation == 2:
+#            # Delete
+#            let key = prng.get_string()
+#            assert(mapping1.delete(key) == mapping2.delete(key))
+
+        assert(mapping1.length() == mapping2.length())
+#        ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
+
+    print("ok")
