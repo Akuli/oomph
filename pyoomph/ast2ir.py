@@ -815,18 +815,6 @@ class _FunctionOrMethodConverter:
                 raise NotImplementedError(ins)
 
 
-def _create_pointers_equal_method(classtype: Type) -> ir.MethodDef:
-    self_var = ir.LocalVariable(classtype)
-    other_var = ir.LocalVariable(classtype)
-    result_var = ir.LocalVariable(BOOL)
-    return ir.MethodDef(
-        "equals",
-        classtype.methods["equals"],
-        [self_var, other_var],
-        [ir.PointersEqual(self_var, other_var, result_var), ir.Return(result_var)],
-    )
-
-
 class _FileConverter:
     def __init__(self, path: pathlib.Path, symbols: List[ir.Symbol]) -> None:
         self.path = path
@@ -894,14 +882,10 @@ class _FileConverter:
                     self._types[name] = symbol.value
 
         elif isinstance(top_declaration, ast.ClassDef):
-            classtype = Type(
-                top_declaration.name,
-                True,
-                self.path,
-                create_to_string_method=(
-                    "to_string" not in (method.name for method in top_declaration.body)
-                ),
-            )
+            methods_to_create = {"to_string", "equals"} - {
+                method.name for method in top_declaration.body
+            }
+            classtype = Type(top_declaration.name, True, self.path, methods_to_create)
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype
 
@@ -950,9 +934,6 @@ class _FileConverter:
                 (self.get_type(typ), nam) for typ, nam in top_declaration.members
             )
             classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
-
-            if "equals" not in (method.name for method in top_declaration.body):
-                classtype.methods["equals"] = FunctionType([classtype, classtype], BOOL)
 
             for method_def in top_declaration.body:
                 method_def.args.insert(0, (ast.NamedType(classtype.name), "self"))
@@ -1007,16 +988,10 @@ class _FileConverter:
 
         if isinstance(top_declaration, ast.ClassDef):
             classtype = self._types[top_declaration.name]
-
-            typed_method_defs: List[ir.ToplevelDeclaration] = []
-            if "equals" not in (method.name for method in top_declaration.body):
-                typed_method_defs.append(_create_pointers_equal_method(classtype))
-
-            for method_def in top_declaration.body:
-                typed_def = self._func_or_meth_step4(method_def, classtype)
-                assert isinstance(typed_def, ir.MethodDef)
-                typed_method_defs.append(typed_def)
-            return typed_method_defs
+            return [
+                self._func_or_meth_step4(method_def, classtype)
+                for method_def in top_declaration.body
+            ]
 
         return []
 
