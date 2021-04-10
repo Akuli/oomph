@@ -15,48 +15,18 @@ class ShitMapping(List[ShitEntry] entries):
                 return entry.value
         return null
 
-    meth delete(Str key) -> Bool:
+    meth delete(Str key):
         foreach entry of self.entries:
             if entry.key == key:
                 self.entries.delete_only(entry)
-                return true
-        return false
+                return
+        assert(false)
 
     meth keys() -> List[Str]:
         return [foreach entry of self.entries: entry.key]
 
     meth length() -> Int:
         return self.entries.length()
-
-
-#class Mapping(List[Entry | null] entries, Int item_count):
-#    meth delete(Str key) -> Bool:
-#        let n = self.entries.length()   # TODO: get rid of this?
-#        if n == 0:
-#            return false
-#
-#        let i = hash(key) mod n
-#        while true:
-#            if self.entries.get(i) == null:
-#                return false
-#            if (self.entries.get(i) as not null).key == key:
-#                break
-#            i = i+1 mod n
-#
-#        self.entries.set(i, null)
-#        self.item_count = self.item_count - 1
-#
-#        # Delete and add back everything that might rely on jumping over the item at i
-#        for let k = i+1 mod n; self.entries.get(k) != null; k = k+1 mod n:
-#            self.add_entry(self.entries.set(k, null) as not null, false)
-#        return true
-#
-#    meth keys() -> List[Str]:
-#        let result = []
-#        foreach entry of self.entries:
-#            if entry != null:
-#                result.push((entry as not null).key)
-#        return result
 
 
 func pow(Int a, Int b) -> Int:
@@ -119,10 +89,14 @@ export func main():
             else:
                 assert(mapping1.has_key(key))
                 assert(mapping1.get(key) == (mapping2.get(key) as not null))
-#        elif operation == 2:
-#            # Delete
-#            let key = prng.get_string()
-#            assert(mapping1.delete(key) == mapping2.delete(key))
+        elif operation == 2:
+            # Delete
+            let key = prng.get_string()
+            if key in mapping2.keys():
+                mapping1.delete(key)
+                mapping2.delete(key)
+            else:
+                assert(not mapping1.has_key(key))
 
         assert(mapping1.length() == mapping2.length())
 #        ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())

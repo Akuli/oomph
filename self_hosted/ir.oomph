@@ -247,6 +247,7 @@ export class Builtins(
             ])
         elif generik == self.MAPPING:
             result.methods.push_all([
+                new Method("delete", new FunctionType([r, self.STR], null)),
                 new Method("get", new FunctionType([r, self.STR], arg)),
                 new Method("has_key", new FunctionType([r, self.STR], self.BOOL)),
                 new Method("length", new FunctionType([r], self.INT)),

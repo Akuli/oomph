@@ -18,7 +18,7 @@ TYPE CONSTRUCTOR(void)
 void DESTRUCTOR(void *ptr)
 {
 	TYPE map = ptr;
-	for (int64_t i = 0; i < map->nentries; i++) {
+	for (size_t i = 0; i < map->nentries; i++) {
 		if (map->entries[i].hash != 0) {
 			string_decref(map->entries[i].key);
 			DECREF_ITEM(map->entries[i].value);
@@ -28,9 +28,10 @@ void DESTRUCTOR(void *ptr)
 	free(map);
 }
 
-unsigned int hash(struct class_Str s)
+uint32_t hash(struct class_Str s)
 {
 	// FIXME
+	assert(s.nbytes != 0);
 	return s.nbytes;
 }
 
@@ -91,8 +92,7 @@ bool METHOD(has_key)(TYPE map, struct class_Str key)
 {
 	// avoid % 0
 	if (map->len != 0) {
-		unsigned h = hash(key);
-		assert(h != 0);
+		uint32_t h = hash(key);
 		for (size_t i = h % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 		{
 			Entry e = map->entries[i];
@@ -107,7 +107,7 @@ ITEMTYPE METHOD(get)(TYPE map, struct class_Str key)
 {
 	// avoid % 0
 	if (map->len != 0) {
-		unsigned h = hash(key);
+		uint32_t h = hash(key);
 		for (size_t i = h % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 		{
 			Entry e = map->entries[i];
@@ -118,8 +118,39 @@ ITEMTYPE METHOD(get)(TYPE map, struct class_Str key)
 		}
 	}
 
-	// TODO: somehow return optional
-	panic_printf("key not found from mapping");
+	panic_printf("key not found from mapping: %s", string_to_cstr(key));
+}
+
+void METHOD(delete)(TYPE map, struct class_Str key)
+{
+	// avoid % 0
+	if (map->len == 0)
+		goto error404;
+
+	uint32_t h = hash(key);
+	size_t i = h % map->nentries;
+	for (; map->entries[i].hash != h || !ITEMTYPE_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
+	{
+		if (map->entries[i].hash == 0)
+			goto error404;
+	}
+
+	string_decref(map->entries[i].key);
+	DECREF_ITEM(map->entries[i].value);
+	map->entries[i].hash = 0;
+	map->len--;
+
+	// Delete and add back everything that might rely on jumping over the item at i
+	for (size_t k = (i+1) % map->nentries; map->entries[k].hash != 0; k = (k+1) % map->nentries)
+	{
+		Entry e = map->entries[k];
+		map->entries[k].hash = 0;
+		add_entry(map, e, false, false);
+	}
+	return;
+
+error404:
+	panic_printf("key not found from mapping: %s", string_to_cstr(key));
 }
 
 int64_t METHOD(length)(TYPE map)
