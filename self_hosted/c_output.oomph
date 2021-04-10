@@ -414,231 +414,238 @@ class FilePair(
 
         return varname
 
-    # Must not be called multiple times for the same FilePair
-    # FIXME: split this up into smaller funcs
-    meth define_type(ir::Type type):
-        assert(self.struct == null)
+    meth define_union(ir::UnionType union):
+        # TODO: enumerate
+        let n = union.type_members.length()
 
+        let member_cnames = [foreach member of union.type_members: self.session.get_type_c_name(member)]
+        let to_string_cases = [
+            for let i = 0; i < n; i = i+1:
+                """
+                case {i}:
+                    valstr = meth_{member_cnames.get(i)}_to_string(obj.val.item{i});
+                    break;
+                """
+        ].join("")
+        let equals_cases = [
+            for let i = 0; i < n; i = i+1:
+                """
+                case {i}:
+                    return meth_{member_cnames.get(i)}_equals(a.val.item{i}, b.val.item{i});
+                """
+        ].join("")
+
+        # TODO: can decls be emitted automatically?
+        self.function_decls = self.function_decls + """
+        struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
+        bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
+        """
+
+        let type_name_code = self.emit_string(ir::type_name(union))
+        self.function_defs = self.function_defs + """
+        struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
+        \{
+            struct class_Str valstr;
+            switch(obj.membernum) \{
+                {to_string_cases}
+                default:
+                    panic_printf(
+                        "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                        string_to_cstr({type_name_code}), (int)obj.membernum);
+            \}
+
+            struct class_Str res = {self.emit_string(ir::type_name(union))};
+            string_incref(res);
+            oomph_string_concat_inplace_cstr(&res, "(");
+            oomph_string_concat_inplace(&res, valstr);
+            oomph_string_concat_inplace_cstr(&res, ")");
+            string_decref(valstr);
+            return res;
+        \}
+
+        bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
+        \{
+            if (a.membernum != b.membernum)
+                return false;
+            switch(a.membernum) \{
+                {equals_cases}
+                default:
+                    panic_printf(
+                        "INTERNAL OOMPH ERROR: invalid %s membernum %d",
+                        string_to_cstr({type_name_code}), (int)a.membernum);
+            \}
+        \}
+        """
+
+        # To incref/decref unions, we need to know the value of membernum
+        # and incref/decref the correct member of the union. Union-specific
+        # functions handle that.
+        let increfs = [for let i = 0; i < n; i = i+1: self.session.emit_incref("obj.val.item{i}", union.type_members.get(i))]
+        let decrefs = [for let i = 0; i < n; i = i+1: self.session.emit_decref("obj.val.item{i}", union.type_members.get(i))]
+        let incref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {increfs.get(i)}; break;\n"].join("")
+        let decref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {decrefs.get(i)}; break;\n"].join("")
+
+        self.function_decls = self.function_decls + """
+        void incref_{self.id}(struct class_{self.id} obj);
+        void decref_{self.id}(struct class_{self.id} obj);
+        """
+        self.function_defs = self.function_defs + """
+        void incref_{self.id}(struct class_{self.id} obj) \{
+            switch(obj.membernum) \{
+                {incref_cases}
+                default:
+                    assert(0);
+            \}
+        \}
+        void decref_{self.id}(struct class_{self.id} obj) \{
+            switch(obj.membernum) \{
+                case -1:   // variable not in use (see UnSet)
+                    break;
+                {decref_cases}
+                default:
+                    assert(0);
+            \}
+        \}
+        """
+
+        let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
+        assert(self.struct == null)
+        self.struct = """
+        struct class_{self.id} \{
+            union \{
+                {union_members}
+            \} val;
+            short membernum;
+        \};
+        """ as Str | null
+
+    meth define_generic_type(ir::BasicType type):
+        assert((type.generic_source as not null).generik == self.session.builtins.LIST)
+        let itemtype = (type.generic_source as not null).arg
+        let macros = [
+            ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(type)}"],
+            ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(type)}"],
+            ["TYPE", "struct class_{self.session.get_type_c_name(type)} *"],
+            ["TYPE_STRUCT", "class_{self.session.get_type_c_name(type)}"],
+            ["METHOD(name)", "meth_{self.session.get_type_c_name(type)}_##name"],
+            ["ITEMTYPE", self.emit_type_custom(itemtype, false)],
+            ["ITEMTYPE_METHOD(name)", "meth_{self.session.get_type_c_name(itemtype)}_##name"],
+            ["INCREF_ITEM(val)", self.session.emit_incref("(val)", itemtype)],
+            ["DECREF_ITEM(val)", self.session.emit_decref("(val)", itemtype)],
+        ]
+        if itemtype == self.session.builtins.STR:
+            macros.push(["ITEMTYPE_IS_STRING", "1"])
+        else:
+            macros.push(["ITEMTYPE_IS_STRING", "0"])
+
+        let defines = "\n"
+        let undefs = "\n"
+        foreach pair of macros:
+            let name_without_args = pair.first().split("(").first()
+            defines = defines + "#define {pair.first()} {pair.last()}\n"
+            undefs = undefs + "#undef {name_without_args}\n"
+
+        assert(self.struct == null)
+        self.struct = (
+            defines + io::read_file("lib/generic/list.h") + undefs
+        ) as Str | null
+
+        foreach method of ir::get_methods(type, self.session.builtins):
+            self.define_function(
+                "meth_{self.session.get_type_c_name(type)}_{method.name}",
+                method.functype,
+                null,
+                null,
+            )
+
+        self.function_decls = (
+            self.function_decls
+            + defines
+            + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);"
+            + undefs
+        )
+        self.function_defs = (
+            self.function_defs
+            + defines
+            + io::read_file("lib/generic/list.c")
+            + undefs
+        )
+
+    meth define_simple_type(ir::BasicType type):
+        let struct_members = [foreach m of type.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")
+        let constructor_args = [foreach m of type.members: "{self.emit_type(m.type)} arg_{m.name}"].join(",")
+        if constructor_args == "":
+            constructor_args = "void"
+        let member_assignments = [foreach m of type.members: "obj->memb_{m.name} = arg_{m.name};\n"].join("")
+        let member_increfs = [foreach m of type.members: self.session.emit_incref("obj->memb_{m.name}", m.type) + ";\n"].join("")
+        let member_decrefs = [foreach m of type.members: self.session.emit_decref("obj->memb_{m.name}", m.type) + ";\n"].join("")
+
+        assert(self.struct == null)
+        self.struct = """
+        struct class_{self.id} \{
+            REFCOUNT_HEADER
+            {struct_members}
+        \};
+        """ as Str | null
+        self.function_decls = self.function_decls + """
+        {self.emit_type(type)} ctor_{self.id}({constructor_args});
+        void dtor_{self.id}(void *ptr);
+        """
+        self.function_defs = self.function_defs + """
+        {self.emit_type(type)} ctor_{self.id}({constructor_args})
+        \{
+            {self.emit_type(type)} obj = malloc(sizeof(*obj));
+            assert(obj);
+            obj->refcount = 1;
+            {member_assignments}
+            {member_increfs}
+            return obj;
+        \}
+
+        void dtor_{self.id}(void *ptr)
+        \{
+            struct class_{self.id} *obj = ptr;
+            {member_decrefs}
+            free(obj);
+        \}
+        """
+
+        if type.create_to_string_method:
+            self.function_decls = self.function_decls + """
+            struct class_Str meth_{self.id}_to_string({self.emit_type(type)} obj);
+            """
+            let concats = [
+                foreach m of type.members:
+                    """
+                    tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
+                    oomph_string_concat_inplace(&res, tmp);
+                    string_decref(tmp);
+                    """
+            ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
+            self.function_defs = self.function_defs + """
+            struct class_Str meth_{self.id}_to_string({self.emit_type(type)} self)
+            \{
+                struct class_Str res = {self.emit_string(type.name)};
+                struct class_Str tmp;
+                oomph_string_concat_inplace_cstr(&res, "(");
+                {concats}
+                oomph_string_concat_inplace_cstr(&res, ")");
+                return res;
+            \}
+            """
+
+    # Must not be called multiple times for the same FilePair
+    meth define_type(ir::Type type):
         switch type:
             case ir::AutoType | ir::FunctionType _:
                 assert(false)
             case ir::UnionType union:
-                # TODO: enumerate
-                let n = union.type_members.length()
-
-                let member_cnames = [foreach member of union.type_members: self.session.get_type_c_name(member)]
-                let to_string_cases = [
-                    for let i = 0; i < n; i = i+1:
-                        """
-                        case {i}:
-                            valstr = meth_{member_cnames.get(i)}_to_string(obj.val.item{i});
-                            break;
-                        """
-                ].join("")
-                let equals_cases = [
-                    for let i = 0; i < n; i = i+1:
-                        """
-                        case {i}:
-                            return meth_{member_cnames.get(i)}_equals(a.val.item{i}, b.val.item{i});
-                        """
-                ].join("")
-
-                # TODO: can decls be emitted automatically?
-                self.function_decls = self.function_decls + """
-                struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
-                bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
-                """
-
-                let type_name_code = self.emit_string(ir::type_name(union))
-                self.function_defs = self.function_defs + """
-                struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
-                \{
-                    struct class_Str valstr;
-                    switch(obj.membernum) \{
-                        {to_string_cases}
-                        default:
-                            panic_printf(
-                                "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                                string_to_cstr({type_name_code}), (int)obj.membernum);
-                    \}
-
-                    struct class_Str res = {self.emit_string(ir::type_name(union))};
-                    string_incref(res);
-                    oomph_string_concat_inplace_cstr(&res, "(");
-                    oomph_string_concat_inplace(&res, valstr);
-                    oomph_string_concat_inplace_cstr(&res, ")");
-                    string_decref(valstr);
-                    return res;
-                \}
-
-                bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
-                \{
-                    if (a.membernum != b.membernum)
-                        return false;
-                    switch(a.membernum) \{
-                        {equals_cases}
-                        default:
-                            panic_printf(
-                                "INTERNAL OOMPH ERROR: invalid %s membernum %d",
-                                string_to_cstr({type_name_code}), (int)a.membernum);
-                    \}
-                \}
-                """
-
-                # To incref/decref unions, we need to know the value of membernum
-                # and incref/decref the correct member of the union. Union-specific
-                # functions handle that.
-                let increfs = [for let i = 0; i < n; i = i+1: self.session.emit_incref("obj.val.item{i}", union.type_members.get(i))]
-                let decrefs = [for let i = 0; i < n; i = i+1: self.session.emit_decref("obj.val.item{i}", union.type_members.get(i))]
-                let incref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {increfs.get(i)}; break;\n"].join("")
-                let decref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {decrefs.get(i)}; break;\n"].join("")
-
-                self.function_decls = self.function_decls + """
-                void incref_{self.id}(struct class_{self.id} obj);
-                void decref_{self.id}(struct class_{self.id} obj);
-                """
-                self.function_defs = self.function_defs + """
-                void incref_{self.id}(struct class_{self.id} obj) \{
-                    switch(obj.membernum) \{
-                        {incref_cases}
-                        default:
-                            assert(0);
-                    \}
-                \}
-                void decref_{self.id}(struct class_{self.id} obj) \{
-                    switch(obj.membernum) \{
-                        case -1:   // variable not in use (see UnSet)
-                            break;
-                        {decref_cases}
-                        default:
-                            assert(0);
-                    \}
-                \}
-                """
-
-                let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
-                self.struct = """
-                struct class_{self.id} \{
-                    union \{
-                        {union_members}
-                    \} val;
-                    short membernum;
-                \};
-                """ as Str | null
-
+                self.define_union(union)
             case ir::BasicType basictype:
                 if basictype.generic_source == null:
-                    let struct_members = [foreach m of basictype.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")
-                    let constructor_args = [foreach m of basictype.members: "{self.emit_type(m.type)} arg_{m.name}"].join(",")
-                    if constructor_args == "":
-                        constructor_args = "void"
-                    let member_assignments = [foreach m of basictype.members: "obj->memb_{m.name} = arg_{m.name};\n"].join("")
-                    let member_increfs = [foreach m of basictype.members: self.session.emit_incref("obj->memb_{m.name}", m.type) + ";\n"].join("")
-                    let member_decrefs = [foreach m of basictype.members: self.session.emit_decref("obj->memb_{m.name}", m.type) + ";\n"].join("")
-
-                    self.struct = """
-                    struct class_{self.id} \{
-                        REFCOUNT_HEADER
-                        {struct_members}
-                    \};
-                    """ as Str | null
-                    self.function_decls = self.function_decls + """
-                    {self.emit_type(basictype)} ctor_{self.id}({constructor_args});
-                    void dtor_{self.id}(void *ptr);
-                    """
-                    self.function_defs = self.function_defs + """
-                    {self.emit_type(basictype)} ctor_{self.id}({constructor_args})
-                    \{
-                        {self.emit_type(basictype)} obj = malloc(sizeof(*obj));
-                        assert(obj);
-                        obj->refcount = 1;
-                        {member_assignments}
-                        {member_increfs}
-                        return obj;
-                    \}
-
-                    void dtor_{self.id}(void *ptr)
-                    \{
-                        struct class_{self.id} *obj = ptr;
-                        {member_decrefs}
-                        free(obj);
-                    \}
-                    """
-
-                    if basictype.create_to_string_method:
-                        self.function_decls = self.function_decls + """
-                        struct class_Str meth_{self.id}_to_string({self.emit_type(basictype)} obj);
-                        """
-                        let concats = [
-                            foreach m of basictype.members:
-                                """
-                                tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
-                                oomph_string_concat_inplace(&res, tmp);
-                                string_decref(tmp);
-                                """
-                        ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
-                        self.function_defs = self.function_defs + """
-                        struct class_Str meth_{self.id}_to_string({self.emit_type(basictype)} self)
-                        \{
-                            struct class_Str res = {self.emit_string(basictype.name)};
-                            struct class_Str tmp;
-                            oomph_string_concat_inplace_cstr(&res, "(");
-                            {concats}
-                            oomph_string_concat_inplace_cstr(&res, ")");
-                            return res;
-                        \}
-                        """
-
+                    self.define_simple_type(basictype)
                 else:
-                    assert((basictype.generic_source as not null).generik == self.session.builtins.LIST)
-                    let itemtype = (basictype.generic_source as not null).arg
-                    let macros = [
-                        ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(basictype)}"],
-                        ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(basictype)}"],
-                        ["TYPE", "struct class_{self.session.get_type_c_name(basictype)} *"],
-                        ["TYPE_STRUCT", "class_{self.session.get_type_c_name(basictype)}"],
-                        ["METHOD(name)", "meth_{self.session.get_type_c_name(basictype)}_##name"],
-                        ["ITEMTYPE", self.emit_type_custom(itemtype, false)],
-                        ["ITEMTYPE_METHOD(name)", "meth_{self.session.get_type_c_name(itemtype)}_##name"],
-                        ["INCREF_ITEM(val)", self.session.emit_incref("(val)", itemtype)],
-                        ["DECREF_ITEM(val)", self.session.emit_decref("(val)", itemtype)],
-                    ]
-                    if itemtype == self.session.builtins.STR:
-                        macros.push(["ITEMTYPE_IS_STRING", "1"])
-                    else:
-                        macros.push(["ITEMTYPE_IS_STRING", "0"])
-
-                    let defines = "\n"
-                    let undefs = "\n"
-                    foreach pair of macros:
-                        let name_without_args = pair.first().split("(").first()
-                        defines = defines + "#define {pair.first()} {pair.last()}\n"
-                        undefs = undefs + "#undef {name_without_args}\n"
-
-                    self.struct = (
-                        defines + io::read_file("lib/generic/list.h") + undefs
-                    ) as Str | null
-
-                    foreach method of ir::get_methods(basictype, self.session.builtins):
-                        self.define_function(
-                            "meth_{self.session.get_type_c_name(basictype)}_{method.name}",
-                            method.functype,
-                            null,
-                            null,
-                        )
-
-                    self.function_decls = (
-                        self.function_decls
-                        + defines
-                        + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);"
-                        + undefs
-                    )
-                    self.function_defs = (
-                        self.function_defs
-                        + defines
-                        + io::read_file("lib/generic/list.c")
-                        + undefs
-                    )
+                    self.define_generic_type(basictype)
 
     meth emit_toplevel_declaration(ir::ToplevelDeclaration top_declaration):
         switch top_declaration:
