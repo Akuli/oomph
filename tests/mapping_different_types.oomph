@@ -32,3 +32,9 @@ export func main():
     union_keys.set("foo", "bar")
     print(union_keys.get(null))
     print(union_keys.get("foo"))
+
+    print(int_keys)
+    print(bool_keys)
+    print(pointer_keys)
+    print(custom_eq_keys)
+    print(union_keys)

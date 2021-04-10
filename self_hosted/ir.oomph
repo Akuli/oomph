@@ -259,6 +259,7 @@ export class Builtins(
             result.methods.push_all([
                 new Method("delete", new FunctionType([r, keytype], null)),
                 new Method("get", new FunctionType([r, keytype], valtype)),
+                new Method("to_string", new FunctionType([r], self.STR)),
                 new Method("has_key", new FunctionType([r, keytype], self.BOOL)),
                 new Method("length", new FunctionType([r], self.INT)),
                 new Method("set", new FunctionType([r, keytype, valtype], null)),

@@ -169,6 +169,7 @@ class Generic:
             result.constructor_argtypes = []
             result.methods["delete"] = FunctionType([result, keytype], None)
             result.methods["get"] = FunctionType([result, keytype], valtype)
+            result.methods["to_string"] = FunctionType([result], STRING)
             result.methods["set"] = FunctionType([result, keytype, valtype], None)
             result.methods["has_key"] = FunctionType([result, keytype], BOOL)
             result.methods["length"] = FunctionType([result], INT)

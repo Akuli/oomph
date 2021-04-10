@@ -158,3 +158,28 @@ int64_t METHOD(length)(TYPE map)
 {
 	return (int64_t)map->len;
 }
+
+struct class_Str METHOD(to_string)(TYPE map)
+{
+	struct class_Str res = cstr_to_string("Mapping{");
+	bool first = true;
+	for (size_t i = 0; i < map->nentries; i++) {
+		Entry e = map->entries[i];
+		if (e.hash != 0) {
+			if (!first)
+				oomph_string_concat_inplace_cstr(&res, ", ");
+			first = false;
+
+			struct class_Str keystr = KEYTYPE_METHOD(to_string)(e.key);
+			struct class_Str valstr = VALUETYPE_METHOD(to_string)(e.value);
+			oomph_string_concat_inplace(&res, keystr);
+			oomph_string_concat_inplace_cstr(&res, ": ");
+			oomph_string_concat_inplace(&res, valstr);
+			string_decref(keystr);
+			string_decref(valstr);
+		}
+	}
+
+	oomph_string_concat_inplace_cstr(&res, "}");
+	return res;
+}
