@@ -168,11 +168,12 @@ class Generic:
             [keytype, valtype] = generic_args
             result.constructor_argtypes = []
             result.methods["delete"] = FunctionType([result, keytype], None)
+            result.methods["equals"] = FunctionType([result, result], BOOL)
             result.methods["get"] = FunctionType([result, keytype], valtype)
-            result.methods["to_string"] = FunctionType([result], STRING)
-            result.methods["set"] = FunctionType([result, keytype, valtype], None)
             result.methods["has_key"] = FunctionType([result, keytype], BOOL)
             result.methods["length"] = FunctionType([result], INT)
+            result.methods["set"] = FunctionType([result, keytype, valtype], None)
+            result.methods["to_string"] = FunctionType([result], STRING)
         else:
             raise NotImplementedError
         result.generic_origin = GenericSource(self, generic_args)

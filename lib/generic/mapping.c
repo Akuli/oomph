@@ -102,24 +102,31 @@ bool METHOD(has_key)(TYPE map, KEYTYPE key)
 	return false;
 }
 
+// TODO: use this for more stuff?
+static Entry *find(TYPE map, KEYTYPE key, uint32_t keyhash)
+{
+	// avoid % 0
+	if (map->len == 0)
+		return NULL;
+
+	for (size_t i = keyhash % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
+	{
+		if (map->entries[i].hash == keyhash && KEYTYPE_METHOD(equals)(map->entries[i].key, key))
+			return &map->entries[i];
+	}
+	return NULL;
+}
+
 #define ERROR(msg, key) panic_printf("%s: %s", (msg), string_to_cstr(KEYTYPE_METHOD(to_string)((key))))
 
 VALUETYPE METHOD(get)(TYPE map, KEYTYPE key)
 {
-	// avoid % 0
-	if (map->len != 0) {
-		uint32_t h = hash(key);
-		for (size_t i = h % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
-		{
-			Entry e = map->entries[i];
-			if (e.hash == h && KEYTYPE_METHOD(equals)(e.key, key)) {
-				INCREF_VALUE(e.value);
-				return e.value;
-			}
-		}
-	}
+	Entry *e = find(map, key, hash(key));
+	if (!e)
+		ERROR("Mapping.get(): key not found", key);
 
-	ERROR("Mapping.get(): key not found", key);
+	INCREF_VALUE(e->value);
+	return e->value;
 }
 
 void METHOD(delete)(TYPE map, KEYTYPE key)
@@ -182,4 +189,23 @@ struct class_Str METHOD(to_string)(TYPE map)
 
 	oomph_string_concat_inplace_cstr(&res, "}");
 	return res;
+}
+
+bool METHOD(equals)(TYPE a, TYPE b)
+{
+	if (a->len != b->len)
+		return false;
+
+	// Check that every key of a is also in b, and values match.
+	// No need to check in opposite direction, because lengths match.
+	for (size_t i = 0; i < a->nentries; i++) {
+		Entry aent = a->entries[i];
+		if (aent.hash != 0) {
+			Entry *bent = find(b, aent.key, aent.hash);
+			if (bent == NULL || !VALUETYPE_METHOD(equals)(aent.value, bent->value))
+				return false;
+		}
+	}
+
+	return true;
 }
