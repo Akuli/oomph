@@ -67,9 +67,10 @@ char *string_to_cstr(struct class_Str s)
 struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str2)
 {
 	assert(str1.offset + str1.nbytes <= str1.buf->len);
-	if (str1.offset + str1.nbytes == str1.buf->len && str1.offset <= str1.nbytes) {
+	if (str1.offset + str1.nbytes == str1.buf->len && str1.offset <= str1.nbytes && str1.buf->refcount != -1) {
 		// We can grow the buffer to fit str2 too
 		// Don't do this when str1 is tiny part at end of buf, see tests/huge_malloc_bug.oomph
+		// Also, avoid refcount==-1 strings, they are weird and should be removed
 		size_t newlen = str1.buf->len + str2.nbytes;
 		if (str1.buf->malloced) {
 			if (how_much_to_allocate(newlen) > how_much_to_allocate(str1.buf->len)) {
