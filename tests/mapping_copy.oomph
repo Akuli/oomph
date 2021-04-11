@@ -1,7 +1,0 @@
-export func main():
-    let a = new Mapping[Str, Int]()
-    a.set("foo", 1)
-    let b = a.copy()
-    b.set("bar", 2)
-    print(a)
-    print(b)

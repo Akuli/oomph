@@ -1,2 +1,0 @@
-Mapping{"foo": 1}
-Mapping{"bar": 2, "foo": 1}
