@@ -768,13 +768,13 @@ class _FunctionOrMethodConverter:
 
             elif isinstance(ins, ir.GetAttribute):
                 self._get_rid_of_auto_in_var(ins.obj)
-                if isinstance(ins.result.type, AutoType):
+                if isinstance(ins.attribute_var.type, AutoType):
                     self._resolve_autotype(
-                        ins.result.type,
+                        ins.attribute_var.type,
                         self._get_attribute_type(ins.obj.type, ins.attribute),
                     )
                 else:
-                    self._get_rid_of_auto_in_var(ins.result)
+                    self._get_rid_of_auto_in_var(ins.attribute_var)
 
         for ins in self.code:
             if isinstance(
@@ -811,11 +811,8 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.InstantiateUnion):
                 self._get_rid_of_auto_in_var(ins.result)
                 self._get_rid_of_auto_in_var(ins.value)
-            elif isinstance(ins, ir.GetAttribute):
-                self._get_rid_of_auto_in_var(ins.result)
-                self._get_rid_of_auto_in_var(ins.obj)
-            elif isinstance(ins, ir.SetAttribute):
-                self._get_rid_of_auto_in_var(ins.value)
+            elif isinstance(ins, (ir.SetAttribute, ir.GetAttribute)):
+                self._get_rid_of_auto_in_var(ins.attribute_var)
                 self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)

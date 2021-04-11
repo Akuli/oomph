@@ -13,7 +13,7 @@ from pyoomph.types import (
     INT,
     LIST,
     MAPPING,
-    MAPPING_ENTRY,
+    MAPPING_ITEM,
     NULL_TYPE,
     STRING,
     AutoType,
@@ -107,7 +107,7 @@ class _FunctionEmitter:
 
         if isinstance(ins, (ir.SetAttribute, ir.GetAttribute)):
             op = "->" if is_pointer(ins.obj.type) else "."
-            var = self.emit_var(ins.result)
+            var = self.emit_var(ins.attribute_var)
             attrib = self.emit_var(ins.obj) + op + "memb_" + ins.attribute
 
             if isinstance(ins, ir.SetAttribute):
@@ -140,7 +140,7 @@ class _FunctionEmitter:
                 return f"{self.emit_var(ins.var)}.buf = NULL;\n"
             if (
                 ins.var.type.generic_origin is not None
-                and ins.var.type.generic_origin.generic is MAPPING_ENTRY
+                and ins.var.type.generic_origin.generic is MAPPING_ITEM
             ):
                 return f"{self.emit_var(ins.var)}.hash = 0;\n"
             if isinstance(ins.var.type, UnionType):
@@ -249,7 +249,7 @@ _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generi
 _generic_paths = {
     LIST: (_generic_dir / "list.c", _generic_dir / "list.h"),
     MAPPING: (_generic_dir / "mapping.c", _generic_dir / "mapping.h"),
-    MAPPING_ENTRY: (_generic_dir / "mapping_entry.c", _generic_dir / "mapping_entry.h"),
+    MAPPING_ITEM: (_generic_dir / "mapping_item.c", _generic_dir / "mapping_item.h"),
 }
 
 
@@ -259,7 +259,7 @@ def is_pointer(the_type: Type) -> bool:
         and not isinstance(the_type, UnionType)
         and (
             the_type.generic_origin is None
-            or the_type.generic_origin.generic is not MAPPING_ENTRY
+            or the_type.generic_origin.generic is not MAPPING_ITEM
         )
     )
 
@@ -562,17 +562,17 @@ class _FilePair:
             macrotypes = [("LIST", the_type), ("ITEM", itemtype)]
         elif the_type.generic_origin.generic == MAPPING:
             keytype, valuetype = the_type.generic_origin.args
-            entrytype = MAPPING_ENTRY.get_type([keytype, valuetype])
+            entrytype = MAPPING_ITEM.get_type([keytype, valuetype])
             macrotypes = [
                 ("MAPPING", the_type),
                 ("KEY", keytype),
                 ("VALUE", valuetype),
-                ("ENTRY", entrytype),
-                ("ENTRY_LIST", LIST.get_type([entrytype])),
+                ("ITEM", entrytype),
+                ("ITEM_LIST", LIST.get_type([entrytype])),
             ]
-        elif the_type.generic_origin.generic == MAPPING_ENTRY:
+        elif the_type.generic_origin.generic == MAPPING_ITEM:
             keytype, valuetype = the_type.generic_origin.args
-            macrotypes = [("KEY", keytype), ("VALUE", valuetype), ("ENTRY", the_type)]
+            macrotypes = [("KEY", keytype), ("VALUE", valuetype), ("ITEM", the_type)]
         else:
             raise RuntimeError(f"unknown generic: {the_type.generic_origin.generic}")
 

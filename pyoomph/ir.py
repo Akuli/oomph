@@ -120,7 +120,7 @@ class VarCpy(Instruction):
 @dataclass(eq=False)
 class GetAttribute(Instruction):
     obj: LocalVariable
-    result: LocalVariable
+    attribute_var: LocalVariable
     attribute: str
 
 
@@ -128,10 +128,10 @@ class GetAttribute(Instruction):
 class SetAttribute(Instruction):
     obj: LocalVariable
     attribute: str
-    value: LocalVariable
+    attribute_var: LocalVariable
 
     def __post_init__(self) -> None:
-        assert (self.value.type, self.attribute) in self.obj.type.members
+        assert (self.attribute_var.type, self.attribute) in self.obj.type.members
 
 
 # Currently you can't use a function, method or ctor without immediately calling it

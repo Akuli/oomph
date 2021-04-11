@@ -167,7 +167,7 @@ class Generic:
             result.methods["join"] = FunctionType([result, STRING], STRING)
         elif self is MAPPING:
             [keytype, valtype] = generic_args
-            itemlist = LIST.get_type([MAPPING_ENTRY.get_type([keytype, valtype])])
+            itemlist = LIST.get_type([MAPPING_ITEM.get_type([keytype, valtype])])
             result.constructor_argtypes = []
             result.methods["copy"] = FunctionType([result], result)
             result.methods["delete"] = FunctionType([result, keytype], None)
@@ -178,7 +178,7 @@ class Generic:
             result.methods["length"] = FunctionType([result], INT)
             result.methods["set"] = FunctionType([result, keytype, valtype], None)
             result.methods["to_string"] = FunctionType([result], STRING)
-        elif self is MAPPING_ENTRY:
+        elif self is MAPPING_ITEM:
             [keytype, valtype] = generic_args
             result.members.append((keytype, "key"))
             result.members.append((valtype, "value"))
@@ -194,7 +194,7 @@ class Generic:
 
 LIST = Generic("List")
 MAPPING = Generic("Mapping")
-MAPPING_ENTRY = Generic("MappingItem")
+MAPPING_ITEM = Generic("MappingItem")
 
 
 @dataclass(eq=False)

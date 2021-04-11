@@ -1,28 +1,28 @@
-void ENTRY_DECREF(ENTRY e)
+void ITEM_INCREF(ITEM it)
 {
-	if (e.hash != 0) {
-		KEY_DECREF(e.memb_key);
-		VALUE_DECREF(e.memb_value);
+	if (it.hash != 0) {
+		KEY_INCREF(it.memb_key);
+		VALUE_INCREF(it.memb_value);
 	}
 }
 
-void ENTRY_INCREF(ENTRY e)
+void ITEM_DECREF(ITEM it)
 {
-	if (e.hash != 0) {
-		KEY_INCREF(e.memb_key);
-		VALUE_INCREF(e.memb_value);
+	if (it.hash != 0) {
+		KEY_DECREF(it.memb_key);
+		VALUE_DECREF(it.memb_value);
 	}
 }
 
-bool ENTRY_METHOD(equals)(ENTRY a, ENTRY b)
+bool ITEM_METHOD(equals)(ITEM a, ITEM b)
 {
 	return a.hash == b.hash && KEY_METHOD(equals)(a.memb_key, b.memb_key) && VALUE_METHOD(equals)(a.memb_value, b.memb_value);
 }
 
-struct class_Str ENTRY_METHOD(to_string)(ENTRY e)
+struct class_Str ITEM_METHOD(to_string)(ITEM it)
 {
-	struct class_Str keystr = KEY_METHOD(to_string)(e.memb_key);
-	struct class_Str valstr = VALUE_METHOD(to_string)(e.memb_value);
+	struct class_Str keystr = KEY_METHOD(to_string)(it.memb_key);
+	struct class_Str valstr = VALUE_METHOD(to_string)(it.memb_value);
 
 	struct class_Str res = cstr_to_string("MappingItem(");
 	oomph_string_concat_inplace(&res, keystr);
