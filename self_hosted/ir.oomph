@@ -220,6 +220,7 @@ export class Builtins(
             let arg = args.first()
             result.methods.push_all([
                 new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
+                new Method("copy", new FunctionType([r], r)),
                 new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
                 new Method("delete_first", new FunctionType([r, arg], null)),
                 new Method("delete_last", new FunctionType([r, arg], null)),
@@ -257,6 +258,7 @@ export class Builtins(
                     + "{type_name(keytype)} doesn't have a .hash() method"
                 )
             result.methods.push_all([
+                new Method("copy", new FunctionType([r], r)),
                 new Method("delete", new FunctionType([r, keytype], null)),
                 new Method("equals", new FunctionType([r, r], self.BOOL)),
                 new Method("get", new FunctionType([r, keytype], valtype)),
@@ -407,7 +409,7 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
             assert(false)
 
         case BasicType basictype:
-            let result = basictype.methods.reversed().reversed()  # TODO: better way to copy
+            let result = basictype.methods.copy()
             foreach addition of basictype.methods_to_create:
                 if addition == "to_string":
                     result.push(new Method("to_string", new FunctionType([type], builtins.STR)))

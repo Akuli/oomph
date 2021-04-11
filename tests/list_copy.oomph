@@ -1,0 +1,7 @@
+export func main():
+    # '+' between strings makes them reference-counted
+    let foo = ["a" + "b", "c" + "d"]
+    let bar = foo.copy()
+    bar.push("e" + "f")
+    print(foo)
+    print(bar)

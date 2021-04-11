@@ -139,6 +139,7 @@ class Generic:
             result.constructor_argtypes = []
             # TODO: hide __contains better?
             result.methods["__contains"] = FunctionType([result, itemtype], BOOL)
+            result.methods["copy"] = FunctionType([result], result)
             result.methods["delete_at_index"] = FunctionType([result, INT], itemtype)
             result.methods["delete_slice"] = FunctionType([result, INT, INT], result)
             result.methods["ends_with"] = FunctionType([result, result], BOOL)
@@ -167,6 +168,7 @@ class Generic:
         elif self is MAPPING:
             [keytype, valtype] = generic_args
             result.constructor_argtypes = []
+            result.methods["copy"] = FunctionType([result], result)
             result.methods["delete"] = FunctionType([result, keytype], None)
             result.methods["equals"] = FunctionType([result, result], BOOL)
             result.methods["get"] = FunctionType([result, keytype], valtype)
