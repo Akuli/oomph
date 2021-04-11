@@ -29,7 +29,7 @@ export func main():
     print(a == b)
     print(b == a)
 
-    print("Third key")
+    print("Third key:")
     a.set("z", 3)
     print(a == b)
     print(b == a)
