@@ -1,0 +1,4 @@
+import "<stdlib>/process.oomph" as process
+
+export func main():
+    process::run([])

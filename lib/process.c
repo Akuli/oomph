@@ -1,10 +1,11 @@
 #include "oomph.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <spawn.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
 
 // TODO: this is copy/pasted from generated c code, not ideal
 struct class_List_Str {
@@ -15,9 +16,12 @@ struct class_List_Str {
 	struct class_Str *data;
 };
 
+extern char **environ;
+
 int64_t oomph_run_subprocess(void *args)
 {
 	struct class_List_Str *arglst = args;
+	assert(arglst->len != 0);
 
 	char **argarr = malloc(sizeof(argarr[0]) * (arglst->len + 1));
 	assert(argarr);
@@ -25,22 +29,17 @@ int64_t oomph_run_subprocess(void *args)
 		argarr[i] = string_to_cstr(arglst->data[i]);
 	argarr[arglst->len] = NULL;
 
-	pid_t pid = fork();
-	switch(pid) {
-		case -1:
-			panic_printf_errno("fork() failed");
-		case 0:  // child
-			execvp(argarr[0], argarr);
-			// It shouldn't return, if it returns anyway then it failed
-			// FIXME: this doesn't abort the parent process
-			panic_printf_errno("execvp() failed");
-		default:  // parent
-			break;
+	pid_t pid;
+	int ret = posix_spawnp(&pid, argarr[0], NULL, NULL, argarr, environ);
+	if (ret != 0) {
+		errno = ret;
+		panic_printf_errno("posix_spawnp() failed");
 	}
 
 	for (int i = 0; i < arglst->len; i++)
 		free(argarr[i]);
 	free(argarr);
+
 	int wstatus;
 	if (waitpid(pid, &wstatus, 0) <= 0)
 		panic_printf("waitpid() failed");
