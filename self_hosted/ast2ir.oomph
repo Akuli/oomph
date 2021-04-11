@@ -4,7 +4,6 @@ import "location.oomph" as location
 typedef Location = location::Location
 
 # TODO: mappings and tuples
-class NamedType(Str name, ir::Type type)
 class NamedGeneric(Str name, ir::Generic generik)
 class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
 class AutoTypeResolve(ir::AutoType autotype, ir::Type actual)
@@ -993,7 +992,7 @@ class FileConverter(
     ir::Builtins builtins,
     Str path,
     List[ir::Symbol] symbols,
-    List[NamedType] types,
+    Mapping[Str, ir::Type] types,
     List[NamedGeneric] generics,
     Mapping[Str, ir::Variable] variables,
     List[NamedAstType] typedef_laziness,
@@ -1012,12 +1011,11 @@ class FileConverter(
         let laziness_names = [foreach pair of self.typedef_laziness: pair.name]
         if name in laziness_names:
             let pair = self.typedef_laziness.delete_at_index(laziness_names.find_only(name))
-            assert(name not in [foreach t of self.types: t.name])
-            self.types.push(new NamedType(name, self.get_type(pair.type, null)))
+            assert(not self.types.has_key(name))
+            self.types.set(name, self.get_type(pair.type, null))
 
-        foreach type of self.types:
-            if type.name == name:
-                return type.type
+        if self.types.has_key(name):
+            return self.types.get(name)
         print("no type named '{name}'")
         assert(false)   # TODO: error
 
@@ -1050,10 +1048,7 @@ class FileConverter(
                 assert(false)  # TODO: error
 
     meth check_type_not_exists(Str name, Location location):
-        if (
-            name in [foreach t of self.types: t.name]
-            or name in [foreach t of self.typedef_laziness: t.name]
-        ):
+        if self.types.has_key(name) or name in [foreach t of self.typedef_laziness: t.name]:
             location.error("type '{name}' already exists")
 
     # See docs/syntax.md
@@ -1073,8 +1068,9 @@ class FileConverter(
                                 # Technically step 3, but adding earlier doesn't matter
                                 self.add_var(var, name)
                             case ir::Type type:
-                                assert(name not in [foreach t of self.types: t.name])
-                                self.types.push(new NamedType(name, type))
+                                # TODO: use check_type_not_exists?
+                                assert(not self.types.has_key(name))
+                                self.types.set(name, type)
 
             case ast::ClassDef classdef:
                 let methods_to_create = ["to_string", "equals", "hash"]
@@ -1092,8 +1088,9 @@ class FileConverter(
                 )
                 # TODO: cleanup_list shouldn't be in builtins
                 self.builtins.cleanup_list.push(classtype)
-                assert(classdef.name not in [foreach t of self.types: t.name])
-                self.types.push(new NamedType(classdef.name, classtype))
+                # TODO: use check_type_not_exists?
+                assert(not self.types.has_key(classdef.name))
+                self.types.set(classdef.name, classtype)
 
             case ast::TypeDef type_def:
                 self.check_type_not_exists(type_def.name, type_def.location)
@@ -1151,14 +1148,7 @@ class FileConverter(
                 self.func_or_meth_step3(funcdef, null)
 
             case ast::ClassDef classdef:
-                let found = false   # TODO: this sucks
-                foreach t of self.types:
-                    if t.name == classdef.name:
-                        let classtype = t.type as ir::BasicType
-                        found = true
-                        break
-                assert(found)
-
+                let classtype = self.types.get(classdef.name) as ir::BasicType
                 classtype.members.push_all([
                     foreach member of classdef.members:
                     new ir::Member(member.name, self.get_type(member.type, null))
@@ -1246,14 +1236,7 @@ class FileConverter(
     meth do_step4(ast::ToplevelDeclaration top_declaration) -> List[ir::ToplevelDeclaration]:
         switch top_declaration:
             case ast::ClassDef classdef:
-                let found = false
-                foreach named_type of self.types:
-                    if named_type.name == classdef.name:
-                        let classtype = named_type.type
-                        found = true
-                        break
-                assert(found)
-
+                let classtype = self.types.get(classdef.name)
                 return [
                     foreach method_def of classdef.body:
                         self.func_or_meth_step4(method_def, classtype)
@@ -1273,15 +1256,20 @@ export func convert_program(
     List[ir::Symbol] symbols,
 ) -> List[ir::ToplevelDeclaration]:
 
+    # TODO: mapping comprehensions
     let vars = new Mapping[Str, ir::Variable]()
     foreach var of builtins.visible_vars:
         vars.set(var.name, var)
+
+    let types = new Mapping[Str, ir::Type]()
+    foreach type of builtins.get_builtin_types():
+        types.set(ir::type_name(type), type)
 
     let converter = new FileConverter(
         builtins,
         path,
         symbols,
-        [foreach type of builtins.get_builtin_types(): new NamedType(ir::type_name(type), type)],
+        types,
         [foreach gen of builtins.get_builtin_generics(): new NamedGeneric(gen.name, gen)],
         vars,
         [],
