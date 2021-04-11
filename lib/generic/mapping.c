@@ -201,3 +201,14 @@ MAPPING MAPPING_METHOD(copy)(MAPPING map)
 	}
 	return res;
 }
+
+ENTRY_LIST MAPPING_METHOD(items)(MAPPING map)
+{
+	ENTRY_LIST res = ENTRY_LIST_CTOR();
+	for (size_t i = 0; i < map->nentries; i++) {
+		ENTRY e = map->entries[i];
+		if (e.hash != 0)
+			ENTRY_LIST_METHOD(push)(res, e);
+	}
+	return res;
+}

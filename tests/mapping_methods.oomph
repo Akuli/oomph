@@ -1,0 +1,9 @@
+export func main():
+    let m = new Mapping[Str, Int]()
+    m.set("foo", 1)
+    m.set("bar", 2)
+
+    print(m)   # to_string
+    print(m.items())
+    foreach item of m.items():
+        print(item)

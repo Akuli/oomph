@@ -1,0 +1,4 @@
+Mapping{"bar": 2, "foo": 1}
+[MappingItem("bar": 2), MappingItem("foo": 1)]
+MappingItem("bar": 2)
+MappingItem("foo": 1)

@@ -167,12 +167,14 @@ class Generic:
             result.methods["join"] = FunctionType([result, STRING], STRING)
         elif self is MAPPING:
             [keytype, valtype] = generic_args
+            itemlist = LIST.get_type([MAPPING_ENTRY.get_type([keytype, valtype])])
             result.constructor_argtypes = []
             result.methods["copy"] = FunctionType([result], result)
             result.methods["delete"] = FunctionType([result, keytype], None)
             result.methods["equals"] = FunctionType([result, result], BOOL)
             result.methods["get"] = FunctionType([result, keytype], valtype)
             result.methods["has_key"] = FunctionType([result, keytype], BOOL)
+            result.methods["items"] = FunctionType([result], itemlist)
             result.methods["length"] = FunctionType([result], INT)
             result.methods["set"] = FunctionType([result, keytype, valtype], None)
             result.methods["to_string"] = FunctionType([result], STRING)
