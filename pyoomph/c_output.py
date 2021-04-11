@@ -557,17 +557,15 @@ class _FilePair:
         for arg_name, arg_type in args:
             macro_dict.update(
                 {
-                    f"{arg_name}TYPE": self.emit_type(
-                        arg_type, can_fwd_declare_in_header=False
-                    ),
-                    f"{arg_name}TYPE_METHOD(name)": f"meth_{self.session.get_type_c_name(arg_type)}_##name",
-                    f"INCREF_{arg_name}(val)": self.session.emit_incref(
+                    arg_name: self.emit_type(arg_type, can_fwd_declare_in_header=False),
+                    f"{arg_name}_METHOD(name)": f"meth_{self.session.get_type_c_name(arg_type)}_##name",
+                    f"{arg_name}_INCREF(val)": self.session.emit_incref(
                         "(val)", arg_type
                     ),
-                    f"DECREF_{arg_name}(val)": self.session.emit_decref(
+                    f"{arg_name}_DECREF(val)": self.session.emit_decref(
                         "(val)", arg_type
                     ),
-                    f"{arg_name}TYPE_IS_STRING": str(int(arg_type == STRING)),
+                    f"{arg_name}_IS_STRING": str(int(arg_type == STRING)),
                 }
             )
 

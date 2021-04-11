@@ -567,15 +567,15 @@ class FilePair(
         foreach arg of args:
             macros.push_all([
                 # TODO: rename these macros
-                ["{arg.name}TYPE", self.emit_type_custom(arg.type, false)],
-                ["{arg.name}TYPE_METHOD(name)", "meth_{self.session.get_type_c_name(arg.type)}_##name"],
-                ["INCREF_{arg.name}(val)", self.session.emit_incref("(val)", arg.type)],
-                ["DECREF_{arg.name}(val)", self.session.emit_decref("(val)", arg.type)],
+                [arg.name, self.emit_type_custom(arg.type, false)],
+                ["{arg.name}_METHOD(name)", "meth_{self.session.get_type_c_name(arg.type)}_##name"],
+                ["{arg.name}_INCREF(val)", self.session.emit_incref("(val)", arg.type)],
+                ["{arg.name}_DECREF(val)", self.session.emit_decref("(val)", arg.type)],
             ])
             if arg.type == self.session.builtins.STR:
-                macros.push(["{arg.name}TYPE_IS_STRING", "1"])
+                macros.push(["{arg.name}_IS_STRING", "1"])
             else:
-                macros.push(["{arg.name}TYPE_IS_STRING", "0"])
+                macros.push(["{arg.name}_IS_STRING", "0"])
 
         let defines = "\n"
         let undefs = "\n"

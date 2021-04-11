@@ -1,7 +1,7 @@
 struct INTERNAL_NAME(entry) {
 	uint32_t hash;   // 0 if entry is unused
-	KEYTYPE key;
-	VALUETYPE value;
+	KEY key;
+	VALUE value;
 };
 
 struct TYPE_STRUCT {
