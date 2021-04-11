@@ -3,12 +3,10 @@ import "ir.oomph" as ir
 import "location.oomph" as location
 typedef Location = location::Location
 
-# TODO: mappings and tuples
+# TODO: mappings
 class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
 class AutoTypePair(ir::AutoType first, ir::AutoType second)
 class TypePair(ir::Type first, ir::Type second)
-class NamedAstType(Str name, ast::Type type)
-class NamedAstTypeList(Str name, List[ast::Type] types)
 
 
 # TODO: shouldn't be needed
@@ -989,7 +987,7 @@ class FileConverter(
     Mapping[Str, ir::Type] types,
     Mapping[Str, ir::Generic] generics,
     Mapping[Str, ir::Variable] variables,
-    List[NamedAstType] typedef_laziness,
+    Mapping[Str, ast::Type] typedef_laziness,
 ):
     # TODO: get rid of this?
     meth add_var(ir::Variable var, Str name):
@@ -1000,13 +998,13 @@ class FileConverter(
         return find_variable(self.variables, name, location)
 
     meth get_named_type(Str name) -> ir::Type:
-        # step 2 stuff
-        # TODO: better list methods
-        let laziness_names = [foreach pair of self.typedef_laziness: pair.name]
-        if name in laziness_names:
-            let pair = self.typedef_laziness.delete_at_index(laziness_names.find_only(name))
+        if self.typedef_laziness.has_key(name):
+            # step 2 stuff
+            # TODO: mapping.delete() should return the value
+            let ast_type = self.typedef_laziness.get(name)
+            self.typedef_laziness.delete(name)
             assert(not self.types.has_key(name))
-            self.types.set(name, self.get_type(pair.type, null))
+            self.types.set(name, self.get_type(ast_type, null))
 
         if self.types.has_key(name):
             return self.types.get(name)
@@ -1043,7 +1041,7 @@ class FileConverter(
                 return self.builtins.generic2type(generik, args, generic_type.location)
 
     meth check_type_not_exists(Str name, Location location):
-        if self.types.has_key(name) or name in [foreach t of self.typedef_laziness: t.name]:
+        if self.types.has_key(name) or self.typedef_laziness.has_key(name):
             location.error("type '{name}' already exists")
 
     # See docs/syntax.md
@@ -1089,7 +1087,7 @@ class FileConverter(
 
             case ast::TypeDef type_def:
                 self.check_type_not_exists(type_def.name, type_def.location)
-                self.typedef_laziness.push(new NamedAstType(type_def.name, type_def.type))
+                self.typedef_laziness.set(type_def.name, type_def.type)
 
             case ast::FuncOrMethodDef _:
                 # TODO: check not exists
@@ -1264,13 +1262,13 @@ export func convert_program(
     foreach generik of builtins.get_builtin_generics():
         generics.set(generik.name, generik)
 
-    let converter = new FileConverter(builtins, path, symbols, types, generics, vars, [])
+    let converter = new FileConverter(builtins, path, symbols, types, generics, vars, new Mapping[Str, auto]())
 
     foreach top of program:
         converter.do_step1(top)
     foreach top of program:
         converter.do_step2(top)
-    assert(converter.typedef_laziness == [])
+    assert(converter.typedef_laziness == new Mapping[Str, auto]())
     foreach top of program:
         converter.do_step3(top)
 
