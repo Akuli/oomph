@@ -4,7 +4,6 @@ import "location.oomph" as location
 typedef Location = location::Location
 
 # TODO: mappings and tuples
-class NamedGeneric(Str name, ir::Generic generik)
 class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
 class AutoTypeResolve(ir::AutoType autotype, ir::Type actual)
 class AutoTypePair(ir::AutoType first, ir::AutoType second)
@@ -993,7 +992,7 @@ class FileConverter(
     Str path,
     List[ir::Symbol] symbols,
     Mapping[Str, ir::Type] types,
-    List[NamedGeneric] generics,
+    Mapping[Str, ir::Generic] generics,
     Mapping[Str, ir::Variable] variables,
     List[NamedAstType] typedef_laziness,
 ):
@@ -1037,15 +1036,16 @@ class FileConverter(
                 return ir::make_union(self.builtins, types, ast::locate_type(union_type))
 
             case ast::GenericType generic_type:
-                foreach named_generic of self.generics:
-                    if named_generic.name == generic_type.name:
-                        if how2recurse == null:
-                            let args = [foreach a of generic_type.args: self.get_type(a, null)]
-                        else:
-                            args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
-                        return self.builtins.generic2type(named_generic.generik, args, generic_type.location)
-                print("no generic type named {generic_type.name}")
-                assert(false)  # TODO: error
+                if not self.generics.has_key(generic_type.name):
+                    print("no generic type named {generic_type.name}")
+                    assert(false)  # TODO: error
+
+                let generik = self.generics.get(generic_type.name)
+                if how2recurse == null:
+                    let args = [foreach a of generic_type.args: self.get_type(a, null)]
+                else:
+                    args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
+                return self.builtins.generic2type(generik, args, generic_type.location)
 
     meth check_type_not_exists(Str name, Location location):
         if self.types.has_key(name) or name in [foreach t of self.typedef_laziness: t.name]:
@@ -1265,16 +1265,11 @@ export func convert_program(
     foreach type of builtins.get_builtin_types():
         types.set(ir::type_name(type), type)
 
-    let converter = new FileConverter(
-        builtins,
-        path,
-        symbols,
-        types,
-        [foreach gen of builtins.get_builtin_generics(): new NamedGeneric(gen.name, gen)],
-        vars,
-        [],
-    )
+    let generics = new Mapping[Str, ir::Generic]()
+    foreach generik of builtins.get_builtin_generics():
+        generics.set(generik.name, generik)
 
+    let converter = new FileConverter(builtins, path, symbols, types, generics, vars, [])
 
     foreach top of program:
         converter.do_step1(top)
