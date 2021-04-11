@@ -64,7 +64,7 @@ static void grow(TYPE map)
 
 	// TODO: can use realloc?
 	Entry *oldlist = map->entries;
-	map->entries = calloc(sizeof map->entries[0], map->nentries);
+	map->entries = calloc(map->nentries, sizeof map->entries[0]);
 	assert(map->entries);
 
 	for (size_t i = 0; i < oldn; i++) {
