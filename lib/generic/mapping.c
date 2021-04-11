@@ -36,8 +36,8 @@ static uint32_t hash(KEY key)
 }
 
 
-// Returns whether the entry was actually added
-static bool add_entry(MAPPING map, ITEM it, bool check)
+// Returns whether the item was actually added
+static bool add_item(MAPPING map, ITEM it, bool check)
 {
 	assert(it.hash != 0);
 
@@ -49,7 +49,7 @@ static bool add_entry(MAPPING map, ITEM it, bool check)
 			VALUE_INCREF(map->entries[i].memb_value);
 			return false;
 		}
-		// Jump over this entry
+		// Jump over this item
 		i = (i+1) % map->nentries;
 	}
 
@@ -69,7 +69,7 @@ static void grow(MAPPING map)
 
 	for (size_t i = 0; i < oldn; i++) {
 		if (oldlist[i].hash != 0)
-			add_entry(map, oldlist[i], false);
+			add_item(map, oldlist[i], false);
 	}
 
 	if (oldlist != map->flex)
@@ -82,7 +82,7 @@ void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
 	if (map->len+1 > magic*map->nentries)
 		grow(map);
 
-	if (add_entry(map, (ITEM){ hash(key), key, value }, true)) {
+	if (add_item(map, (ITEM){ hash(key), key, value }, true)) {
 		KEY_INCREF(key);
 		VALUE_INCREF(value);
 		map->len++;
@@ -137,7 +137,7 @@ void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 	{
 		ITEM it = map->entries[k];
 		map->entries[k].hash = 0;
-		add_entry(map, it, false);
+		add_item(map, it, false);
 	}
 }
 

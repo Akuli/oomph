@@ -562,13 +562,13 @@ class _FilePair:
             macrotypes = [("LIST", the_type), ("ITEM", itemtype)]
         elif the_type.generic_origin.generic == MAPPING:
             keytype, valuetype = the_type.generic_origin.args
-            entrytype = MAPPING_ITEM.get_type([keytype, valuetype])
+            itemtype = MAPPING_ITEM.get_type([keytype, valuetype])
             macrotypes = [
                 ("MAPPING", the_type),
                 ("KEY", keytype),
                 ("VALUE", valuetype),
-                ("ITEM", entrytype),
-                ("ITEM_LIST", LIST.get_type([entrytype])),
+                ("ITEM", itemtype),
+                ("ITEM_LIST", LIST.get_type([itemtype])),
             ]
         elif the_type.generic_origin.generic == MAPPING_ITEM:
             keytype, valuetype = the_type.generic_origin.args
