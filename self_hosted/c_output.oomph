@@ -26,7 +26,7 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
 
 class FunctionEmitter(
     FilePair file_pair,
-    List[ir::LocalVariable] local_vars,     # named var0, var1, var2, ...
+    Mapping[ir::LocalVariable, Str] local_vars,
     List[ir::GotoLabel] labels,             # named label0, label1, label2, ...
     Str before_body,
     Str after_body,
@@ -160,9 +160,9 @@ class FunctionEmitter(
         return "label" + self.labels.find_only(label).to_string()
 
     meth add_local_var(ir::LocalVariable var, Bool declare_and_decref):
-        assert(var not in self.local_vars)
         let name = "var" + self.local_vars.length().to_string()
-        self.local_vars.push(var)
+        assert(not self.local_vars.has_key(var))
+        self.local_vars.set(var, name)
 
         if declare_and_decref:
             # TODO: add UnSets in ast2ir?
@@ -176,9 +176,9 @@ class FunctionEmitter(
     meth emit_var(ir::Variable var) -> Str:
         switch var:
             case ir::LocalVariable local_var:
-                if local_var not in self.local_vars:
+                if not self.local_vars.has_key(local_var):
                     self.add_local_var(local_var, true)
-                return "var" + self.local_vars.find_only(local_var).to_string()
+                return self.local_vars.get(local_var)
             case *:
                 return self.file_pair.emit_var(var)
 
@@ -691,13 +691,17 @@ class FilePair(
     meth emit_toplevel_declaration(ir::ToplevelDeclaration top_declaration):
         switch top_declaration:
             case ir::FuncDef funcdef:
-                new FunctionEmitter(self, [], [], "", "", []).emit_funcdef(
+                new FunctionEmitter(
+                    self, new Mapping[ir::LocalVariable, auto](), [], "", "", []
+                ).emit_funcdef(
                     funcdef, self.emit_var(funcdef.var)
                 )
             case ir::MethodDef methdef:
                 let klass = methdef.type.argtypes.first()
                 let file_pair = self.session.type_to_file_pair(klass)
-                new FunctionEmitter(file_pair, [], [], "", "", []).emit_funcdef(
+                new FunctionEmitter(
+                    file_pair, new Mapping[ir::LocalVariable, auto](), [], "", "", []
+                ).emit_funcdef(
                     methdef,
                     "meth_{self.session.get_type_c_name(klass)}_{methdef.name}",
                 )
