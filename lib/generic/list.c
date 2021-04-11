@@ -1,13 +1,13 @@
 #if ITEM_IS_STRING
-struct class_Str METHOD(join)(TYPE self, struct class_Str sep)
+struct class_Str LIST_METHOD(join)(LIST self, struct class_Str sep)
 {
 	return meth_List_Str_join(self, sep);   // Implemented in oomph
 }
 #endif
 
-TYPE CONSTRUCTOR(void)
+LIST LIST_CTOR(void)
 {
-	TYPE res = malloc(sizeof(*res));
+	LIST res = malloc(sizeof(*res));
 	assert(res);
 	res->refcount = 1;
 	res->len = 0;
@@ -16,9 +16,9 @@ TYPE CONSTRUCTOR(void)
 	return res;
 }
 
-void DESTRUCTOR(void *ptr)
+void LIST_DTOR(void *ptr)
 {
-	TYPE self = ptr;
+	LIST self = ptr;
 	for (int64_t i = 0; i < self->len; i++)
 		ITEM_DECREF(self->data[i]);
 	if (self->data != self->smalldata)
@@ -26,7 +26,7 @@ void DESTRUCTOR(void *ptr)
 	free(self);
 }
 
-bool METHOD(equals)(TYPE self, TYPE other)
+bool LIST_METHOD(equals)(LIST self, LIST other)
 {
 	if (self->len != other->len)
 		return false;
@@ -37,7 +37,7 @@ bool METHOD(equals)(TYPE self, TYPE other)
 	return true;
 }
 
-static void set_length(TYPE self, int64_t n)
+static void set_length(LIST self, int64_t n)
 {
 	assert(n >= 0);
 	self->len = n;
@@ -57,14 +57,14 @@ static void set_length(TYPE self, int64_t n)
 	}
 }
 
-void METHOD(push)(TYPE self, ITEM val)
+void LIST_METHOD(push)(LIST self, ITEM val)
 {
 	set_length(self, self->len + 1);
 	self->data[self->len - 1] = val;
 	ITEM_INCREF(val);
 }
 
-void METHOD(push_all)(TYPE self, TYPE src)
+void LIST_METHOD(push_all)(LIST self, LIST src)
 {
 	int64_t oldlen = self->len;
 	set_length(self, self->len + src->len);
@@ -73,7 +73,7 @@ void METHOD(push_all)(TYPE self, TYPE src)
 		ITEM_INCREF(src->data[i]);
 }
 
-void METHOD(insert)(TYPE self, int64_t index, ITEM val)
+void LIST_METHOD(insert)(LIST self, int64_t index, ITEM val)
 {
 	if (index < 0)
 		index = 0;
@@ -86,14 +86,14 @@ void METHOD(insert)(TYPE self, int64_t index, ITEM val)
 	ITEM_INCREF(val);
 }
 
-ITEM METHOD(pop)(TYPE self)
+ITEM LIST_METHOD(pop)(LIST self)
 {
 	if (self->len == 0)
 		panic_printf("pop from empty list");
 	return self->data[--self->len];
 }
 
-static void validate_index(TYPE self, int64_t i)
+static void validate_index(LIST self, int64_t i)
 {
 	if (i < 0)
 		panic_printf("negative list index %%d", (long)i);
@@ -101,7 +101,7 @@ static void validate_index(TYPE self, int64_t i)
 		panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
 }
 
-ITEM METHOD(set)(TYPE self, int64_t i, ITEM value)
+ITEM LIST_METHOD(set)(LIST self, int64_t i, ITEM value)
 {
 	validate_index(self, i);
 	ITEM old = self->data[i];
@@ -110,14 +110,14 @@ ITEM METHOD(set)(TYPE self, int64_t i, ITEM value)
 	return old;
 }
 
-ITEM METHOD(get)(TYPE self, int64_t i)
+ITEM LIST_METHOD(get)(LIST self, int64_t i)
 {
 	validate_index(self, i);
 	ITEM_INCREF(self->data[i]);
 	return self->data[i];
 }
 
-ITEM METHOD(delete_at_index)(TYPE self, int64_t i)
+ITEM LIST_METHOD(delete_at_index)(LIST self, int64_t i)
 {
 	validate_index(self, i);
 	ITEM item = self->data[i];
@@ -126,14 +126,14 @@ ITEM METHOD(delete_at_index)(TYPE self, int64_t i)
 	return item;
 }
 
-static TYPE slice(TYPE self, int64_t start, int64_t end, bool del)
+static LIST slice(LIST self, int64_t start, int64_t end, bool del)
 {
 	if (start < 0)
 		start = 0;
 	if (end > self->len)
 		end = self->len;
 
-	TYPE res = CONSTRUCTOR();
+	LIST res = LIST_CTOR();
 	if (start < end) {
 		set_length(res, end-start);
 		memcpy(res->data, &self->data[start], res->len*sizeof(self->data[0]));
@@ -148,17 +148,17 @@ static TYPE slice(TYPE self, int64_t start, int64_t end, bool del)
 	return res;
 }
 
-TYPE METHOD(slice)(TYPE self, int64_t start, int64_t end)
+LIST LIST_METHOD(slice)(LIST self, int64_t start, int64_t end)
 {
 	return slice(self, start, end, false);
 }
 
-TYPE METHOD(delete_slice)(TYPE self, int64_t start, int64_t end)
+LIST LIST_METHOD(delete_slice)(LIST self, int64_t start, int64_t end)
 {
 	return slice(self, start, end, true);
 }
 
-ITEM METHOD(first)(TYPE self)
+ITEM LIST_METHOD(first)(LIST self)
 {
 	if (self->len == 0)
 		panic_printf("can't get first item of empty list");
@@ -166,7 +166,7 @@ ITEM METHOD(first)(TYPE self)
 	return self->data[0];
 }
 
-ITEM METHOD(last)(TYPE self)
+ITEM LIST_METHOD(last)(LIST self)
 {
 	if (self->len == 0)
 		panic_printf("can't get last item of empty list");
@@ -174,7 +174,7 @@ ITEM METHOD(last)(TYPE self)
 	return self->data[self->len - 1];
 }
 
-bool METHOD(__contains)(TYPE self, ITEM item)
+bool LIST_METHOD(__contains)(LIST self, ITEM item)
 {
 	for (int64_t i = 0; i < self->len; i++) {
 		if (ITEM_METHOD(equals)(self->data[i], item))
@@ -183,7 +183,7 @@ bool METHOD(__contains)(TYPE self, ITEM item)
 	return false;
 }
 
-int64_t METHOD(find_first)(TYPE self, ITEM item)
+int64_t LIST_METHOD(find_first)(LIST self, ITEM item)
 {
 	for (int64_t i = 0; i < self->len; i++) {
 		if (ITEM_METHOD(equals)(self->data[i], item))
@@ -192,7 +192,7 @@ int64_t METHOD(find_first)(TYPE self, ITEM item)
 	panic_printf("find_first: item not found");
 }
 
-int64_t METHOD(find_last)(TYPE self, ITEM item)
+int64_t LIST_METHOD(find_last)(LIST self, ITEM item)
 {
 	for (int64_t i = self->len - 1; i >= 0; i--) {
 		if (ITEM_METHOD(equals)(self->data[i], item))
@@ -201,7 +201,7 @@ int64_t METHOD(find_last)(TYPE self, ITEM item)
 	panic_printf("find_last: item not found");
 }
 
-int64_t METHOD(find_only)(TYPE self, ITEM item)
+int64_t LIST_METHOD(find_only)(LIST self, ITEM item)
 {
 	int64_t found = -1;
 	for (int64_t i = 0; i < self->len; i++) {
@@ -216,25 +216,25 @@ int64_t METHOD(find_only)(TYPE self, ITEM item)
 	return found;
 }
 
-void METHOD(delete_first)(TYPE self, ITEM item)
+void LIST_METHOD(delete_first)(LIST self, ITEM item)
 {
-	ITEM deleted = METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
+	ITEM deleted = LIST_METHOD(delete_at_index)(self, LIST_METHOD(find_first)(self, item));
 	ITEM_DECREF(deleted);
 }
 
-void METHOD(delete_last)(TYPE self, ITEM item)
+void LIST_METHOD(delete_last)(LIST self, ITEM item)
 {
-	ITEM deleted = METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
+	ITEM deleted = LIST_METHOD(delete_at_index)(self, LIST_METHOD(find_last)(self, item));
 	ITEM_DECREF(deleted);
 }
 
-void METHOD(delete_only)(TYPE self, ITEM item)
+void LIST_METHOD(delete_only)(LIST self, ITEM item)
 {
-	ITEM deleted = METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
+	ITEM deleted = LIST_METHOD(delete_at_index)(self, LIST_METHOD(find_only)(self, item));
 	ITEM_DECREF(deleted);
 }
 
-bool METHOD(starts_with)(TYPE self, TYPE prefix)
+bool LIST_METHOD(starts_with)(LIST self, LIST prefix)
 {
 	if (self->len < prefix->len)
 		return false;
@@ -244,7 +244,7 @@ bool METHOD(starts_with)(TYPE self, TYPE prefix)
 	return true;
 }
 
-bool METHOD(ends_with)(TYPE self, TYPE prefix)
+bool LIST_METHOD(ends_with)(LIST self, LIST prefix)
 {
 	if (self->len < prefix->len)
 		return false;
@@ -254,13 +254,13 @@ bool METHOD(ends_with)(TYPE self, TYPE prefix)
 	return true;
 }
 
-int64_t METHOD(length)(TYPE self)
+int64_t LIST_METHOD(length)(LIST self)
 {
 	return self->len;
 }
 
 // TODO: rewrite better in the language itself?
-struct class_Str METHOD(to_string)(TYPE self)
+struct class_Str LIST_METHOD(to_string)(LIST self)
 {
 	struct class_Str res = cstr_to_string("[");
 
@@ -277,9 +277,9 @@ struct class_Str METHOD(to_string)(TYPE self)
 	return res;
 }
 
-TYPE METHOD(reversed)(TYPE self)
+LIST LIST_METHOD(reversed)(LIST self)
 {
-	TYPE res = CONSTRUCTOR();
+	LIST res = LIST_CTOR();
 	set_length(res, self->len);
 	for (int64_t i = 0; i < self->len; i++) {
 		res->data[i] = self->data[self->len - 1 - i];
@@ -288,9 +288,9 @@ TYPE METHOD(reversed)(TYPE self)
 	return res;
 }
 
-TYPE METHOD(copy)(TYPE self)
+LIST LIST_METHOD(copy)(LIST self)
 {
-	TYPE res = CONSTRUCTOR();
+	LIST res = LIST_CTOR();
 	set_length(res, self->len);
 	memcpy(res->data, self->data, sizeof(self->data[0]) * self->len);
 	for (int64_t i = 0; i < self->len; i++)

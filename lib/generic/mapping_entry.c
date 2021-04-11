@@ -14,12 +14,12 @@ void ENTRY_INCREF(ENTRY e)
 	}
 }
 
-bool METHOD(equals)(ENTRY a, ENTRY b)
+bool ENTRY_METHOD(equals)(ENTRY a, ENTRY b)
 {
 	return a.hash == b.hash && KEY_METHOD(equals)(a.key, b.key) && VALUE_METHOD(equals)(a.value, b.value);
 }
 
-struct class_Str METHOD(to_string)(ENTRY e)
+struct class_Str ENTRY_METHOD(to_string)(ENTRY e)
 {
 	struct class_Str keystr = KEY_METHOD(to_string)(e.key);
 	struct class_Str valstr = VALUE_METHOD(to_string)(e.value);

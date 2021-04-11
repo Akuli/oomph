@@ -569,19 +569,16 @@ class _FilePair:
             raise RuntimeError(f"unknown generic: {the_type.generic_origin.generic}")
 
         c_path, h_path = _generic_paths[the_type.generic_origin.generic]
-        macro_dict = {
-            # TODO: some of these are unnecessary
-            "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
-            "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
-            "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
-            "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
-            "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
-        }
+        macro_dict = {}
         for name, macrotype in macrotypes:
+            cname = self.session.get_type_c_name(macrotype)
             macro_dict.update(
                 {
                     name: self.emit_type(macrotype, can_fwd_declare_in_header=False),
-                    f"{name}_METHOD(name)": f"meth_{self.session.get_type_c_name(macrotype)}_##name",
+                    f"{name}_STRUCT": f"class_{cname}",
+                    f"{name}_CTOR": f"ctor_{cname}",
+                    f"{name}_DTOR": f"dtor_{cname}",
+                    f"{name}_METHOD(name)": f"meth_{cname}_##name",
                     f"{name}_INCREF(val)": self.session.emit_incref(
                         "val", macrotype
                     ),
@@ -602,9 +599,6 @@ class _FilePair:
             self.define_function(
                 f"meth_{self.session.get_type_c_name(the_type)}_{name}", functype
             )
-        self.function_decls += (
-            defines + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);" + undefs
-        )
         self.function_defs += defines + c_path.read_text("utf-8") + undefs
 
     def _define_simple_type(self, the_type: Type) -> None:
