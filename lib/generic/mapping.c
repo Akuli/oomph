@@ -19,8 +19,8 @@ void MAPPING_DTOR(void *ptr)
 	MAPPING map = ptr;
 	for (size_t i = 0; i < map->nentries; i++) {
 		if (map->entries[i].hash != 0) {
-			KEY_DECREF(map->entries[i].key);
-			VALUE_DECREF(map->entries[i].value);
+			KEY_DECREF(map->entries[i].memb_key);
+			VALUE_DECREF(map->entries[i].memb_value);
 		}
 	}
 	if (map->entries != map->flex)
@@ -43,10 +43,10 @@ static bool add_entry(MAPPING map, ENTRY e, bool check)
 
 	uint32_t i = e.hash % map->nentries;
 	while (map->entries[i].hash != 0) {
-		if (check && map->entries[i].hash == e.hash && KEY_METHOD(equals)(map->entries[i].key, e.key)) {
-			VALUE_DECREF(map->entries[i].value);
-			map->entries[i].value = e.value;
-			VALUE_INCREF(map->entries[i].value);
+		if (check && map->entries[i].hash == e.hash && KEY_METHOD(equals)(map->entries[i].memb_key, e.memb_key)) {
+			VALUE_DECREF(map->entries[i].memb_value);
+			map->entries[i].memb_value = e.memb_value;
+			VALUE_INCREF(map->entries[i].memb_value);
 			return false;
 		}
 		// Jump over this entry
@@ -93,7 +93,7 @@ static ENTRY *find(MAPPING map, KEY key, uint32_t keyhash)
 {
 	for (size_t i = keyhash % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 	{
-		if (map->entries[i].hash == keyhash && KEY_METHOD(equals)(map->entries[i].key, key))
+		if (map->entries[i].hash == keyhash && KEY_METHOD(equals)(map->entries[i].memb_key, key))
 			return &map->entries[i];
 	}
 	return NULL;
@@ -113,22 +113,22 @@ VALUE MAPPING_METHOD(get)(MAPPING map, KEY key)
 	if (!e)
 		ERROR("Mapping.get(): key not found", key);
 
-	VALUE_INCREF(e->value);
-	return e->value;
+	VALUE_INCREF(e->memb_value);
+	return e->memb_value;
 }
 
 void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 {
 	uint32_t h = hash(key);
 	size_t i = h % map->nentries;
-	for (; map->entries[i].hash != h || !KEY_METHOD(equals)(map->entries[i].key, key); i = (i+1) % map->nentries)
+	for (; map->entries[i].hash != h || !KEY_METHOD(equals)(map->entries[i].memb_key, key); i = (i+1) % map->nentries)
 	{
 		if (map->entries[i].hash == 0)
 			ERROR("Mapping.delete(): key not found", key);
 	}
 
-	KEY_DECREF(map->entries[i].key);
-	VALUE_DECREF(map->entries[i].value);
+	KEY_DECREF(map->entries[i].memb_key);
+	VALUE_DECREF(map->entries[i].memb_value);
 	map->entries[i].hash = 0;
 	map->len--;
 
@@ -157,8 +157,8 @@ struct class_Str MAPPING_METHOD(to_string)(MAPPING map)
 				oomph_string_concat_inplace_cstr(&res, ", ");
 			first = false;
 
-			struct class_Str keystr = KEY_METHOD(to_string)(e.key);
-			struct class_Str valstr = VALUE_METHOD(to_string)(e.value);
+			struct class_Str keystr = KEY_METHOD(to_string)(e.memb_key);
+			struct class_Str valstr = VALUE_METHOD(to_string)(e.memb_value);
 			oomph_string_concat_inplace(&res, keystr);
 			oomph_string_concat_inplace_cstr(&res, ": ");
 			oomph_string_concat_inplace(&res, valstr);
@@ -181,8 +181,8 @@ bool MAPPING_METHOD(equals)(MAPPING a, MAPPING b)
 	for (size_t i = 0; i < a->nentries; i++) {
 		ENTRY aent = a->entries[i];
 		if (aent.hash != 0) {
-			ENTRY *bent = find(b, aent.key, aent.hash);
-			if (bent == NULL || !VALUE_METHOD(equals)(aent.value, bent->value))
+			ENTRY *bent = find(b, aent.memb_key, aent.hash);
+			if (bent == NULL || !VALUE_METHOD(equals)(aent.memb_value, bent->memb_value))
 				return false;
 		}
 	}
@@ -197,7 +197,7 @@ MAPPING MAPPING_METHOD(copy)(MAPPING map)
 	for (size_t i = 0; i < map->nentries; i++) {
 		ENTRY e = map->entries[i];
 		if (e.hash != 0)
-			MAPPING_METHOD(set)(res, e.key, e.value);
+			MAPPING_METHOD(set)(res, e.memb_key, e.memb_value);
 	}
 	return res;
 }

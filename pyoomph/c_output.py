@@ -105,11 +105,15 @@ class _FunctionEmitter:
                 return f"{self.incref_var(ins.value)}; retval = {self.emit_var(ins.value)}; goto out;\n"
             return "goto out;\n"
 
-        if isinstance(ins, ir.GetAttribute):
-            return f"{self.emit_var(ins.result)} = {self.emit_var(ins.obj)}->memb_{ins.attribute};\n"
+        if isinstance(ins, (ir.SetAttribute, ir.GetAttribute)):
+            op = "->" if is_pointer(ins.obj.type) else "."
+            var = self.emit_var(ins.result)
+            attrib = self.emit_var(ins.obj) + op + "memb_" + ins.attribute
 
-        if isinstance(ins, ir.SetAttribute):
-            return f"{self.emit_var(ins.obj)}->memb_{ins.attribute} = {self.emit_var(ins.value)};\n"
+            if isinstance(ins, ir.SetAttribute):
+                return f"{attrib} = {var};\n"
+            else:
+                return f"{var} = {attrib};\n"
 
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)

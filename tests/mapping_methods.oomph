@@ -8,4 +8,4 @@ export func main():
 
     print(mapping.items())
     foreach item of mapping.items():
-        print(item)
+        print("{item.key} maps to {item.value}")
