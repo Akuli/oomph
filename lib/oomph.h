@@ -121,4 +121,6 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 #define oomph_null 0
 #define oomph_true true
 
+#define pointer_hash(p) (((int64_t)(intptr_t)(p)) >> 5)
+
 #endif   // LIB_H

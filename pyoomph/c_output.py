@@ -671,10 +671,7 @@ class _FilePair:
                 #define meth_{self.id}_equals(a, b) ((a) == (b))
                 """
             elif name == "hash":
-                self.function_decls += f"""
-                // on my system, last 5 bits of malloc()ed pointers seem to always be zero
-                #define meth_{self.id}_hash(ptr) (((int64_t)(intptr_t)(ptr))>>5)
-                """
+                self.function_decls += f"\n#define meth_{self.id}_hash pointer_hash\n"
 
             else:
                 raise NotImplementedError(name)
