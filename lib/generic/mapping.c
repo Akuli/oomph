@@ -143,6 +143,18 @@ void METHOD(delete)(TYPE map, KEY key)
 	}
 }
 
+KEY METHOD(get_a_key)(TYPE map)
+{
+	for (size_t i = 0; i < map->nentries; i++) {
+		Entry e = map->entries[i];
+		if (e.hash != 0) {
+			KEY_INCREF(e.key);
+			return e.key;
+		}
+	}
+	panic_printf("Mapping.get_a_key(): empty mapping");
+}
+
 int64_t METHOD(length)(TYPE map)
 {
 	return (int64_t)map->len;

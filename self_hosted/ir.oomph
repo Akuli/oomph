@@ -261,6 +261,7 @@ export class Builtins(
                 new Method("delete", new FunctionType([r, keytype], null)),
                 new Method("equals", new FunctionType([r, r], self.BOOL)),
                 new Method("get", new FunctionType([r, keytype], valtype)),
+                new Method("get_a_key", new FunctionType([r], keytype)),
                 new Method("has_key", new FunctionType([r, keytype], self.BOOL)),
                 new Method("length", new FunctionType([r], self.INT)),
                 new Method("set", new FunctionType([r, keytype, valtype], null)),
