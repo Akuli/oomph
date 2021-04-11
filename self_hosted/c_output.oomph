@@ -566,7 +566,6 @@ class FilePair(
         ]
         foreach arg of args:
             macros.push_all([
-                # TODO: rename these macros
                 [arg.name, self.emit_type_custom(arg.type, false)],
                 ["{arg.name}_METHOD(name)", "meth_{self.session.get_type_c_name(arg.type)}_##name"],
                 ["{arg.name}_INCREF(val)", self.session.emit_incref("(val)", arg.type)],
