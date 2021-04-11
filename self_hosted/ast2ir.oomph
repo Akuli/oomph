@@ -641,7 +641,7 @@ class FunctionOrMethodConverter(
                                     + "which doesn't have member '{ir::type_name(target_type)}'"
                                 )
 
-                            let new_members = u.type_members.reversed().reversed()  # TODO: copy method
+                            let new_members = u.type_members.copy()
                             new_members.delete_only(target_type)
 
                             if new_members.length() >= 2:
@@ -792,9 +792,7 @@ class FunctionOrMethodConverter(
             case ast::Switch switchie:
                 let union_var = self.do_expression(switchie.union_obj)
                 let union_type = union_var.type as ir::UnionType
-
-                # TODO: better way to copy list
-                let types_to_do = union_type.type_members.reversed().reversed()
+                let types_to_do = union_type.type_members.copy()
 
                 let done_label = self.create_goto_label()
                 let member_check = self.create_var(self.builtins.BOOL, switchie.location)
@@ -871,7 +869,7 @@ class FunctionOrMethodConverter(
     meth get_rid_of_auto_everywhere():
         # Method calls can happen before the type is known. Here we assume that
         # the types got figured out.
-        foreach ins of self.code.reversed().reversed():   # TODO: better way to copy list
+        foreach ins of self.code.copy():
             switch ins:
                 case ir::MethodCall call:
                     self.get_rid_of_auto_in_var(call.obj)

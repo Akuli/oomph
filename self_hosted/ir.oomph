@@ -214,6 +214,7 @@ export class Builtins(
             assert(args.length() == 1)   # TODO: error
             let arg = args.first()
             result.methods.set("__contains", new FunctionType([r, arg], self.BOOL))  # TODO: hide?
+            result.methods.set("copy", new FunctionType([r], r))
             result.methods.set("delete_at_index", new FunctionType([r, self.INT], arg))
             result.methods.set("delete_first", new FunctionType([r, arg], null))
             result.methods.set("delete_last", new FunctionType([r, arg], null))
@@ -237,8 +238,8 @@ export class Builtins(
             result.methods.set("slice", new FunctionType([r, self.INT, self.INT], r))
             result.methods.set("starts_with", new FunctionType([r, r], self.BOOL))
             result.methods.set("to_string", new FunctionType([r], self.STR))
-                # TODO: this is only for strings, but List[auto] may become List[Str] later
-                # if arg is STR:
+            # TODO: this is only for strings, but List[auto] may become List[Str] later
+            # if arg is STR:
             result.methods.set("join", new FunctionType([r, self.STR], self.STR))
         elif generik == self.MAPPING:
             assert(args.length() == 2)   # TODO: error

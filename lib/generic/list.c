@@ -287,3 +287,13 @@ TYPE METHOD(reversed)(TYPE self)
 	}
 	return res;
 }
+
+TYPE METHOD(copy)(TYPE self)
+{
+	TYPE res = CONSTRUCTOR();
+	set_length(res, self->len);
+	memcpy(res->data, self->data, sizeof(self->data[0]) * self->len);
+	for (int64_t i = 0; i < self->len; i++)
+		ITEM_INCREF(res->data[i]);
+	return res;
+}
