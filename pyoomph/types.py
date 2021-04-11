@@ -178,8 +178,8 @@ class Generic:
             result.methods["to_string"] = FunctionType([result], STRING)
         elif self is MAPPING_ENTRY:
             [keytype, valtype] = generic_args
-            result.members.append(("key", keytype))
-            result.members.append(("value", valtype))
+            result.members.append((keytype, "key"))
+            result.members.append((valtype, "value"))
             result.methods["equals"] = FunctionType([result], result)
             result.methods["to_string"] = FunctionType([result], STRING)
         else:

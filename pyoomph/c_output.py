@@ -134,7 +134,10 @@ class _FunctionEmitter:
             # TODO: this isn't pretty
             if ins.var.type is STRING:
                 return f"{self.emit_var(ins.var)}.buf = NULL;\n"
-            if ins.var.type.generic_origin is not None and ins.var.type.generic_origin.generic is MAPPING_ENTRY:
+            if (
+                ins.var.type.generic_origin is not None
+                and ins.var.type.generic_origin.generic is MAPPING_ENTRY
+            ):
                 return f"{self.emit_var(ins.var)}.hash = 0;\n"
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
@@ -247,8 +250,13 @@ _generic_paths = {
 
 
 def is_pointer(the_type: Type) -> bool:
-    return the_type.refcounted and not isinstance(the_type, UnionType) and (
-        the_type.generic_origin is None or the_type.generic_origin.generic is not MAPPING_ENTRY
+    return (
+        the_type.refcounted
+        and not isinstance(the_type, UnionType)
+        and (
+            the_type.generic_origin is None
+            or the_type.generic_origin.generic is not MAPPING_ENTRY
+        )
     )
 
 
@@ -560,11 +568,7 @@ class _FilePair:
             ]
         elif the_type.generic_origin.generic == MAPPING_ENTRY:
             keytype, valuetype = the_type.generic_origin.args
-            macrotypes = [
-                ("KEY", keytype),
-                ("VALUE", valuetype),
-                ("ENTRY", the_type),
-            ]
+            macrotypes = [("KEY", keytype), ("VALUE", valuetype), ("ENTRY", the_type)]
         else:
             raise RuntimeError(f"unknown generic: {the_type.generic_origin.generic}")
 
@@ -579,12 +583,8 @@ class _FilePair:
                     f"{name}_CTOR": f"ctor_{cname}",
                     f"{name}_DTOR": f"dtor_{cname}",
                     f"{name}_METHOD(name)": f"meth_{cname}_##name",
-                    f"{name}_INCREF(val)": self.session.emit_incref(
-                        "val", macrotype
-                    ),
-                    f"{name}_DECREF(val)": self.session.emit_decref(
-                        "val", macrotype
-                    ),
+                    f"{name}_INCREF(val)": self.session.emit_incref("val", macrotype),
+                    f"{name}_DECREF(val)": self.session.emit_decref("val", macrotype),
                     f"{name}_IS_STRING": str(int(macrotype == STRING)),
                 }
             )
