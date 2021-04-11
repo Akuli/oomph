@@ -4,7 +4,6 @@ import "location.oomph" as location
 typedef Location = location::Location
 
 # TODO: mappings and tuples
-class NamedVariable(Str name, ir::Variable var)
 class NamedType(Str name, ir::Type type)
 class NamedGeneric(Str name, ir::Generic generik)
 class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
@@ -23,15 +22,15 @@ func is_autotype(ir::Type type) -> Bool:
         case *:
             return false
 
+# TODO: get rid of this?
 func find_variable(
-    List[NamedVariable] variables,
+    Mapping[Str, ir::Variable] variables,
     Str name,
     Location | null location,  # if user can make variable not found, then must be non-null
 ) -> ir::Variable:
-    foreach named_var of variables:
-        if named_var.name == name:
-            return named_var.var
-    (location as not null).error("variable not found: {name}")
+    if not variables.has_key(name):
+        (location as not null).error("variable not found: {name}")
+    return variables.get(name)
 
 
 # Returns the same result every time, regardless of order of input list
@@ -58,7 +57,7 @@ func get_type_members(ir::Type type) -> List[ir::Type]:
 class FunctionOrMethodConverter(
     ir::Builtins builtins,
     FileConverter file_converter,
-    List[NamedVariable] variables,
+    Mapping[Str, ir::Variable] variables,
     ir::Type | null returntype,
     List[LoopLabels] loop_stack,
     List[ir::Instruction] code,
@@ -688,13 +687,8 @@ class FunctionOrMethodConverter(
                 self.do_call(call, false)
 
             case ast::Let leet:
-                # TODO: better way to filter list
                 # TODO: document the shadowing/replacing behaviour
-                let old_vars = self.variables
-                self.variables = [new NamedVariable(leet.varname, self.do_expression(leet.value))]
-                foreach named_var of old_vars:
-                    if named_var.name != leet.varname:
-                        self.variables.push(named_var)
+                self.variables.set(leet.varname, self.do_expression(leet.value))
 
             case ast::SetVar setvar:
                 let var = self.get_var(setvar.varname, setvar.location) as ir::LocalVariable  # TODO: error
@@ -797,9 +791,8 @@ class FunctionOrMethodConverter(
                 if header.init.length() == 1:
                     switch header.init.first():
                         case ast::Let leet:
-                            let varnames = [foreach var of self.variables: var.name]
-                            if leet.varname in varnames:
-                                self.variables.delete_at_index(varnames.find_only(leet.varname))
+                            if self.variables.has_key(leet.varname):
+                                self.variables.delete(leet.varname)
                         case *:
                             pass
 
@@ -847,19 +840,15 @@ class FunctionOrMethodConverter(
 
                         cases.push_all(case_code)
                         # TODO: error
-                        assert(varname not in [foreach v of self.variables: v.name])
-                        self.variables.push(new NamedVariable(varname, case_var))
+                        assert(not self.variables.has_key(varname))
+                        self.variables.set(varname, case_var)
 
                     cases.push_all(self.do_block(chase.body))
                     cases.push(new ir::GotoIf(done_label, self.bool_constant("true", chase.location)))
 
                     if chase.type_and_name != null:
-                        assert(self.get_var(varname, null) == case_var)
-                        # TODO: better way to remove from list, with custom key func
-                        for let i = 0; ; i = i + 1:
-                            if self.variables.get(i).name == varname and self.variables.get(i).var == case_var:
-                                self.variables.delete_at_index(i)
-                                break
+                        assert(self.variables.get(varname) == case_var)
+                        self.variables.delete(varname)
 
                     foreach type of nice_types:
                         self.code.push(new ir::UnionMemberCheck(member_check, union_var, type))
@@ -1006,13 +995,13 @@ class FileConverter(
     List[ir::Symbol] symbols,
     List[NamedType] types,
     List[NamedGeneric] generics,
-    List[NamedVariable] variables,
+    Mapping[Str, ir::Variable] variables,
     List[NamedAstType] typedef_laziness,
 ):
+    # TODO: get rid of this?
     meth add_var(ir::Variable var, Str name):
-        foreach named_var of self.variables:
-            assert(named_var.name != name)
-        self.variables.push(new NamedVariable(name, var))
+        assert(not self.variables.has_key(name))
+        self.variables.set(name, var)
 
     meth get_var(Str name, Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
@@ -1146,10 +1135,6 @@ class FileConverter(
             returntype
         )
         if classtype == null:
-            # TODO: does add_var handle this?
-            foreach named_var of self.variables:
-                assert(def.name != named_var.name)
-
             # TODO: use def.export
             let func_var = new ir::FileVariable(def.name, functype)
             self.symbols.push(new ir::Symbol(self.path, def.name, func_var))
@@ -1206,7 +1191,7 @@ class FileConverter(
         else:
             functype = ir::get_method(classtype as not null, def.name, self.builtins)
 
-        let local_vars = self.variables.reversed().reversed()  # TODO: better way to copy list
+        let local_vars = self.variables.copy()
         let argvars = []
         let body = []
 
@@ -1228,9 +1213,8 @@ class FileConverter(
             body.push(new ir::VarCpy(copied_var, argvar) as ir::Instruction)
             body.push(new ir::IncRef(copied_var))
 
-            foreach named_var of local_vars:
-                assert(named_var.name != argname)
-            local_vars.push(new NamedVariable(argname, copied_var))
+            assert(not local_vars.has_key(argname))
+            local_vars.set(argname, copied_var)
 
         # TODO: this sucks
         switch functype.returntype:
@@ -1289,13 +1273,17 @@ export func convert_program(
     List[ir::Symbol] symbols,
 ) -> List[ir::ToplevelDeclaration]:
 
+    let vars = new Mapping[Str, ir::Variable]()
+    foreach var of builtins.visible_vars:
+        vars.set(var.name, var)
+
     let converter = new FileConverter(
         builtins,
         path,
         symbols,
         [foreach type of builtins.get_builtin_types(): new NamedType(ir::type_name(type), type)],
         [foreach gen of builtins.get_builtin_generics(): new NamedGeneric(gen.name, gen)],
-        [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
+        vars,
         [],
     )
 
