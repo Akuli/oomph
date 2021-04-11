@@ -3,8 +3,6 @@
 #include <assert.h>
 #include <string.h>
 
-typedef struct INTERNAL_NAME(entry) Entry;
-
 TYPE CONSTRUCTOR(void)
 {
 	size_t n = 8;   // TODO: experiment with different values
@@ -39,7 +37,7 @@ static uint32_t hash(KEY key)
 
 
 // Returns whether the entry was actually added
-static bool add_entry(TYPE map, Entry e, bool check)
+static bool add_entry(TYPE map, ENTRY e, bool check)
 {
 	assert(e.hash != 0);
 
@@ -65,7 +63,7 @@ static void grow(TYPE map)
 	map->nentries *= 2;
 
 	// TODO: can use realloc?
-	Entry *oldlist = map->entries;
+	ENTRY *oldlist = map->entries;
 	map->entries = calloc(map->nentries, sizeof map->entries[0]);
 	assert(map->entries);
 
@@ -84,14 +82,14 @@ void METHOD(set)(TYPE map, KEY key, VALUE value)
 	if (map->len+1 > magic*map->nentries)
 		grow(map);
 
-	if (add_entry(map, (Entry){ hash(key), key, value }, true)) {
+	if (add_entry(map, (ENTRY){ hash(key), key, value }, true)) {
 		KEY_INCREF(key);
 		VALUE_INCREF(value);
 		map->len++;
 	}
 }
 
-static Entry *find(TYPE map, KEY key, uint32_t keyhash)
+static ENTRY *find(TYPE map, KEY key, uint32_t keyhash)
 {
 	for (size_t i = keyhash % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
 	{
@@ -111,7 +109,7 @@ bool METHOD(has_key)(TYPE map, KEY key)
 
 VALUE METHOD(get)(TYPE map, KEY key)
 {
-	Entry *e = find(map, key, hash(key));
+	ENTRY *e = find(map, key, hash(key));
 	if (!e)
 		ERROR("Mapping.get(): key not found", key);
 
@@ -137,7 +135,7 @@ void METHOD(delete)(TYPE map, KEY key)
 	// Delete and add back everything that might rely on jumping over the item at i
 	for (size_t k = (i+1) % map->nentries; map->entries[k].hash != 0; k = (k+1) % map->nentries)
 	{
-		Entry e = map->entries[k];
+		ENTRY e = map->entries[k];
 		map->entries[k].hash = 0;
 		add_entry(map, e, false);
 	}
@@ -153,7 +151,7 @@ struct class_Str METHOD(to_string)(TYPE map)
 	struct class_Str res = cstr_to_string("Mapping{");
 	bool first = true;
 	for (size_t i = 0; i < map->nentries; i++) {
-		Entry e = map->entries[i];
+		ENTRY e = map->entries[i];
 		if (e.hash != 0) {
 			if (!first)
 				oomph_string_concat_inplace_cstr(&res, ", ");
@@ -181,9 +179,9 @@ bool METHOD(equals)(TYPE a, TYPE b)
 	// Check that every key of a is also in b, and values match.
 	// No need to check in opposite direction, because lengths match.
 	for (size_t i = 0; i < a->nentries; i++) {
-		Entry aent = a->entries[i];
+		ENTRY aent = a->entries[i];
 		if (aent.hash != 0) {
-			Entry *bent = find(b, aent.key, aent.hash);
+			ENTRY *bent = find(b, aent.key, aent.hash);
 			if (bent == NULL || !VALUE_METHOD(equals)(aent.value, bent->value))
 				return false;
 		}
@@ -197,7 +195,7 @@ TYPE METHOD(copy)(TYPE map)
 {
 	TYPE res = CONSTRUCTOR();
 	for (size_t i = 0; i < map->nentries; i++) {
-		Entry e = map->entries[i];
+		ENTRY e = map->entries[i];
 		if (e.hash != 0)
 			METHOD(set)(res, e.key, e.value);
 	}

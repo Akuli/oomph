@@ -13,6 +13,7 @@ from pyoomph.types import (
     INT,
     LIST,
     MAPPING,
+    MAPPING_ENTRY,
     NULL_TYPE,
     STRING,
     AutoType,
@@ -130,8 +131,11 @@ class _FunctionEmitter:
             """
 
         if isinstance(ins, ir.UnSet):
+            # TODO: this isn't pretty
             if ins.var.type is STRING:
                 return f"{self.emit_var(ins.var)}.buf = NULL;\n"
+            if ins.var.type.generic_origin is not None and ins.var.type.generic_origin.generic is MAPPING_ENTRY:
+                return f"{self.emit_var(ins.var)}.hash = 0;\n"
             if isinstance(ins.var.type, UnionType):
                 return f"{self.emit_var(ins.var)}.membernum = -1;\n"
             if not ins.var.type.refcounted:
@@ -238,7 +242,14 @@ _generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generi
 _generic_paths = {
     LIST: (_generic_dir / "list.c", _generic_dir / "list.h"),
     MAPPING: (_generic_dir / "mapping.c", _generic_dir / "mapping.h"),
+    MAPPING_ENTRY: (_generic_dir / "mapping_entry.c", _generic_dir / "mapping_entry.h"),
 }
+
+
+def is_pointer(the_type: Type) -> bool:
+    return the_type.refcounted and not isinstance(the_type, UnionType) and (
+        the_type.generic_origin is None or the_type.generic_origin.generic is not MAPPING_ENTRY
+    )
 
 
 # Represents .c and .h file, and possibly *the* type defined in those.
@@ -261,6 +272,7 @@ class _FilePair:
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {self.id}>"
 
+    # TODO: can the_type ever be null?
     def emit_type(
         self, the_type: Optional[Type], *, can_fwd_declare_in_header: bool = True
     ) -> str:
@@ -282,7 +294,7 @@ class _FilePair:
         defining_file_pair = self.session.get_file_pair_for_type(the_type)
         result = f"struct class_{defining_file_pair.id}"
 
-        if the_type.refcounted and not isinstance(the_type, UnionType):
+        if is_pointer(the_type):
             result += "*"
         else:
             can_fwd_declare_in_header = False
@@ -534,38 +546,49 @@ class _FilePair:
     def _define_generic_type(self, the_type: Type) -> None:
         assert the_type.generic_origin is not None
         if the_type.generic_origin.generic == LIST:
-            assert len(the_type.generic_origin.args) == 1
-            args = [("ITEM", the_type.generic_origin.args[0])]
+            [itemtype] = the_type.generic_origin.args
+            macrotypes = [("LIST", the_type), ("ITEM", itemtype)]
         elif the_type.generic_origin.generic == MAPPING:
-            assert len(the_type.generic_origin.args) == 2
-            args = [
-                ("KEY", the_type.generic_origin.args[0]),
-                ("VALUE", the_type.generic_origin.args[1]),
+            keytype, valuetype = the_type.generic_origin.args
+            entrytype = MAPPING_ENTRY.get_type([keytype, valuetype])
+            macrotypes = [
+                ("MAPPING", the_type),
+                ("KEY", keytype),
+                ("VALUE", valuetype),
+                ("ENTRY", entrytype),
+                ("ENTRY_LIST", LIST.get_type([entrytype])),
+            ]
+        elif the_type.generic_origin.generic == MAPPING_ENTRY:
+            keytype, valuetype = the_type.generic_origin.args
+            macrotypes = [
+                ("KEY", keytype),
+                ("VALUE", valuetype),
+                ("ENTRY", the_type),
             ]
         else:
             raise RuntimeError(f"unknown generic: {the_type.generic_origin.generic}")
 
         c_path, h_path = _generic_paths[the_type.generic_origin.generic]
         macro_dict = {
+            # TODO: some of these are unnecessary
             "CONSTRUCTOR": f"ctor_{self.session.get_type_c_name(the_type)}",
             "DESTRUCTOR": f"dtor_{self.session.get_type_c_name(the_type)}",
             "TYPE": f"struct class_{self.session.get_type_c_name(the_type)} *",
             "TYPE_STRUCT": f"class_{self.session.get_type_c_name(the_type)}",
             "METHOD(name)": f"meth_{self.session.get_type_c_name(the_type)}_##name",
-            "INTERNAL_NAME(name)": f"{self.session.get_type_c_name(the_type)}_##name",
         }
-        for arg_name, arg_type in args:
+        for name, macrotype in macrotypes:
             macro_dict.update(
                 {
-                    arg_name: self.emit_type(arg_type, can_fwd_declare_in_header=False),
-                    f"{arg_name}_METHOD(name)": f"meth_{self.session.get_type_c_name(arg_type)}_##name",
-                    f"{arg_name}_INCREF(val)": self.session.emit_incref(
-                        "(val)", arg_type
+                    name: self.emit_type(macrotype, can_fwd_declare_in_header=False),
+                    f"{name}_METHOD(name)": f"meth_{self.session.get_type_c_name(macrotype)}_##name",
+                    f"{name}_INCREF(val)": self.session.emit_incref(
+                        "val", macrotype
                     ),
-                    f"{arg_name}_DECREF(val)": self.session.emit_decref(
-                        "(val)", arg_type
+                    f"{name}_DECREF(val)": self.session.emit_decref(
+                        "val", macrotype
                     ),
-                    f"{arg_name}_IS_STRING": str(int(arg_type == STRING)),
+                    f"{name}_IS_STRING": str(int(macrotype == STRING)),
                 }
             )
 
@@ -725,23 +748,26 @@ class Session:
             return the_type.name
         return self.get_file_pair_for_type(the_type).id
 
-    # May evaluate c_expression several times
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
+        # TODO: STRING special-casing is not needed
         if the_type is STRING:
             return f"string_incref({c_expression})"
-        if isinstance(the_type, UnionType):
-            return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
-        if the_type.refcounted:
+
+        if the_type.refcounted and is_pointer(the_type):
             return f"incref({c_expression})"
+        if the_type.refcounted:
+            return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
         return "(void)0"
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
+        # TODO: STRING special-casing is not needed
         if the_type is STRING:
             return f"string_decref({c_expression})"
-        if isinstance(the_type, UnionType):
-            return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
-        if the_type.refcounted:
+
+        if the_type.refcounted and is_pointer(the_type):
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
+        if the_type.refcounted:
+            return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
         return "(void)0"
 
     def create_c_code(

@@ -176,6 +176,12 @@ class Generic:
             result.methods["length"] = FunctionType([result], INT)
             result.methods["set"] = FunctionType([result, keytype, valtype], None)
             result.methods["to_string"] = FunctionType([result], STRING)
+        elif self is MAPPING_ENTRY:
+            [keytype, valtype] = generic_args
+            result.members.append(("key", keytype))
+            result.members.append(("value", valtype))
+            result.methods["equals"] = FunctionType([result], result)
+            result.methods["to_string"] = FunctionType([result], STRING)
         else:
             raise NotImplementedError
         result.generic_origin = GenericSource(self, generic_args)
@@ -186,6 +192,7 @@ class Generic:
 
 LIST = Generic("List")
 MAPPING = Generic("Mapping")
+MAPPING_ENTRY = Generic("MappingItem")
 
 
 @dataclass(eq=False)
