@@ -1,0 +1,6 @@
+export func main():
+    let foo = ["a", "b"]
+    let bar = foo.copy()
+    bar.push("c")
+    print(foo)
+    print(bar)

@@ -220,6 +220,7 @@ export class Builtins(
             let arg = args.first()
             result.methods.push_all([
                 new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
+                new Method("copy", new FunctionType([r], r)),
                 new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
                 new Method("delete_first", new FunctionType([r, arg], null)),
                 new Method("delete_last", new FunctionType([r, arg], null)),
