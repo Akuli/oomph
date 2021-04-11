@@ -75,7 +75,10 @@ class _FunctionOrMethodConverter:
         if the_type.generic_origin is None:
             return the_type
         return the_type.generic_origin.generic.get_type(
-            self._substitute_autotypes(the_type.generic_origin.arg, must_succeed)
+            [
+                self._substitute_autotypes(arg, must_succeed)
+                for arg in the_type.generic_origin.args
+            ]
         )
 
     def get_type(self, raw_type: ast.Type) -> ir.Type:
@@ -150,11 +153,19 @@ class _FunctionOrMethodConverter:
             and type1.generic_origin.generic == type2.generic_origin.generic
         ):
             # Handle List[Str] matching List[auto]
+            assert len(type1.generic_origin.args) == len(type2.generic_origin.args)
             generic = type1.generic_origin.generic
-            type1_arg, type2_arg = self._do_the_autotype_thing(
-                type1.generic_origin.arg, type2.generic_origin.arg
+            pairs = list(
+                map(
+                    self._do_the_autotype_thing,
+                    type1.generic_origin.args,
+                    type2.generic_origin.args,
+                )
             )
-            return (generic.get_type(type1_arg), generic.get_type(type2_arg))
+            return (
+                generic.get_type([first for first, second in pairs]),
+                generic.get_type([second for first, second in pairs]),
+            )
         return (type1, type2)
 
     # TODO: make sure this logic isn't duplicated elsewhere
@@ -481,7 +492,7 @@ class _FunctionOrMethodConverter:
                 [content_type] = {var.type for var in content}
             else:
                 content_type = AutoType()
-            list_var = self.create_var(LIST.get_type(content_type))
+            list_var = self.create_var(LIST.get_type([content_type]))
             self.code.append(ir.CallConstructor(list_var, []))
             for item_var in content:
                 self.code.append(ir.CallMethod(list_var, "push", [item_var], None))
@@ -844,20 +855,18 @@ class _FileConverter:
         *,
         recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
     ) -> ir.Type:
+        if recursing_callback is None:
+            recursing_callback = self.get_type
+
         if isinstance(raw_type, ast.AutoType):
             raise RuntimeError("can't use auto type here")
         elif isinstance(raw_type, ast.NamedType):
             return self.get_named_type(raw_type.name)
         elif isinstance(raw_type, ast.UnionType):
-            return UnionType(
-                [
-                    (recursing_callback or self.get_type)(item)
-                    for item in raw_type.unioned
-                ]
-            )
+            return UnionType([recursing_callback(item) for item in raw_type.unioned])
         elif isinstance(raw_type, ast.GenericType):
             return self._generic_types[raw_type.name].get_type(
-                (recursing_callback or self.get_type)(raw_type.arg)
+                [recursing_callback(arg) for arg in raw_type.args]
             )
         else:
             raise NotImplementedError(raw_type)
@@ -882,9 +891,14 @@ class _FileConverter:
                     self._types[name] = symbol.value
 
         elif isinstance(top_declaration, ast.ClassDef):
-            methods_to_create = {"to_string", "equals"} - {
+            methods_to_create = {"to_string", "equals", "hash"} - {
                 method.name for method in top_declaration.body
             }
+
+            if "equals" not in methods_to_create:
+                # Don't generate hash method, it assumes pointer-wise .equals()
+                methods_to_create.discard("hash")
+
             classtype = Type(top_declaration.name, True, self.path, methods_to_create)
             assert top_declaration.name not in self._types
             self._types[top_declaration.name] = classtype

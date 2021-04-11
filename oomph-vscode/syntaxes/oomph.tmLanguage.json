@@ -28,7 +28,7 @@
         },
         {
           "name": "support.class.oomph",
-          "match": "\\b(Bool|Int|Float|List|Str)\\b"
+          "match": "\\b(List|Mapping|Bool|Int|Float|Str)\\b"
         },
         {
           "name": "support.function.oomph",

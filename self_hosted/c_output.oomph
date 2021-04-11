@@ -237,6 +237,8 @@ func trim_leading_underscores(Str s) -> Str:
     return s
 
 
+class NamedType(Str name, ir::Type type)  # TODO: tuples
+
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class FilePair(
@@ -430,6 +432,13 @@ class FilePair(
                     return meth_{member_cnames.get(i)}_equals(a.val.item{i}, b.val.item{i});
                 """
         ].join("")
+        let hash_cases = [
+            for let i = 0; i < n; i = i+1:
+                """
+                case {i}:
+                    return meth_{member_cnames.get(i)}_hash(obj.val.item{i});
+                """
+        ].join("")
 
         # TODO: can decls be emitted automatically?
         self.function_decls = self.function_decls + """
@@ -504,6 +513,20 @@ class FilePair(
         \}
         """
 
+        if "hash" in [foreach m of ir::get_methods(union, self.session.builtins): m.name]:
+            self.function_decls = self.function_decls + """
+            int64_t meth_{self.id}_hash(struct class_{self.id} obj);
+            """
+            self.function_defs = self.function_defs + """
+            int64_t meth_{self.id}_hash(struct class_{self.id} obj) \{
+                switch(obj.membernum) \{
+                    {hash_cases}
+                    default:
+                        panic_printf("internal error in union hash");
+                \}
+            \}
+            """
+
         let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
         assert(self.struct == null)
         self.struct = """
@@ -516,23 +539,42 @@ class FilePair(
         """ as Str | null
 
     meth define_generic_type(ir::BasicType type):
-        assert((type.generic_source as not null).generik == self.session.builtins.LIST)
-        let itemtype = (type.generic_source as not null).arg
+        let source = type.generic_source as not null
+        if source.generik == self.session.builtins.LIST:
+            assert(source.args.length() == 1)
+            let c_path = "lib/generic/list.c"
+            let h_path = "lib/generic/list.h"
+            let args = [new NamedType("ITEM", source.args.first())]
+        elif source.generik == self.session.builtins.MAPPING:
+            assert(source.args.length() == 2)
+            c_path = "lib/generic/mapping.c"
+            h_path = "lib/generic/mapping.h"
+            args = [
+                new NamedType("KEY", source.args.first()),
+                new NamedType("VALUE", source.args.last()),
+            ]
+        else:
+            assert(false)
+
         let macros = [
             ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(type)}"],
             ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(type)}"],
             ["TYPE", "struct class_{self.session.get_type_c_name(type)} *"],
             ["TYPE_STRUCT", "class_{self.session.get_type_c_name(type)}"],
             ["METHOD(name)", "meth_{self.session.get_type_c_name(type)}_##name"],
-            ["ITEMTYPE", self.emit_type_custom(itemtype, false)],
-            ["ITEMTYPE_METHOD(name)", "meth_{self.session.get_type_c_name(itemtype)}_##name"],
-            ["INCREF_ITEM(val)", self.session.emit_incref("(val)", itemtype)],
-            ["DECREF_ITEM(val)", self.session.emit_decref("(val)", itemtype)],
+            ["INTERNAL_NAME(name)", "{self.session.get_type_c_name(type)}_##name"],
         ]
-        if itemtype == self.session.builtins.STR:
-            macros.push(["ITEMTYPE_IS_STRING", "1"])
-        else:
-            macros.push(["ITEMTYPE_IS_STRING", "0"])
+        foreach arg of args:
+            macros.push_all([
+                [arg.name, self.emit_type_custom(arg.type, false)],
+                ["{arg.name}_METHOD(name)", "meth_{self.session.get_type_c_name(arg.type)}_##name"],
+                ["{arg.name}_INCREF(val)", self.session.emit_incref("(val)", arg.type)],
+                ["{arg.name}_DECREF(val)", self.session.emit_decref("(val)", arg.type)],
+            ])
+            if arg.type == self.session.builtins.STR:
+                macros.push(["{arg.name}_IS_STRING", "1"])
+            else:
+                macros.push(["{arg.name}_IS_STRING", "0"])
 
         let defines = "\n"
         let undefs = "\n"
@@ -542,9 +584,7 @@ class FilePair(
             undefs = undefs + "#undef {name_without_args}\n"
 
         assert(self.struct == null)
-        self.struct = (
-            defines + io::read_file("lib/generic/list.h") + undefs
-        ) as Str | null
+        self.struct = (defines + io::read_file(h_path) + undefs) as Str | null
 
         foreach method of ir::get_methods(type, self.session.builtins):
             self.define_function(
@@ -560,12 +600,7 @@ class FilePair(
             + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);"
             + undefs
         )
-        self.function_defs = (
-            self.function_defs
-            + defines
-            + io::read_file("lib/generic/list.c")
-            + undefs
-        )
+        self.function_defs = self.function_defs + defines + io::read_file(c_path) + undefs
 
     meth define_simple_type(ir::BasicType type):
         let struct_members = [foreach m of type.members: "{self.emit_type(m.type)} memb_{m.name};\n"].join("")
@@ -635,6 +670,8 @@ class FilePair(
                 // pointer equality
                 #define meth_{self.id}_equals(a, b) ((a) == (b))
                 """
+            elif name == "hash":
+                self.function_decls = self.function_decls + "\n#define meth_{self.id}_hash pointer_hash\n"
             else:
                 assert(false)
 

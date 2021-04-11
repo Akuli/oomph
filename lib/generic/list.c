@@ -1,4 +1,4 @@
-#if ITEMTYPE_IS_STRING
+#if ITEM_IS_STRING
 struct class_Str METHOD(join)(TYPE self, struct class_Str sep)
 {
 	return meth_List_Str_join(self, sep);   // Implemented in oomph
@@ -20,7 +20,7 @@ void DESTRUCTOR(void *ptr)
 {
 	TYPE self = ptr;
 	for (int64_t i = 0; i < self->len; i++)
-		DECREF_ITEM(self->data[i]);
+		ITEM_DECREF(self->data[i]);
 	if (self->data != self->smalldata)
 		free(self->data);
 	free(self);
@@ -31,7 +31,7 @@ bool METHOD(equals)(TYPE self, TYPE other)
 	if (self->len != other->len)
 		return false;
 	for (int64_t i = 0; i < self->len; i++) {
-		if (!ITEMTYPE_METHOD(equals)(self->data[i], other->data[i]))
+		if (!ITEM_METHOD(equals)(self->data[i], other->data[i]))
 			return false;
 	}
 	return true;
@@ -57,11 +57,11 @@ static void set_length(TYPE self, int64_t n)
 	}
 }
 
-void METHOD(push)(TYPE self, ITEMTYPE val)
+void METHOD(push)(TYPE self, ITEM val)
 {
 	set_length(self, self->len + 1);
 	self->data[self->len - 1] = val;
-	INCREF_ITEM(val);
+	ITEM_INCREF(val);
 }
 
 void METHOD(push_all)(TYPE self, TYPE src)
@@ -70,10 +70,10 @@ void METHOD(push_all)(TYPE self, TYPE src)
 	set_length(self, self->len + src->len);
 	memcpy(self->data + oldlen, src->data, sizeof(src->data[0]) * src->len);
 	for (int64_t i = 0; i < src->len; i++)
-		INCREF_ITEM(src->data[i]);
+		ITEM_INCREF(src->data[i]);
 }
 
-void METHOD(insert)(TYPE self, int64_t index, ITEMTYPE val)
+void METHOD(insert)(TYPE self, int64_t index, ITEM val)
 {
 	if (index < 0)
 		index = 0;
@@ -83,10 +83,10 @@ void METHOD(insert)(TYPE self, int64_t index, ITEMTYPE val)
 	set_length(self, self->len + 1);
 	memmove(self->data + index + 1, self->data + index, (self->len - index - 1)*sizeof(self->data[0]));
 	self->data[index] = val;
-	INCREF_ITEM(val);
+	ITEM_INCREF(val);
 }
 
-ITEMTYPE METHOD(pop)(TYPE self)
+ITEM METHOD(pop)(TYPE self)
 {
 	if (self->len == 0)
 		panic_printf("pop from empty list");
@@ -101,26 +101,26 @@ static void validate_index(TYPE self, int64_t i)
 		panic_printf("list index %%ld beyond end of list of length %%ld", (long)i, (long)self->len);
 }
 
-ITEMTYPE METHOD(set)(TYPE self, int64_t i, ITEMTYPE value)
+ITEM METHOD(set)(TYPE self, int64_t i, ITEM value)
 {
 	validate_index(self, i);
-	ITEMTYPE old = self->data[i];
+	ITEM old = self->data[i];
 	self->data[i] = value;
-	INCREF_ITEM(value);
+	ITEM_INCREF(value);
 	return old;
 }
 
-ITEMTYPE METHOD(get)(TYPE self, int64_t i)
+ITEM METHOD(get)(TYPE self, int64_t i)
 {
 	validate_index(self, i);
-	INCREF_ITEM(self->data[i]);
+	ITEM_INCREF(self->data[i]);
 	return self->data[i];
 }
 
-ITEMTYPE METHOD(delete_at_index)(TYPE self, int64_t i)
+ITEM METHOD(delete_at_index)(TYPE self, int64_t i)
 {
 	validate_index(self, i);
-	ITEMTYPE item = self->data[i];
+	ITEM item = self->data[i];
 	self->len--;
 	memmove(self->data+i, self->data+i+1, (self->len - i)*sizeof(self->data[0]));
 	return item;
@@ -142,7 +142,7 @@ static TYPE slice(TYPE self, int64_t start, int64_t end, bool del)
 			self->len -= res->len;
 		} else {
 			for (int64_t i = 0; i < res->len; i++)
-				INCREF_ITEM(res->data[i]);
+				ITEM_INCREF(res->data[i]);
 		}
 	}
 	return res;
@@ -158,54 +158,54 @@ TYPE METHOD(delete_slice)(TYPE self, int64_t start, int64_t end)
 	return slice(self, start, end, true);
 }
 
-ITEMTYPE METHOD(first)(TYPE self)
+ITEM METHOD(first)(TYPE self)
 {
 	if (self->len == 0)
 		panic_printf("can't get first item of empty list");
-	INCREF_ITEM(self->data[0]);
+	ITEM_INCREF(self->data[0]);
 	return self->data[0];
 }
 
-ITEMTYPE METHOD(last)(TYPE self)
+ITEM METHOD(last)(TYPE self)
 {
 	if (self->len == 0)
 		panic_printf("can't get last item of empty list");
-	INCREF_ITEM(self->data[self->len - 1]);
+	ITEM_INCREF(self->data[self->len - 1]);
 	return self->data[self->len - 1];
 }
 
-bool METHOD(__contains)(TYPE self, ITEMTYPE item)
+bool METHOD(__contains)(TYPE self, ITEM item)
 {
 	for (int64_t i = 0; i < self->len; i++) {
-		if (ITEMTYPE_METHOD(equals)(self->data[i], item))
+		if (ITEM_METHOD(equals)(self->data[i], item))
 			return true;
 	}
 	return false;
 }
 
-int64_t METHOD(find_first)(TYPE self, ITEMTYPE item)
+int64_t METHOD(find_first)(TYPE self, ITEM item)
 {
 	for (int64_t i = 0; i < self->len; i++) {
-		if (ITEMTYPE_METHOD(equals)(self->data[i], item))
+		if (ITEM_METHOD(equals)(self->data[i], item))
 			return i;
 	}
 	panic_printf("find_first: item not found");
 }
 
-int64_t METHOD(find_last)(TYPE self, ITEMTYPE item)
+int64_t METHOD(find_last)(TYPE self, ITEM item)
 {
 	for (int64_t i = self->len - 1; i >= 0; i--) {
-		if (ITEMTYPE_METHOD(equals)(self->data[i], item))
+		if (ITEM_METHOD(equals)(self->data[i], item))
 			return i;
 	}
 	panic_printf("find_last: item not found");
 }
 
-int64_t METHOD(find_only)(TYPE self, ITEMTYPE item)
+int64_t METHOD(find_only)(TYPE self, ITEM item)
 {
 	int64_t found = -1;
 	for (int64_t i = 0; i < self->len; i++) {
-		if (ITEMTYPE_METHOD(equals)(self->data[i], item)) {
+		if (ITEM_METHOD(equals)(self->data[i], item)) {
 			if (found != -1)
 				panic_printf("find_only: item found multiple times");
 			found = i;
@@ -216,22 +216,22 @@ int64_t METHOD(find_only)(TYPE self, ITEMTYPE item)
 	return found;
 }
 
-void METHOD(delete_first)(TYPE self, ITEMTYPE item)
+void METHOD(delete_first)(TYPE self, ITEM item)
 {
-	ITEMTYPE deleted = METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
-	DECREF_ITEM(deleted);
+	ITEM deleted = METHOD(delete_at_index)(self, METHOD(find_first)(self, item));
+	ITEM_DECREF(deleted);
 }
 
-void METHOD(delete_last)(TYPE self, ITEMTYPE item)
+void METHOD(delete_last)(TYPE self, ITEM item)
 {
-	ITEMTYPE deleted = METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
-	DECREF_ITEM(deleted);
+	ITEM deleted = METHOD(delete_at_index)(self, METHOD(find_last)(self, item));
+	ITEM_DECREF(deleted);
 }
 
-void METHOD(delete_only)(TYPE self, ITEMTYPE item)
+void METHOD(delete_only)(TYPE self, ITEM item)
 {
-	ITEMTYPE deleted = METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
-	DECREF_ITEM(deleted);
+	ITEM deleted = METHOD(delete_at_index)(self, METHOD(find_only)(self, item));
+	ITEM_DECREF(deleted);
 }
 
 bool METHOD(starts_with)(TYPE self, TYPE prefix)
@@ -239,7 +239,7 @@ bool METHOD(starts_with)(TYPE self, TYPE prefix)
 	if (self->len < prefix->len)
 		return false;
 	for (int64_t i = 0; i < prefix->len; i++)
-		if (!ITEMTYPE_METHOD(equals)(self->data[i], prefix->data[i]))
+		if (!ITEM_METHOD(equals)(self->data[i], prefix->data[i]))
 			return false;
 	return true;
 }
@@ -249,7 +249,7 @@ bool METHOD(ends_with)(TYPE self, TYPE prefix)
 	if (self->len < prefix->len)
 		return false;
 	for (int64_t s=self->len-1, p=prefix->len-1; p >= 0; s--,p--)
-		if (!ITEMTYPE_METHOD(equals)(self->data[s], prefix->data[p]))
+		if (!ITEM_METHOD(equals)(self->data[s], prefix->data[p]))
 			return false;
 	return true;
 }
@@ -268,7 +268,7 @@ struct class_Str METHOD(to_string)(TYPE self)
 		if (i != 0)
 			oomph_string_concat_inplace_cstr(&res, ", ");
 
-		struct class_Str s = ITEMTYPE_METHOD(to_string)(self->data[i]);
+		struct class_Str s = ITEM_METHOD(to_string)(self->data[i]);
 		oomph_string_concat_inplace(&res, s);
 		string_decref(s);
 	}
@@ -283,7 +283,7 @@ TYPE METHOD(reversed)(TYPE self)
 	set_length(res, self->len);
 	for (int64_t i = 0; i < self->len; i++) {
 		res->data[i] = self->data[self->len - 1 - i];
-		INCREF_ITEM(res->data[i]);
+		ITEM_INCREF(res->data[i]);
 	}
 	return res;
 }

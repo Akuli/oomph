@@ -73,3 +73,6 @@ export func main():
     print("aaaa".replace("aa", "x"))
     print("aaaa".replace("aa", "xxxx"))
     print("asdf".replace("", "x"))
+
+    print("Hash:")
+    print("foo".hash())

@@ -69,9 +69,12 @@ void oomph_io_write_file(struct class_Str path, struct class_Str content);
 void oomph_print(struct class_Str str);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
+#define meth_Bool_hash(a) (a)   // 0 or 1
 #define meth_Float_equals(a, b) ((a)==(b))
 #define meth_Int_equals(a, b) ((a)==(b))
+#define meth_Int_hash(a) (a)
 #define meth_null_equals(a, b) true
+#define meth_null_hash(n) 69
 #define meth_null_to_string(n) cstr_to_string("null")
 bool meth_Str_equals(struct class_Str a, struct class_Str b);
 double meth_Str_to_float(struct class_Str s);
@@ -79,6 +82,7 @@ int64_t meth_Float_ceil(double d);
 int64_t meth_Float_floor(double d);
 int64_t meth_Float_round(double d);
 int64_t meth_Float_truncate(double d);
+int64_t meth_Str_hash(struct class_Str s);
 int64_t meth_Str_length(struct class_Str s);
 int64_t meth_Str_to_int(struct class_Str s);
 struct class_Str meth_Float_to_string(double d);
@@ -114,5 +118,7 @@ struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str
 #define oomph_false false
 #define oomph_null 0
 #define oomph_true true
+
+#define pointer_hash(p) (((int64_t)(intptr_t)(p)) >> 5)
 
 #endif   // LIB_H

@@ -16,11 +16,11 @@ export class Method(Str name, FunctionType functype)
 export class Member(Str name, Type type)
 
 export class Generic(Str name)
-export class GenericSource(Generic generik, Type arg):
+export class GenericSource(Generic generik, List[Type] args):
     # TODO: some kind of handy way to say "do equality checks by value"
     # TODO: this equals method still needed?
     meth equals(GenericSource other) -> Bool:
-        return self.generik == other.generik and self.arg == other.arg
+        return self.generik == other.generik and self.args == other.args
 
 export class BasicType(
     Str name,
@@ -127,7 +127,7 @@ export func type_id_string(Type type) -> Str:
             if basictype.generic_source == null:
                 return basictype.name + "@" + basictype.definition_path.to_string()
             let source = basictype.generic_source as not null
-            return source.generik.name + type_id_string(source.arg)
+            return source.generik.name + [foreach arg of source.args: type_id_string(arg)].join(",")
         case UnionType union:
             return [foreach m of union.type_members: type_id_string(m)].join("|")
         case FunctionType _:
@@ -167,6 +167,7 @@ export class Builtins(
     Type NULL_TYPE,
     Type STR,
     Generic LIST,
+    Generic MAPPING,
     List[BuiltinVariable] visible_vars,
     List[BuiltinVariable] hidden_vars,
     List[BasicType] cleanup_list,
@@ -196,52 +197,77 @@ export class Builtins(
     meth get_builtin_types() -> List[Type]:
         return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
 
-    # TODO: this is in a weird place
-    meth generic2type(Generic generik, Type arg) -> Type:
-        let source = new GenericSource(generik, arg)
-        assert(generik == self.LIST)
+    meth get_builtin_generics() -> List[Generic]:
+        return [self.LIST, self.MAPPING]
 
-        let methods = []
+    # TODO: this is in a weird place
+    meth generic2type(Generic generik, List[Type] args, Location | null location) -> Type:
+        let source = new GenericSource(generik, args)
         let result = new BasicType(
-            "List[{type_name(arg)}]",
+            generik.name + "[" + [foreach arg of args: type_name(arg)].join(", ") + "]",
             true,
-            methods,
+            [],
             [],
             new List[Type](),  # FIXME: [] doesn't work
-            new GenericSource(generik, arg),
+            new GenericSource(generik, args),
             null,
             [],
         )
         let r = result as Type  # TODO: get rid of this
-        methods.push_all([
-            new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
-            new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
-            new Method("delete_first", new FunctionType([r, arg], null)),
-            new Method("delete_last", new FunctionType([r, arg], null)),
-            new Method("delete_only", new FunctionType([r, arg], null)),
-            new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
-            new Method("ends_with", new FunctionType([r, r], self.BOOL)),
-            new Method("equals", new FunctionType([r, r], self.BOOL)),
-            new Method("find_first", new FunctionType([r, arg], self.INT)),
-            new Method("find_last", new FunctionType([r, arg], self.INT)),
-            new Method("find_only", new FunctionType([r, arg], self.INT)),
-            new Method("first", new FunctionType([r], arg)),
-            new Method("get", new FunctionType([r, self.INT], arg)),
-            new Method("insert", new FunctionType([r, self.INT, arg], null)),
-            new Method("last", new FunctionType([r], arg)),
-            new Method("length", new FunctionType([r], self.INT)),
-            new Method("pop", new FunctionType([r], arg)),
-            new Method("push", new FunctionType([r, arg], null)),
-            new Method("push_all", new FunctionType([r, r], null)),
-            new Method("reversed", new FunctionType([r], r)),
-            new Method("set", new FunctionType([r, self.INT, arg], arg)),
-            new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
-            new Method("starts_with", new FunctionType([r, r], self.BOOL)),
-            new Method("to_string", new FunctionType([r], self.STR)),
-            # TODO: this is only for strings, but List[auto] may become List[Str] later
-            # if arg is STR:
-            new Method("join", new FunctionType([r, self.STR], self.STR)),
-        ])
+
+        if generik == self.LIST:
+            assert(args.length() == 1)   # TODO: error
+            let arg = args.first()
+            result.methods.push_all([
+                new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
+                new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
+                new Method("delete_first", new FunctionType([r, arg], null)),
+                new Method("delete_last", new FunctionType([r, arg], null)),
+                new Method("delete_only", new FunctionType([r, arg], null)),
+                new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
+                new Method("ends_with", new FunctionType([r, r], self.BOOL)),
+                new Method("equals", new FunctionType([r, r], self.BOOL)),
+                new Method("find_first", new FunctionType([r, arg], self.INT)),
+                new Method("find_last", new FunctionType([r, arg], self.INT)),
+                new Method("find_only", new FunctionType([r, arg], self.INT)),
+                new Method("first", new FunctionType([r], arg)),
+                new Method("get", new FunctionType([r, self.INT], arg)),
+                new Method("insert", new FunctionType([r, self.INT, arg], null)),
+                new Method("last", new FunctionType([r], arg)),
+                new Method("length", new FunctionType([r], self.INT)),
+                new Method("pop", new FunctionType([r], arg)),
+                new Method("push", new FunctionType([r, arg], null)),
+                new Method("push_all", new FunctionType([r, r], null)),
+                new Method("reversed", new FunctionType([r], r)),
+                new Method("set", new FunctionType([r, self.INT, arg], arg)),
+                new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
+                new Method("starts_with", new FunctionType([r, r], self.BOOL)),
+                new Method("to_string", new FunctionType([r], self.STR)),
+                # TODO: this is only for strings, but List[auto] may become List[Str] later
+                # if arg is STR:
+                new Method("join", new FunctionType([r, self.STR], self.STR)),
+            ])
+        elif generik == self.MAPPING:
+            assert(args.length() == 2)   # TODO: error
+            let keytype = args.first()
+            let valtype = args.last()
+            if "hash" not in [foreach m of get_methods(keytype, self): m.name]:
+                (location as not null).error(
+                    "mapping key type must be hashable, but "
+                    + "{type_name(keytype)} doesn't have a .hash() method"
+                )
+            result.methods.push_all([
+                new Method("delete", new FunctionType([r, keytype], null)),
+                new Method("equals", new FunctionType([r, r], self.BOOL)),
+                new Method("get", new FunctionType([r, keytype], valtype)),
+                new Method("has_key", new FunctionType([r, keytype], self.BOOL)),
+                new Method("length", new FunctionType([r], self.INT)),
+                new Method("set", new FunctionType([r, keytype, valtype], null)),
+                new Method("to_string", new FunctionType([r], self.STR)),
+            ])
+        else:
+            assert(false)
+
         self.cleanup_list.push(result)
         return result
 
@@ -256,6 +282,7 @@ export func create_builtins() -> Builtins:
     let STR = new BasicType("Str", true, [], [], null, null, null, []) as Type
 
     let LIST = new Generic("List")
+    let MAPPING = new Generic("Mapping")
 
     # These variables are not exposed in oomph
     let hidden_vars = [
@@ -283,7 +310,8 @@ export func create_builtins() -> Builtins:
 
     let visible_vars = []
     let result = new Builtins(
-        BOOL, FLOAT, INT, NULL_TYPE, STR, LIST,
+        BOOL, FLOAT, INT, NULL_TYPE, STR,
+        LIST, MAPPING,
         visible_vars, hidden_vars,
         [],
     )
@@ -302,7 +330,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
         new BuiltinVariable("__remove_prefix", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
-        new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, STR)], INT)),
+        new BuiltinVariable("__run_subprocess", new FunctionType([result.generic2type(LIST, [STR], null)], INT)),
         new BuiltinVariable("__slice_until_substring", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__utf8_len", new FunctionType([STR], INT)),
         new BuiltinVariable("assert", new FunctionType([BOOL, STR, INT], null)),
@@ -327,17 +355,18 @@ export func create_builtins() -> Builtins:
         new Method("count", new FunctionType([STR, STR], INT)),
         new Method("ends_with", new FunctionType([STR, STR], BOOL)),
         new Method("equals", new FunctionType([STR, STR], BOOL)),
-        new Method("get_utf8", new FunctionType([STR], result.generic2type(LIST, INT))),
+        new Method("get_utf8", new FunctionType([STR], result.generic2type(LIST, [INT], null))),
         new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("left_trim", new FunctionType([STR], STR)),
         new Method("length", new FunctionType([STR], INT)),
+        new Method("hash", new FunctionType([STR], INT)),
         new Method("remove_prefix", new FunctionType([STR, STR], STR)),
         new Method("remove_suffix", new FunctionType([STR, STR], STR)),
         new Method("repeat", new FunctionType([STR, INT], STR)),
         new Method("replace", new FunctionType([STR, STR, STR], STR)),
         new Method("right_pad", new FunctionType([STR, INT, STR], STR)),
         new Method("right_trim", new FunctionType([STR], STR)),
-        new Method("split", new FunctionType([STR, STR], result.generic2type(LIST, STR))),
+        new Method("split", new FunctionType([STR, STR], result.generic2type(LIST, [STR], null))),
         new Method("starts_with", new FunctionType([STR, STR], BOOL)),
         new Method("to_float", new FunctionType([STR], FLOAT)),
         new Method("to_int", new FunctionType([STR], INT)),
@@ -347,20 +376,30 @@ export func create_builtins() -> Builtins:
 
     (BOOL as BasicType).methods.push_all([
         new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
+        new Method("hash", new FunctionType([BOOL], INT)),
         new Method("to_string", new FunctionType([BOOL], STR)),
     ])
 
     (INT as BasicType).methods.push_all([
         new Method("equals", new FunctionType([INT, INT], BOOL)),
+        new Method("hash", new FunctionType([INT], INT)),
         new Method("to_string", new FunctionType([INT], STR)),
     ])
 
     (NULL_TYPE as BasicType).methods.push_all([
         new Method("equals", new FunctionType([NULL_TYPE, NULL_TYPE], BOOL)),
+        new Method("hash", new FunctionType([NULL_TYPE], INT)),
         new Method("to_string", new FunctionType([NULL_TYPE], STR)),
     ])
 
     return result
+
+# TODO: stdlib?
+func all(List[Bool] things) -> Bool:
+    foreach thing of things:
+        if not thing:
+            return false
+    return true
 
 export func get_methods(Type type, Builtins builtins) -> List[Method]:
     switch type:
@@ -374,6 +413,8 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
                     result.push(new Method("to_string", new FunctionType([type], builtins.STR)))
                 elif addition == "equals":
                     result.push(new Method("equals", new FunctionType([type, type], builtins.BOOL)))
+                elif addition == "hash":
+                    result.push(new Method("hash", new FunctionType([type], builtins.INT)))
                 else:
                     assert(false)
             return result
@@ -382,10 +423,16 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
             return []
 
         case UnionType union:
-            return [
+            let result = [
                 new Method("equals", new FunctionType([type, type], builtins.BOOL)),
                 new Method("to_string", new FunctionType([type], builtins.STR)),
             ]
+            if all([
+                foreach t of union.type_members:
+                    "hash" in [foreach m of get_methods(t, builtins): m.name]
+            ]):
+                result.push(new Method("hash", new FunctionType([type, type], builtins.INT)))
+            return result
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
     foreach method of get_methods(type, builtins):

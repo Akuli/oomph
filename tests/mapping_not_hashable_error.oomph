@@ -1,0 +1,2 @@
+export func main():
+    let foo = new Mapping[List[Int], Int]()

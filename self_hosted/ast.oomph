@@ -3,7 +3,7 @@ typedef Location = location::Location
 
 export typedef Type = AutoType | GenericType | NamedType | UnionType
 export class AutoType(Location location)
-export class GenericType(Location location, Str name, Type arg)
+export class GenericType(Location location, Str name, List[Type] args)
 export class NamedType(Location location, Str name)
 export class UnionType(List[Type] unioned)  # always 2 or more unioned types
 

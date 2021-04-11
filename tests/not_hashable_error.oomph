@@ -1,0 +1,8 @@
+class Foo():
+    # All Foos are equal...
+    meth equals(Foo other) -> Bool:
+        return true
+
+export func main():
+    # ...so it would be wrong to auto-create .hash() that returns pointer
+    print(new Foo().hash())

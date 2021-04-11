@@ -11,7 +11,6 @@ export func main():
             print(var.name)
     foreach var of builtins.get_builtin_types():
         print(ir::type_name(var))
+    foreach gen of builtins.get_builtin_generics():
+        print(gen.name)
     builtins.destroy()
-
-    # Currently List is the only generic, and there's no list of all generics
-    print("List")

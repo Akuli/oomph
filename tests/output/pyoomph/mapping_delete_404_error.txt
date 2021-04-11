@@ -1,0 +1,2 @@
+tests/.oomph-cache/.../mapping_delete_404_error: Mapping.delete(): key not found: "hello"
+Program exited with status 1

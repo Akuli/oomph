@@ -41,7 +41,7 @@ keywords = [
 ]
 
 keywords_but_not_really = ["true", "false", "null"]
-builtins = ["Bool", "Int", "List", "Str", "Float", "assert", "print", "main"]
+builtins = ["List", "Mapping", "Bool", "Int", "Str", "Float", "assert", "print", "main"]
 
 # Differences:
 # - oneline strings can't include newlines

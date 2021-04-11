@@ -116,8 +116,11 @@ class FunctionOrMethodConverter(
         if source == null:
             return type
 
-        let arg = self.substitute_autotypes((source as not null).arg, must_succeed)
-        return self.builtins.generic2type((source as not null).generik, arg)
+        # TODO: provide location here?
+        return self.builtins.generic2type((source as not null).generik, [
+            foreach arg of (source as not null).args:
+                self.substitute_autotypes(arg, must_succeed)
+        ], null)
 
     meth create_autotype() -> ir::AutoType:
         self.autotype_counter = self.autotype_counter + 1
@@ -174,7 +177,7 @@ class FunctionOrMethodConverter(
                 return resolve.actual
         return null
 
-    meth do_the_autotype_thing(ir::Type type1, ir::Type type2) -> TypePair:
+    meth do_the_autotype_thing(ir::Type type1, ir::Type type2, Location location) -> TypePair:
         if is_autotype(type1) and is_autotype(type2):
             if type1 != type2:
                 let actual_type1 = self.lookup_autotype(type1 as ir::AutoType)
@@ -205,22 +208,25 @@ class FunctionOrMethodConverter(
             return new TypePair(type1, type1)
 
         else:
+            # TODO: this nestedness sucks
             let type1_source = ir::get_generic_source(type1)
             let type2_source = ir::get_generic_source(type2)
-            if (
-                type1_source != null
-                and type2_source != null
-                and (type1_source as not null).generik == (type2_source as not null).generik
-            ):
-                # Handle List[Str] matching List[auto]
-                let generik = (type1_source as not null).generik
-                let arg_pair = self.do_the_autotype_thing(
-                    (type1_source as not null).arg, (type2_source as not null).arg
-                )
-                return new TypePair(
-                    self.builtins.generic2type(generik, arg_pair.first),
-                    self.builtins.generic2type(generik, arg_pair.second),
-                )
+            if type1_source != null and type2_source != null:
+                let source1 = type1_source as not null
+                let source2 = type2_source as not null
+                if source1.generik == source2.generik:
+                    # Handle List[Str] matching List[auto]
+                    # TODO: error
+                    assert(source1.args.length() == source2.args.length())
+                    let pairs = [
+                        # TODO: zip
+                        for let i = 0; i < source1.args.length(); i = i+1:
+                            self.do_the_autotype_thing(source1.args.get(i), source2.args.get(i), location)
+                    ]
+                    return new TypePair(
+                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first], location),
+                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second], location),
+                    )
 
         return new TypePair(type1, type2)
 
@@ -274,7 +280,7 @@ class FunctionOrMethodConverter(
         ir::LocalVariable var,
         ir::Type target_type,
     ) -> ir::LocalVariable | null:
-        let pair = self.do_the_autotype_thing(var.type, target_type)
+        let pair = self.do_the_autotype_thing(var.type, target_type, var.location)
         var.type = pair.first
         target_type = pair.second
 
@@ -560,7 +566,7 @@ class FunctionOrMethodConverter(
                         assert(member.type == content_type)  # TODO: error
 
                 let list_var = self.create_var(
-                    self.builtins.generic2type(self.builtins.LIST, content_type), location
+                    self.builtins.generic2type(self.builtins.LIST, [content_type], location), location
                 )
                 self.code.push(new ir::ConstructorCall(list_var, []))
                 foreach item_var of content:
@@ -1047,10 +1053,10 @@ class FileConverter(
                 foreach named_generic of self.generics:
                     if named_generic.name == generic_type.name:
                         if how2recurse == null:
-                            let arg = self.get_type(generic_type.arg, null)
+                            let args = [foreach a of generic_type.args: self.get_type(a, null)]
                         else:
-                            arg = (how2recurse as not null).get_type(generic_type.arg)
-                        return self.builtins.generic2type(named_generic.generik, arg)
+                            args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
+                        return self.builtins.generic2type(named_generic.generik, args, generic_type.location)
                 print("no generic type named {generic_type.name}")
                 assert(false)  # TODO: error
 
@@ -1082,10 +1088,14 @@ class FileConverter(
                                 self.types.push(new NamedType(name, type))
 
             case ast::ClassDef classdef:
-                let methods_to_create = ["to_string", "equals"]
+                let methods_to_create = ["to_string", "equals", "hash"]
                 foreach method of classdef.body:
                     if method.name in methods_to_create:
                         methods_to_create.delete_only(method.name)
+
+                # The auto-created hash assumes pointer equals(), aka not-user-defined equals()
+                if "equals" not in methods_to_create and "hash" in methods_to_create:
+                    methods_to_create.delete_only("hash")
 
                 self.check_type_not_exists(classdef.name, classdef.location)
                 let classtype = new ir::BasicType(
@@ -1284,7 +1294,7 @@ export func convert_program(
         path,
         symbols,
         [foreach type of builtins.get_builtin_types(): new NamedType(ir::type_name(type), type)],
-        [new NamedGeneric("List", builtins.LIST)],
+        [foreach gen of builtins.get_builtin_generics(): new NamedGeneric(gen.name, gen)],
         [foreach var of builtins.visible_vars: new NamedVariable(var.name, var)],
         [],
     )

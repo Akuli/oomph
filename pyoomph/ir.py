@@ -62,7 +62,9 @@ visible_builtins = {
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
         BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
-        BuiltinVariable("__run_subprocess", FunctionType([LIST.get_type(STRING)], INT)),
+        BuiltinVariable(
+            "__run_subprocess", FunctionType([LIST.get_type([STRING])], INT)
+        ),
         BuiltinVariable(
             "__slice_until_substring", FunctionType([STRING, STRING], STRING)
         ),

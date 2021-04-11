@@ -395,11 +395,8 @@ class _Parser:
 
         name = self.get_token("identifier")[1]
         if self.token_iter.peek() == ("op", "["):
-            self.get_token("op", "[")
-            arg = self.parse_type()
-            self.get_token("op", "]")
-            return ast.GenericType(name, arg)
-
+            args = self.parse_commasep_in_parens(self.parse_type, parens="[]")
+            return ast.GenericType(name, args)
         return ast.NamedType(name)
 
     def parse_type(self) -> ast.Type:
