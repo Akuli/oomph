@@ -5,7 +5,7 @@ typedef struct INTERNAL_NAME(entry) Entry;
 
 TYPE CONSTRUCTOR(void)
 {
-	size_t n = 8;
+	size_t n = 8;   // TODO: experiment with different values
 	TYPE map = malloc(sizeof(*map) + n*sizeof(map->flex[0]));
 	assert(map);
 	map->refcount = 1;
