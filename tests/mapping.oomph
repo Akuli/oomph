@@ -93,4 +93,6 @@ export func main():
         assert(mapping1.length() == mapping2.length())
         # TODO: ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
 
+    assert(mapping1 == mapping1.copy())
+
     print("ok")

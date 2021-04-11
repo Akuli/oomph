@@ -167,6 +167,7 @@ class Generic:
         elif self is MAPPING:
             [keytype, valtype] = generic_args
             result.constructor_argtypes = []
+            result.methods["copy"] = FunctionType([result], result)
             result.methods["delete"] = FunctionType([result, keytype], None)
             result.methods["equals"] = FunctionType([result, result], BOOL)
             result.methods["get"] = FunctionType([result, keytype], valtype)

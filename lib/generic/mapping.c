@@ -191,3 +191,15 @@ bool METHOD(equals)(TYPE a, TYPE b)
 
 	return true;
 }
+
+// TODO: optimize?
+TYPE METHOD(copy)(TYPE map)
+{
+	TYPE res = CONSTRUCTOR();
+	for (size_t i = 0; i < map->nentries; i++) {
+		Entry e = map->entries[i];
+		if (e.hash != 0)
+			METHOD(set)(res, e.key, e.value);
+	}
+	return res;
+}
