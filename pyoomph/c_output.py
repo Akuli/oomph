@@ -568,6 +568,8 @@ class _FilePair:
                 ("KEY", keytype),
                 ("VALUE", valuetype),
                 ("ITEM", itemtype),
+                ("KEY_LIST", LIST.get_type([keytype])),
+                ("VALUE_LIST", LIST.get_type([valuetype])),
                 ("ITEM_LIST", LIST.get_type([itemtype])),
             ]
         elif the_type.generic_origin.generic == MAPPING_ITEM:

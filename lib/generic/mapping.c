@@ -202,6 +202,28 @@ MAPPING MAPPING_METHOD(copy)(MAPPING map)
 	return res;
 }
 
+KEY_LIST MAPPING_METHOD(keys)(MAPPING map)
+{
+	KEY_LIST res = KEY_LIST_CTOR();
+	for (size_t i = 0; i < map->nentries; i++) {
+		ITEM it = map->entries[i];
+		if (it.hash != 0)
+			KEY_LIST_METHOD(push)(res, it.memb_key);
+	}
+	return res;
+}
+
+VALUE_LIST MAPPING_METHOD(values)(MAPPING map)
+{
+	VALUE_LIST res = VALUE_LIST_CTOR();
+	for (size_t i = 0; i < map->nentries; i++) {
+		ITEM it = map->entries[i];
+		if (it.hash != 0)
+			VALUE_LIST_METHOD(push)(res, it.memb_value);
+	}
+	return res;
+}
+
 ITEM_LIST MAPPING_METHOD(items)(MAPPING map)
 {
 	ITEM_LIST res = ITEM_LIST_CTOR();

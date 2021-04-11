@@ -6,6 +6,9 @@ export func main():
     print(smol)
     print(mapping)
 
+    print(mapping.keys())
+    print(mapping.values())
     print(mapping.items())
+
     foreach item of mapping.items():
         print("{item.key} maps to {item.value}")

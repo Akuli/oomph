@@ -1,5 +1,7 @@
 Mapping{"foo": 1}
 Mapping{"bar": 2, "foo": 1}
+["bar", "foo"]
+[2, 1]
 [MappingItem("bar": 2), MappingItem("foo": 1)]
 bar maps to 2
 foo maps to 1
