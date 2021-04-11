@@ -39,7 +39,8 @@ static uint32_t hash(KEYTYPE key)
 }
 
 
-static void add_entry(TYPE map, Entry e, bool check, bool incr)
+// Returns whether the entry was actually added
+static bool add_entry(TYPE map, Entry e, bool check)
 {
 	assert(e.hash != 0);
 
@@ -49,17 +50,14 @@ static void add_entry(TYPE map, Entry e, bool check, bool incr)
 			DECREF_VALUE(map->entries[i].value);
 			map->entries[i].value = e.value;
 			INCREF_VALUE(map->entries[i].value);
-			return;
+			return false;
 		}
 		// Jump over this entry
 		i = (i+1) % map->nentries;
 	}
 
 	map->entries[i] = e;
-	INCREF_KEY(e.key);
-	INCREF_VALUE(e.value);
-	if (incr)
-		map->len++;
+	return true;
 }
 
 static void grow(TYPE map)
@@ -74,7 +72,7 @@ static void grow(TYPE map)
 
 	for (size_t i = 0; i < oldn; i++) {
 		if (oldlist[i].hash != 0)
-			add_entry(map, oldlist[i], false, false);
+			add_entry(map, oldlist[i], false);
 	}
 
 	if (oldlist != map->flex)
@@ -86,7 +84,12 @@ void METHOD(set)(TYPE map, KEYTYPE key, VALUETYPE value)
 	float magic = 0.7;   // TODO: do experiments to find best possible value
 	if (map->len+1 > magic*map->nentries)
 		grow(map);
-	add_entry(map, (Entry){ hash(key), key, value }, true, true);
+
+	if (add_entry(map, (Entry){ hash(key), key, value }, true)) {
+		INCREF_KEY(key);
+		INCREF_VALUE(value);
+		map->len++;
+	}
 }
 
 static Entry *find(TYPE map, KEYTYPE key, uint32_t keyhash)
@@ -137,7 +140,7 @@ void METHOD(delete)(TYPE map, KEYTYPE key)
 	{
 		Entry e = map->entries[k];
 		map->entries[k].hash = 0;
-		add_entry(map, e, false, false);
+		add_entry(map, e, false);
 	}
 }
 
