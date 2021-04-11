@@ -31,9 +31,8 @@ void DESTRUCTOR(void *ptr)
 static uint32_t hash(KEYTYPE key)
 {
 	uint32_t h = (uint32_t)KEYTYPE_METHOD(hash)(key);
-	if (h == 0)   // 0 has special meaning in mapping
-		h = 69;
-	return h;
+	// 0 has special meaning in mapping
+	return h==0 ? 69 : h;
 }
 
 
