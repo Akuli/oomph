@@ -694,8 +694,10 @@ class FunctionOrMethodConverter(
                 let obj = self.do_expression(setattr.obj)
                 let new_value_var = self.do_expression(setattr.value)
 
-                # TODO: error
-                assert(ir::get_member(obj.type, setattr.attribute) == new_value_var.type)
+                if ir::get_member(obj.type, setattr.attribute) != new_value_var.type:
+                    # TODO: error
+                    print("wrong type for attribute {setattr.attribute} of type {ir::type_name(obj.type)}")
+                    assert(false)
 
                 # Copy old value into local var, so that it will be decreffed
                 let old_value_var = self.create_var(new_value_var.type, setattr.attribute_location)
@@ -1077,7 +1079,8 @@ class FileConverter(
 
                 self.check_type_not_exists(classdef.name, classdef.location)
                 let classtype = new ir::BasicType(
-                    classdef.name, true, [], [], null, null, self.path, methods_to_create
+                    classdef.name, true, new Mapping[Str, auto](), new Mapping[Str, auto](),
+                    null, null, self.path, methods_to_create
                 )
                 # TODO: cleanup_list shouldn't be in builtins
                 self.builtins.cleanup_list.push(classtype)
@@ -1130,10 +1133,8 @@ class FileConverter(
             self.symbols.push(new ir::Symbol(self.path, def.name, func_var))
             self.add_var(func_var, def.name)
         else:
-            foreach method of (classtype as not null).methods:
-                assert(method.name != def.name)
-
-            (classtype as not null).methods.push(new ir::Method(def.name, functype))
+            assert(not (classtype as not null).methods.has_key(def.name))
+            (classtype as not null).methods.set(def.name, functype)
 
     meth do_step3(ast::ToplevelDeclaration top_declaration):
         switch top_declaration:
@@ -1142,15 +1143,15 @@ class FileConverter(
 
             case ast::ClassDef classdef:
                 let classtype = self.types.get(classdef.name) as ir::BasicType
-                classtype.members.push_all([
-                    foreach member of classdef.members:
-                    new ir::Member(member.name, self.get_type(member.type, null))
-                ])
+                foreach member of classdef.members:
+                    assert(not classtype.members.has_key(member.name))
+                    classtype.members.set(member.name, self.get_type(member.type, null))
+
                 # TODO: is it possible to specify this when creating classtype?
                 # TODO: auto types not working at all here
                 classtype.constructor_argtypes = new List[ir::Type]() as List[ir::Type] | null
                 (classtype.constructor_argtypes as not null).push_all([
-                    foreach member of classtype.members: member.type
+                    foreach member of classdef.members: self.get_type(member.type, null)
                 ])
 
                 foreach method_def of classdef.body:
