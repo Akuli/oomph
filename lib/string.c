@@ -277,7 +277,7 @@ int64_t meth_Str_hash(struct class_Str s)
 	uint32_t hash = (uint32_t)s.nbytes, tmp;
 	int rem;
 
-	if (len <= 0 || data == NULL) return 0;
+	if (len == 0) return 0;
 
 	rem = len & 3;
 	len >>= 2;
