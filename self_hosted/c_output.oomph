@@ -27,7 +27,7 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
 class FunctionEmitter(
     FilePair file_pair,
     Mapping[ir::LocalVariable, Str] local_vars,
-    List[ir::GotoLabel] labels,             # named label0, label1, label2, ...
+    Mapping[ir::GotoLabel, Str] labels,
     Str before_body,
     Str after_body,
     List[ir::LocalVariable] need_decref,  # TODO: do this in c_output?
@@ -155,9 +155,9 @@ class FunctionEmitter(
                 return "{self.emit_var(check.result)} = ({self.emit_var(check.union_var)}.membernum == {membernum});\n"
 
     meth get_label_name(ir::GotoLabel label) -> Str:
-        if label not in self.labels:
-            self.labels.push(label)
-        return "label" + self.labels.find_only(label).to_string()
+        if not self.labels.has_key(label):
+            self.labels.set(label, "label" + self.labels.length().to_string())
+        return self.labels.get(label)
 
     meth add_local_var(ir::LocalVariable var, Bool declare_and_decref):
         let name = "var" + self.local_vars.length().to_string()
@@ -692,7 +692,10 @@ class FilePair(
         switch top_declaration:
             case ir::FuncDef funcdef:
                 new FunctionEmitter(
-                    self, new Mapping[ir::LocalVariable, auto](), [], "", "", []
+                    self,
+                    new Mapping[ir::LocalVariable, auto](),
+                    new Mapping[ir::GotoLabel, auto](),
+                    "", "", []
                 ).emit_funcdef(
                     funcdef, self.emit_var(funcdef.var)
                 )
@@ -700,7 +703,10 @@ class FilePair(
                 let klass = methdef.type.argtypes.first()
                 let file_pair = self.session.type_to_file_pair(klass)
                 new FunctionEmitter(
-                    file_pair, new Mapping[ir::LocalVariable, auto](), [], "", "", []
+                    file_pair,
+                    new Mapping[ir::LocalVariable, auto](),
+                    new Mapping[ir::GotoLabel, auto](),
+                    "", "", []
                 ).emit_funcdef(
                     methdef,
                     "meth_{self.session.get_type_c_name(klass)}_{methdef.name}",
