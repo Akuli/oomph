@@ -42,8 +42,6 @@ char *string_to_cstr(struct class_Str s);
 void oomph_string_concat_inplace(struct class_Str *res, struct class_Str suf);
 void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf);
 
-struct class_List_Str;
-
 // panic_printf_errno includes value of errno when nonzero
 noreturn void panic_printf_errno(const char *fmt, ...);
 #define panic_printf(...) (errno = 0, panic_printf_errno(__VA_ARGS__))
