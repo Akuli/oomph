@@ -2,16 +2,9 @@ import "<stdlib>/io.oomph" as io
 import "<stdlib>/process.oomph" as subproc
 
 export func main():
-    let args = new List[Str]()
-    args.push("cp")
-    args.push("README.md")
-    args.push("test_out/")
+    let args = ["cp", "README.md", "test_out/"]
     print(subproc::run(args))
     print(args)
     print(io::read_file("test_out/README.md").split("\n").get(0))
 
-    args = new List[Str]()
-    args.push("sh")
-    args.push("-c")
-    args.push("exit 69")
-    print(subproc::run(args))
+    print(subproc::run(["sh", "-c", "exit 69"]))
