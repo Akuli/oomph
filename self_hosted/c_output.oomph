@@ -24,6 +24,15 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
     return result + "_" + hash::md5(identifying_part).split("").slice(0, 10).join("")
 
 
+func create_function_emitter(FilePair file_pair) -> FunctionEmitter:
+    return new FunctionEmitter(
+        file_pair,
+        # https://github.com/Akuli/oomph/issues/216
+        new Mapping[ir::LocalVariable, auto](),
+        new Mapping[ir::GotoLabel, auto](),
+        "", "", [],
+    )
+
 class FunctionEmitter(
     FilePair file_pair,
     Mapping[ir::LocalVariable, Str] local_vars,
@@ -691,26 +700,12 @@ class FilePair(
     meth emit_toplevel_declaration(ir::ToplevelDeclaration top_declaration):
         switch top_declaration:
             case ir::FuncDef funcdef:
-                new FunctionEmitter(
-                    self,
-                    new Mapping[ir::LocalVariable, auto](),
-                    new Mapping[ir::GotoLabel, auto](),
-                    "", "", []
-                ).emit_funcdef(
-                    funcdef, self.emit_var(funcdef.var)
-                )
+                create_function_emitter(self).emit_funcdef(funcdef, self.emit_var(funcdef.var))
             case ir::MethodDef methdef:
                 let klass = methdef.type.argtypes.first()
                 let file_pair = self.session.type_to_file_pair(klass)
-                new FunctionEmitter(
-                    file_pair,
-                    new Mapping[ir::LocalVariable, auto](),
-                    new Mapping[ir::GotoLabel, auto](),
-                    "", "", []
-                ).emit_funcdef(
-                    methdef,
-                    "meth_{self.session.get_type_c_name(klass)}_{methdef.name}",
-                )
+                let name = "meth_{self.session.get_type_c_name(klass)}_{methdef.name}"
+                create_function_emitter(file_pair).emit_funcdef(methdef, name)
 
 
 # This state is shared between different files
