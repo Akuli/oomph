@@ -6,13 +6,11 @@ typedef struct INTERNAL_NAME(entry) Entry;
 TYPE CONSTRUCTOR(void)
 {
 	size_t n = 8;   // TODO: experiment with different values
-	TYPE map = malloc(sizeof(*map) + n*sizeof(map->flex[0]));
+	TYPE map = calloc(1, sizeof(*map) + n*sizeof(map->flex[0]));
 	assert(map);
 	map->refcount = 1;
-	map->len = 0;
 	map->nentries = n;
 	map->entries = map->flex;
-	memset(map->entries, 0, sizeof(map->entries[0]) * n);
 	return map;
 }
 
