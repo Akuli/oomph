@@ -90,7 +90,7 @@ class FunctionOrMethodConverter(
     meth resolve_autotype(ir::AutoType autotype, ir::Type actual):
         assert(not is_autotype(actual))
         if self.resolved_autotypes.has_key(autotype):
-            assert(self.resolved_autotypes.get(autotype) == actual)  # TODO
+            assert(self.resolved_autotypes.get(autotype) == actual)  # TODO: error
         else:
             foreach matching of self.get_matching_autotype_list(autotype):
                 self.resolved_autotypes.set(matching, actual)
