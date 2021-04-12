@@ -15,7 +15,7 @@ MAPPING MAPPING_CTOR(void)
 	map->itable = map->flex;
 	for (size_t i = 0; i < n; i++)
 		map->itable[i] = EMPTY;
-	map->itablesz = n;
+	map->itablelen = n;
 	return map;
 }
 
@@ -39,13 +39,13 @@ static uint32_t hash(KEY key)
 static size_t find_empty(MAPPING map, uint32_t keyhash)
 {
 	size_t i;
-	for (i = keyhash % map->itablesz; map->itable[i] != EMPTY; i = (i+1) % map->itablesz) { }
+	for (i = keyhash % map->itablelen; map->itable[i] != EMPTY; i = (i+1) % map->itablelen) { }
 	return i;
 }
 
 static ITEM *find_item_or_empty(MAPPING map, KEY key, uint32_t keyhash, size_t *i)
 {
-	for (*i = keyhash % map->itablesz; map->itable[*i] != EMPTY; *i = (*i + 1) % map->itablesz)
+	for (*i = keyhash % map->itablelen; map->itable[*i] != EMPTY; *i = (*i + 1) % map->itablelen)
 	{
 		ITEM *inmap = &map->items->data[map->itable[*i]];
 		if (inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key))
@@ -63,17 +63,17 @@ static ITEM *find_item(MAPPING map, KEY key, uint32_t keyhash)
 
 static void grow_itable(MAPPING map)
 {
-	size_t oldsz = map->itablesz;
-	map->itablesz *= 2;
+	size_t oldsz = map->itablelen;
+	map->itablelen *= 2;
 
 	if (map->itable == map->flex)
-		map->itable = malloc(map->itablesz * sizeof map->itable[0]);
+		map->itable = malloc(map->itablelen * sizeof map->itable[0]);
 	else
-		map->itable = realloc(map->itable, map->itablesz * sizeof map->itable[0]);
+		map->itable = realloc(map->itable, map->itablelen * sizeof map->itable[0]);
 	assert(map->itable);
 
 	// Reindex everything lol
-	for (size_t i = 0; i < map->itablesz; i++)
+	for (size_t i = 0; i < map->itablelen; i++)
 		map->itable[i] = EMPTY;
 	for (int64_t i = 0; i < map->items->len; i++)
 		map->itable[find_empty(map, map->items->data[i].hash)] = i;
@@ -82,7 +82,7 @@ static void grow_itable(MAPPING map)
 void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
 {
 	float magic = 0.7;   // TODO: do experiments to find best possible value
-	if (map->items->len+1 > magic*map->itablesz)
+	if (map->items->len+1 > magic*map->itablelen)
 		grow_itable(map);
 
 	uint32_t h = hash(key);
@@ -130,13 +130,13 @@ void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 	map->itable[i] = EMPTY;
 
 	// Adjust the mess left behind by delete_at_index
-	for (size_t k = 0; k < map->itablesz; k++) {
+	for (size_t k = 0; k < map->itablelen; k++) {
 		if (map->itable[k] != EMPTY && map->itable[k] > delidx)
 			map->itable[k]--;
 	}
 
 	// Delete and add back everything that might rely on jumping over the item at i
-	for (size_t k = (i+1) % map->itablesz; map->itable[k] != EMPTY; k = (k+1) % map->itablesz)
+	for (size_t k = (i+1) % map->itablelen; map->itable[k] != EMPTY; k = (k+1) % map->itablelen)
 	{
 		size_t idx = map->itable[k];
 		map->itable[k] = EMPTY;
