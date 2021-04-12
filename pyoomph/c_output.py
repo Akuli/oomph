@@ -395,8 +395,10 @@ class _FilePair:
 
     def emit_string(self, value: str) -> str:
         if value not in self.strings:
+            # Including the full value in first argument of create_id causes issue #132
+            # I like to include some parts of string content for debugging though
             self.strings[value] = _create_id(
-                f"string{len(self.strings)}_" + value, value
+                f"string{len(self.strings)}_{value[:20]}", value
             )
 
             array_content = ", ".join(
