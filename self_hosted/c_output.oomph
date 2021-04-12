@@ -421,33 +421,32 @@ class FilePair(
             self.function_defs = self.function_defs + decl + "\{" + (body as not null) + "\}\n"
 
     meth emit_string(Str value) -> Str:
-        let first_time_with_this_value = not self.strings.has_key(value)
-        if first_time_with_this_value:
-            self.strings.set(value, "string" + self.strings.length().to_string())
+        if self.strings.has_key(value):
+            return self.strings.get(value)
 
         # Including the full value in first argument of create_id causes issue #132
         # I like to include some parts of string content for debugging though
         let shortened = value.split("").slice(0, 20).join("")
-        let varname = create_id("string" + self.strings.find_only(value).to_string() + shortened, value)
+        let varname = create_id("string{self.strings.length()}_{shortened}", value)
+        self.strings.set(value, varname)
 
-        if first_time_with_this_value:
-            let content_chars = [foreach c of value.get_utf8(): "(char){c}"]
-            if content_chars == []:
-                content_chars.push("0")  # empty c arrays aren't a thing
+        let content_chars = [foreach c of value.get_utf8(): "(char){c}"]
+        if content_chars == []:
+            content_chars.push("0")  # empty c arrays aren't a thing
 
-            self.string_defs = self.string_defs + """
-            static struct StringBuf {varname}_buf = \{
-                .refcount = -1,
-                .data = (char[])\{ {content_chars.join(",")} \},
-                .malloced = false,
-                .len = {value.get_utf8().length()},
-            \};
-            static struct class_Str {varname} = \{
-                .buf = &{varname}_buf,
-                .nbytes = {value.get_utf8().length()},
-                .offset = 0,
-            \};
-            """
+        self.string_defs = self.string_defs + """
+        static struct StringBuf {varname}_buf = \{
+            .refcount = -1,
+            .data = (char[])\{ {content_chars.join(",")} \},
+            .malloced = false,
+            .len = {value.get_utf8().length()},
+        \};
+        static struct class_Str {varname} = \{
+            .buf = &{varname}_buf,
+            .nbytes = {value.get_utf8().length()},
+            .offset = 0,
+        \};
+        """
 
         return varname
 
