@@ -604,15 +604,15 @@ class FilePair(
 
         let macros = new Mapping[Str, Str]()
         foreach item of macrotypes.items():
-            let cname = self.session.get_type_c_name(item.type)
-            macros.set(item.key, self.emit_type_custom(item.type, false))
+            let cname = self.session.get_type_c_name(item.value)
+            macros.set(item.key, self.emit_type_custom(item.value, false))
             macros.set("{item.key}_STRUCT", "class_{cname}")
             macros.set("{item.key}_CTOR", "ctor_{cname}")
             macros.set("{item.key}_DTOR", "dtor_{cname}")
             macros.set("{item.key}_METHOD(name)", "meth_{cname}_##name")
-            macros.set("{item.key}_INCREF(val)", self.session.emit_incref("val", item.type))
-            macros.set("{item.key}_DECREF(val)", self.session.emit_decref("val", item.type))
-            if item.type == self.session.builtins.STR:
+            macros.set("{item.key}_INCREF(val)", self.session.emit_incref("val", item.value))
+            macros.set("{item.key}_DECREF(val)", self.session.emit_decref("val", item.value))
+            if item.value == self.session.builtins.STR:
                 macros.set("{item.key}_IS_STRING", "1")
             else:
                 macros.set("{item.key}_IS_STRING", "0")
