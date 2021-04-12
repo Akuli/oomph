@@ -282,13 +282,6 @@ func trim_leading_underscores(Str s) -> Str:
     return s
 
 
-# TODO: these suck
-func method_keys(Mapping[Str, ir::FunctionType] map) -> List[Str]:
-    return map.keys()
-func member_keys(Mapping[Str, ir::Type] map) -> List[Str]:
-    return map.keys()
-
-
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class FilePair(
@@ -643,24 +636,21 @@ class FilePair(
         assert(self.struct == null)
         self.struct = (defines + io::read_file(h_path) + undefs) as Str | null
 
-        let method_mapping = ir::get_methods(type, self.session.builtins)
-        foreach methodname of method_keys(method_mapping):
+        foreach item of ir::get_methods(type, self.session.builtins).items():
             self.define_function(
-                "meth_{self.session.get_type_c_name(type)}_{methodname}",
-                method_mapping.get(methodname),
-                null, null,
+                "meth_{self.session.get_type_c_name(type)}_{item.key}", item.value, null, null
             )
 
         self.function_defs = self.function_defs + defines + io::read_file(c_path) + undefs
 
     meth define_simple_type(ir::BasicType type):
-        let struct_members = [foreach m of member_keys(type.members): "{self.emit_type(type.members.get(m))} memb_{m};\n"].join("")
-        let constructor_args = [foreach m of member_keys(type.members): "{self.emit_type(type.members.get(m))} arg_{m}"].join(",")
+        let struct_members = [foreach item of type.members.items(): "{self.emit_type(item.value)} memb_{item.key};\n"].join("")
+        let constructor_args = [foreach item of type.members.items(): "{self.emit_type(item.value)} arg_{item.key}"].join(",")
         if constructor_args == "":
             constructor_args = "void"
-        let member_assignments = [foreach m of member_keys(type.members): "obj->memb_{m} = arg_{m};\n"].join("")
-        let member_increfs = [foreach m of member_keys(type.members): self.session.emit_incref("obj->memb_{m}", type.members.get(m)) + ";\n"].join("")
-        let member_decrefs = [foreach m of member_keys(type.members): self.session.emit_decref("obj->memb_{m}", type.members.get(m)) + ";\n"].join("")
+        let member_assignments = [foreach item of type.members.items(): "obj->memb_{item.key} = arg_{item.key};\n"].join("")
+        let member_increfs = [foreach item of type.members.items(): self.session.emit_incref("obj->memb_{item.key}", item.value) + ";\n"].join("")
+        let member_decrefs = [foreach item of type.members.items(): self.session.emit_decref("obj->memb_{item.key}", item.value) + ";\n"].join("")
 
         assert(self.struct == null)
         self.struct = """
@@ -698,9 +688,9 @@ class FilePair(
                 struct class_Str meth_{self.id}_to_string({self.emit_type(type)} obj);
                 """
                 let concats = [
-                    foreach m of member_keys(type.members):
+                    foreach item of type.members.items():
                         """
-                        tmp = meth_{self.session.get_type_c_name(type.members.get(m))}_to_string(self->memb_{m});
+                        tmp = meth_{self.session.get_type_c_name(item.value)}_to_string(self->memb_{item.key});
                         oomph_string_concat_inplace(&res, tmp);
                         decref_Str(tmp);
                         """
