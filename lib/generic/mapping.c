@@ -189,10 +189,8 @@ MAPPING MAPPING_METHOD(copy)(MAPPING map)
 KEY_LIST MAPPING_METHOD(keys)(MAPPING map)
 {
 	KEY_LIST res = KEY_LIST_CTOR();
-	for (int64_t i = 0; i < map->items->len; i++) {
-		assert(MAPPING_METHOD(has_key)(map, map->items->data[i].memb_key));
+	for (int64_t i = 0; i < map->items->len; i++)
 		KEY_LIST_METHOD(push)(res, map->items->data[i].memb_key);
-	}
 	return res;
 }
 
