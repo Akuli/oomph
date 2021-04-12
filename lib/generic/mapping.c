@@ -171,11 +171,9 @@ bool MAPPING_METHOD(equals)(MAPPING a, MAPPING b)
 	// No need to check in opposite direction, because lengths match.
 	for (int64_t i = 0; i < a->items->len; i++) {
 		ITEM aent = a->items->data[i];
-		if (aent.hash != 0) {
-			ITEM *bent = find_item(b, aent.memb_key, aent.hash);
-			if (bent == NULL || !VALUE_METHOD(equals)(aent.memb_value, bent->memb_value))
-				return false;
-		}
+		ITEM *bent = find_item(b, aent.memb_key, aent.hash);
+		if (bent == NULL || !VALUE_METHOD(equals)(aent.memb_value, bent->memb_value))
+			return false;
 	}
 	return true;
 }
