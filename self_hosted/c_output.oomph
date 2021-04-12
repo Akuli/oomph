@@ -129,9 +129,6 @@ class FunctionEmitter(
                 let attrib = self.emit_var(getattr.obj) + op + "memb_" + getattr.attribute
                 return "{attrib} = {var};\n"
 
-            # TODO: this typo gave weird error
-            #case ir::SetAttribute setattr:
-
             case ir::InstantiateUnion inst:
                 let union = inst.result.type as ir::UnionType
                 let membernum = union.type_members.find_only(inst.value.type)
