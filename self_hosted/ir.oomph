@@ -8,7 +8,7 @@ export class AutoType(Int id)
 # TODO: better way to make constants similar to null, true, false
 export class NoReturn()
 
-# FIXME: missing equals method
+# FIXME: missing equals and hash methods
 export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype)
 
 export class Generic(Str name)
@@ -38,10 +38,18 @@ export class BasicType(
         else:
             return (self.generic_source == other.generic_source)
 
+    meth hash() -> Int:
+        switch self.generic_source:
+            case null _:
+                # can rely on name
+                return self.name.hash()
+            case GenericSource s:
+                return s.generik.hash()
+
 
 export class UnionType(
     List[Type] type_members,
-    Str | null custom_name,
+    Str | null custom_name,   # can be set after creating
     Builtins builtins,  # TODO: this sucks
 ):
     # Helps with reference cycles
@@ -50,6 +58,13 @@ export class UnionType(
 
     meth equals(UnionType other) -> Bool:
         return self.type_members == other.type_members
+
+    meth hash() -> Int:
+        let result = 0
+        foreach member of self.type_members:
+            # TODO: xor
+            result = result + member.hash()
+        return result
 
 
 export func make_union(
