@@ -436,7 +436,7 @@ export func get_methods(Type type, Builtins builtins) -> Mapping[Str, FunctionTy
             if all([
                 foreach t of union.type_members: get_methods(t, builtins).has_key("hash")
             ]):
-                result.set("hash", new FunctionType([type, type], builtins.INT))
+                result.set("hash", new FunctionType([type], builtins.INT))
             return result
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
