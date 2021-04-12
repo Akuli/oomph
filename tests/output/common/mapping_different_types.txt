@@ -9,4 +9,4 @@ Mapping{123: 456.789}
 Mapping{true: "lol"}
 Mapping{Foo(): "hello"}
 Mapping{Bar(): "lol"}
-Mapping{(Str | null)(null): "value of null", (Str | null)("foo"): "bar"}
+Mapping{null: "value of null", "foo": "bar"}

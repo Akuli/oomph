@@ -459,8 +459,7 @@ class FilePair(
             for let i = 0; i < n; i = i+1:
                 """
                 case {i}:
-                    valstr = meth_{member_cnames.get(i)}_to_string(obj.val.item{i});
-                    break;
+                    return meth_{member_cnames.get(i)}_to_string(obj.val.item{i});
                 """
         ].join("")
         let equals_cases = [
@@ -496,14 +495,6 @@ class FilePair(
                         "INTERNAL OOMPH ERROR: invalid %s membernum %d",
                         string_to_cstr({type_name_code}), (int)obj.membernum);
             \}
-
-            struct class_Str res = {self.emit_string(ir::type_name(union))};
-            incref_Str(res);
-            oomph_string_concat_inplace_cstr(&res, "(");
-            oomph_string_concat_inplace(&res, valstr);
-            oomph_string_concat_inplace_cstr(&res, ")");
-            decref_Str(valstr);
-            return res;
         \}
 
         bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)

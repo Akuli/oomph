@@ -1,6 +1,6 @@
 main: lolwat false
 show: lolwat false
-show: (Str | null)(null) true
+show: null true
 true
 true
 true

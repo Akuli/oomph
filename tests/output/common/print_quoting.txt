@@ -1,4 +1,4 @@
 hello
 hello
 Foo("hello")
-(Str | Foo)(Foo("hello"))
+Foo("hello")
