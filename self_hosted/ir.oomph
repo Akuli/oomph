@@ -8,12 +8,8 @@ export class AutoType(Int id)
 # TODO: better way to make constants similar to null, true, false
 export class NoReturn()
 
-# FIXME: missing equals method
+# FIXME: missing equals and hash methods
 export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype)
-
-# TODO: mappings
-export class Method(Str name, FunctionType functype)
-export class Member(Str name, Type type)
 
 export class Generic(Str name)
 export class GenericSource(Generic generik, List[Type] args):
@@ -25,8 +21,8 @@ export class GenericSource(Generic generik, List[Type] args):
 export class BasicType(
     Str name,
     Bool refcounted,
-    List[Method] methods,
-    List[Member] members,
+    Mapping[Str, FunctionType] methods,
+    Mapping[Str, Type] members,
     List[Type] | null constructor_argtypes,
     GenericSource | null generic_source,
     Str | null definition_path,  # null for builtin
@@ -42,10 +38,18 @@ export class BasicType(
         else:
             return (self.generic_source == other.generic_source)
 
+    meth hash() -> Int:
+        switch self.generic_source:
+            case null _:
+                # can rely on name
+                return self.name.hash()
+            case GenericSource s:
+                return s.generik.hash()
+
 
 export class UnionType(
     List[Type] type_members,
-    Str | null custom_name,
+    Str | null custom_name,   # can be set after creating
     Builtins builtins,  # TODO: this sucks
 ):
     # Helps with reference cycles
@@ -54,6 +58,13 @@ export class UnionType(
 
     meth equals(UnionType other) -> Bool:
         return self.type_members == other.type_members
+
+    meth hash() -> Int:
+        let result = 0
+        foreach member of self.type_members:
+            # TODO: xor or list hash
+            result = result + member.hash()
+        return result
 
 
 export func make_union(
@@ -169,31 +180,27 @@ export class Builtins(
     Generic LIST,
     Generic MAPPING,
     Generic MAPPING_ITEM,
-    List[BuiltinVariable] visible_vars,
-    List[BuiltinVariable] hidden_vars,
+    Mapping[Str, BuiltinVariable] visible_vars,
+    Mapping[Str, BuiltinVariable] hidden_vars,
     List[BasicType] cleanup_list,
 ):
     meth destroy():
         # get rid of reference cycles
         foreach type of self.cleanup_list:
-            # TODO: 'thing.methods = []' doesn't work
-            type.methods = new List[Method]()
-            type.members = new List[Member]()
+            type.methods = new Mapping[Str, FunctionType]()
+            type.members = new Mapping[Str, Type]()
             type.constructor_argtypes = null as List[Type] | null
 
     meth get_visible_var(Str name) -> BuiltinVariable:
-        foreach var of self.visible_vars:
-            if var.name == name:
-                return var
+        if self.visible_vars.has_key(name):
+            return self.visible_vars.get(name)
+        # TODO: error
         print("variable {name} not found")
         assert(false)
 
+    # TODO: get rid of this
     meth get_hidden_var(Str name) -> BuiltinVariable:
-        foreach var of self.hidden_vars:
-            if var.name == name:
-                return var
-        print("INTERNAL ERROR: hidden variable {name} not found")
-        assert(false)
+        return self.hidden_vars.get(name)
 
     meth get_builtin_types() -> List[Type]:
         return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
@@ -207,8 +214,8 @@ export class Builtins(
         let result = new BasicType(
             generik.name + "[" + [foreach arg of args: type_name(arg)].join(", ") + "]",
             true,
-            [],
-            [],
+            new Mapping[Str, auto](),
+            new Mapping[Str, auto](),
             new List[Type](),  # FIXME: [] doesn't work
             new GenericSource(generik, args),
             null,
@@ -219,72 +226,70 @@ export class Builtins(
         if generik == self.LIST:
             assert(args.length() == 1)   # TODO: error
             let arg = args.first()
-            result.methods.push_all([
-                new Method("__contains", new FunctionType([r, arg], self.BOOL)),  # TODO: hide?
-                new Method("copy", new FunctionType([r], r)),
-                new Method("delete_at_index", new FunctionType([r, self.INT], arg)),
-                new Method("delete_first", new FunctionType([r, arg], null)),
-                new Method("delete_last", new FunctionType([r, arg], null)),
-                new Method("delete_only", new FunctionType([r, arg], null)),
-                new Method("delete_slice", new FunctionType([r, self.INT, self.INT], r)),
-                new Method("ends_with", new FunctionType([r, r], self.BOOL)),
-                new Method("equals", new FunctionType([r, r], self.BOOL)),
-                new Method("find_first", new FunctionType([r, arg], self.INT)),
-                new Method("find_last", new FunctionType([r, arg], self.INT)),
-                new Method("find_only", new FunctionType([r, arg], self.INT)),
-                new Method("first", new FunctionType([r], arg)),
-                new Method("get", new FunctionType([r, self.INT], arg)),
-                new Method("insert", new FunctionType([r, self.INT, arg], null)),
-                new Method("last", new FunctionType([r], arg)),
-                new Method("length", new FunctionType([r], self.INT)),
-                new Method("pop", new FunctionType([r], arg)),
-                new Method("push", new FunctionType([r, arg], null)),
-                new Method("push_all", new FunctionType([r, r], null)),
-                new Method("reversed", new FunctionType([r], r)),
-                new Method("set", new FunctionType([r, self.INT, arg], arg)),
-                new Method("slice", new FunctionType([r, self.INT, self.INT], r)),
-                new Method("starts_with", new FunctionType([r, r], self.BOOL)),
-                new Method("to_string", new FunctionType([r], self.STR)),
-                # TODO: this is only for strings, but List[auto] may become List[Str] later
-                # if arg is STR:
-                new Method("join", new FunctionType([r, self.STR], self.STR)),
-            ])
+            result.methods.set("__contains", new FunctionType([r, arg], self.BOOL))  # TODO: hide?
+            result.methods.set("copy", new FunctionType([r], r))
+            result.methods.set("delete_at_index", new FunctionType([r, self.INT], arg))
+            result.methods.set("delete_first", new FunctionType([r, arg], null))
+            result.methods.set("delete_last", new FunctionType([r, arg], null))
+            result.methods.set("delete_only", new FunctionType([r, arg], null))
+            result.methods.set("delete_slice", new FunctionType([r, self.INT, self.INT], r))
+            result.methods.set("ends_with", new FunctionType([r, r], self.BOOL))
+            result.methods.set("equals", new FunctionType([r, r], self.BOOL))
+            result.methods.set("find_first", new FunctionType([r, arg], self.INT))
+            result.methods.set("find_last", new FunctionType([r, arg], self.INT))
+            result.methods.set("find_only", new FunctionType([r, arg], self.INT))
+            result.methods.set("first", new FunctionType([r], arg))
+            result.methods.set("get", new FunctionType([r, self.INT], arg))
+            result.methods.set("insert", new FunctionType([r, self.INT, arg], null))
+            result.methods.set("last", new FunctionType([r], arg))
+            result.methods.set("length", new FunctionType([r], self.INT))
+            result.methods.set("pop", new FunctionType([r], arg))
+            result.methods.set("push", new FunctionType([r, arg], null))
+            result.methods.set("push_all", new FunctionType([r, r], null))
+            result.methods.set("reversed", new FunctionType([r], r))
+            result.methods.set("set", new FunctionType([r, self.INT, arg], arg))
+            result.methods.set("slice", new FunctionType([r, self.INT, self.INT], r))
+            result.methods.set("starts_with", new FunctionType([r, r], self.BOOL))
+            result.methods.set("to_string", new FunctionType([r], self.STR))
+            # TODO: this is only for strings, but List[auto] may become List[Str] later
+            # if arg is STR:
+            result.methods.set("join", new FunctionType([r, self.STR], self.STR))
+
         elif generik == self.MAPPING:
             assert(args.length() == 2)   # TODO: error
             let keytype = args.first()
             let valtype = args.last()
-            if "hash" not in [foreach m of get_methods(keytype, self): m.name]:
-                (location as not null).error(
-                    "mapping key type must be hashable, but "
-                    + "{type_name(keytype)} doesn't have a .hash() method"
-                )
             let itemlist = self.generic2type(
                 self.LIST, [self.generic2type(self.MAPPING_ITEM, args, location)], location
             )
 
-            result.methods.push_all([
-                new Method("copy", new FunctionType([r], r)),
-                new Method("delete", new FunctionType([r, keytype], null)),
-                new Method("equals", new FunctionType([r, r], self.BOOL)),
-                new Method("get", new FunctionType([r, keytype], valtype)),
-                new Method("has_key", new FunctionType([r, keytype], self.BOOL)),
-                new Method("items", new FunctionType([r], itemlist)),
-                new Method("keys", new FunctionType([r], self.generic2type(self.LIST, [keytype], location))),
-                new Method("length", new FunctionType([r], self.INT)),
-                new Method("set", new FunctionType([r, keytype, valtype], null)),
-                new Method("to_string", new FunctionType([r], self.STR)),
-                new Method("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], location))),
-            ])
+            if not get_methods(keytype, self).has_key("hash"):
+                (location as not null).error(
+                    "mapping key type must be hashable, but "
+                    + "{type_name(keytype)} doesn't have a .hash() method"
+                )
+
+            result.methods.set("copy", new FunctionType([r], r))
+            result.methods.set("delete", new FunctionType([r, keytype], null))
+            result.methods.set("equals", new FunctionType([r, r], self.BOOL))
+            result.methods.set("get", new FunctionType([r, keytype], valtype))
+            result.methods.set("has_key", new FunctionType([r, keytype], self.BOOL))
+            result.methods.set("items", new FunctionType([r], itemlist))
+            result.methods.set("keys", new FunctionType([r], self.generic2type(self.LIST, [keytype], location)))
+            result.methods.set("length", new FunctionType([r], self.INT))
+            result.methods.set("set", new FunctionType([r, keytype, valtype], null))
+            result.methods.set("to_string", new FunctionType([r], self.STR))
+            result.methods.set("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], location)))
+
         elif generik == self.MAPPING_ITEM:
             assert(args.length() == 2)
             let keytype = args.first()
             let valtype = args.last()
-            result.members.push(new Member("key", keytype))
-            result.members.push(new Member("value", valtype))
-            result.methods.push_all([
-                new Method("equals", new FunctionType([r, r], self.BOOL)),
-                new Method("to_string", new FunctionType([r], self.STR)),
-            ])
+            result.members.set("key", keytype)
+            result.members.set("value", valtype)
+            result.methods.set("equals", new FunctionType([r, r], self.BOOL))
+            result.methods.set("to_string", new FunctionType([r], self.STR))
+
         else:
             assert(false)
 
@@ -293,20 +298,33 @@ export class Builtins(
 
 
 # TODO: custom constructors
+func create_basic_type(Str name, Bool refcounted) -> Type:
+    return new BasicType(name, refcounted, new Mapping[Str, auto](), new Mapping[Str, auto](), null, null, null, [])
+
 export func create_builtins() -> Builtins:
     # Methods are empty at first to prevent reference cycles
-    let BOOL = new BasicType("Bool", false, [], [], null, null, null, []) as Type
-    let FLOAT = new BasicType("Float", false, [], [], null, null, null, []) as Type
-    let INT = new BasicType("Int", false, [], [], null, null, null, []) as Type
-    let NULL_TYPE = new BasicType("null", false, [], [], null, null, null, []) as Type
-    let STR = new BasicType("Str", true, [], [], null, null, null, []) as Type
+    let BOOL = create_basic_type("Bool", false)
+    let FLOAT = create_basic_type("Float", false)
+    let INT = create_basic_type("Int", false)
+    let NULL_TYPE = create_basic_type("null", false)
+    let STR = create_basic_type("Str", true)
 
     let LIST = new Generic("List")
     let MAPPING = new Generic("Mapping")
     let MAPPING_ITEM = new Generic("MappingItem")
 
-    # These variables are not exposed in oomph
-    let hidden_vars = [
+    let visible_vars = new Mapping[Str, auto]()
+    let hidden_vars = new Mapping[Str, auto]()
+
+    let result = new Builtins(
+        BOOL, FLOAT, INT, NULL_TYPE, STR,
+        LIST, MAPPING, MAPPING_ITEM,
+        visible_vars, hidden_vars,
+        [],
+    )
+    result.cleanup_list.push_all([foreach t of result.get_builtin_types(): t as BasicType])
+
+    foreach var of [
         new BuiltinVariable("bool_eq", new FunctionType([BOOL, BOOL], BOOL)),
         new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)),
         new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)),
@@ -327,18 +345,10 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)),
         new BuiltinVariable("string_concat", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
-    ]
+    ]:
+        hidden_vars.set(var.name, var)
 
-    let visible_vars = []
-    let result = new Builtins(
-        BOOL, FLOAT, INT, NULL_TYPE, STR,
-        LIST, MAPPING, MAPPING_ITEM,
-        visible_vars, hidden_vars,
-        [],
-    )
-    result.cleanup_list.push_all([foreach t of result.get_builtin_types(): t as BasicType])
-
-    visible_vars.push_all([
+    foreach var of [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
         new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
         new BuiltinVariable("__exit", new FunctionType([INT], new NoReturn())),
@@ -359,59 +369,50 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("null", NULL_TYPE),
         new BuiltinVariable("print", new FunctionType([STR], null)),
         new BuiltinVariable("true", BOOL),
-    ])
+    ]:
+        visible_vars.set(var.name, var)
 
-    (FLOAT as BasicType).methods.push_all([
-        new Method("ceil", new FunctionType([FLOAT], INT)),
-        new Method("equals", new FunctionType([FLOAT, FLOAT], BOOL)),
-        new Method("floor", new FunctionType([FLOAT], INT)),
-        new Method("round", new FunctionType([FLOAT], INT)),
-        new Method("to_string", new FunctionType([FLOAT], STR)),
-        new Method("truncate", new FunctionType([FLOAT], INT)),
-    ])
+    (FLOAT as BasicType).methods.set("ceil", new FunctionType([FLOAT], INT))
+    (FLOAT as BasicType).methods.set("equals", new FunctionType([FLOAT, FLOAT], BOOL))
+    (FLOAT as BasicType).methods.set("floor", new FunctionType([FLOAT], INT))
+    (FLOAT as BasicType).methods.set("round", new FunctionType([FLOAT], INT))
+    (FLOAT as BasicType).methods.set("to_string", new FunctionType([FLOAT], STR))
+    (FLOAT as BasicType).methods.set("truncate", new FunctionType([FLOAT], INT))
 
-    (STR as BasicType).methods.push_all([
-        new Method("__contains", new FunctionType([STR, STR], BOOL)),
-        new Method("center_pad", new FunctionType([STR, INT, STR], STR)),
-        new Method("count", new FunctionType([STR, STR], INT)),
-        new Method("ends_with", new FunctionType([STR, STR], BOOL)),
-        new Method("equals", new FunctionType([STR, STR], BOOL)),
-        new Method("get_utf8", new FunctionType([STR], result.generic2type(LIST, [INT], null))),
-        new Method("left_pad", new FunctionType([STR, INT, STR], STR)),
-        new Method("left_trim", new FunctionType([STR], STR)),
-        new Method("length", new FunctionType([STR], INT)),
-        new Method("hash", new FunctionType([STR], INT)),
-        new Method("remove_prefix", new FunctionType([STR, STR], STR)),
-        new Method("remove_suffix", new FunctionType([STR, STR], STR)),
-        new Method("repeat", new FunctionType([STR, INT], STR)),
-        new Method("replace", new FunctionType([STR, STR, STR], STR)),
-        new Method("right_pad", new FunctionType([STR, INT, STR], STR)),
-        new Method("right_trim", new FunctionType([STR], STR)),
-        new Method("split", new FunctionType([STR, STR], result.generic2type(LIST, [STR], null))),
-        new Method("starts_with", new FunctionType([STR, STR], BOOL)),
-        new Method("to_float", new FunctionType([STR], FLOAT)),
-        new Method("to_int", new FunctionType([STR], INT)),
-        new Method("to_string", new FunctionType([STR], STR)),  # does nothing
-        new Method("trim", new FunctionType([STR], STR)),
-    ])
+    (STR as BasicType).methods.set("__contains", new FunctionType([STR, STR], BOOL))
+    (STR as BasicType).methods.set("center_pad", new FunctionType([STR, INT, STR], STR))
+    (STR as BasicType).methods.set("count", new FunctionType([STR, STR], INT))
+    (STR as BasicType).methods.set("ends_with", new FunctionType([STR, STR], BOOL))
+    (STR as BasicType).methods.set("equals", new FunctionType([STR, STR], BOOL))
+    (STR as BasicType).methods.set("get_utf8", new FunctionType([STR], result.generic2type(LIST, [INT], null)))
+    (STR as BasicType).methods.set("left_pad", new FunctionType([STR, INT, STR], STR))
+    (STR as BasicType).methods.set("left_trim", new FunctionType([STR], STR))
+    (STR as BasicType).methods.set("length", new FunctionType([STR], INT))
+    (STR as BasicType).methods.set("hash", new FunctionType([STR], INT))
+    (STR as BasicType).methods.set("remove_prefix", new FunctionType([STR, STR], STR))
+    (STR as BasicType).methods.set("remove_suffix", new FunctionType([STR, STR], STR))
+    (STR as BasicType).methods.set("repeat", new FunctionType([STR, INT], STR))
+    (STR as BasicType).methods.set("replace", new FunctionType([STR, STR, STR], STR))
+    (STR as BasicType).methods.set("right_pad", new FunctionType([STR, INT, STR], STR))
+    (STR as BasicType).methods.set("right_trim", new FunctionType([STR], STR))
+    (STR as BasicType).methods.set("split", new FunctionType([STR, STR], result.generic2type(LIST, [STR], null)))
+    (STR as BasicType).methods.set("starts_with", new FunctionType([STR, STR], BOOL))
+    (STR as BasicType).methods.set("to_float", new FunctionType([STR], FLOAT))
+    (STR as BasicType).methods.set("to_int", new FunctionType([STR], INT))
+    (STR as BasicType).methods.set("to_string", new FunctionType([STR], STR))  # does nothing
+    (STR as BasicType).methods.set("trim", new FunctionType([STR], STR))
 
-    (BOOL as BasicType).methods.push_all([
-        new Method("equals", new FunctionType([BOOL, BOOL], BOOL)),
-        new Method("hash", new FunctionType([BOOL], INT)),
-        new Method("to_string", new FunctionType([BOOL], STR)),
-    ])
+    (BOOL as BasicType).methods.set("equals", new FunctionType([BOOL, BOOL], BOOL))
+    (BOOL as BasicType).methods.set("hash", new FunctionType([BOOL], INT))
+    (BOOL as BasicType).methods.set("to_string", new FunctionType([BOOL], STR))
 
-    (INT as BasicType).methods.push_all([
-        new Method("equals", new FunctionType([INT, INT], BOOL)),
-        new Method("hash", new FunctionType([INT], INT)),
-        new Method("to_string", new FunctionType([INT], STR)),
-    ])
+    (INT as BasicType).methods.set("equals", new FunctionType([INT, INT], BOOL))
+    (INT as BasicType).methods.set("hash", new FunctionType([INT], INT))
+    (INT as BasicType).methods.set("to_string", new FunctionType([INT], STR))
 
-    (NULL_TYPE as BasicType).methods.push_all([
-        new Method("equals", new FunctionType([NULL_TYPE, NULL_TYPE], BOOL)),
-        new Method("hash", new FunctionType([NULL_TYPE], INT)),
-        new Method("to_string", new FunctionType([NULL_TYPE], STR)),
-    ])
+    (NULL_TYPE as BasicType).methods.set("equals", new FunctionType([NULL_TYPE, NULL_TYPE], BOOL))
+    (NULL_TYPE as BasicType).methods.set("hash", new FunctionType([NULL_TYPE], INT))
+    (NULL_TYPE as BasicType).methods.set("to_string", new FunctionType([NULL_TYPE], STR))
 
     return result
 
@@ -422,7 +423,7 @@ func all(List[Bool] things) -> Bool:
             return false
     return true
 
-export func get_methods(Type type, Builtins builtins) -> List[Method]:
+export func get_methods(Type type, Builtins builtins) -> Mapping[Str, FunctionType]:
     switch type:
         case AutoType _:
             assert(false)
@@ -431,35 +432,33 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
             let result = basictype.methods.copy()
             foreach addition of basictype.methods_to_create:
                 if addition == "to_string":
-                    result.push(new Method("to_string", new FunctionType([type], builtins.STR)))
+                    result.set("to_string", new FunctionType([type], builtins.STR))
                 elif addition == "equals":
-                    result.push(new Method("equals", new FunctionType([type, type], builtins.BOOL)))
+                    result.set("equals", new FunctionType([type, type], builtins.BOOL))
                 elif addition == "hash":
-                    result.push(new Method("hash", new FunctionType([type], builtins.INT)))
+                    result.set("hash", new FunctionType([type], builtins.INT))
                 else:
                     assert(false)
             return result
 
         case FunctionType _:
-            return []
+            return new Mapping[Str, auto]()
 
         case UnionType union:
-            let result = [
-                new Method("equals", new FunctionType([type, type], builtins.BOOL)),
-                new Method("to_string", new FunctionType([type], builtins.STR)),
-            ]
+            let result = new Mapping[Str, auto]()
+            result.set("equals", new FunctionType([type, type], builtins.BOOL))
+            result.set("to_string", new FunctionType([type], builtins.STR))
             if all([
-                foreach t of union.type_members:
-                    "hash" in [foreach m of get_methods(t, builtins): m.name]
+                foreach t of union.type_members: get_methods(t, builtins).has_key("hash")
             ]):
-                result.push(new Method("hash", new FunctionType([type], builtins.INT)))
+                result.set("hash", new FunctionType([type], builtins.INT))
             return result
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
-    foreach method of get_methods(type, builtins):
-        if method.name == name:
-            return method.functype
+    let methods = get_methods(type, builtins)
 
+    if methods.has_key(name):
+        return methods.get(name)
     print("type {type_name(type)} has no method named {name}")
     assert(false)   # TODO: error
 
@@ -470,12 +469,10 @@ export func get_member(Type type, Str name) -> Type:
         case BasicType basictype:
             let members = basictype.members
         case *:
-            members = []
+            members = new Mapping[Str, auto]()
 
-    foreach member of members:
-        if member.name == name:
-            return member.type
-
+    if members.has_key(name):
+        return members.get(name)
     print("type {type_name(type)} has no member named {name}")
     assert(false)   # TODO: error
 

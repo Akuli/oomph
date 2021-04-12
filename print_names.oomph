@@ -6,9 +6,9 @@ export func main():
         print(keyword)
 
     let builtins = ir::create_builtins()
-    foreach var of builtins.visible_vars:
-        if not var.name.starts_with("__"):
-            print(var.name)
+    foreach varname of builtins.visible_vars.keys():
+        if not varname.starts_with("__"):
+            print(varname)
     foreach var of builtins.get_builtin_types():
         print(ir::type_name(var))
     foreach gen of builtins.get_builtin_generics():
