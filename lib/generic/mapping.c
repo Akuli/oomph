@@ -134,7 +134,7 @@ void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 	VALUE_DECREF(deleted.memb_value);
 	map->itable[i] = EMPTY;
 
-	// Adjust the mess left behind by delete_index
+	// Adjust the mess left behind by delete_at_index
 	for (size_t k = 0; k < map->itablesz; k++) {
 		if (map->itable[k] != EMPTY && map->itable[k] > delidx)
 			map->itable[k]--;
