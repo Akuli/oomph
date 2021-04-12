@@ -90,10 +90,6 @@ export func main():
             # Delete
             let key = prng.get_string()
             if key in mapping2.keys():
-                print("Delete key: {key}")
-                print("({key}) in mapping 1 keys: {key in mapping1.keys()}")
-                print("({key}) in mapping 2 keys: {key in mapping2.keys()}")
-                print("({key}) mapping1 has_key: {mapping1.has_key(key)}")
                 mapping1.delete(key)
                 mapping2.delete(key)
             else:

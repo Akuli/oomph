@@ -37,22 +37,32 @@ static uint32_t hash(KEY key)
 }
 
 
-static ITEM *find(MAPPING map, KEY key, uint32_t keyhash, size_t *idx, bool check)
+static size_t find_empty(MAPPING map, uint32_t keyhash)
+{
+	size_t i;
+	for (i = keyhash % map->itablesz; map->itable[i] != EMPTY; i = (i+1) % map->itablesz) { }
+	return i;
+}
+
+static ITEM *find_item_or_empty(MAPPING map, KEY key, uint32_t keyhash, size_t *idx)
 {
 	size_t i;
 	for (i = keyhash % map->itablesz; map->itable[i] != EMPTY; i = (i+1) % map->itablesz)
 	{
 		ITEM *inmap = &map->items->data[map->itable[i]];
-		if (check && inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key)) {
-			if (idx)
-				*idx = i;
+		if (inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key)) {
+			*idx = i;
 			return inmap;
 		}
 	}
-
-	if (idx)
-		*idx = i;   // This is useful for finding an empty place in itable
+	*idx = i;   // Same as what find_empty(map, keyhash) would return
 	return NULL;
+}
+
+static ITEM *find_item(MAPPING map, KEY key, uint32_t keyhash)
+{
+	size_t dummy;
+	return find_item_or_empty(map, key, keyhash, &dummy);
 }
 
 static void grow_itable(MAPPING map)
@@ -68,12 +78,8 @@ static void grow_itable(MAPPING map)
 	// Reindex everything lol
 	for (size_t i = 0; i < map->itablesz; i++)
 		map->itable[i] = EMPTY;
-	for (int64_t i = 0; i < map->items->len; i++) {
-		ITEM it = map->items->data[i];
-		size_t tabidx;
-		find(map, it.memb_key, it.hash, &tabidx, false);
-		map->itable[tabidx] = i;
-	}
+	for (int64_t i = 0; i < map->items->len; i++)
+		map->itable[find_empty(map, map->items->data[i].hash)] = i;
 
 	if (old != map->flex)
 		free(old);
@@ -87,7 +93,7 @@ void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
 
 	uint32_t h = hash(key);
 	size_t i;
-	ITEM *inmap = find(map, key, h, &i, true);
+	ITEM *inmap = find_item_or_empty(map, key, h, &i);
 	if (inmap == NULL) {
 		map->itable[i] = (size_t)map->items->len;
 		ITEM_LIST_METHOD(push)(map->items, (ITEM){ h, key, value });
@@ -101,14 +107,14 @@ void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
 // TODO: this sucked in python 2 and it sucks here too
 bool MAPPING_METHOD(has_key)(MAPPING map, KEY key)
 {
-	return find(map, key, hash(key), NULL, true) != NULL;
+	return find_item(map, key, hash(key)) != NULL;
 }
 
 #define ERROR(msg, key) panic_printf("%s: %s", (msg), string_to_cstr(KEY_METHOD(to_string)((key))))
 
 VALUE MAPPING_METHOD(get)(MAPPING map, KEY key)
 {
-	ITEM *it = find(map, key, hash(key), NULL, true);
+	ITEM *it = find_item(map, key, hash(key));
 	if (!it)
 		ERROR("Mapping.get(): key not found", key);
 
@@ -119,7 +125,7 @@ VALUE MAPPING_METHOD(get)(MAPPING map, KEY key)
 void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 {
 	size_t i;
-	if (find(map, key, hash(key), &i, true) == NULL)
+	if (find_item_or_empty(map, key, hash(key), &i) == NULL)
 		ERROR("Mapping.delete(): key not found", key);
 
 	// TODO: delete_at_index is slow
@@ -139,12 +145,8 @@ void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 	for (size_t k = (i+1) % map->itablesz; map->itable[k] != EMPTY; k = (k+1) % map->itablesz)
 	{
 		size_t idx = map->itable[k];
-		ITEM it = map->items->data[idx];
 		map->itable[k] = EMPTY;
-
-		size_t newplace;
-		find(map, it.memb_key, it.hash, &newplace, false);
-		map->itable[newplace] = idx;
+		map->itable[find_empty(map, map->items->data[idx].hash)] = idx;
 	}
 }
 
@@ -173,7 +175,7 @@ bool MAPPING_METHOD(equals)(MAPPING a, MAPPING b)
 	for (int64_t i = 0; i < a->items->len; i++) {
 		ITEM aent = a->items->data[i];
 		if (aent.hash != 0) {
-			ITEM *bent = find(b, aent.memb_key, aent.hash, NULL, true);
+			ITEM *bent = find_item(b, aent.memb_key, aent.hash);
 			if (bent == NULL || !VALUE_METHOD(equals)(aent.memb_value, bent->memb_value))
 				return false;
 		}
