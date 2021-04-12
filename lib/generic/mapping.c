@@ -30,10 +30,10 @@ void MAPPING_DTOR(void *ptr)
 	free(map);
 }
 
-// TODO: get rid of this
 static uint32_t hash(KEY key)
 {
-	return (uint32_t)KEY_METHOD(hash)(key);
+	uint32_t h = (uint32_t)KEY_METHOD(hash)(key);
+	return (h==0) ? 69 : h;
 }
 
 
@@ -42,13 +42,11 @@ static ITEM *find(MAPPING map, KEY key, uint32_t keyhash, size_t *idx, bool chec
 	size_t i;
 	for (i = keyhash % map->itablesz; map->itable[i] != EMPTY; i = (i+1) % map->itablesz)
 	{
-		if (check) {
-			ITEM *inmap = &map->items->data[map->itable[i]];
-			if (inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key)) {
-				if (idx)
-					*idx = i;
-				return inmap;
-			}
+		ITEM *inmap = &map->items->data[map->itable[i]];
+		if (check && inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key)) {
+			if (idx)
+				*idx = i;
+			return inmap;
 		}
 	}
 
@@ -131,20 +129,22 @@ void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 	VALUE_DECREF(deleted.memb_value);
 	map->itable[i] = EMPTY;
 
+	// Adjust the mess left behind by delete_index
+	for (size_t k = 0; k < map->itablesz; k++) {
+		if (map->itable[k] != EMPTY && map->itable[k] > delidx)
+			map->itable[k]--;
+	}
+
 	// Delete and add back everything that might rely on jumping over the item at i
 	for (size_t k = (i+1) % map->itablesz; map->itable[k] != EMPTY; k = (k+1) % map->itablesz)
 	{
 		size_t idx = map->itable[k];
 		ITEM it = map->items->data[idx];
 		map->itable[k] = EMPTY;
-		find(map, it.memb_key, it.hash, &k, false);
-		map->itable[k] = idx;
-	}
 
-	// Adjust the mess left behind by delete_index
-	for (i = 0; i < map->itablesz; i++) {
-		if (map->itable[i] != EMPTY && map->itable[i] > delidx)
-			map->itable[i]--;
+		size_t newplace;
+		find(map, it.memb_key, it.hash, &newplace, false);
+		map->itable[newplace] = idx;
 	}
 }
 
@@ -195,8 +195,10 @@ MAPPING MAPPING_METHOD(copy)(MAPPING map)
 KEY_LIST MAPPING_METHOD(keys)(MAPPING map)
 {
 	KEY_LIST res = KEY_LIST_CTOR();
-	for (int64_t i = 0; i < map->items->len; i++)
+	for (int64_t i = 0; i < map->items->len; i++) {
+		assert(MAPPING_METHOD(has_key)(map, map->items->data[i].memb_key));
 		KEY_LIST_METHOD(push)(res, map->items->data[i].memb_key);
+	}
 	return res;
 }
 
