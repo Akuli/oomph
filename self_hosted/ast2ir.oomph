@@ -3,7 +3,7 @@ import "ir.oomph" as ir
 import "location.oomph" as location
 typedef Location = location::Location
 
-# TODO: mappings
+# TODO: tuples
 class LoopLabels(ir::GotoLabel continue_label, ir::GotoLabel break_label)
 class AutoTypePair(ir::AutoType first, ir::AutoType second)
 class TypePair(ir::Type first, ir::Type second)
