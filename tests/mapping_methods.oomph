@@ -1,0 +1,14 @@
+export func main():
+    let smol = new Mapping[Str, Int]()
+    smol.set("foo", 1)
+    let mapping = smol.copy()
+    mapping.set("bar", 2)
+    print(smol)
+    print(mapping)
+
+    print(mapping.keys())
+    print(mapping.values())
+    print(mapping.items())
+
+    foreach item of mapping.items():
+        print("{item.key} maps to {item.value}")
