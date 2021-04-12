@@ -1,0 +1,5 @@
+func foo(Bar b):
+    pass
+
+export func main():
+    pass
