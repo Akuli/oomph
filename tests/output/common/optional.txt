@@ -1,6 +1,6 @@
-main: (Str | null)("lolwat") false
-show: (Str | null)("lolwat") false
-show: (Str | null)(null) true
+main: lolwat false
+show: lolwat false
+show: null true
 true
 true
 true

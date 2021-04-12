@@ -1,0 +1,7 @@
+class Foo(Str s)
+
+export func main():
+    print("hello")
+    print("hello" as Str | Foo)
+    print(new Foo("hello"))
+    print(new Foo("hello") as Str | Foo)

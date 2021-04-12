@@ -1,1 +1,1 @@
-NumberOrNot(123)
+123

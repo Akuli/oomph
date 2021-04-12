@@ -423,8 +423,7 @@ class _FilePair:
         to_string_cases = "".join(
             f"""
             case {num}:
-                valstr = meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
-                break;
+                return meth_{self.session.get_type_c_name(typ)}_to_string(obj.val.item{num});
             """
             for num, typ in enumerate(the_type.type_members)
         )
@@ -453,7 +452,6 @@ class _FilePair:
         self.function_defs += f"""
         struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
         {{
-            struct class_Str valstr;
             switch(obj.membernum) {{
                 {to_string_cases}
                 default:
@@ -461,15 +459,6 @@ class _FilePair:
                         "INTERNAL OOMPH ERROR: invalid %s membernum %d",
                         string_to_cstr({type_name_code}), (int)obj.membernum);
             }}
-
-            struct class_Str res = {self.emit_string(the_type.name)};
-            // TODO: missing incref, although doesn't matter since these
-            //       strings are not reference counted
-            oomph_string_concat_inplace_cstr(&res, "(");
-            oomph_string_concat_inplace(&res, valstr);
-            oomph_string_concat_inplace_cstr(&res, ")");
-            decref_Str(valstr);
-            return res;
         }}
 
         bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)

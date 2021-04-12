@@ -109,7 +109,19 @@ class _FunctionOrMethodConverter:
             return var
 
         result_var = self.create_var(STRING)
-        self.code.append(ir.CallMethod(var, "to_string", [], result_var))
+        method_call = ir.CallMethod(var, "to_string", [], result_var)
+
+        if isinstance(var.type, ir.UnionType) and STRING in var.type.type_members:
+            # For unions containing string, output the string without quotes
+            its_a_string = self.create_var(BOOL)
+            self.code.append(ir.UnionMemberCheck(its_a_string, var, STRING))
+            self.do_if(
+                its_a_string,
+                [ir.GetFromUnion(result_var, var), ir.IncRef(result_var)],
+                [method_call],
+            )
+        else:
+            self.code.append(method_call)
         return result_var
 
     def create_special_call(
