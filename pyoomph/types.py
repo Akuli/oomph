@@ -174,7 +174,6 @@ class Generic:
             result.methods["delete"] = FunctionType([result, keytype], None)
             result.methods["equals"] = FunctionType([result, result], BOOL)
             result.methods["get"] = FunctionType([result, keytype], valtype)
-            result.methods["get_a_key"] = FunctionType([result], keytype)
             result.methods["has_key"] = FunctionType([result, keytype], BOOL)
             result.methods["items"] = FunctionType([result], itemlist)
             result.methods["keys"] = FunctionType([result], LIST.get_type([keytype]))
