@@ -162,8 +162,8 @@ struct class_Str MAPPING_METHOD(to_string)(MAPPING map)
 			oomph_string_concat_inplace(&res, keystr);
 			oomph_string_concat_inplace_cstr(&res, ": ");
 			oomph_string_concat_inplace(&res, valstr);
-			string_decref(keystr);
-			string_decref(valstr);
+			decref_Str(keystr);
+			decref_Str(valstr);
 		}
 	}
 

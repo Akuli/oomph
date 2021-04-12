@@ -270,7 +270,7 @@ struct class_Str LIST_METHOD(to_string)(LIST self)
 
 		struct class_Str s = ITEM_METHOD(to_string)(self->data[i]);
 		oomph_string_concat_inplace(&res, s);
-		string_decref(s);
+		decref_Str(s);
 	}
 
 	oomph_string_concat_inplace_cstr(&res, "]");

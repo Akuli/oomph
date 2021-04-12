@@ -38,6 +38,7 @@ def is_pointer(the_type: Type) -> bool:
     return (
         the_type.refcounted
         and not isinstance(the_type, UnionType)
+        and the_type != STRING
         and (
             the_type.generic_origin is None
             or the_type.generic_origin.generic is not MAPPING_ITEM
@@ -464,7 +465,7 @@ class _FilePair:
             oomph_string_concat_inplace_cstr(&res, "(");
             oomph_string_concat_inplace(&res, valstr);
             oomph_string_concat_inplace_cstr(&res, ")");
-            string_decref(valstr);
+            decref_Str(valstr);
             return res;
         }}
 
@@ -670,7 +671,7 @@ class _FilePair:
                     f"""
                     tmp = meth_{self.session.get_type_c_name(typ)}_to_string(self->memb_{nam});
                     oomph_string_concat_inplace(&res, tmp);
-                    string_decref(tmp);
+                    decref_Str(tmp);
                     """
                     for typ, nam in the_type.members
                 ]
@@ -749,10 +750,6 @@ class Session:
         return self.get_file_pair_for_type(the_type).id
 
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
-        # TODO: STRING special-casing is not needed
-        if the_type is STRING:
-            return f"string_incref({c_expression})"
-
         if is_pointer(the_type):
             return f"incref({c_expression})"
         if the_type.refcounted:
@@ -760,10 +757,6 @@ class Session:
         return "(void)0"
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
-        # TODO: STRING special-casing is not needed
-        if the_type is STRING:
-            return f"string_decref({c_expression})"
-
         if is_pointer(the_type):
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         if the_type.refcounted:

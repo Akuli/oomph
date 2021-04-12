@@ -28,7 +28,7 @@ func is_pointer(ir::Type type, ir::Builtins builtins) -> Bool:
         case ir::UnionType _:
             return false
         case ir::BasicType basic:
-            return ir::is_refcounted(type) and (
+            return ir::is_refcounted(type) and type != builtins.STR and (
                 basic.generic_source == null
                 or (basic.generic_source as not null).generik != builtins.MAPPING_ITEM
             )
@@ -495,11 +495,11 @@ class FilePair(
             \}
 
             struct class_Str res = {self.emit_string(ir::type_name(union))};
-            string_incref(res);
+            incref_Str(res);
             oomph_string_concat_inplace_cstr(&res, "(");
             oomph_string_concat_inplace(&res, valstr);
             oomph_string_concat_inplace_cstr(&res, ")");
-            string_decref(valstr);
+            decref_Str(valstr);
             return res;
         \}
 
@@ -698,7 +698,7 @@ class FilePair(
                         """
                         tmp = meth_{self.session.get_type_c_name(m.type)}_to_string(self->memb_{m.name});
                         oomph_string_concat_inplace(&res, tmp);
-                        string_decref(tmp);
+                        decref_Str(tmp);
                         """
                 ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
                 self.function_defs = self.function_defs + """
@@ -789,9 +789,6 @@ export class Session(
         return self.type_to_file_pair(type).id
 
     meth emit_incref(Str c_expression, ir::Type type) -> Str:
-        # TODO: STR special-casing not needed
-        if type == self.builtins.STR:
-            return "string_incref({c_expression})"
         if is_pointer(type, self.builtins):
             return "incref({c_expression})"
         if ir::is_refcounted(type):
@@ -799,9 +796,6 @@ export class Session(
         return "(void)0"
 
     meth emit_decref(Str c_expression, ir::Type type) -> Str:
-        # TODO: STR special-casing not needed
-        if type == self.builtins.STR:
-            return "string_decref({c_expression})"
         if is_pointer(type, self.builtins):
             return "decref(({c_expression}), dtor_{self.get_type_c_name(type)})"
         if ir::is_refcounted(type):

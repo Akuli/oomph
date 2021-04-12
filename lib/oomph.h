@@ -30,8 +30,8 @@ struct class_Str {
 
 const char *string_data(struct class_Str s);
 void string_buf_destructor(void *ptr);
-#define string_incref(s) incref((s).buf)
-#define string_decref(s) decref((s).buf, string_buf_destructor)
+#define incref_Str(s) incref((s).buf)
+#define decref_Str(s) decref((s).buf, string_buf_destructor)
 
 bool string_validate_utf8(const char *data, size_t len);
 struct class_Str data_to_string(const char *data, size_t len);

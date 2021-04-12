@@ -30,7 +30,7 @@ struct class_Str ITEM_METHOD(to_string)(ITEM it)
 	oomph_string_concat_inplace(&res, valstr);
 	oomph_string_concat_inplace_cstr(&res, ")");
 
-	string_decref(keystr);
-	string_decref(valstr);
+	decref_Str(keystr);
+	decref_Str(valstr);
 	return res;
 }

@@ -19,7 +19,7 @@ static void atexit_callback(void)
 {
 	for (size_t i = 0; i < global_delete_list_len; i = i+1) {
 		char *s = string_to_cstr(global_delete_list[i]);
-		string_decref(global_delete_list[i]);
+		decref_Str(global_delete_list[i]);
 
 		if (remove(s) != 0)
 			panic_printf_errno("io::delete_at_exit failed to delete %s", s);
@@ -37,7 +37,7 @@ void oomph_io_delete_at_exit(struct class_Str path)
 		panic_printf("io::delete_at_exit() called more than %zu times", max);
 
 	global_delete_list[global_delete_list_len++] = path;
-	string_incref(path);
+	incref_Str(path);
 }
 
 void oomph_io_mkdir(struct class_Str path)

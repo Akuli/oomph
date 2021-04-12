@@ -104,7 +104,7 @@ void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf)
 	struct StringBuf *buf = alloc_buf(old.nbytes + strlen(suf));
 	memcpy(buf->data, string_data(old), old.nbytes);
 	memcpy(buf->data + old.nbytes, suf, strlen(suf));
-	string_decref(*res);
+	decref_Str(*res);
 	*res = (struct class_Str){ .buf = buf, .nbytes = old.nbytes + strlen(suf), .offset = 0 };
 }
 
@@ -112,7 +112,7 @@ void oomph_string_concat_inplace(struct class_Str *res, struct class_Str suf)
 {
 	struct class_Str old = *res;
 	*res = oomph_string_concat(*res, suf);
-	string_decref(old);
+	decref_Str(old);
 }
 
 // Returns a programmer-readable string, print does not use this
@@ -230,7 +230,7 @@ struct class_Str meth_Str_remove_prefix(struct class_Str s, struct class_Str pre
 {
 	if (meth_Str_starts_with(s, pre))
 		return slice_to_end(s, pre.nbytes);
-	string_incref(s);
+	incref_Str(s);
 	return s;
 }
 
@@ -238,7 +238,7 @@ struct class_Str meth_Str_remove_suffix(struct class_Str s, struct class_Str suf
 {
 	if (meth_Str_ends_with(s, suf))
 		return slice_from_start(s, s.nbytes - suf.nbytes);
-	string_incref(s);
+	incref_Str(s);
 	return s;
 }
 
@@ -249,7 +249,7 @@ struct class_Str oomph_slice_until_substring(struct class_Str s, struct class_St
 		if (memcmp(string_data(s)+i, string_data(sep), sep.nbytes) == 0)
 			return slice_from_start(s, i);
 	}
-	string_incref(s);
+	incref_Str(s);
 	return s;
 }
 
