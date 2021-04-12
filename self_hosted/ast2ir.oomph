@@ -1250,9 +1250,10 @@ export func convert_program(
 ) -> List[ir::ToplevelDeclaration]:
 
     # TODO: mapping comprehensions
+    # TODO: mapping copying doesn't work here
     let vars = new Mapping[Str, ir::Variable]()
-    foreach var of builtins.visible_vars:
-        vars.set(var.name, var)
+    foreach item of builtins.visible_vars.items():
+        vars.set(item.key, item.value)
 
     let types = new Mapping[Str, ir::Type]()
     foreach type of builtins.get_builtin_types():

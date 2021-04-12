@@ -180,8 +180,8 @@ export class Builtins(
     Generic LIST,
     Generic MAPPING,
     Generic MAPPING_ITEM,
-    List[BuiltinVariable] visible_vars,
-    List[BuiltinVariable] hidden_vars,
+    Mapping[Str, BuiltinVariable] visible_vars,
+    Mapping[Str, BuiltinVariable] hidden_vars,
     List[BasicType] cleanup_list,
 ):
     meth destroy():
@@ -192,18 +192,15 @@ export class Builtins(
             type.constructor_argtypes = null as List[Type] | null
 
     meth get_visible_var(Str name) -> BuiltinVariable:
-        foreach var of self.visible_vars:
-            if var.name == name:
-                return var
+        if self.visible_vars.has_key(name):
+            return self.visible_vars.get(name)
+        # TODO: error
         print("variable {name} not found")
         assert(false)
 
+    # TODO: get rid of this
     meth get_hidden_var(Str name) -> BuiltinVariable:
-        foreach var of self.hidden_vars:
-            if var.name == name:
-                return var
-        print("INTERNAL ERROR: hidden variable {name} not found")
-        assert(false)
+        return self.hidden_vars.get(name)
 
     meth get_builtin_types() -> List[Type]:
         return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
@@ -316,8 +313,18 @@ export func create_builtins() -> Builtins:
     let MAPPING = new Generic("Mapping")
     let MAPPING_ITEM = new Generic("MappingItem")
 
-    # These variables are not exposed in oomph
-    let hidden_vars = [
+    let visible_vars = new Mapping[Str, auto]()
+    let hidden_vars = new Mapping[Str, auto]()
+
+    let result = new Builtins(
+        BOOL, FLOAT, INT, NULL_TYPE, STR,
+        LIST, MAPPING, MAPPING_ITEM,
+        visible_vars, hidden_vars,
+        [],
+    )
+    result.cleanup_list.push_all([foreach t of result.get_builtin_types(): t as BasicType])
+
+    foreach var of [
         new BuiltinVariable("bool_eq", new FunctionType([BOOL, BOOL], BOOL)),
         new BuiltinVariable("bool_not", new FunctionType([BOOL], BOOL)),
         new BuiltinVariable("float_add", new FunctionType([FLOAT, FLOAT], FLOAT)),
@@ -338,18 +345,10 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("int_sub", new FunctionType([INT, INT], INT)),
         new BuiltinVariable("string_concat", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("string_eq", new FunctionType([STR, STR], BOOL)),
-    ]
+    ]:
+        hidden_vars.set(var.name, var)
 
-    let visible_vars = []
-    let result = new Builtins(
-        BOOL, FLOAT, INT, NULL_TYPE, STR,
-        LIST, MAPPING, MAPPING_ITEM,
-        visible_vars, hidden_vars,
-        [],
-    )
-    result.cleanup_list.push_all([foreach t of result.get_builtin_types(): t as BasicType])
-
-    visible_vars.push_all([
+    foreach var of [
         new BuiltinVariable("__argv_count", new FunctionType([], INT)),
         new BuiltinVariable("__argv_get", new FunctionType([INT], STR)),
         new BuiltinVariable("__exit", new FunctionType([INT], new NoReturn())),
@@ -370,7 +369,8 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("null", NULL_TYPE),
         new BuiltinVariable("print", new FunctionType([STR], null)),
         new BuiltinVariable("true", BOOL),
-    ])
+    ]:
+        visible_vars.set(var.name, var)
 
     (FLOAT as BasicType).methods.set("ceil", new FunctionType([FLOAT], INT))
     (FLOAT as BasicType).methods.set("equals", new FunctionType([FLOAT, FLOAT], BOOL))
