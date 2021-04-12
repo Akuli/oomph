@@ -59,7 +59,6 @@ static ITEM *find(MAPPING map, KEY key, uint32_t keyhash, size_t *idx, bool chec
 
 static void grow_itable(MAPPING map)
 {
-	printf("Growing itable %zu --> %zu\n", map->itablesz, 2*map->itablesz);
 	size_t oldsz = map->itablesz;
 	map->itablesz *= 2;
 
@@ -91,15 +90,14 @@ void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
 	uint32_t h = hash(key);
 	size_t i;
 	ITEM *inmap = find(map, key, h, &i, true);
-	if (inmap != NULL) {
+	if (inmap == NULL) {
+		map->itable[i] = (size_t)map->items->len;
+		ITEM_LIST_METHOD(push)(map->items, (ITEM){ h, key, value });
+	} else {
 		VALUE_DECREF(inmap->memb_value);
 		inmap->memb_value = value;
 		VALUE_INCREF(inmap->memb_value);
-		return false;
 	}
-
-	map->itable[i] = (size_t)map->items->len;
-	ITEM_LIST_METHOD(push)(map->items, (ITEM){ h, key, value });
 }
 
 // TODO: this sucked in python 2 and it sucks here too

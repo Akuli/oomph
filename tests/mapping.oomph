@@ -57,6 +57,11 @@ func get_strings() -> List[Str]:
             result.push(word)
     return result
 
+func ensure_lists_contain_same_items(List[Str] a, List[Str] b):
+    foreach item of a:
+        b.delete_only(item)
+    assert(b == [])
+
 
 export func main():
     let prng = new PRNG(1234, get_strings())
@@ -68,12 +73,14 @@ export func main():
         let operation = prng.get_number(3)
 
         if operation == 0:
+            print("Set")
             # Set
             let key = prng.get_string()
             let value = prng.get_string()
             mapping1.set(key, value)
             mapping2.set(key, value)
         elif operation == 1:
+            print("Get")
             # Get
             let key = prng.get_string()
             if mapping2.get(key) == null:
@@ -81,17 +88,18 @@ export func main():
             else:
                 assert(mapping1.has_key(key))
                 assert(mapping1.get(key) == (mapping2.get(key) as not null))
-        elif operation == 2:
-            # Delete
-            let key = prng.get_string()
-            if key in mapping2.keys():
-                mapping1.delete(key)
-                mapping2.delete(key)
-            else:
-                assert(not mapping1.has_key(key))
+#        elif operation == 2:
+#            print("Del")
+#            # Delete
+#            let key = prng.get_string()
+#            if key in mapping2.keys():
+#                mapping1.delete(key)
+#                mapping2.delete(key)
+#            else:
+#                assert(not mapping1.has_key(key))
 
         assert(mapping1.length() == mapping2.length())
         assert(mapping1 == mapping1.copy())
-        # TODO: ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
+        ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
 
     print("ok")
