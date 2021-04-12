@@ -105,8 +105,7 @@ class UnionType(Type):
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
-        if all("hash" in member.methods for member in self.type_members):
-            self.methods["hash"] = FunctionType([self], INT)
+        self.methods["hash"] = FunctionType([self], INT)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"

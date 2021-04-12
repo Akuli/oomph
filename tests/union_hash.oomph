@@ -11,6 +11,7 @@ class Bar():
 
 export func main():
     print(("foo" as Thingy).hash() == "foo".hash())
-    print((123 as Thingy).hash())
-    print((new Foo() as Thingy).hash())
-    print((new Bar() as Thingy).hash())
+    print((123 as Thingy).hash() == 123.hash())
+    let foo = new Foo()
+    print((foo as Thingy).hash() == foo.hash())
+    print((new Bar() as Thingy).hash() == 7)
