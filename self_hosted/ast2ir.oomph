@@ -864,8 +864,9 @@ class FunctionOrMethodConverter(
                         self.code.push(new ir::GotoIf(label, member_check))
 
                 if types_to_do != []:
-                    print("switch does not handle: {types_to_do}")
-                    assert(false)
+                    switchie.location.error("types not handled in switch: " + [
+                        foreach t of types_to_do: ir::type_name(t)
+                    ].join(", "))
 
                 # TODO: add panic to self.code to run when no union members matched
                 self.code.push_all(cases)

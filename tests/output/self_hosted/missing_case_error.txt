@@ -1,0 +1,5 @@
+tests/missing_case_error.oomph:2: error: types not handled in switch: Str
+
+    switch (1 as Int | Str):
+    ^^^^^^
+
