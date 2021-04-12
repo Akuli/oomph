@@ -62,7 +62,7 @@ export class UnionType(
     meth hash() -> Int:
         let result = 0
         foreach member of self.type_members:
-            # TODO: xor
+            # TODO: xor or list hash
             result = result + member.hash()
         return result
 
