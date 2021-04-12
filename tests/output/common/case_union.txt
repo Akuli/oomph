@@ -1,3 +1,3 @@
-It's a string or an integer: (Int | Str)("lol")
-It's a string or an integer: (Int | Str)(69)
+It's a string or an integer: lol
+It's a string or an integer: 69
 It's a boolean: true
