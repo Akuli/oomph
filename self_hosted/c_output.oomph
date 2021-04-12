@@ -23,6 +23,18 @@ func create_id(Str readable_part, Str identifying_part) -> Str:
 
     return result + "_" + hash::md5(identifying_part).split("").slice(0, 10).join("")
 
+func is_pointer(ir::Type type, ir::Builtins builtins) -> Bool:
+    switch type:
+        case ir::UnionType _:
+            return false
+        case ir::BasicType basic:
+            return ir::is_refcounted(type) and type != builtins.STR and (
+                basic.generic_source == null
+                or (basic.generic_source as not null).generik != builtins.MAPPING_ITEM
+            )
+        case *:
+            return ir::is_refcounted(type)
+
 
 func create_function_emitter(FilePair file_pair) -> FunctionEmitter:
     return new FunctionEmitter(
@@ -108,11 +120,23 @@ class FunctionEmitter(
                     case null _:
                         return "goto out;\n"
 
+            # TODO: union attribs https://github.com/Akuli/oomph/issues/145
             case ir::GetAttribute getattr:
-                return "{self.emit_var(getattr.result)} = {self.emit_var(getattr.obj)}->memb_{getattr.attribute};\n"
-
-            case ir::SetAttribute setattr:
-                return "{self.emit_var(setattr.obj)}->memb_{setattr.attribute} = {self.emit_var(setattr.value)};\n"
+                if is_pointer(getattr.obj.type, self.file_pair.session.builtins):
+                    let op = "->"
+                else:
+                    op = "."
+                let var = self.emit_var(getattr.attribute_var)
+                let attrib = self.emit_var(getattr.obj) + op + "memb_" + getattr.attribute
+                return "{var} = {attrib};\n"
+            case ir::SetAttribute getattr:
+                if is_pointer(getattr.obj.type, self.file_pair.session.builtins):
+                    let op = "->"
+                else:
+                    op = "."
+                let var = self.emit_var(getattr.attribute_var)
+                let attrib = self.emit_var(getattr.obj) + op + "memb_" + getattr.attribute
+                return "{attrib} = {var};\n"
 
             case ir::InstantiateUnion inst:
                 let union = inst.result.type as ir::UnionType
@@ -133,16 +157,28 @@ class FunctionEmitter(
                 """
 
             case ir::UnSet unset:
+                # TODO: this isn't pretty
                 switch unset.var.type:
                     case ir::UnionType _:
                         return "{self.emit_var(unset.var)}.membernum = -1;\n"
-                    case *:
-                        if unset.var.type == self.file_pair.session.builtins.STR:
+                    case ir::BasicType basic:
+                        if (
+                            basic.generic_source != null
+                            and (
+                                (basic.generic_source as not null).generik ==
+                                self.file_pair.session.builtins.MAPPING_ITEM
+                            )
+                        ):
+                            return "{self.emit_var(unset.var)}.hash = 0;\n"
+                        if basic == self.file_pair.session.builtins.STR:
                             return self.emit_var(unset.var) + ".buf = NULL;\n"
-                        if ir::is_refcounted(unset.var.type):
-                            # Pointer type
-                            return self.emit_var(unset.var) + " = NULL;\n"
-                        return ""
+                    case *:
+                        pass
+
+                if ir::is_refcounted(unset.var.type):
+                    # Pointer type
+                    return self.emit_var(unset.var) + " = NULL;\n"
+                return ""
 
             case ir::Panic panic:
                 # TODO: include file name and line number
@@ -246,25 +282,11 @@ func trim_leading_underscores(Str s) -> Str:
     return s
 
 
-class NamedType(Str name, ir::Type type)  # TODO: tuples
-
-
 # TODO: these suck
 func method_keys(Mapping[Str, ir::FunctionType] map) -> List[Str]:
-    map = map.copy()
-    let result = []
-    while map != new Mapping[Str, auto]():
-        result.push(map.get_a_key())
-        map.delete(result.last())
-    return result
-
+    return map.keys()
 func member_keys(Mapping[Str, ir::Type] map) -> List[Str]:
-    map = map.copy()
-    let result = []
-    while map != new Mapping[Str, auto]():
-        result.push(map.get_a_key())
-        map.delete(result.last())
-    return result
+    return map.keys()
 
 
 # Represents .c and .h file, and possibly *the* type defined in those.
@@ -310,14 +332,10 @@ class FilePair(
         let defining_file_pair = self.session.type_to_file_pair(type)
         let result = "struct class_{defining_file_pair.id}"
 
-        switch type:
-            case ir::UnionType _:
-                can_fwd_declare_in_header = false
-            case *:
-                if ir::is_refcounted(type):
-                    result = result + "*"
-                else:
-                    can_fwd_declare_in_header = false
+        if is_pointer(type, self.session.builtins):
+            result = result + "*"
+        else:
+            can_fwd_declare_in_header = false
 
         if defining_file_pair != self:
             if defining_file_pair not in self.c_includes:
@@ -488,11 +506,11 @@ class FilePair(
             \}
 
             struct class_Str res = {self.emit_string(ir::type_name(union))};
-            string_incref(res);
+            incref_Str(res);
             oomph_string_concat_inplace_cstr(&res, "(");
             oomph_string_concat_inplace(&res, valstr);
             oomph_string_concat_inplace_cstr(&res, ")");
-            string_decref(valstr);
+            decref_Str(valstr);
             return res;
         \}
 
@@ -568,48 +586,59 @@ class FilePair(
 
     meth define_generic_type(ir::BasicType type):
         let source = type.generic_source as not null
+        let macrotypes = new Mapping[Str, ir::Type]()
+
         if source.generik == self.session.builtins.LIST:
             assert(source.args.length() == 1)
             let c_path = "lib/generic/list.c"
             let h_path = "lib/generic/list.h"
-            let args = [new NamedType("ITEM", source.args.first())]
+            macrotypes.set("LIST", type)
+            macrotypes.set("ITEM", source.args.first())
         elif source.generik == self.session.builtins.MAPPING:
             assert(source.args.length() == 2)
             c_path = "lib/generic/mapping.c"
             h_path = "lib/generic/mapping.h"
-            args = [
-                new NamedType("KEY", source.args.first()),
-                new NamedType("VALUE", source.args.last()),
-            ]
+            let keytype = source.args.first()
+            let valtype = source.args.last()
+            let itemtype = self.session.builtins.generic2type(self.session.builtins.MAPPING_ITEM, source.args, null)
+            macrotypes.set("MAPPING", type)
+            macrotypes.set("KEY", keytype)
+            macrotypes.set("VALUE", valtype)
+            macrotypes.set("ITEM", itemtype)
+            macrotypes.set("KEY_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [keytype], null))
+            macrotypes.set("VALUE_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [valtype], null))
+            macrotypes.set("ITEM_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [itemtype], null))
+        elif source.generik == self.session.builtins.MAPPING_ITEM:
+            assert(source.args.length() == 2)
+            c_path = "lib/generic/mapping_item.c"
+            h_path = "lib/generic/mapping_item.h"
+            macrotypes.set("KEY", source.args.first())
+            macrotypes.set("VALUE", source.args.last())
+            macrotypes.set("ITEM", type)
         else:
             assert(false)
 
-        let macros = [
-            ["CONSTRUCTOR", "ctor_{self.session.get_type_c_name(type)}"],
-            ["DESTRUCTOR", "dtor_{self.session.get_type_c_name(type)}"],
-            ["TYPE", "struct class_{self.session.get_type_c_name(type)} *"],
-            ["TYPE_STRUCT", "class_{self.session.get_type_c_name(type)}"],
-            ["METHOD(name)", "meth_{self.session.get_type_c_name(type)}_##name"],
-            ["INTERNAL_NAME(name)", "{self.session.get_type_c_name(type)}_##name"],
-        ]
-        foreach arg of args:
-            macros.push_all([
-                [arg.name, self.emit_type_custom(arg.type, false)],
-                ["{arg.name}_METHOD(name)", "meth_{self.session.get_type_c_name(arg.type)}_##name"],
-                ["{arg.name}_INCREF(val)", self.session.emit_incref("(val)", arg.type)],
-                ["{arg.name}_DECREF(val)", self.session.emit_decref("(val)", arg.type)],
-            ])
-            if arg.type == self.session.builtins.STR:
-                macros.push(["{arg.name}_IS_STRING", "1"])
+        let macros = new Mapping[Str, Str]()
+        foreach item of macrotypes.items():
+            let cname = self.session.get_type_c_name(item.value)
+            macros.set(item.key, self.emit_type_custom(item.value, false))
+            macros.set("{item.key}_STRUCT", "class_{cname}")
+            macros.set("{item.key}_CTOR", "ctor_{cname}")
+            macros.set("{item.key}_DTOR", "dtor_{cname}")
+            macros.set("{item.key}_METHOD(name)", "meth_{cname}_##name")
+            macros.set("{item.key}_INCREF(val)", self.session.emit_incref("val", item.value))
+            macros.set("{item.key}_DECREF(val)", self.session.emit_decref("val", item.value))
+            if item.value == self.session.builtins.STR:
+                macros.set("{item.key}_IS_STRING", "1")
             else:
-                macros.push(["{arg.name}_IS_STRING", "0"])
+                macros.set("{item.key}_IS_STRING", "0")
 
         let defines = "\n"
         let undefs = "\n"
-        foreach pair of macros:
-            let name_without_args = pair.first().split("(").first()
-            defines = defines + "#define {pair.first()} {pair.last()}\n"
-            undefs = undefs + "#undef {name_without_args}\n"
+        foreach item of macros.items():
+            defines = defines + "#define {item.key} {item.value}\n"
+            let name = item.key.split("(").first()
+            undefs = undefs + "#undef {name}\n"
 
         assert(self.struct == null)
         self.struct = (defines + io::read_file(h_path) + undefs) as Str | null
@@ -622,12 +651,6 @@ class FilePair(
                 null, null,
             )
 
-        self.function_decls = (
-            self.function_decls
-            + defines
-            + "TYPE CONSTRUCTOR(void); void DESTRUCTOR(void *ptr);"
-            + undefs
-        )
         self.function_defs = self.function_defs + defines + io::read_file(c_path) + undefs
 
     meth define_simple_type(ir::BasicType type):
@@ -679,7 +702,7 @@ class FilePair(
                         """
                         tmp = meth_{self.session.get_type_c_name(type.members.get(m))}_to_string(self->memb_{m});
                         oomph_string_concat_inplace(&res, tmp);
-                        string_decref(tmp);
+                        decref_Str(tmp);
                         """
                 ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
                 self.function_defs = self.function_defs + """
@@ -767,27 +790,18 @@ export class Session(
 
     # May evaluate c_expression several times
     meth emit_incref(Str c_expression, ir::Type type) -> Str:
-        # TODO: this logic is repeated in many places
-        if type == self.builtins.STR:
-            return "string_incref({c_expression})"
-        switch type:
-            case ir::UnionType union:
-                return "incref_{self.get_type_c_name(union)}({c_expression})"
-            case *:
-                if ir::is_refcounted(type):
-                    return "incref({c_expression})"
-                return "(void)0"
+        if is_pointer(type, self.builtins):
+            return "incref({c_expression})"
+        if ir::is_refcounted(type):
+            return "incref_{self.get_type_c_name(type)}({c_expression})"
+        return "(void)0"
 
     meth emit_decref(Str c_expression, ir::Type type) -> Str:
-        if type == self.builtins.STR:
-            return "string_decref({c_expression})"
-        switch type:
-            case ir::UnionType _:
-                return "decref_{self.get_type_c_name(type)}({c_expression})"
-            case *:
-                if ir::is_refcounted(type):
-                    return "decref(({c_expression}), dtor_{self.get_type_c_name(type)})"
-                return "(void)0"
+        if is_pointer(type, self.builtins):
+            return "decref(({c_expression}), dtor_{self.get_type_c_name(type)})"
+        if ir::is_refcounted(type):
+            return "decref_{self.get_type_c_name(type)}({c_expression})"
+        return "(void)0"
 
     meth create_c_code(List[ir::ToplevelDeclaration] top_decls, Str source_path):
         foreach pair of self.file_pairs:

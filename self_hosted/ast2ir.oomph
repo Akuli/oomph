@@ -846,8 +846,9 @@ class FunctionOrMethodConverter(
                         self.code.push(new ir::GotoIf(label, member_check))
 
                 if types_to_do != []:
-                    print("switch does not handle: {types_to_do}")
-                    assert(false)
+                    switchie.location.error("types not handled in switch: " + [
+                        foreach t of types_to_do: ir::type_name(t)
+                    ].join(", "))
 
                 # TODO: add panic to self.code to run when no union members matched
                 self.code.push_all(cases)
@@ -903,13 +904,13 @@ class FunctionOrMethodConverter(
 
                 case ir::GetAttribute getattr:
                     self.get_rid_of_auto_in_var(getattr.obj)
-                    switch getattr.result.type:
+                    switch getattr.attribute_var.type:
                         case ir::AutoType autotype:
                             self.resolve_autotype(
                                 autotype,
                                 self.get_attribute_type(getattr.obj.type, getattr.attribute))
                         case *:
-                            self.get_rid_of_auto_in_var(getattr.result)
+                            self.get_rid_of_auto_in_var(getattr.attribute_var)
 
                 case *:
                     pass
@@ -960,12 +961,12 @@ class FunctionOrMethodConverter(
                     self.get_rid_of_auto_in_var(instantiate.result)
                     self.get_rid_of_auto_in_var(instantiate.value)
 
+                # TODO: union attribs https://github.com/Akuli/oomph/issues/145
                 case ir::GetAttribute getattr:
-                    self.get_rid_of_auto_in_var(getattr.result)
+                    self.get_rid_of_auto_in_var(getattr.attribute_var)
                     self.get_rid_of_auto_in_var(getattr.obj)
-
                 case ir::SetAttribute setattr:
-                    self.get_rid_of_auto_in_var(setattr.value)
+                    self.get_rid_of_auto_in_var(setattr.attribute_var)
                     self.get_rid_of_auto_in_var(setattr.obj)
 
                 case ir::GetFromUnion get:
