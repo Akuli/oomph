@@ -1,0 +1,2 @@
+export func main():
+    print(("foo" as Str | Int).hash() == "foo".hash())

@@ -452,7 +452,7 @@ export func get_methods(Type type, Builtins builtins) -> List[Method]:
                 foreach t of union.type_members:
                     "hash" in [foreach m of get_methods(t, builtins): m.name]
             ]):
-                result.push(new Method("hash", new FunctionType([type, type], builtins.INT)))
+                result.push(new Method("hash", new FunctionType([type], builtins.INT)))
             return result
 
 export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
