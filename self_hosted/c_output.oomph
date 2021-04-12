@@ -273,8 +273,6 @@ func trim_leading_underscores(Str s) -> Str:
     return s
 
 
-class NamedType(Str name, ir::Type type)  # TODO: tuples
-
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class FilePair(
@@ -572,15 +570,14 @@ class FilePair(
 
     meth define_generic_type(ir::BasicType type):
         let source = type.generic_source as not null
+        let macrotypes = new Mapping[Str, ir:Type]()
+
         if source.generik == self.session.builtins.LIST:
             assert(source.args.length() == 1)
             let c_path = "lib/generic/list.c"
             let h_path = "lib/generic/list.h"
-            let itemtype = source.args.first()
-            let macrotypes = [
-                new NamedType("LIST", type),
-                new NamedType("ITEM", itemtype),
-            ]
+            macrotypes.set("LIST", type)
+            macrotypes.set("ITEM", source.args.first())
         elif source.generik == self.session.builtins.MAPPING:
             assert(source.args.length() == 2)
             c_path = "lib/generic/mapping.c"
@@ -588,43 +585,37 @@ class FilePair(
             let keytype = source.args.first()
             let valtype = source.args.last()
             let itemtype = self.session.builtins.generic2type(self.session.builtins.MAPPING_ITEM, source.args, null)
-            macrotypes = [
-                new NamedType("MAPPING", type),
-                new NamedType("KEY", keytype),
-                new NamedType("VALUE", valtype),
-                new NamedType("ITEM", itemtype),
-                new NamedType("KEY_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [keytype], null)),
-                new NamedType("VALUE_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [valtype], null)),
-                new NamedType("ITEM_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [itemtype], null)),
-            ]
+            macrotypes.set("MAPPING", type)
+            macrotypes.set("KEY", keytype)
+            macrotypes.set("VALUE", valtype)
+            macrotypes.set("ITEM", itemtype)
+            macrotypes.set("KEY_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [keytype], null))
+            macrotypes.set("VALUE_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [valtype], null))
+            macrotypes.set("ITEM_LIST", self.session.builtins.generic2type(self.session.builtins.LIST, [itemtype], null))
         elif source.generik == self.session.builtins.MAPPING_ITEM:
             assert(source.args.length() == 2)
             c_path = "lib/generic/mapping_item.c"
             h_path = "lib/generic/mapping_item.h"
-            let keytype = source.args.first()
-            let valtype = source.args.last()
-            macrotypes = [
-                new NamedType("KEY", keytype),
-                new NamedType("VALUE", valtype),
-                new NamedType("ITEM", type),
-            ]
+            macrotypes.set("KEY", source.args.first())
+            macrotypes.set("VALUE", source.args.last())
+            macrotypes.set("ITEM", type)
         else:
             assert(false)
 
         let macros = new Mapping[Str, Str]()
-        foreach macrotype of macrotypes:
-            let cname = self.session.get_type_c_name(macrotype.type)
-            macros.set(macrotype.name, self.emit_type_custom(macrotype.type, false))
-            macros.set("{macrotype.name}_STRUCT", "class_{cname}")
-            macros.set("{macrotype.name}_CTOR", "ctor_{cname}")
-            macros.set("{macrotype.name}_DTOR", "dtor_{cname}")
-            macros.set("{macrotype.name}_METHOD(name)", "meth_{cname}_##name")
-            macros.set("{macrotype.name}_INCREF(val)", self.session.emit_incref("val", macrotype.type))
-            macros.set("{macrotype.name}_DECREF(val)", self.session.emit_decref("val", macrotype.type))
-            if macrotype.type == self.session.builtins.STR:
-                macros.set("{macrotype.name}_IS_STRING", "1")
+        foreach item of macrotypes.items():
+            let cname = self.session.get_type_c_name(item.type)
+            macros.set(item.key, self.emit_type_custom(item.type, false))
+            macros.set("{item.key}_STRUCT", "class_{cname}")
+            macros.set("{item.key}_CTOR", "ctor_{cname}")
+            macros.set("{item.key}_DTOR", "dtor_{cname}")
+            macros.set("{item.key}_METHOD(name)", "meth_{cname}_##name")
+            macros.set("{item.key}_INCREF(val)", self.session.emit_incref("val", item.type))
+            macros.set("{item.key}_DECREF(val)", self.session.emit_decref("val", item.type))
+            if item.type == self.session.builtins.STR:
+                macros.set("{item.key}_IS_STRING", "1")
             else:
-                macros.set("{macrotype.name}_IS_STRING", "0")
+                macros.set("{item.key}_IS_STRING", "0")
 
         let defines = "\n"
         let undefs = "\n"
