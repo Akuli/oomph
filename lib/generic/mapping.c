@@ -31,7 +31,8 @@ void MAPPING_DTOR(void *ptr)
 static uint32_t hash(KEY key)
 {
 	uint32_t h = (uint32_t)KEY_METHOD(hash)(key);
-	return (h==0) ? 69 : h;
+	// 0 has special meaning in MappingItem
+	return h==0 ? 69 : h;
 }
 
 
