@@ -242,6 +242,7 @@ export class Builtins(
             # TODO: this is only for strings, but List[auto] may become List[Str] later
             # if arg is STR:
             result.methods.set("join", new FunctionType([r, self.STR], self.STR))
+
         elif generik == self.MAPPING:
             assert(args.length() == 2)   # TODO: error
             let keytype = args.first()
@@ -256,7 +257,6 @@ export class Builtins(
                     + "{type_name(keytype)} doesn't have a .hash() method"
                 )
 
-
             result.methods.set("copy", new FunctionType([r], r))
             result.methods.set("delete", new FunctionType([r, keytype], null))
             result.methods.set("equals", new FunctionType([r, r], self.BOOL))
@@ -268,6 +268,7 @@ export class Builtins(
             result.methods.set("set", new FunctionType([r, keytype, valtype], null))
             result.methods.set("to_string", new FunctionType([r], self.STR))
             result.methods.set("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], location)))
+
         elif generik == self.MAPPING_ITEM:
             assert(args.length() == 2)
             let keytype = args.first()
@@ -276,6 +277,7 @@ export class Builtins(
             result.members.set("value", valtype)
             result.methods.set("equals", new FunctionType([r, r], self.BOOL))
             result.methods.set("to_string", new FunctionType([r], self.STR))
+
         else:
             assert(false)
 
