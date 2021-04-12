@@ -23,7 +23,7 @@ class Type:
         self._name = name
         self.refcounted = refcounted
         self.definition_path = definition_path
-        self.methods: Dict[str, FunctionType] = {}
+        self._methods: Dict[str, FunctionType] = {}
         self.members: List[Tuple[Type, str]] = []
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
@@ -31,18 +31,22 @@ class Type:
 
         for method in self.methods_to_create:
             if method == "to_string":
-                self.methods["to_string"] = FunctionType([self], STRING)
+                self._methods["to_string"] = FunctionType([self], STRING)
             elif method == "equals":
-                self.methods["equals"] = FunctionType([self, self], BOOL)
+                self._methods["equals"] = FunctionType([self, self], BOOL)
             elif method == "hash":
-                self.methods["hash"] = FunctionType([self], INT)
+                self._methods["hash"] = FunctionType([self], INT)
             else:
                 raise NotImplementedError(method)
 
-    # To make the name more overridable
+    # Properties make things more overridable
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def methods(self) -> Dict[str, FunctionType]:
+        return self._methods
 
     def get_id_string(self) -> str:
         if self.generic_origin is None:
@@ -105,10 +109,18 @@ class UnionType(Type):
 
         self.methods["equals"] = FunctionType([self, self], BOOL)
         self.methods["to_string"] = FunctionType([self], STRING)
-        self.methods["hash"] = FunctionType([self], INT)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__} {repr(self.name)}, type_members={self.type_members}>"
+
+    # Type members can get a hash method added later during ast2ir, must check dynamically
+    @property
+    def methods(self) -> Dict[str, FunctionType]:
+        if "hash" not in self._methods and all(
+            "hash" in member.methods for member in self.type_members
+        ):
+            self._methods["hash"] = FunctionType([self], INT)
+        return self._methods
 
     def get_id_string(self) -> str:
         return "|".join(member.get_id_string() for member in self.type_members)
