@@ -1,8 +1,6 @@
 // TODO: Python-style order-preserving mapping https://www.youtube.com/watch?v=p33CVV29OG8
 
 #include <assert.h>
-#include <stdio.h>
-#include <string.h>   // TODO: this needed?
 
 #define EMPTY ((size_t)(-1))
 
