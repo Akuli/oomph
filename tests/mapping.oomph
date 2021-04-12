@@ -57,6 +57,11 @@ func get_strings() -> List[Str]:
             result.push(word)
     return result
 
+func ensure_lists_contain_same_items(List[Str] a, List[Str] b):
+    foreach item of a:
+        b.delete_only(item)
+    assert(b == [])
+
 
 export func main():
     let prng = new PRNG(1234, get_strings())
@@ -92,6 +97,6 @@ export func main():
 
         assert(mapping1.length() == mapping2.length())
         assert(mapping1 == mapping1.copy())
-        # TODO: ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
+        ensure_lists_contain_same_items(mapping1.keys(), mapping2.keys())
 
     print("ok")

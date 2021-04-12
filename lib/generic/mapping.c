@@ -1,115 +1,114 @@
 // TODO: Python-style order-preserving mapping https://www.youtube.com/watch?v=p33CVV29OG8
 
 #include <assert.h>
-#include <string.h>
+
+#define EMPTY ((size_t)(-1))
 
 MAPPING MAPPING_CTOR(void)
 {
 	size_t n = 8;   // TODO: experiment with different values
-	MAPPING map = calloc(1, sizeof(*map) + n*sizeof(map->flex[0]));
+	MAPPING map = malloc(sizeof(*map) + n*sizeof(map->flex[0]));
 	assert(map);
+
 	map->refcount = 1;
-	map->nentries = n;
-	map->entries = map->flex;
+	map->items = ITEM_LIST_CTOR();
+	map->itable = map->flex;
+	for (size_t i = 0; i < n; i++)
+		map->itable[i] = EMPTY;
+	map->itablelen = n;
 	return map;
 }
 
 void MAPPING_DTOR(void *ptr)
 {
 	MAPPING map = ptr;
-	for (size_t i = 0; i < map->nentries; i++) {
-		if (map->entries[i].hash != 0) {
-			KEY_DECREF(map->entries[i].memb_key);
-			VALUE_DECREF(map->entries[i].memb_value);
-		}
-	}
-	if (map->entries != map->flex)
-		free(map->entries);
+	ITEM_LIST_DECREF(map->items);
+	if (map->itable != map->flex)
+		free(map->itable);
 	free(map);
 }
 
 static uint32_t hash(KEY key)
 {
 	uint32_t h = (uint32_t)KEY_METHOD(hash)(key);
-	// 0 has special meaning in mapping
+	// 0 has special meaning in MappingItem
 	return h==0 ? 69 : h;
 }
 
 
-// Returns whether the item was actually added
-static bool add_item(MAPPING map, ITEM it, bool check)
+static size_t find_empty(MAPPING map, uint32_t keyhash)
 {
-	assert(it.hash != 0);
-
-	uint32_t i = it.hash % map->nentries;
-	while (map->entries[i].hash != 0) {
-		if (check && map->entries[i].hash == it.hash && KEY_METHOD(equals)(map->entries[i].memb_key, it.memb_key)) {
-			VALUE_DECREF(map->entries[i].memb_value);
-			map->entries[i].memb_value = it.memb_value;
-			VALUE_INCREF(map->entries[i].memb_value);
-			return false;
-		}
-		// Jump over this item
-		i = (i+1) % map->nentries;
-	}
-
-	map->entries[i] = it;
-	return true;
+	size_t i;
+	for (i = keyhash % map->itablelen; map->itable[i] != EMPTY; i = (i+1) % map->itablelen) { }
+	return i;
 }
 
-static void grow(MAPPING map)
+static ITEM *find_item_or_empty(MAPPING map, KEY key, uint32_t keyhash, size_t *i)
 {
-	size_t oldn = map->nentries;
-	map->nentries *= 2;
-
-	// TODO: can use realloc?
-	ITEM *oldlist = map->entries;
-	map->entries = calloc(map->nentries, sizeof map->entries[0]);
-	assert(map->entries);
-
-	for (size_t i = 0; i < oldn; i++) {
-		if (oldlist[i].hash != 0)
-			add_item(map, oldlist[i], false);
+	for (*i = keyhash % map->itablelen; map->itable[*i] != EMPTY; *i = (*i + 1) % map->itablelen)
+	{
+		ITEM *inmap = &map->items->data[map->itable[*i]];
+		if (inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key))
+			return inmap;
 	}
+	// *i is what find_empty would return
+	return NULL;
+}
 
-	if (oldlist != map->flex)
-		free(oldlist);
+static ITEM *find_item(MAPPING map, KEY key, uint32_t keyhash)
+{
+	size_t dummy;
+	return find_item_or_empty(map, key, keyhash, &dummy);
+}
+
+static void grow_itable(MAPPING map)
+{
+	size_t oldsz = map->itablelen;
+	map->itablelen *= 2;
+
+	if (map->itable == map->flex)
+		map->itable = malloc(map->itablelen * sizeof map->itable[0]);
+	else
+		map->itable = realloc(map->itable, map->itablelen * sizeof map->itable[0]);
+	assert(map->itable);
+
+	// Reindex everything lol
+	for (size_t i = 0; i < map->itablelen; i++)
+		map->itable[i] = EMPTY;
+	for (int64_t i = 0; i < map->items->len; i++)
+		map->itable[find_empty(map, map->items->data[i].hash)] = i;
 }
 
 void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
 {
 	float magic = 0.7;   // TODO: do experiments to find best possible value
-	if (map->len+1 > magic*map->nentries)
-		grow(map);
+	if (map->items->len+1 > magic*map->itablelen)
+		grow_itable(map);
 
-	if (add_item(map, (ITEM){ hash(key), key, value }, true)) {
-		KEY_INCREF(key);
-		VALUE_INCREF(value);
-		map->len++;
+	uint32_t h = hash(key);
+	size_t i;
+	ITEM *inmap = find_item_or_empty(map, key, h, &i);
+	if (inmap == NULL) {
+		map->itable[i] = (size_t)map->items->len;
+		ITEM_LIST_METHOD(push)(map->items, (ITEM){ h, key, value });
+	} else {
+		VALUE_DECREF(inmap->memb_value);
+		inmap->memb_value = value;
+		VALUE_INCREF(inmap->memb_value);
 	}
-}
-
-static ITEM *find(MAPPING map, KEY key, uint32_t keyhash)
-{
-	for (size_t i = keyhash % map->nentries; map->entries[i].hash != 0; i = (i+1) % map->nentries)
-	{
-		if (map->entries[i].hash == keyhash && KEY_METHOD(equals)(map->entries[i].memb_key, key))
-			return &map->entries[i];
-	}
-	return NULL;
 }
 
 // TODO: this sucked in python 2 and it sucks here too
 bool MAPPING_METHOD(has_key)(MAPPING map, KEY key)
 {
-	return find(map, key, hash(key)) != NULL;
+	return find_item(map, key, hash(key)) != NULL;
 }
 
 #define ERROR(msg, key) panic_printf("%s: %s", (msg), string_to_cstr(KEY_METHOD(to_string)((key))))
 
 VALUE MAPPING_METHOD(get)(MAPPING map, KEY key)
 {
-	ITEM *it = find(map, key, hash(key));
+	ITEM *it = find_item(map, key, hash(key));
 	if (!it)
 		ERROR("Mapping.get(): key not found", key);
 
@@ -119,52 +118,52 @@ VALUE MAPPING_METHOD(get)(MAPPING map, KEY key)
 
 void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 {
-	uint32_t h = hash(key);
-	size_t i = h % map->nentries;
-	for (; map->entries[i].hash != h || !KEY_METHOD(equals)(map->entries[i].memb_key, key); i = (i+1) % map->nentries)
-	{
-		if (map->entries[i].hash == 0)
-			ERROR("Mapping.delete(): key not found", key);
+	size_t i;
+	if (find_item_or_empty(map, key, hash(key), &i) == NULL)
+		ERROR("Mapping.delete(): key not found", key);
+
+	// TODO: delete_at_index is slow
+	size_t delidx = map->itable[i];
+	ITEM deleted = ITEM_LIST_METHOD(delete_at_index)(map->items, delidx);
+	KEY_DECREF(deleted.memb_key);
+	VALUE_DECREF(deleted.memb_value);
+	map->itable[i] = EMPTY;
+
+	// Adjust the mess left behind by delete_at_index
+	for (size_t k = 0; k < map->itablelen; k++) {
+		if (map->itable[k] != EMPTY && map->itable[k] > delidx)
+			map->itable[k]--;
 	}
 
-	KEY_DECREF(map->entries[i].memb_key);
-	VALUE_DECREF(map->entries[i].memb_value);
-	map->entries[i].hash = 0;
-	map->len--;
-
 	// Delete and add back everything that might rely on jumping over the item at i
-	for (size_t k = (i+1) % map->nentries; map->entries[k].hash != 0; k = (k+1) % map->nentries)
+	for (size_t k = (i+1) % map->itablelen; map->itable[k] != EMPTY; k = (k+1) % map->itablelen)
 	{
-		ITEM it = map->entries[k];
-		map->entries[k].hash = 0;
-		add_item(map, it, false);
+		size_t idx = map->itable[k];
+		map->itable[k] = EMPTY;
+		map->itable[find_empty(map, map->items->data[idx].hash)] = idx;
 	}
 }
 
 int64_t MAPPING_METHOD(length)(MAPPING map)
 {
-	return (int64_t)map->len;
+	return map->items->len;
 }
 
 struct class_Str MAPPING_METHOD(to_string)(MAPPING map)
 {
 	struct class_Str res = cstr_to_string("Mapping{");
-	bool first = true;
-	for (size_t i = 0; i < map->nentries; i++) {
-		ITEM it = map->entries[i];
-		if (it.hash != 0) {
-			if (!first)
-				oomph_string_concat_inplace_cstr(&res, ", ");
-			first = false;
+	for (int64_t i = 0; i < map->items->len; i++) {
+		struct class_Str keystr = KEY_METHOD(to_string)(map->items->data[i].memb_key);
+		struct class_Str valstr = VALUE_METHOD(to_string)(map->items->data[i].memb_value);
 
-			struct class_Str keystr = KEY_METHOD(to_string)(it.memb_key);
-			struct class_Str valstr = VALUE_METHOD(to_string)(it.memb_value);
-			oomph_string_concat_inplace(&res, keystr);
-			oomph_string_concat_inplace_cstr(&res, ": ");
-			oomph_string_concat_inplace(&res, valstr);
-			decref_Str(keystr);
-			decref_Str(valstr);
-		}
+		if (i)
+			oomph_string_concat_inplace_cstr(&res, ", ");
+		oomph_string_concat_inplace(&res, keystr);
+		oomph_string_concat_inplace_cstr(&res, ": ");
+		oomph_string_concat_inplace(&res, valstr);
+
+		decref_Str(keystr);
+		decref_Str(valstr);
 	}
 
 	oomph_string_concat_inplace_cstr(&res, "}");
@@ -173,20 +172,17 @@ struct class_Str MAPPING_METHOD(to_string)(MAPPING map)
 
 bool MAPPING_METHOD(equals)(MAPPING a, MAPPING b)
 {
-	if (a->len != b->len)
+	if (a->items->len != b->items->len)
 		return false;
 
 	// Check that every key of a is also in b, and values match.
 	// No need to check in opposite direction, because lengths match.
-	for (size_t i = 0; i < a->nentries; i++) {
-		ITEM aent = a->entries[i];
-		if (aent.hash != 0) {
-			ITEM *bent = find(b, aent.memb_key, aent.hash);
-			if (bent == NULL || !VALUE_METHOD(equals)(aent.memb_value, bent->memb_value))
-				return false;
-		}
+	for (int64_t i = 0; i < a->items->len; i++) {
+		ITEM aent = a->items->data[i];
+		ITEM *bent = find_item(b, aent.memb_key, aent.hash);
+		if (bent == NULL || !VALUE_METHOD(equals)(aent.memb_value, bent->memb_value))
+			return false;
 	}
-
 	return true;
 }
 
@@ -194,10 +190,9 @@ bool MAPPING_METHOD(equals)(MAPPING a, MAPPING b)
 MAPPING MAPPING_METHOD(copy)(MAPPING map)
 {
 	MAPPING res = MAPPING_CTOR();
-	for (size_t i = 0; i < map->nentries; i++) {
-		ITEM it = map->entries[i];
-		if (it.hash != 0)
-			MAPPING_METHOD(set)(res, it.memb_key, it.memb_value);
+	for (int64_t i = 0; i < map->items->len; i++) {
+		ITEM it = map->items->data[i];
+		MAPPING_METHOD(set)(res, it.memb_key, it.memb_value);
 	}
 	return res;
 }
@@ -205,32 +200,20 @@ MAPPING MAPPING_METHOD(copy)(MAPPING map)
 KEY_LIST MAPPING_METHOD(keys)(MAPPING map)
 {
 	KEY_LIST res = KEY_LIST_CTOR();
-	for (size_t i = 0; i < map->nentries; i++) {
-		ITEM it = map->entries[i];
-		if (it.hash != 0)
-			KEY_LIST_METHOD(push)(res, it.memb_key);
-	}
+	for (int64_t i = 0; i < map->items->len; i++)
+		KEY_LIST_METHOD(push)(res, map->items->data[i].memb_key);
 	return res;
 }
 
 VALUE_LIST MAPPING_METHOD(values)(MAPPING map)
 {
 	VALUE_LIST res = VALUE_LIST_CTOR();
-	for (size_t i = 0; i < map->nentries; i++) {
-		ITEM it = map->entries[i];
-		if (it.hash != 0)
-			VALUE_LIST_METHOD(push)(res, it.memb_value);
-	}
+	for (int64_t i = 0; i < map->items->len; i++)
+		VALUE_LIST_METHOD(push)(res, map->items->data[i].memb_value);
 	return res;
 }
 
 ITEM_LIST MAPPING_METHOD(items)(MAPPING map)
 {
-	ITEM_LIST res = ITEM_LIST_CTOR();
-	for (size_t i = 0; i < map->nentries; i++) {
-		ITEM it = map->entries[i];
-		if (it.hash != 0)
-			ITEM_LIST_METHOD(push)(res, it);
-	}
-	return res;
+	return ITEM_LIST_METHOD(copy)(map->items);
 }
