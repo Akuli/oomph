@@ -298,16 +298,16 @@ export class Builtins(
 
 
 # TODO: custom constructors
-func create_basic_type(Str name, Bool refcounted) -> BasicType:
+func create_basic_type(Str name, Bool refcounted) -> Type:
     return new BasicType(name, refcounted, new Mapping[Str, auto](), new Mapping[Str, auto](), null, null, null, [])
 
 export func create_builtins() -> Builtins:
     # Methods are empty at first to prevent reference cycles
-    let BOOL = create_basic_type("Bool", false) as Type
-    let FLOAT = create_basic_type("Float", false) as Type
-    let INT = create_basic_type("Int", false) as Type
-    let NULL_TYPE = create_basic_type("null", false) as Type
-    let STR = create_basic_type("Str", true) as Type
+    let BOOL = create_basic_type("Bool", false)
+    let FLOAT = create_basic_type("Float", false)
+    let INT = create_basic_type("Int", false)
+    let NULL_TYPE = create_basic_type("null", false)
+    let STR = create_basic_type("Str", true)
 
     let LIST = new Generic("List")
     let MAPPING = new Generic("Mapping")
