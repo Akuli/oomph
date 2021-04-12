@@ -122,10 +122,7 @@ class _FunctionEmitter:
             var = self.emit_var(ins.attribute_var)
             attrib = self.emit_var(ins.obj) + op + "memb_" + ins.attribute
 
-            if isinstance(ins, ir.SetAttribute):
-                return f"{attrib} = {var};\n"
-            else:
-                return f"{var} = {attrib};\n"
+            return f"{attrib} = {var};\n" if isinstance(ins, ir.SetAttribute) else f"{var} = {attrib};\n"
 
         if isinstance(ins, ir.InstantiateUnion):
             assert isinstance(ins.result.type, ir.UnionType)
