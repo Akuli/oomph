@@ -1,5 +1,5 @@
-Mapping[MappingItem("foo": 1)]
-Mapping[MappingItem("foo": 1), MappingItem("bar": 2)]
+Mapping{"foo": 1}
+Mapping{"foo": 1, "bar": 2}
 ["foo", "bar"]
 [1, 2]
 [MappingItem("foo": 1), MappingItem("bar": 2)]
