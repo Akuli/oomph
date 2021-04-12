@@ -1,9 +1,14 @@
 struct MAPPING_STRUCT {
 	REFCOUNT_HEADER
-	size_t len;
-	size_t nentries;   // never zero
-	ITEM *entries;
-	ITEM flex[];   // just for mallocing struct and entries with one allocation
+	ITEM_LIST items;
+
+	// itable contains indexes into items, see https://www.youtube.com/watch?v=p33CVV29OG8
+	// TODO: often int8_t or int16_t or int32_t is big enough, use those
+	size_t *itable;
+	size_t itablesz;
+
+	// to allocate htable and rest of mapping at once
+	size_t flex[];
 };
 
 MAPPING MAPPING_CTOR(void);
