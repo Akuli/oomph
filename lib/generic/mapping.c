@@ -6,7 +6,7 @@
 
 MAPPING MAPPING_CTOR(void)
 {
-	size_t n = 8;
+	size_t n = 8;   // TODO: experiment with different values
 	MAPPING map = malloc(sizeof(*map) + n*sizeof(map->flex[0]));
 	assert(map);
 
