@@ -288,7 +288,7 @@ class FilePair(
     Session session,
     Str id,  # used in file names and type names
     ir::Type | Str type_or_source_path,
-    List[Str] strings,
+    Mapping[Str, Str] strings,
     Str | null struct,
     Str string_defs,
     Str function_decls,
@@ -421,9 +421,9 @@ class FilePair(
             self.function_defs = self.function_defs + decl + "\{" + (body as not null) + "\}\n"
 
     meth emit_string(Str value) -> Str:
-        let first_time_with_this_value = value not in self.strings
+        let first_time_with_this_value = not self.strings.has_key(value)
         if first_time_with_this_value:
-            self.strings.push(value)
+            self.strings.set(value, "string" + self.strings.length().to_string())
 
         # Including the full value in first argument of create_id causes issue #132
         # I like to include some parts of string content for debugging though
@@ -767,7 +767,8 @@ export class Session(
             self,
             create_id(ir::type_name(type), ir::type_id_string(type)),
             type,
-            [], null, "", "", "", [], [], "",
+            new Mapping[Str, Str](),
+            null, "", "", "", [], [], "",
         )
         self.file_pairs.push(pair)
         pair.define_type(type)
@@ -806,7 +807,8 @@ export class Session(
                 source_path,
             ),
             source_path,
-            [], null, "", "", "", [], [], "",
+            new Mapping[Str, Str](),
+            null, "", "", "", [], [], "",
         )
         self.file_pairs.push(pair)
         foreach top_declaration of top_decls:
