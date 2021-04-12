@@ -1,0 +1,6 @@
+class Foo(Str s)
+
+export func main():
+    print("hello")
+    print("hello" as Str | null)
+    print(new Foo("hello"))

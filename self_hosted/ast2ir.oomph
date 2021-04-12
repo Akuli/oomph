@@ -142,9 +142,25 @@ class FunctionOrMethodConverter(
             return var
 
         let result_var = self.create_var(self.builtins.STR, var.location)
-        self.code.push(new ir::MethodCall(
+        let to_string_call = new ir::MethodCall(
             var, "to_string", [], result_var, var.location
-        ))
+        ) as ir::Instruction
+
+        switch var.type:
+            case ir::UnionType union:
+                if self.builtins.STR in union.type_members:
+                    # For unions containing string, output the string without quotes
+                    let its_a_string = self.create_var(self.builtins.BOOL, var.location)
+                    self.code.push(new ir::UnionMemberCheck(its_a_string, var, self.builtins.STR))
+                    self.do_if(its_a_string, [
+                        new ir::GetFromUnion(result_var, var) as ir::Instruction,
+                        new ir::IncRef(result_var) as ir::Instruction,
+                    ], [to_string_call])
+                    return result_var
+            case *:
+                pass
+
+        self.code.push(to_string_call)
         return result_var
 
     meth create_special_call(Str name, List[ir::LocalVariable] args) -> ir::LocalVariable:
