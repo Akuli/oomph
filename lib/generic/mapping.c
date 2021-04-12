@@ -66,9 +66,10 @@ static void grow_itable(MAPPING map)
 	size_t oldsz = map->itablesz;
 	map->itablesz *= 2;
 
-	// TODO: use realloc
-	size_t *old = map->itable;
-	map->itable = malloc(map->itablesz * sizeof map->itable[0]);
+	if (map->itable == map->flex)
+		map->itable = malloc(map->itablesz * sizeof map->itable[0]);
+	else
+		map->itable = realloc(map->itable, map->itablesz * sizeof map->itable[0]);
 	assert(map->itable);
 
 	// Reindex everything lol
@@ -76,9 +77,6 @@ static void grow_itable(MAPPING map)
 		map->itable[i] = EMPTY;
 	for (int64_t i = 0; i < map->items->len; i++)
 		map->itable[find_empty(map, map->items->data[i].hash)] = i;
-
-	if (old != map->flex)
-		free(old);
 }
 
 void MAPPING_METHOD(set)(MAPPING map, KEY key, VALUE value)
