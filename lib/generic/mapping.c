@@ -44,18 +44,15 @@ static size_t find_empty(MAPPING map, uint32_t keyhash)
 	return i;
 }
 
-static ITEM *find_item_or_empty(MAPPING map, KEY key, uint32_t keyhash, size_t *idx)
+static ITEM *find_item_or_empty(MAPPING map, KEY key, uint32_t keyhash, size_t *i)
 {
-	size_t i;
-	for (i = keyhash % map->itablesz; map->itable[i] != EMPTY; i = (i+1) % map->itablesz)
+	for (*i = keyhash % map->itablesz; map->itable[*i] != EMPTY; *i = (*i + 1) % map->itablesz)
 	{
-		ITEM *inmap = &map->items->data[map->itable[i]];
-		if (inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key)) {
-			*idx = i;
+		ITEM *inmap = &map->items->data[map->itable[*i]];
+		if (inmap->hash == keyhash && KEY_METHOD(equals)(inmap->memb_key, key))
 			return inmap;
-		}
 	}
-	*idx = i;   // Same as what find_empty(map, keyhash) would return
+	// *i is what find_empty would return
 	return NULL;
 }
 
