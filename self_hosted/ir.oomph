@@ -256,29 +256,26 @@ export class Builtins(
                     + "{type_name(keytype)} doesn't have a .hash() method"
                 )
 
-            result.methods.push_all([
-                new Method("copy", new FunctionType([r], r)),
-                new Method("delete", new FunctionType([r, keytype], null)),
-                new Method("equals", new FunctionType([r, r], self.BOOL)),
-                new Method("get", new FunctionType([r, keytype], valtype)),
-                new Method("has_key", new FunctionType([r, keytype], self.BOOL)),
-                new Method("items", new FunctionType([r], itemlist)),
-                new Method("keys", new FunctionType([r], self.generic2type(self.LIST, [keytype], location))),
-                new Method("length", new FunctionType([r], self.INT)),
-                new Method("set", new FunctionType([r, keytype, valtype], null)),
-                new Method("to_string", new FunctionType([r], self.STR)),
-                new Method("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], location))),
-            ])
+
+            result.methods.set("copy", new FunctionType([r], r))
+            result.methods.set("delete", new FunctionType([r, keytype], null))
+            result.methods.set("equals", new FunctionType([r, r], self.BOOL))
+            result.methods.set("get", new FunctionType([r, keytype], valtype))
+            result.methods.set("has_key", new FunctionType([r, keytype], self.BOOL))
+            result.methods.set("items", new FunctionType([r], itemlist))
+            result.methods.set("keys", new FunctionType([r], self.generic2type(self.LIST, [keytype], location)))
+            result.methods.set("length", new FunctionType([r], self.INT))
+            result.methods.set("set", new FunctionType([r, keytype, valtype], null))
+            result.methods.set("to_string", new FunctionType([r], self.STR))
+            result.methods.set("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], location)))
         elif generik == self.MAPPING_ITEM:
             assert(args.length() == 2)
             let keytype = args.first()
             let valtype = args.last()
-            result.members.push(new Member("key", keytype))
-            result.members.push(new Member("value", valtype))
-            result.methods.push_all([
-                new Method("equals", new FunctionType([r, r], self.BOOL)),
-                new Method("to_string", new FunctionType([r], self.STR)),
-            ])
+            result.members.set("key", keytype)
+            result.members.set("value", valtype)
+            result.methods.set("equals", new FunctionType([r, r], self.BOOL))
+            result.methods.set("to_string", new FunctionType([r], self.STR))
         else:
             assert(false)
 
