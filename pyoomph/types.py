@@ -165,6 +165,7 @@ class Generic:
             result.methods["insert"] = FunctionType([result, INT, itemtype], None)
             result.methods["last"] = FunctionType([result], itemtype)
             result.methods["length"] = FunctionType([result], INT)
+            result.methods["only"] = FunctionType([result], itemtype)
             result.methods["pop"] = FunctionType([result], itemtype)
             result.methods["push"] = FunctionType([result, itemtype], None)
             result.methods["push_all"] = FunctionType([result, result], None)

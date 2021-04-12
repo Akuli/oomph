@@ -1,0 +1,8 @@
+export func main():
+    switch (1 as Str | Int):
+        case Str _:
+            print("lol")
+        case Str _:
+            print("lol2")
+        case Int _:
+            print("lol3")

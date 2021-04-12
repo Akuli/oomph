@@ -581,11 +581,10 @@ class FilePair(
         let macrotypes = new Mapping[Str, ir::Type]()
 
         if source.generik == self.session.builtins.LIST:
-            assert(source.args.length() == 1)
             let c_path = "lib/generic/list.c"
             let h_path = "lib/generic/list.h"
             macrotypes.set("LIST", type)
-            macrotypes.set("ITEM", source.args.first())
+            macrotypes.set("ITEM", source.args.only())
         elif source.generik == self.session.builtins.MAPPING:
             assert(source.args.length() == 2)
             c_path = "lib/generic/mapping.c"

@@ -1,0 +1,5 @@
+tests/undef_type_error.oomph:1: error: no type named 'Bar'
+
+    func foo(Bar b):
+             ^^^
+

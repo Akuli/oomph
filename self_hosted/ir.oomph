@@ -224,8 +224,7 @@ export class Builtins(
         let r = result as Type  # TODO: get rid of this
 
         if generik == self.LIST:
-            assert(args.length() == 1)   # TODO: error
-            let arg = args.first()
+            let arg = args.only()   # TODO: error
             result.methods.set("__contains", new FunctionType([r, arg], self.BOOL))  # TODO: hide?
             result.methods.set("copy", new FunctionType([r], r))
             result.methods.set("delete_at_index", new FunctionType([r, self.INT], arg))
@@ -243,6 +242,7 @@ export class Builtins(
             result.methods.set("insert", new FunctionType([r, self.INT, arg], null))
             result.methods.set("last", new FunctionType([r], arg))
             result.methods.set("length", new FunctionType([r], self.INT))
+            result.methods.set("only", new FunctionType([r], arg))
             result.methods.set("pop", new FunctionType([r], arg))
             result.methods.set("push", new FunctionType([r, arg], null))
             result.methods.set("push_all", new FunctionType([r, r], null))

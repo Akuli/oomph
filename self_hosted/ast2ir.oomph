@@ -815,9 +815,11 @@ class FunctionOrMethodConverter(
                             if t in types_to_do:
                                 types_to_do.delete_only(t)
                             else:
-                                # TODO: test this
-                                # TODO: types_to_do isn't necessarily union_type.type_members
-                                let message = "{ir::type_name(union_type)} does not include {ir::type_name(t)}"
+                                if t in union_type.type_members:
+                                    let message = "switch has multiple cases for {ir::type_name(t)}"
+                                else:
+                                    message = "{ir::type_name(union_type)} does not include {ir::type_name(t)}"
+
                                 switch case_type:
                                     case ir::UnionType _:
                                         message = message + ", which is a member of {ir::type_name(case_type)}"
@@ -998,7 +1000,7 @@ class FileConverter(
     meth get_var(Str name, Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
-    meth get_named_type(Str name) -> ir::Type:
+    meth get_named_type(Str name, Location | null location) -> ir::Type:
         if self.typedef_laziness.has_key(name):
             # step 2 stuff
             # TODO: mapping.delete() should return the value
@@ -1009,7 +1011,8 @@ class FileConverter(
 
         if self.types.has_key(name):
             return self.types.get(name)
-        print("no type named '{name}'")
+
+        (location as not null).error("no type named '{name}'")
         assert(false)   # TODO: error
 
     # TODO: simplify how2recurse stuff
@@ -1020,7 +1023,7 @@ class FileConverter(
                 autotype.location.error("can't use auto type here")
 
             case ast::NamedType named_type:
-                return self.get_named_type(named_type.name)
+                return self.get_named_type(named_type.name, named_type.location)
 
             case ast::UnionType union_type:
                 if how2recurse == null:
@@ -1097,9 +1100,8 @@ class FileConverter(
 
     meth do_step2(ast::ToplevelDeclaration top_declaration):
         switch top_declaration:
-            # TODO: copy pasta
             case ast::TypeDef def:
-                let type = self.get_named_type(def.name)
+                let type = self.get_named_type(def.name, null)
                 self.symbols.push(new ir::Symbol(self.path, def.name, type))
                 switch type:
                     case ir::UnionType union_type:
@@ -1109,7 +1111,7 @@ class FileConverter(
                     case *:
                         pass
             case ast::ClassDef def:
-                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_named_type(def.name)))
+                self.symbols.push(new ir::Symbol(self.path, def.name, self.get_named_type(def.name, null)))
             case *:
                 pass
 

@@ -174,6 +174,14 @@ ITEM LIST_METHOD(last)(LIST self)
 	return self->data[self->len - 1];
 }
 
+ITEM LIST_METHOD(only)(LIST self)
+{
+	if (self->len != 1)
+		panic_printf("can't get only item of list of length %zu", (size_t)self->len);
+	ITEM_INCREF(self->data[0]);
+	return self->data[0];
+}
+
 bool LIST_METHOD(__contains)(LIST self, ITEM item)
 {
 	for (int64_t i = 0; i < self->len; i++) {
