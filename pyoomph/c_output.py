@@ -34,6 +34,17 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
 
 
+def is_pointer(the_type: Type) -> bool:
+    return (
+        the_type.refcounted
+        and not isinstance(the_type, UnionType)
+        and (
+            the_type.generic_origin is None
+            or the_type.generic_origin.generic is not MAPPING_ITEM
+        )
+    )
+
+
 class _FunctionEmitter:
     def __init__(self, file_pair: _FilePair) -> None:
         self.file_pair = file_pair
@@ -251,17 +262,6 @@ _generic_paths = {
     MAPPING: (_generic_dir / "mapping.c", _generic_dir / "mapping.h"),
     MAPPING_ITEM: (_generic_dir / "mapping_item.c", _generic_dir / "mapping_item.h"),
 }
-
-
-def is_pointer(the_type: Type) -> bool:
-    return (
-        the_type.refcounted
-        and not isinstance(the_type, UnionType)
-        and (
-            the_type.generic_origin is None
-            or the_type.generic_origin.generic is not MAPPING_ITEM
-        )
-    )
 
 
 # Represents .c and .h file, and possibly *the* type defined in those.
@@ -753,7 +753,7 @@ class Session:
         if the_type is STRING:
             return f"string_incref({c_expression})"
 
-        if the_type.refcounted and is_pointer(the_type):
+        if is_pointer(the_type):
             return f"incref({c_expression})"
         if the_type.refcounted:
             return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
@@ -764,7 +764,7 @@ class Session:
         if the_type is STRING:
             return f"string_decref({c_expression})"
 
-        if the_type.refcounted and is_pointer(the_type):
+        if is_pointer(the_type):
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         if the_type.refcounted:
             return f"decref_{self.get_type_c_name(the_type)}({c_expression})"
