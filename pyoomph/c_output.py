@@ -749,6 +749,7 @@ class Session:
             return the_type.name
         return self.get_file_pair_for_type(the_type).id
 
+    # May evaluate c_expression several times
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
         if is_pointer(the_type):
             return f"incref({c_expression})"

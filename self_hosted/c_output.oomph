@@ -788,6 +788,7 @@ export class Session(
             return ir::type_name(type)
         return self.type_to_file_pair(type).id
 
+    # May evaluate c_expression several times
     meth emit_incref(Str c_expression, ir::Type type) -> Str:
         if is_pointer(type, self.builtins):
             return "incref({c_expression})"
