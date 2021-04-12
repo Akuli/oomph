@@ -69,7 +69,7 @@ export func main():
     let mapping1 = new Mapping[Str, Str]()
     let mapping2 = new ShitMapping([])
 
-    for let i = 0; i < 1000; i = i+1:
+    for let i = 0; i < 3000; i = i+1:
         let operation = prng.get_number(3)
 
         if operation == 0:

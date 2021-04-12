@@ -1,14 +1,12 @@
 // TODO: Python-style order-preserving mapping https://www.youtube.com/watch?v=p33CVV29OG8
 
 #include <assert.h>
-#include <stdio.h>
-#include <string.h>   // TODO: this needed?
 
 #define EMPTY ((size_t)(-1))
 
 MAPPING MAPPING_CTOR(void)
 {
-	size_t n = 8;
+	size_t n = 8;   // TODO: experiment with different values
 	MAPPING map = malloc(sizeof(*map) + n*sizeof(map->flex[0]));
 	assert(map);
 
@@ -33,7 +31,8 @@ void MAPPING_DTOR(void *ptr)
 static uint32_t hash(KEY key)
 {
 	uint32_t h = (uint32_t)KEY_METHOD(hash)(key);
-	return (h==0) ? 69 : h;
+	// 0 has special meaning in MappingItem
+	return h==0 ? 69 : h;
 }
 
 
@@ -132,7 +131,7 @@ void MAPPING_METHOD(delete)(MAPPING map, KEY key)
 	VALUE_DECREF(deleted.memb_value);
 	map->itable[i] = EMPTY;
 
-	// Adjust the mess left behind by delete_index
+	// Adjust the mess left behind by delete_at_index
 	for (size_t k = 0; k < map->itablesz; k++) {
 		if (map->itable[k] != EMPTY && map->itable[k] > delidx)
 			map->itable[k]--;

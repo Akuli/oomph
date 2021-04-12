@@ -7,7 +7,7 @@ struct MAPPING_STRUCT {
 	size_t *itable;
 	size_t itablesz;
 
-	// to allocate htable and rest of mapping at once
+	// to allocate itable and rest of mapping at once
 	size_t flex[];
 };
 
