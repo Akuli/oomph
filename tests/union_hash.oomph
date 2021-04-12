@@ -1,2 +1,16 @@
+typedef Thingy = Str | Int | Foo | Bar
+
+class Foo()
+
+class Bar():
+    # all bars are equal
+    meth equals(Bar other) -> Bool:
+        return true
+    meth hash() -> Int:
+        return 7
+
 export func main():
-    print(("foo" as Str | Int).hash() == "foo".hash())
+    print(("foo" as Thingy).hash() == "foo".hash())
+    print((123 as Thingy).hash())
+    print((new Foo() as Thingy).hash())
+    print((new Bar() as Thingy).hash())
