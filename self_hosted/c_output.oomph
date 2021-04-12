@@ -570,7 +570,7 @@ class FilePair(
 
     meth define_generic_type(ir::BasicType type):
         let source = type.generic_source as not null
-        let macrotypes = new Mapping[Str, ir:Type]()
+        let macrotypes = new Mapping[Str, ir::Type]()
 
         if source.generik == self.session.builtins.LIST:
             assert(source.args.length() == 1)
