@@ -1,0 +1,5 @@
+tests/case_outside_union_error.oomph:6: error: Foo does not include Bool, which is a member of Bar
+
+    case Bar b:
+    ^^^^
+

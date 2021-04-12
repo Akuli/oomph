@@ -1,0 +1,7 @@
+typedef Foo = Str | Int
+typedef Bar = Str | Bool
+
+export func main():
+    switch (1 as Foo):
+        case Bar b:
+            print("lol")

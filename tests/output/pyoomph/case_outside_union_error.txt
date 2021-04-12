@@ -1,0 +1,2 @@
+AssertionError: <UnionType 'Bar', type_members=[<Type: Bool>, <Type: Str>]>
+
