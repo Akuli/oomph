@@ -351,7 +351,7 @@ class FilePair(
             case ir::FileVariable filevar:
                 foreach symbol of self.session.symbols:
                     if symbol.value == filevar:
-                        let pair = self.session.source_path_to_file_pair(symbol.path)
+                        let pair = self.session.file_pairs.get(symbol.path)
                         if pair != self:
                             if pair not in self.c_includes:
                                 self.c_includes.push(pair)
@@ -733,23 +733,15 @@ export class Session(
     ir::Builtins builtins,
     Str compilation_dir,
     List[ir::Symbol] symbols,
-    List[FilePair] file_pairs,
+    Mapping[ir::Type | Str, FilePair] file_pairs,
 ):
     # Gets rid of reference cycles
     meth destroy():
-        while self.file_pairs != []:
-            self.file_pairs.pop()
-
-    meth source_path_to_file_pair(Str path) -> FilePair:
-        foreach pair of self.file_pairs:
-            if pair.type_or_source_path == path:
-                return pair
-        assert(false)
+        self.file_pairs = new Mapping[ir::Type | Str, FilePair]()
 
     meth type_to_file_pair(ir::Type type) -> FilePair:
-        foreach pair of self.file_pairs:
-            if pair.type_or_source_path == type:
-                return pair
+        if self.file_pairs.has_key(type):
+            return self.file_pairs.get(type)
 
         let pair = new FilePair(
             self,
@@ -758,7 +750,7 @@ export class Session(
             new Mapping[Str, Str](),
             null, "", "", "", [], [], "",
         )
-        self.file_pairs.push(pair)
+        self.file_pairs.set(type, pair)
         pair.define_type(type)
         return pair
 
@@ -783,9 +775,7 @@ export class Session(
         return "(void)0"
 
     meth create_c_code(List[ir::ToplevelDeclaration] top_decls, Str source_path):
-        foreach pair of self.file_pairs:
-            assert(pair.type_or_source_path != source_path)
-
+        assert(not self.file_pairs.has_key(source_path))
         let pair = new FilePair(
             self,
             create_id(
@@ -798,17 +788,18 @@ export class Session(
             new Mapping[Str, Str](),
             null, "", "", "", [], [], "",
         )
-        self.file_pairs.push(pair)
+        self.file_pairs.set(source_path, pair)
+
         foreach top_declaration of top_decls:
             pair.emit_toplevel_declaration(top_declaration)
 
     # returns list of c paths
     # TODO: don't keep stuff in memory so much
     meth write_everything(Str builtins_path) -> List[Str]:
-        let builtins_pair = self.source_path_to_file_pair(builtins_path)
+        let builtins_pair = self.file_pairs.get(builtins_path)
 
         let c_paths = []
-        foreach file_pair of self.file_pairs:
+        foreach file_pair of self.file_pairs.values():
             let c_path = self.compilation_dir + "/" + file_pair.id + ".c"
             let h_path = self.compilation_dir + "/" + file_pair.id + ".h"
             c_paths.push(c_path)

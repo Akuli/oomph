@@ -254,7 +254,7 @@ export func main():
         ir::create_builtins(),
         get_compilation_dir(cache_dir, infile_name_without_ext + "_compilation"),
         [],
-        [],
+        new Mapping[ir::Type | Str, auto](),
     )
     foreach unit of compute_compilation_order(units, args.verbose):
         if args.verbose:
