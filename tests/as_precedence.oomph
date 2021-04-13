@@ -1,6 +1,0 @@
-func foo(Str | null s):
-    if s != null:
-        print("lol: " + s as not null)
-
-export func main():
-    foo("wat")
