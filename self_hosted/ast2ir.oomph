@@ -351,12 +351,12 @@ class FunctionOrMethodConverter(
                     case *:
                         pass
 
-                if function == self.builtins.get_visible_var("print"):
+                if function == self.builtins.visible_vars.get("print"):
                     if args.length() != 1:
                         ast_function.location.error("print must be called with 1 argument")
                     args = [foreach arg of args: self.stringify(arg)]
                 else:
-                    if function == self.builtins.get_visible_var("assert"):
+                    if function == self.builtins.visible_vars.get("assert"):
                         if args.length() != 1:
                             ast_function.location.error("assert must be called with 1 argument")
                         # Add path and line number args
@@ -391,7 +391,7 @@ class FunctionOrMethodConverter(
 
     meth bool_constant(Str which, Location location) -> ir::LocalVariable:
         let result = self.create_var(self.builtins.BOOL, location)
-        self.code.push(new ir::VarCpy(result, self.builtins.get_visible_var("true")))
+        self.code.push(new ir::VarCpy(result, self.builtins.visible_vars.get("true")))
         return result
 
     meth do_binary_op_typed(ir::LocalVariable lhs, Str op, Location op_location, ir::LocalVariable rhs) -> ir::LocalVariable:
@@ -496,7 +496,7 @@ class FunctionOrMethodConverter(
                     rhs_evaluation,
                     [
                         new ir::VarCpy(
-                            result_var, self.builtins.get_visible_var("false")
+                            result_var, self.builtins.visible_vars.get("false")
                         ) as ir::Instruction
                     ],
                 )
@@ -505,7 +505,7 @@ class FunctionOrMethodConverter(
                     lhs_var,
                     [
                         new ir::VarCpy(
-                            result_var, self.builtins.get_visible_var("true")
+                            result_var, self.builtins.visible_vars.get("true")
                         ) as ir::Instruction
                     ],
                     rhs_evaluation,
@@ -755,7 +755,7 @@ class FunctionOrMethodConverter(
                         self.builtins.BOOL, header.keyword_location
                     )
                     self.code.push(new ir::VarCpy(
-                        cond_var, self.builtins.get_visible_var("true")
+                        cond_var, self.builtins.visible_vars.get("true")
                     ))
                 else:
                     cond_var = self.do_expression_and_convert(header.cond as not null, self.builtins.BOOL)
