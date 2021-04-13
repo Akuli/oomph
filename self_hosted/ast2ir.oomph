@@ -17,16 +17,6 @@ func is_autotype(ir::Type type) -> Bool:
         case *:
             return false
 
-# TODO: get rid of this?
-func find_variable(
-    Mapping[Str, ir::Variable] variables,
-    Str name,
-    Location | null location,  # if user can make variable not found, then must be non-null
-) -> ir::Variable:
-    if not variables.has_key(name):
-        (location as not null).error("variable not found: {name}")
-    return variables.get(name)
-
 
 # Returns the same result every time, regardless of order of input list
 func pick_one_autotype(List[ir::AutoType] autotypes) -> ir::AutoType:
@@ -350,7 +340,9 @@ class FunctionOrMethodConverter(
                 ))
 
             case ast::GetVar ast_function:
-                let function = find_variable(self.variables, ast_function.varname, ast_function.location)
+                if not self.variables.has_key(ast_function.varname):
+                    ast_function.location.error("variable not found: {ast_function.varname}")
+                let function = self.variables.get(ast_function.varname)
                 let functype = ir::var_type(function) as ir::FunctionType
 
                 switch functype.returntype:
@@ -581,7 +573,9 @@ class FunctionOrMethodConverter(
             case ast::GetVar getvar:
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
                 # Also ensure we always return LocalVariable
-                let old_var = find_variable(self.variables, getvar.varname, location)
+                if not self.variables.has_key(getvar.varname):
+                    location.error("variable not found: {getvar.varname}")
+                let old_var = self.variables.get(getvar.varname)
                 let new_var = self.create_var(ir::var_type(old_var), location)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))
@@ -681,7 +675,9 @@ class FunctionOrMethodConverter(
                 self.variables.set(leet.varname, self.do_expression(leet.value))
 
             case ast::SetVar setvar:
-                let var = find_variable(self.variables, setvar.varname, setvar.location) as ir::LocalVariable  # TODO: error
+                if not self.variables.has_key(setvar.varname):
+                    setvar.location.error("variable not found: {setvar.varname}")
+                let var = self.variables.get(setvar.varname) as ir::LocalVariable  # TODO: error
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
@@ -1164,7 +1160,7 @@ class FileConverter(
         ast::FuncOrMethodDef def, ir::Type | null classtype
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
-            let funcvar = find_variable(self.variables, def.name, null)
+            let funcvar = self.variables.get(def.name)
             let functype = ir::var_type(funcvar) as ir::FunctionType  # TODO: error
         else:
             functype = ir::get_method(classtype as not null, def.name, self.builtins)
