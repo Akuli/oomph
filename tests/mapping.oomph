@@ -85,7 +85,7 @@ export func main():
                 assert(not mapping1.has_key(key))
             else:
                 assert(mapping1.has_key(key))
-                assert(mapping1.get(key) == (mapping2.get(key) as not null))
+                assert(mapping1.get(key) == mapping2.get(key) as not null)
         elif operation == 2:
             # Delete
             let key = prng.get_string()

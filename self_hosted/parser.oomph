@@ -309,7 +309,7 @@ class Parser(List[tokenizer::Token] tokens):
 
             if un_or_null != null and bin_or_null != null:
                 # Prefer binary operator if both are found in same place (needed for x - y)
-                if (un_or_null as not null) < (bin_or_null as not null):
+                if un_or_null as not null < bin_or_null as not null:
                     bin_or_null = null
                 else:
                     un_or_null = null

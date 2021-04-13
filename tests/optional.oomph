@@ -7,9 +7,9 @@ export func main():
     show(x)
     show(null)
 
-    print((null as Str | null) == (null as Str | null))
-    print((null as Str | null) == null)
-    print(null == (null as Str | null))
+    print(null as Str | null == null as Str | null)
+    print(null as Str | null == null)
+    print(null == null as Str | null)
     print(null == null)
 
     print(x == null)

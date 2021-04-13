@@ -1,2 +1,2 @@
 export func main():
-    print(("a" as Str | Int) == (1 as Str | Int))
+    print("a" as Str | Int == 1 as Str | Int)
