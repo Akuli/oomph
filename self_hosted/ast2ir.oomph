@@ -74,9 +74,6 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::UnSet(result))
         return result
 
-    meth get_var(Str name, Location | null location) -> ir::Variable:
-        return find_variable(self.variables, name, location)
-
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
         # TODO: transitivity? if (A,B) and (B,C) in matching_autotypes then A --> [A,B,C]
         let matches = [autotype]
@@ -353,7 +350,7 @@ class FunctionOrMethodConverter(
                 ))
 
             case ast::GetVar ast_function:
-                let function = self.get_var(ast_function.varname, ast_function.location)
+                let function = find_variable(self.variables, ast_function.varname, ast_function.location)
                 let functype = ir::var_type(function) as ir::FunctionType
 
                 switch functype.returntype:
@@ -584,7 +581,7 @@ class FunctionOrMethodConverter(
             case ast::GetVar getvar:
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
                 # Also ensure we always return LocalVariable
-                let old_var = self.get_var(getvar.varname, location)
+                let old_var = find_variable(self.variables, getvar.varname, location)
                 let new_var = self.create_var(ir::var_type(old_var), location)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))
@@ -684,7 +681,7 @@ class FunctionOrMethodConverter(
                 self.variables.set(leet.varname, self.do_expression(leet.value))
 
             case ast::SetVar setvar:
-                let var = self.get_var(setvar.varname, setvar.location) as ir::LocalVariable  # TODO: error
+                let var = find_variable(self.variables, setvar.varname, setvar.location) as ir::LocalVariable  # TODO: error
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
@@ -994,9 +991,6 @@ class FileConverter(
     Mapping[Str, ir::Variable] variables,
     Mapping[Str, ast::Type] typedef_laziness,
 ):
-    meth get_var(Str name, Location | null location) -> ir::Variable:
-        return find_variable(self.variables, name, location)
-
     meth get_named_type(Str name, Location | null location) -> ir::Type:
         if self.typedef_laziness.has_key(name):
             # step 2 stuff
@@ -1170,7 +1164,7 @@ class FileConverter(
         ast::FuncOrMethodDef def, ir::Type | null classtype
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
-            let funcvar = self.get_var(def.name, null)
+            let funcvar = find_variable(self.variables, def.name, null)
             let functype = ir::var_type(funcvar) as ir::FunctionType  # TODO: error
         else:
             functype = ir::get_method(classtype as not null, def.name, self.builtins)
