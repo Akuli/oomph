@@ -6,11 +6,11 @@ Consider this Oomph code:
         if message == null:
             print("No message")
         else:
-            print(message as not null)
+            print("The message is " + message as not null)
 
     export func main():
         foo(null)       # prints "No message"
-        foo("hello")    # prints "hello"
+        foo("hello")    # prints "The message is hello"
 
 Let's go through this step by step.
 
@@ -41,11 +41,13 @@ This ensures that `message == null` is a valid way to check
 whether `null` is the active member of `message`.
 
     else:
-        print(message as not null)
+        print("The message is " + message as not null)
 
 Recall that `message` has type `Str | null`.
 However, when the `else` runs, the active member of `message` can't be `null`.
 Here `as not null` converts from `Str | null` to `Str`.
+The `as` and `as not` operators are evaluated before other operators, such as `+` in this case,
+so you don't need to put the `message as not null` part in parentheses.
 
     export func main():
         foo(null)       # prints "No message"
@@ -60,7 +62,7 @@ but they are [implicitly converted](implicit-conversions.md) to type `Str | null
 To access the `Int` of `Str | Int`, knowing that's the active member, you can use `as`:
 
     func blah(Str | Int thing):
-        print((thing as Int) + 1)
+        print(thing as Int + 1)
 
     export func main():
         blah(123)       # prints "124"
@@ -69,7 +71,7 @@ To access the `Int` of `Str | Int`, knowing that's the active member, you can us
 Of course, `as not` also gives a runtime error if called with the wrong active member:
 
     func greet(Str | null name):
-        print("Hello " + (name as not null))
+        print("Hello " + name as not null)
 
     export func main():
         greet("World")  # prints "Hello World"

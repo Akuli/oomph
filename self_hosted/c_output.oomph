@@ -418,7 +418,7 @@ class FilePair(
         let decl = "{returntype} {function_name}({arg_decl_string})"
         self.function_decls = self.function_decls + decl + ";\n"
         if body != null:
-            self.function_defs = self.function_defs + decl + "\{" + (body as not null) + "\}\n"
+            self.function_defs = self.function_defs + decl + "\{" + body as not null + "\}\n"
 
     meth emit_string(Str value) -> Str:
         if self.strings.has_key(value):

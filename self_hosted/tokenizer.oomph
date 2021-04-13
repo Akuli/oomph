@@ -21,7 +21,7 @@ func get_simple_identifier(Str code) -> Str | null:
         let match = starts_with_any(code.remove_prefix(result), continue_chars)
         if match == null:
             return result
-        result = result + (match as not null)
+        result = result + match as not null
 
 func get_identifier(Str code) -> Str | null:
     switch get_simple_identifier(code):
@@ -29,7 +29,7 @@ func get_identifier(Str code) -> Str | null:
             let remaining = code.remove_prefix(s)
             if remaining.starts_with("::"):
                 # TODO: better error handling for foo::123
-                return s + "::" + (get_simple_identifier(remaining.remove_prefix("::")) as not null)
+                return s + "::" + get_simple_identifier(remaining.remove_prefix("::")) as not null
             return s
         case *:
             return null

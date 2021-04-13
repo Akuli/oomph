@@ -160,12 +160,12 @@ A one-line-ish statement can be:
 - A function call expression.
 
 An expression is a sequence of simple expressions or operators and keywords from the below precedence list:
-1. `*`, `/`
-2. `+`, `-` (can be `-x` or `x - y`, but not `x + -y`; `-` must be first unless it's `x - y`)
-3. `mod`
-4. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
-5. `<`, `>`, `<=`, `>=` (it is an error to chain these)
-6. `as`, `as not` (the right side is a type, not an expression)
+1. `as`, `as not` (the right side is a type, not an expression)
+2. `*`, `/`
+3. `+`, `-` (can be `-x` or `x - y`, but not `x + -y`; `-` must be first unless it's `x - y`)
+4. `mod`
+5. `==` and `!=` (it is an error to chain these like `a == b == c` or `a == b != c`)
+6. `<`, `>`, `<=`, `>=` (it is an error to chain these)
 7. `in`, `not in` (it is an error to chain these)
 8. `not`
 9. `and`, `or` (chaining different keywords, e.g. `a and b or c`, is an error)

@@ -1,2 +1,2 @@
 export func main():
-    print((1 as Int | null) < (2 as Int | null))
+    print(1 as Int | null < 2 as Int | null)
