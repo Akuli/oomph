@@ -17,16 +17,6 @@ func is_autotype(ir::Type type) -> Bool:
         case *:
             return false
 
-# TODO: get rid of this?
-func find_variable(
-    Mapping[Str, ir::Variable] variables,
-    Str name,
-    Location | null location,  # if user can make variable not found, then must be non-null
-) -> ir::Variable:
-    if not variables.has_key(name):
-        (location as not null).error("variable not found: {name}")
-    return variables.get(name)
-
 
 # Returns the same result every time, regardless of order of input list
 func pick_one_autotype(List[ir::AutoType] autotypes) -> ir::AutoType:
@@ -73,9 +63,6 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::DecRef(result))
         self.code.push(new ir::UnSet(result))
         return result
-
-    meth get_var(Str name, Location | null location) -> ir::Variable:
-        return find_variable(self.variables, name, location)
 
     meth get_matching_autotype_list(ir::AutoType autotype) -> List[ir::AutoType]:
         # TODO: transitivity? if (A,B) and (B,C) in matching_autotypes then A --> [A,B,C]
@@ -169,7 +156,7 @@ class FunctionOrMethodConverter(
         foreach arg of args.slice(1, args.length()):
             location = location.combine(arg.location)
 
-        let function = self.builtins.get_hidden_var(name)
+        let function = self.builtins.hidden_vars.get(name)
         let result_var = self.create_var(
             (function.type as ir::FunctionType).returntype as ir::Type,
             location
@@ -177,40 +164,34 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::FunctionCall(function, args, result_var))
         return result_var
 
-    # TODO: get rid of this
-    meth lookup_autotype(ir::AutoType autotype) -> ir::Type | null:
-        if self.resolved_autotypes.has_key(autotype):
-            return self.resolved_autotypes.get(autotype)
-        return null
-
     meth do_the_autotype_thing(ir::Type type1, ir::Type type2, Location location) -> TypePair:
         if is_autotype(type1) and is_autotype(type2):
-            if type1 != type2:
-                let actual_type1 = self.lookup_autotype(type1 as ir::AutoType)
-                let actual_type2 = self.lookup_autotype(type2 as ir::AutoType)
-                if actual_type1 != null and actual_type2 != null:
-                    return new TypePair(actual_type1 as not null, actual_type2 as not null)
-                if actual_type1 != null:
-                    return new TypePair(actual_type1 as not null, type2)
-                if actual_type2 != null:
-                    return new TypePair(type1, actual_type2 as not null)
+            let auto1 = type1 as ir::AutoType
+            let auto2 = type2 as ir::AutoType
+            if auto1 != auto2:
+                if self.resolved_autotypes.has_key(auto1) and self.resolved_autotypes.has_key(auto2):
+                    return new TypePair(self.resolved_autotypes.get(auto1), self.resolved_autotypes.get(auto2))
+                if self.resolved_autotypes.has_key(auto1):
+                    return new TypePair(self.resolved_autotypes.get(auto1), auto2)
+                if self.resolved_autotypes.has_key(auto2):
+                    return new TypePair(auto1, self.resolved_autotypes.get(auto2))
 
-                self.matching_autotypes.push(new AutoTypePair(type1 as ir::AutoType, type2 as ir::AutoType))
+                self.matching_autotypes.push(new AutoTypePair(auto1, auto2))
                 # TODO: should be consistent with substitute_autotypes?
                 return new TypePair(type1, type1)
 
         elif is_autotype(type1):
-            let resolved = self.lookup_autotype(type1 as ir::AutoType)
-            if resolved != null:
-                return new TypePair(resolved as not null, type2)
-            self.resolve_autotype(type1 as ir::AutoType, type2)
+            let auto1 = type1 as ir::AutoType
+            if self.resolved_autotypes.has_key(auto1):
+                return new TypePair(self.resolved_autotypes.get(auto1), type2)
+            self.resolve_autotype(auto1, type2)
             return new TypePair(type2, type2)
 
         elif is_autotype(type2):
-            let resolved = self.lookup_autotype(type2 as ir::AutoType)
-            if resolved != null:
-                return new TypePair(type1, resolved as not null)
-            self.resolve_autotype(type2 as ir::AutoType, type1)
+            let auto2 = type2 as ir::AutoType
+            if self.resolved_autotypes.has_key(auto2):
+                return new TypePair(type1, self.resolved_autotypes.get(auto2))
+            self.resolve_autotype(auto2, type1)
             return new TypePair(type1, type1)
 
         else:
@@ -325,14 +306,6 @@ class FunctionOrMethodConverter(
             self.implicit_conversion(args.get(i), target_types.get(i))
         ]
 
-    # TODO: get rid of this
-    meth get_method_functype(ir::Type type, Str name) -> ir::FunctionType:
-        return ir::get_method(type, name, self.builtins)
-
-    # TODO: get rid of this
-    meth get_attribute_type(ir::Type type, Str attribute) -> ir::Type:
-        return ir::get_member(type, attribute)
-
     meth do_call(ast::Call call, Bool must_return_value) -> ir::LocalVariable | null:
         let args = [foreach arg of call.args: self.do_expression(arg)]
         let result_var = null as ir::LocalVariable | null
@@ -348,7 +321,7 @@ class FunctionOrMethodConverter(
                         if must_return_value:
                             result_var = self.create_var(self.create_autotype(), call.location)
                     case *:
-                        let functype = self.get_method_functype(self_var.type, method.attribute)
+                        let functype = ir::get_method(self_var.type, method.attribute, self.builtins)
                         assert(self_var.type == functype.argtypes.first())
 
                         switch functype.returntype:
@@ -367,7 +340,9 @@ class FunctionOrMethodConverter(
                 ))
 
             case ast::GetVar ast_function:
-                let function = self.get_var(ast_function.varname, ast_function.location)
+                if not self.variables.has_key(ast_function.varname):
+                    ast_function.location.error("variable not found: {ast_function.varname}")
+                let function = self.variables.get(ast_function.varname)
                 let functype = ir::var_type(function) as ir::FunctionType
 
                 switch functype.returntype:
@@ -376,12 +351,12 @@ class FunctionOrMethodConverter(
                     case *:
                         pass
 
-                if function == self.builtins.get_visible_var("print"):
+                if function == self.builtins.visible_vars.get("print"):
                     if args.length() != 1:
                         ast_function.location.error("print must be called with 1 argument")
                     args = [foreach arg of args: self.stringify(arg)]
                 else:
-                    if function == self.builtins.get_visible_var("assert"):
+                    if function == self.builtins.visible_vars.get("assert"):
                         if args.length() != 1:
                             ast_function.location.error("assert must be called with 1 argument")
                         # Add path and line number args
@@ -416,7 +391,7 @@ class FunctionOrMethodConverter(
 
     meth bool_constant(Str which, Location location) -> ir::LocalVariable:
         let result = self.create_var(self.builtins.BOOL, location)
-        self.code.push(new ir::VarCpy(result, self.builtins.get_visible_var("true")))
+        self.code.push(new ir::VarCpy(result, self.builtins.visible_vars.get("true")))
         return result
 
     meth do_binary_op_typed(ir::LocalVariable lhs, Str op, Location op_location, ir::LocalVariable rhs) -> ir::LocalVariable:
@@ -521,7 +496,7 @@ class FunctionOrMethodConverter(
                     rhs_evaluation,
                     [
                         new ir::VarCpy(
-                            result_var, self.builtins.get_visible_var("false")
+                            result_var, self.builtins.visible_vars.get("false")
                         ) as ir::Instruction
                     ],
                 )
@@ -530,7 +505,7 @@ class FunctionOrMethodConverter(
                     lhs_var,
                     [
                         new ir::VarCpy(
-                            result_var, self.builtins.get_visible_var("true")
+                            result_var, self.builtins.visible_vars.get("true")
                         ) as ir::Instruction
                     ],
                     rhs_evaluation,
@@ -598,7 +573,9 @@ class FunctionOrMethodConverter(
             case ast::GetVar getvar:
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
                 # Also ensure we always return LocalVariable
-                let old_var = self.get_var(getvar.varname, location)
+                if not self.variables.has_key(getvar.varname):
+                    location.error("variable not found: {getvar.varname}")
+                let old_var = self.variables.get(getvar.varname)
                 let new_var = self.create_var(ir::var_type(old_var), location)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))
@@ -632,7 +609,7 @@ class FunctionOrMethodConverter(
                         )
                     case *:
                         result = self.create_var(
-                            self.get_attribute_type(obj.type, getattr.attribute),
+                            ir::get_member(obj.type, getattr.attribute),
                             location
                         )
                 self.code.push(new ir::GetAttribute(obj, result, getattr.attribute))
@@ -698,7 +675,9 @@ class FunctionOrMethodConverter(
                 self.variables.set(leet.varname, self.do_expression(leet.value))
 
             case ast::SetVar setvar:
-                let var = self.get_var(setvar.varname, setvar.location) as ir::LocalVariable  # TODO: error
+                if not self.variables.has_key(setvar.varname):
+                    setvar.location.error("variable not found: {setvar.varname}")
+                let var = self.variables.get(setvar.varname) as ir::LocalVariable  # TODO: error
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
@@ -776,7 +755,7 @@ class FunctionOrMethodConverter(
                         self.builtins.BOOL, header.keyword_location
                     )
                     self.code.push(new ir::VarCpy(
-                        cond_var, self.builtins.get_visible_var("true")
+                        cond_var, self.builtins.visible_vars.get("true")
                     ))
                 else:
                     cond_var = self.do_expression_and_convert(header.cond as not null, self.builtins.BOOL)
@@ -892,7 +871,7 @@ class FunctionOrMethodConverter(
             switch ins:
                 case ir::MethodCall call:
                     self.get_rid_of_auto_in_var(call.obj)
-                    let functype = self.get_method_functype(call.obj.type, call.method_name)
+                    let functype = ir::get_method(call.obj.type, call.method_name, self.builtins)
 
                     self.push_code()
                     call.args = self.do_args(
@@ -926,7 +905,7 @@ class FunctionOrMethodConverter(
                         case ir::AutoType autotype:
                             self.resolve_autotype(
                                 autotype,
-                                self.get_attribute_type(getattr.obj.type, getattr.attribute))
+                                ir::get_member(getattr.obj.type, getattr.attribute))
                         case *:
                             self.get_rid_of_auto_in_var(getattr.attribute_var)
 
@@ -1008,14 +987,6 @@ class FileConverter(
     Mapping[Str, ir::Variable] variables,
     Mapping[Str, ast::Type] typedef_laziness,
 ):
-    # TODO: get rid of this?
-    meth add_var(ir::Variable var, Str name):
-        assert(not self.variables.has_key(name))
-        self.variables.set(name, var)
-
-    meth get_var(Str name, Location | null location) -> ir::Variable:
-        return find_variable(self.variables, name, location)
-
     meth get_named_type(Str name, Location | null location) -> ir::Type:
         if self.typedef_laziness.has_key(name):
             # step 2 stuff
@@ -1079,7 +1050,8 @@ class FileConverter(
                         switch symbol.value:
                             case ir::FileVariable var:
                                 # Technically step 3, but adding earlier doesn't matter
-                                self.add_var(var, name)
+                                assert(not self.variables.has_key(name))
+                                self.variables.set(name, var)
                             case ir::Type type:
                                 # TODO: use check_type_not_exists?
                                 assert(not self.types.has_key(name))
@@ -1148,7 +1120,8 @@ class FileConverter(
             # TODO: use def.export
             let func_var = new ir::FileVariable(def.name, functype)
             self.symbols.push(new ir::Symbol(self.path, def.name, func_var))
-            self.add_var(func_var, def.name)
+            assert(not self.variables.has_key(def.name))
+            self.variables.set(def.name, func_var)
         else:
             assert(not (classtype as not null).methods.has_key(def.name))
             (classtype as not null).methods.set(def.name, functype)
@@ -1187,7 +1160,7 @@ class FileConverter(
         ast::FuncOrMethodDef def, ir::Type | null classtype
     ) -> ir::ToplevelDeclaration:
         if classtype == null:
-            let funcvar = self.get_var(def.name, null)
+            let funcvar = self.variables.get(def.name)
             let functype = ir::var_type(funcvar) as ir::FunctionType  # TODO: error
         else:
             functype = ir::get_method(classtype as not null, def.name, self.builtins)
