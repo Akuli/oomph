@@ -181,6 +181,10 @@ func compute_compilation_order(List[CompilationUnit] units, Bool verbose) -> Lis
 
 class Args(Str infile, Str | null outfile, Str valgrind, Bool verbose, List[Str] program_args)
 
+func argument_error(Str message) -> noreturn:
+    print("{process::program_name()}: {message} (see --help)")
+    process::exit(2)
+
 func parse_args() -> Args:
     let usage = "Usage: {process::program_name()} [compiler args] program.oomph [program args]"
     let infile = null as Str | null
@@ -199,7 +203,7 @@ Compiler arguments:
         This message
 
     -o, --outfile FILE
-        Put executable here, don't run it
+        Put executable here, don't run it (can't be used with program args)
 
     --valgrind COMMAND  (don't use with --outfile)
         Run program with valgrind, e.g. '--valgrind valgrind' runs with no
@@ -212,31 +216,29 @@ Compiler arguments:
         if args.last() in ["-o", "--outfile"]:
             args.pop()
             if args == []:
-                print("{process::program_name()}: need path after -o/--outfile (see --help)")
-                process::exit(2)
+                argument_error("need path after -o/--outfile")
             outfile = args.pop()
         elif args.last() == "--valgrind":
             args.pop()
             if args == []:
-                print("{process::program_name()}: need command after --valgrind (see --help)")
-                process::exit(2)
+                argument_error("need command after --valgrind")
             valgrind = args.pop()
         elif args.last() in ["-v", "--verbose"]:
             args.pop()
             verbose = true
         elif args.last().starts_with("-"):
-            print("{process::program_name()}: unknown argument '{args.last()}' (see --help)")
-            process::exit(2)
+            argument_error("unknown argument '{args.last()}'")
         else:
             infile = args.pop()
             break
 
-    switch infile:
-        case null _:
-            print(usage)
-            process::exit(2)
-        case Str s:
-            return new Args(s, outfile, valgrind, verbose, args.reversed())
+    if outfile != null and args != []:
+        argument_error("program arguments can't be given with -o/--outfile")
+    if infile == null:
+        print(usage)
+        process::exit(2)
+
+    return new Args(infile as not null, outfile, valgrind, verbose, args.reversed())
 
 
 export func main():

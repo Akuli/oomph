@@ -9,5 +9,6 @@ export func main():
         process::run(["./oomph", "-o"]),
         process::run(["./oomph", "--outfile"]),
         process::run(["./oomph", "--valgrind"]),
+        process::run(["./oomph", "-o", "foo", "tests/hello.oomph", "lol"]),
     ]
     print("Exit statuses: {statuses}")

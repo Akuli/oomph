@@ -5,7 +5,7 @@ Compiler arguments:
         This message
 
     -o, --outfile FILE
-        Put executable here, don't run it
+        Put executable here, don't run it (can't be used with program args)
 
     --valgrind COMMAND  (don't use with --outfile)
         Run program with valgrind, e.g. '--valgrind valgrind' runs with no
@@ -19,4 +19,5 @@ Usage: ./oomph [compiler args] program.oomph [program args]
 ./oomph: need path after -o/--outfile (see --help)
 ./oomph: need path after -o/--outfile (see --help)
 ./oomph: need command after --valgrind (see --help)
-Exit statuses: [0, 2, 2, 2, 2, 2]
+./oomph: program arguments can't be given with -o/--outfile (see --help)
+Exit statuses: [0, 2, 2, 2, 2, 2, 2]
