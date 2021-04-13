@@ -236,12 +236,12 @@ class _Parser:
 
         # each operator of a group is considered to have same precedence
         for op_group in [
+            [(2, "as"), (2, "as not")],
             [(2, "*"), (2, "/")],
             [(2, "+"), (2, "-"), (1, "-")],
             [(2, "mod")],
             [(2, "=="), (2, "!=")],
             [(2, "<"), (2, ">"), (2, "<="), (2, ">=")],
-            [(2, "as"), (2, "as not")],
             [(2, "in"), (2, "not in")],
             [(1, "not")],
             [(2, "and"), (2, "or")],

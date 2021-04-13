@@ -6,11 +6,11 @@ Consider this Oomph code:
         if message == null:
             print("No message")
         else:
-            print(message as not null)
+            print("The message is " + message as not null)
 
     export func main():
         foo(null)       # prints "No message"
-        foo("hello")    # prints "hello"
+        foo("hello")    # prints "The message is hello"
 
 Let's go through this step by step.
 
@@ -41,11 +41,13 @@ This ensures that `message == null` is a valid way to check
 whether `null` is the active member of `message`.
 
     else:
-        print(message as not null)
+        print("The message is " + message as not null)
 
 Recall that `message` has type `Str | null`.
 However, when the `else` runs, the active member of `message` can't be `null`.
 Here `as not null` converts from `Str | null` to `Str`.
+The `as` and `as not` operators are evaluated before everything else,
+so you don't need to put the `message as not null` part in parentheses.
 
     export func main():
         foo(null)       # prints "No message"
