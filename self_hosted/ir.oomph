@@ -198,10 +198,6 @@ export class Builtins(
         print("variable {name} not found")
         assert(false)
 
-    # TODO: get rid of this
-    meth get_hidden_var(Str name) -> BuiltinVariable:
-        return self.hidden_vars.get(name)
-
     meth get_builtin_types() -> List[Type]:
         return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
 

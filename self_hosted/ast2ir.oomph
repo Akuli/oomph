@@ -156,7 +156,7 @@ class FunctionOrMethodConverter(
         foreach arg of args.slice(1, args.length()):
             location = location.combine(arg.location)
 
-        let function = self.builtins.get_hidden_var(name)
+        let function = self.builtins.hidden_vars.get(name)
         let result_var = self.create_var(
             (function.type as ir::FunctionType).returntype as ir::Type,
             location
