@@ -177,40 +177,34 @@ class FunctionOrMethodConverter(
         self.code.push(new ir::FunctionCall(function, args, result_var))
         return result_var
 
-    # TODO: get rid of this
-    meth lookup_autotype(ir::AutoType autotype) -> ir::Type | null:
-        if self.resolved_autotypes.has_key(autotype):
-            return self.resolved_autotypes.get(autotype)
-        return null
-
     meth do_the_autotype_thing(ir::Type type1, ir::Type type2, Location location) -> TypePair:
         if is_autotype(type1) and is_autotype(type2):
-            if type1 != type2:
-                let actual_type1 = self.lookup_autotype(type1 as ir::AutoType)
-                let actual_type2 = self.lookup_autotype(type2 as ir::AutoType)
-                if actual_type1 != null and actual_type2 != null:
-                    return new TypePair(actual_type1 as not null, actual_type2 as not null)
-                if actual_type1 != null:
-                    return new TypePair(actual_type1 as not null, type2)
-                if actual_type2 != null:
-                    return new TypePair(type1, actual_type2 as not null)
+            let auto1 = type1 as ir::AutoType
+            let auto2 = type2 as ir::AutoType
+            if auto1 != auto2:
+                if self.resolved_autotypes.has_key(auto1) and self.resolved_autotypes.has_key(auto2):
+                    return new TypePair(self.resolved_autotypes.get(auto1), self.resolved_autotypes.get(auto2))
+                if self.resolved_autotypes.has_key(auto1):
+                    return new TypePair(self.resolved_autotypes.get(auto1), auto2)
+                if self.resolved_autotypes.has_key(auto2):
+                    return new TypePair(auto1, self.resolved_autotypes.get(auto2))
 
-                self.matching_autotypes.push(new AutoTypePair(type1 as ir::AutoType, type2 as ir::AutoType))
+                self.matching_autotypes.push(new AutoTypePair(auto1, auto2))
                 # TODO: should be consistent with substitute_autotypes?
                 return new TypePair(type1, type1)
 
         elif is_autotype(type1):
-            let resolved = self.lookup_autotype(type1 as ir::AutoType)
-            if resolved != null:
-                return new TypePair(resolved as not null, type2)
-            self.resolve_autotype(type1 as ir::AutoType, type2)
+            let auto1 = type1 as ir::AutoType
+            if self.resolved_autotypes.has_key(auto1):
+                return new TypePair(self.resolved_autotypes.get(auto1), type2)
+            self.resolve_autotype(auto1, type2)
             return new TypePair(type2, type2)
 
         elif is_autotype(type2):
-            let resolved = self.lookup_autotype(type2 as ir::AutoType)
-            if resolved != null:
-                return new TypePair(type1, resolved as not null)
-            self.resolve_autotype(type2 as ir::AutoType, type1)
+            let auto2 = type2 as ir::AutoType
+            if self.resolved_autotypes.has_key(auto2):
+                return new TypePair(type1, self.resolved_autotypes.get(auto2))
+            self.resolve_autotype(auto2, type1)
             return new TypePair(type1, type1)
 
         else:
