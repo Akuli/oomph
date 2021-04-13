@@ -994,11 +994,6 @@ class FileConverter(
     Mapping[Str, ir::Variable] variables,
     Mapping[Str, ast::Type] typedef_laziness,
 ):
-    # TODO: get rid of this?
-    meth add_var(ir::Variable var, Str name):
-        assert(not self.variables.has_key(name))
-        self.variables.set(name, var)
-
     meth get_var(Str name, Location | null location) -> ir::Variable:
         return find_variable(self.variables, name, location)
 
@@ -1065,7 +1060,8 @@ class FileConverter(
                         switch symbol.value:
                             case ir::FileVariable var:
                                 # Technically step 3, but adding earlier doesn't matter
-                                self.add_var(var, name)
+                                assert(not self.variables.has_key(name))
+                                self.variables.set(name, var)
                             case ir::Type type:
                                 # TODO: use check_type_not_exists?
                                 assert(not self.types.has_key(name))
@@ -1134,7 +1130,8 @@ class FileConverter(
             # TODO: use def.export
             let func_var = new ir::FileVariable(def.name, functype)
             self.symbols.push(new ir::Symbol(self.path, def.name, func_var))
-            self.add_var(func_var, def.name)
+            assert(not self.variables.has_key(def.name))
+            self.variables.set(def.name, func_var)
         else:
             assert(not (classtype as not null).methods.has_key(def.name))
             (classtype as not null).methods.set(def.name, functype)
