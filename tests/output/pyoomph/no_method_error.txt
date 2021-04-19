@@ -1,0 +1,2 @@
+RuntimeError: Str has no method lolz()
+

@@ -1,0 +1,5 @@
+tests/no_method_error.oomph:2: error: type Str has no method named lolz
+
+    print("hello".lolz())
+                 ^^^^^
+
