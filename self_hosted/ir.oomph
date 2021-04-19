@@ -443,15 +443,13 @@ export func get_methods(Type type, Builtins builtins) -> Mapping[Str, FunctionTy
                 result.set("hash", new FunctionType([type], builtins.INT))
             return result
 
-export func get_method(Type type, Str name, Builtins builtins) -> FunctionType:
+export func get_method(Type type, Str name, Builtins builtins, Location | null location) -> FunctionType:
     let methods = get_methods(type, builtins)
-
     if methods.has_key(name):
         return methods.get(name)
-    print("type {type_name(type)} has no method named {name}")
-    assert(false)   # TODO: error
+    (location as not null).error("type {type_name(type)} has no method named {name}")
 
-export func get_member(Type type, Str name) -> Type:
+export func get_member(Type type, Str name, Location | null location) -> Type:
     switch type:
         case AutoType a:
             assert(false)
@@ -462,8 +460,7 @@ export func get_member(Type type, Str name) -> Type:
 
     if members.has_key(name):
         return members.get(name)
-    print("type {type_name(type)} has no member named {name}")
-    assert(false)   # TODO: error
+    (location as not null).error("type {type_name(type)} has no member named {name}")
 
 
 export typedef Instruction = (

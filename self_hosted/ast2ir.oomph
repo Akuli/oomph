@@ -321,7 +321,12 @@ class FunctionOrMethodConverter(
                         if must_return_value:
                             result_var = self.create_var(self.create_autotype(), call.location)
                     case *:
-                        let functype = ir::get_method(self_var.type, method.attribute, self.builtins)
+                        let functype = ir::get_method(
+                            self_var.type,
+                            method.attribute,
+                            self.builtins,
+                            method.attribute_location,
+                        )
                         assert(self_var.type == functype.argtypes.first())
 
                         switch functype.returntype:
@@ -609,7 +614,7 @@ class FunctionOrMethodConverter(
                         )
                     case *:
                         result = self.create_var(
-                            ir::get_member(obj.type, getattr.attribute),
+                            ir::get_member(obj.type, getattr.attribute, getattr.attribute_location),
                             location
                         )
                 self.code.push(new ir::GetAttribute(obj, result, getattr.attribute))
@@ -689,7 +694,7 @@ class FunctionOrMethodConverter(
                 let obj = self.do_expression(setattr.obj)
                 let new_value_var = self.do_expression(setattr.value)
 
-                if ir::get_member(obj.type, setattr.attribute) != new_value_var.type:
+                if ir::get_member(obj.type, setattr.attribute, setattr.attribute_location) != new_value_var.type:
                     # TODO: error
                     print("wrong type for attribute {setattr.attribute} of type {ir::type_name(obj.type)}")
                     assert(false)
@@ -871,7 +876,7 @@ class FunctionOrMethodConverter(
             switch ins:
                 case ir::MethodCall call:
                     self.get_rid_of_auto_in_var(call.obj)
-                    let functype = ir::get_method(call.obj.type, call.method_name, self.builtins)
+                    let functype = ir::get_method(call.obj.type, call.method_name, self.builtins, null)
 
                     self.push_code()
                     call.args = self.do_args(
@@ -905,7 +910,8 @@ class FunctionOrMethodConverter(
                         case ir::AutoType autotype:
                             self.resolve_autotype(
                                 autotype,
-                                ir::get_member(getattr.obj.type, getattr.attribute))
+                                ir::get_member(getattr.obj.type, getattr.attribute, null)
+                            )
                         case *:
                             self.get_rid_of_auto_in_var(getattr.attribute_var)
 
@@ -1163,7 +1169,12 @@ class FileConverter(
             let funcvar = self.variables.get(def.name)
             let functype = ir::var_type(funcvar) as ir::FunctionType  # TODO: error
         else:
-            functype = ir::get_method(classtype as not null, def.name, self.builtins)
+            functype = ir::get_method(
+                classtype as not null,
+                def.name,
+                self.builtins,
+                def.location,
+            )
 
         let local_vars = self.variables.copy()
         let argvars = []
