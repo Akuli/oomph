@@ -95,6 +95,19 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("op", ")")
         return result
 
+    meth parse_commasep_types_and_vars_in_parens() -> List[ast::TypeAndVar]:
+        self.get_token("op", "(")
+        let result = []
+        if not self.peek().matches("op", ")"):
+            result.push(self.parse_type_and_var())
+            while self.peek().matches("op", ","):
+                self.get_token("op", ",")
+                if self.peek().matches("op", ")"):
+                    break
+                result.push(self.parse_type_and_var())
+        self.get_token("op", ")")
+        return result
+
     # Weirdly returns location, can't easily return 2 values yet
     meth parse_one_or_more_commasep_types_in_square_brackets(List[ast::Type] result) -> Location:
         let start = self.get_token("op", "[")
@@ -204,7 +217,7 @@ class Parser(List[tokenizer::Token] tokens):
 
         elif self.peek().type == "id":
             let token = self.get_token_by_type("id")
-            result = new ast::GetVar(token.location, token.value)
+            result = new ast::GetVar(new ast::Variable(token.location, token.value))
 
         elif self.peek().type == "int":
             let token = self.get_token_by_type("int")
@@ -445,10 +458,12 @@ class Parser(List[tokenizer::Token] tokens):
     meth parse_oneline_ish_statement() -> ast::Statement:
         if self.peek().matches("keyword", "let"):
             let leet = self.get_token("keyword", "let")
-            let varname = self.get_token_by_type("id").value
+            let var = self.get_token_by_type("id")
             self.get_token("op", "=")
             let value = self.parse_expression(null)
-            return new ast::Let(leet.location, varname, value)
+            return new ast::Let(
+                leet.location, new ast::Variable(var.location, var.value), value
+            )
 
         if self.peek().matches("keyword", "return"):
             let ret = self.get_token("keyword", "return")
@@ -474,7 +489,7 @@ class Parser(List[tokenizer::Token] tokens):
             value = self.parse_expression(null)
             switch expr:
                 case ast::GetVar getvar:
-                    return new ast::SetVar(equals.location, getvar.varname, value)
+                    return new ast::SetVar(equals.location, getvar.var, value)
                 case ast::GetAttribute getattr:
                     return new ast::SetAttribute(equals.location, getattr.obj, getattr.attribute, value)
                 case *:
@@ -487,9 +502,9 @@ class Parser(List[tokenizer::Token] tokens):
         let case_keyword = self.get_token("keyword", "case")
         if self.peek().matches("op", "*"):
             self.get_token("op", "*")
-            let type_and_varname = null as ast::TypeAndName | null
+            let type_and_varname = null as ast::TypeAndVar | null
         else:
-            type_and_varname = self.parse_type_and_name()
+            type_and_varname = self.parse_type_and_var()
         let body = self.parse_block_of_statements()
         return new ast::Case(case_keyword.location, type_and_varname, body)
 
@@ -522,9 +537,11 @@ class Parser(List[tokenizer::Token] tokens):
 
         if self.peek().matches("keyword", "foreach"):
             let location = self.get_token("keyword", "foreach").location
-            let varname = self.get_token_by_type("id").value
+            let var = self.get_token_by_type("id")
             self.get_token("keyword", "of")
-            return new ast::ForeachLoopHeader(location, varname, self.parse_expression(null))
+            return new ast::ForeachLoopHeader(
+                location, new ast::Variable(var.location, var.value), self.parse_expression(null)
+            )
 
         assert(false)
 
@@ -591,14 +608,20 @@ class Parser(List[tokenizer::Token] tokens):
             result.push(self.parse_type_without_unions())
         return new ast::UnionType(result)
 
+    # TODO: parse_type_and_var, parse_type_and_name: both needed?
+    meth parse_type_and_var() -> ast::TypeAndVar:
+        let type = self.parse_type()
+        let arg = self.get_token_by_type("id")
+        return new ast::TypeAndVar(type, new ast::Variable(arg.location, arg.value))
+
     meth parse_type_and_name() -> ast::TypeAndName:
         let type = self.parse_type()
         let arg = self.get_token_by_type("id")
-        return new ast::TypeAndName(type, arg.value, arg.location)
+        return new ast::TypeAndName(type, arg.value)
 
     meth parse_function_or_method(Location func_or_meth_location) -> ast::FuncOrMethodDef:
-        let name = self.get_token_by_type("id").value
-        let args = self.parse_commasep_types_and_names_in_parens()
+        let name = self.get_token_by_type("id")
+        let args = self.parse_commasep_types_and_vars_in_parens()
 
         if self.peek().matches("op", "->"):
             self.get_token("op", "->")
@@ -613,7 +636,7 @@ class Parser(List[tokenizer::Token] tokens):
 
         return new ast::FuncOrMethodDef(
             func_or_meth_location,
-            name,
+            name.value,
             args,
             returntype,
             self.parse_block_of_statements()

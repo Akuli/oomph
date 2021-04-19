@@ -1,28 +1,30 @@
 import "ast.oomph" as ast
+import "location.oomph" as location
+typedef Location = location::Location
 
 
 class AstTransformer(Int varname_counter):
 
-    meth get_var_name() -> Str:
+    meth get_var(Location location) -> ast::Variable:
         self.varname_counter = self.varname_counter + 1
         # Actally using this variable name would be invalid syntax, which is great
-        return "<var{self.varname_counter}>"
+        return new ast::Variable(location, "<var{self.varname_counter}>")
 
     meth foreach_loop_to_for_loop(ast::Loop loop) -> ast::Loop:
         let header = loop.loop_header as ast::ForeachLoopHeader
         let loc = header.keyword_location
 
-        let list_var = self.get_var_name()
-        let index_var = self.get_var_name()
+        let list_var = self.get_var(loc)
+        let index_var = self.get_var(loc)
 
         let body = [
             new ast::Let(
                 loc,
-                header.varname,
+                header.var,
                 new ast::Call(
                     loc,
-                    new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "get"),
-                    [new ast::GetVar(loc, index_var) as ast::Expression],
+                    new ast::GetAttribute(loc, new ast::GetVar(list_var), "get"),
+                    [new ast::GetVar(index_var) as ast::Expression],
                 ),
             ) as ast::Statement
         ]
@@ -37,9 +39,9 @@ class AstTransformer(Int varname_counter):
                 ],
                 new ast::BinaryOperator(
                     loc,
-                    new ast::GetVar(loc, index_var),
+                    new ast::GetVar(index_var),
                     "<",
-                    new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(loc, list_var), "length"), []),
+                    new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(list_var), "length"), []),
                 ),
                 [
                     new ast::SetVar(
@@ -47,7 +49,7 @@ class AstTransformer(Int varname_counter):
                         index_var,
                         new ast::BinaryOperator(
                             loc,
-                            new ast::GetVar(loc, index_var),
+                            new ast::GetVar(index_var),
                             "+",
                             new ast::IntConstant(loc, 1),
                         ),
@@ -59,7 +61,7 @@ class AstTransformer(Int varname_counter):
 
     meth handle_listcomp(ast::ListComprehension listcomp) -> ast::Expression:
         let loc = ast::locate_loop_header(listcomp.loop_header)
-        let var = self.get_var_name()
+        let var = self.get_var(loc)
         return self.visit_expression(new ast::StatementsAndExpression(
             loc,
             [
@@ -69,13 +71,13 @@ class AstTransformer(Int varname_counter):
                     [
                         new ast::Call(
                             loc,
-                            new ast::GetAttribute(loc, new ast::GetVar(loc, var), "push"),
+                            new ast::GetAttribute(loc, new ast::GetVar(var), "push"),
                             [listcomp.value],
                         ) as ast::Statement
                     ],
                 ) as ast::Statement,
             ],
-            new ast::GetVar(loc, var),
+            new ast::GetVar(var),
         ))
 
     meth visit_expression(ast::Expression expr) -> ast::Expression:
