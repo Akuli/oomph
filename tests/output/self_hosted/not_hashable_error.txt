@@ -1,2 +1,5 @@
-type Foo has no method named hash
-./oomph: assert() failed in "self_hosted/ir.oomph", line N
+tests/not_hashable_error.oomph:8: error: type Foo has no method named hash
+
+    print(new Foo().hash())
+                   ^^^^^
+

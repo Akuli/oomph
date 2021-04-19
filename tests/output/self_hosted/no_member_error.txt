@@ -1,0 +1,5 @@
+tests/no_member_error.oomph:2: error: type Str has no member named lolz
+
+    print("hello".lolz)
+                 ^^^^^
+
