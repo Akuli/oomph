@@ -1,0 +1,5 @@
+tests/missing_return_value_error.oomph:2: error: return value needed, because '->' was used at the start of function definition
+
+    return
+    ^^^^^^
+
