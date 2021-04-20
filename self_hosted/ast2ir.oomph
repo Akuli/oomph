@@ -703,7 +703,7 @@ class FunctionOrMethodConverter(
                 self.code.push(new ir::SetAttribute(obj, setattr.attribute, new_value_var))
                 self.code.push(new ir::IncRef(new_value_var))
 
-            case ast::Pass p:
+            case ast::Pass _:
                 pass
 
             case ast::Continue cont:
@@ -716,6 +716,11 @@ class FunctionOrMethodConverter(
 
             case ast::Return ret:
                 if self.returntype == null:
+                    if ret.value != null:
+                        ret.location.error(
+                            "can't return a value here, because "
+                            + "'->' wasn't used at the start of function definition"
+                        )
                     assert(ret.value == null)  # TODO: error
                     self.code.push(new ir::Return(null))
                 else:
