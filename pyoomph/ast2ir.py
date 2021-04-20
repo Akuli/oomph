@@ -606,8 +606,12 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(stmt, ast.SetAttribute):
             obj = self.do_expression(stmt.obj)
-            [member_type] = [typ for typ, name in obj.type.members if name == stmt.attribute]
-            new_value_var = self.implicit_conversion(self.do_expression(stmt.value), member_type)
+            [member_type] = [
+                typ for typ, name in obj.type.members if name == stmt.attribute
+            ]
+            new_value_var = self.implicit_conversion(
+                self.do_expression(stmt.value), member_type
+            )
 
             # Copy old value into local var, so that it will be decreffed
             old_value_var = self.create_var(new_value_var.type)
