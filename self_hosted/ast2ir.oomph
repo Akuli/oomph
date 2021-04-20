@@ -344,10 +344,10 @@ class FunctionOrMethodConverter(
                     self_var, method.attribute, args, result_var, call.location
                 ))
 
-            case ast::GetVar ast_function:
-                if not self.variables.has_key(ast_function.var.name):
-                    ast_function.var.location.error("variable not found: {ast_function.var.name}")
-                let function = self.variables.get(ast_function.var.name)
+            case ast::Variable ast_function:
+                if not self.variables.has_key(ast_function.name):
+                    ast_function.location.error("variable not found: {ast_function.name}")
+                let function = self.variables.get(ast_function.name)
                 let functype = ir::var_type(function) as ir::FunctionType
 
                 switch functype.returntype:
@@ -358,21 +358,17 @@ class FunctionOrMethodConverter(
 
                 if function == self.builtins.visible_vars.get("print"):
                     if args.length() != 1:
-                        ast_function.var.location.error("print must be called with 1 argument")
+                        ast_function.location.error("print must be called with 1 argument")
                     args = [foreach arg of args: self.stringify(arg)]
                 else:
                     if function == self.builtins.visible_vars.get("assert"):
                         if args.length() != 1:
-                            ast_function.var.location.error("assert must be called with 1 argument")
+                            ast_function.location.error("assert must be called with 1 argument")
                         # Add path and line number args
-                        let loc = ast_function.var.location
+                        let loc = ast_function.location
                         args.push(self.do_expression(new ast::StringConstant(loc, loc.path)))
                         args.push(self.do_expression(new ast::IntConstant(loc, loc.lineno)))
-                    args = self.do_args(
-                        args,
-                        functype.argtypes,
-                        ast_function.var.location,
-                    )
+                    args = self.do_args(args, functype.argtypes, ast_function.location)
                 self.code.push(new ir::FunctionCall(function, args, result_var))
 
             case ast::Constructor constructor:
@@ -575,12 +571,14 @@ class FunctionOrMethodConverter(
                 # TODO: error?
                 return self.do_call(call, true) as not null
 
-            case ast::GetVar getvar:
+            case ast::Variable variable:
+                let var = variable   # TODO: this sucks
+
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
                 # Also ensure we always return LocalVariable
-                if not self.variables.has_key(getvar.var.name):
-                    location.error("variable not found: {getvar.var.name}")
-                let old_var = self.variables.get(getvar.var.name)
+                if not self.variables.has_key(var.name):
+                    location.error("variable not found: {var.name}")
+                let old_var = self.variables.get(var.name)
                 let new_var = self.create_var(ir::var_type(old_var), location)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))

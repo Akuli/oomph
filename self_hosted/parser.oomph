@@ -217,7 +217,7 @@ class Parser(List[tokenizer::Token] tokens):
 
         elif self.peek().type == "id":
             let token = self.get_token_by_type("id")
-            result = new ast::GetVar(new ast::Variable(token.location, token.value))
+            result = new ast::Variable(token.location, token.value)
 
         elif self.peek().type == "int":
             let token = self.get_token_by_type("int")
@@ -488,8 +488,8 @@ class Parser(List[tokenizer::Token] tokens):
             let equals = self.get_token("op", "=")
             value = self.parse_expression(null)
             switch expr:
-                case ast::GetVar getvar:
-                    return new ast::SetVar(equals.location, getvar.var, value)
+                case ast::Variable variable:
+                    return new ast::SetVar(equals.location, variable, value)
                 case ast::GetAttribute getattr:
                     return new ast::SetAttribute(equals.location, getattr.obj, getattr.attribute, value)
                 case *:

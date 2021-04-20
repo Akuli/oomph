@@ -23,8 +23,8 @@ class AstTransformer(Int varname_counter):
                 header.var,
                 new ast::Call(
                     loc,
-                    new ast::GetAttribute(loc, new ast::GetVar(list_var), "get"),
-                    [new ast::GetVar(index_var) as ast::Expression],
+                    new ast::GetAttribute(loc, list_var, "get"),
+                    [index_var as ast::Expression],
                 ),
             ) as ast::Statement
         ]
@@ -39,20 +39,15 @@ class AstTransformer(Int varname_counter):
                 ],
                 new ast::BinaryOperator(
                     loc,
-                    new ast::GetVar(index_var),
+                    index_var,
                     "<",
-                    new ast::Call(loc, new ast::GetAttribute(loc, new ast::GetVar(list_var), "length"), []),
+                    new ast::Call(loc, new ast::GetAttribute(loc, list_var, "length"), []),
                 ),
                 [
                     new ast::SetVar(
                         loc,
                         index_var,
-                        new ast::BinaryOperator(
-                            loc,
-                            new ast::GetVar(index_var),
-                            "+",
-                            new ast::IntConstant(loc, 1),
-                        ),
+                        new ast::BinaryOperator(loc, index_var, "+", new ast::IntConstant(loc, 1)),
                     ) as ast::Statement
                 ],
             ),
@@ -71,13 +66,13 @@ class AstTransformer(Int varname_counter):
                     [
                         new ast::Call(
                             loc,
-                            new ast::GetAttribute(loc, new ast::GetVar(var), "push"),
+                            new ast::GetAttribute(loc, var, "push"),
                             [listcomp.value],
                         ) as ast::Statement
                     ],
                 ) as ast::Statement,
             ],
-            new ast::GetVar(var),
+            var,
         ))
 
     meth visit_expression(ast::Expression expr) -> ast::Expression:
@@ -96,7 +91,7 @@ class AstTransformer(Int varname_counter):
                 pass
             case ast::GetAttribute getattr:
                 getattr.obj = self.visit_expression(getattr.obj)
-            case ast::GetVar _:
+            case ast::Variable _:
                 pass
             case ast::IntConstant _:
                 pass
