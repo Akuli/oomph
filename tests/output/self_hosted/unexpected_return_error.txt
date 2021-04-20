@@ -1,0 +1,5 @@
+tests/unexpected_return_error.oomph:2: error: can't return a value here, because '->' wasn't used at the start of function definition
+
+    return 123
+           ^^^
+
