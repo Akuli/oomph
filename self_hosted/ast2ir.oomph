@@ -721,7 +721,6 @@ class FunctionOrMethodConverter(
                             "can't return a value here, because "
                             + "'->' wasn't used at the start of function definition"
                         )
-                    assert(ret.value == null)  # TODO: error
                     self.code.push(new ir::Return(null))
                 else:
                     if ret.value == null:
@@ -729,7 +728,6 @@ class FunctionOrMethodConverter(
                             "return value needed, because "
                             + "'->' was used at the start of function definition"
                         )
-                    # TODO: improve error for missing return value
                     # TODO: error for missing return statement
                     self.code.push(new ir::Return(self.do_expression_and_convert(
                         ret.value as not null, self.returntype as not null,
