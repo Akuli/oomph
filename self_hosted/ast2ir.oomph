@@ -1095,7 +1095,7 @@ class FileConverter(
                     case ir::UnionType union_type:
                         # use typedef name in error messages
                         assert(union_type.custom_name == null)  # TODO: may fail
-                        union_type.custom_name = def.name as Str | null
+                        union_type.custom_name = def.name
                     case *:
                         pass
             case ast::ClassDef def:
@@ -1138,8 +1138,8 @@ class FileConverter(
                     classtype.members.set(member.name, self.get_type(member.type, null))
 
                 # TODO: is it possible to specify this when creating classtype?
-                # TODO: auto types not working at all here
-                classtype.constructor_argtypes = new List[ir::Type]() as List[ir::Type] | null
+                # TODO: auto types not working perfectly
+                classtype.constructor_argtypes = new List[ir::Type]()
                 (classtype.constructor_argtypes as not null).push_all([
                     foreach member of classdef.members: self.get_type(member.type, null)
                 ])

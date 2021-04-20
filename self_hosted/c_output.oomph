@@ -564,7 +564,7 @@ class FilePair(
             \} val;
             short membernum;
         \};
-        """ as Str | null
+        """
 
     meth define_generic_type(ir::BasicType type):
         let source = type.generic_source as not null
@@ -622,7 +622,7 @@ class FilePair(
             undefs = undefs + "#undef {name}\n"
 
         assert(self.struct == null)
-        self.struct = (defines + io::read_file(h_path) + undefs) as Str | null
+        self.struct = defines + io::read_file(h_path) + undefs
 
         foreach item of ir::get_methods(type, self.session.builtins).items():
             self.define_function(
@@ -646,7 +646,7 @@ class FilePair(
             REFCOUNT_HEADER
             {struct_members}
         \};
-        """ as Str | null
+        """
         self.function_decls = self.function_decls + """
         {self.emit_type(type)} ctor_{self.id}({constructor_args});
         void dtor_{self.id}(void *ptr);
