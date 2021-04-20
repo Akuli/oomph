@@ -717,7 +717,7 @@ class FunctionOrMethodConverter(
             case ast::Return ret:
                 if self.returntype == null:
                     if ret.value != null:
-                        ret.location.error(
+                        ast::locate_expression(ret.value as not null).error(
                             "can't return a value here, because "
                             + "'->' wasn't used at the start of function definition"
                         )
