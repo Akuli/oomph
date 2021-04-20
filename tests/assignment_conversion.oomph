@@ -1,0 +1,6 @@
+class Foo(Str | Int bar)
+
+export func main():
+    let foo = new Foo(1)
+    foo.bar = "lol"
+    print(foo)
