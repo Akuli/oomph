@@ -298,8 +298,8 @@ class _FunctionOrMethodConverter:
                 ir.CallMethod(self_var, call.func.attribute, args, result_var)
             )
 
-        elif isinstance(call.func, ast.GetVar):
-            func = self.variables[call.func.varname]
+        elif isinstance(call.func, ast.Variable):
+            func = self.variables[call.func.name]
             assert not isinstance(func, ir.LocalVariable)
             assert isinstance(func.type, ir.FunctionType)
             result_type = func.type.returntype
@@ -325,7 +325,7 @@ class _FunctionOrMethodConverter:
                     list(map(self.do_expression, raw_args)),
                     func.type.argtypes,
                     None,
-                    call.func.varname,
+                    call.func.name,
                 )
             self.code.append(ir.CallFunction(func, args, result_var))
 
@@ -525,9 +525,9 @@ class _FunctionOrMethodConverter:
             assert call is not None, f"function does not return a value: {expr.func}"
             return call
 
-        if isinstance(expr, ast.GetVar):
+        if isinstance(expr, ast.Variable):
             # Don't return the same variable, otherwise 'a = a' decrefs too much
-            old_var = self.variables[expr.varname]
+            old_var = self.variables[expr.name]
             new_var = self.create_var(old_var.type)
             self.code.append(ir.VarCpy(new_var, old_var))
             self.code.append(ir.IncRef(new_var))
@@ -592,10 +592,10 @@ class _FunctionOrMethodConverter:
             self.do_call(stmt, False)
 
         elif isinstance(stmt, ast.Let):
-            self.variables[stmt.varname] = self.do_expression(stmt.value)
+            self.variables[stmt.var.name] = self.do_expression(stmt.value)
 
         elif isinstance(stmt, ast.SetVar):
-            var = self.variables[stmt.varname]
+            var = self.variables[stmt.var.name]
             assert isinstance(var, ir.LocalVariable)
             new_value_var = self.do_expression(stmt.value)
             self.code.append(ir.DecRef(var))
@@ -689,7 +689,7 @@ class _FunctionOrMethodConverter:
             if len(stmt.loop_header.init) == 1 and isinstance(
                 stmt.loop_header.init[0], ast.Let
             ):
-                del self.variables[stmt.loop_header.init[0].varname]
+                del self.variables[stmt.loop_header.init[0].var.name]
 
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
@@ -704,12 +704,12 @@ class _FunctionOrMethodConverter:
                 label = ir.GotoLabel()
                 cases.append(label)
 
-                if case.type_and_varname is None:
+                if case.type_and_var is None:
                     assert types_to_do
                     nice_types = types_to_do.copy()
                     types_to_do.clear()
                 else:
-                    raw_type, varname = case.type_and_varname
+                    raw_type, mypy_sucks = case.type_and_var
                     case_type = self.get_type(raw_type)
 
                     nice_types = _type_members(case_type)
@@ -720,15 +720,15 @@ class _FunctionOrMethodConverter:
                         case_var = self.union_conversion(union_var, case_type)
 
                     cases.extend(case_code)
-                    assert varname not in self.variables, varname
-                    self.variables[varname] = case_var
+                    assert mypy_sucks.name not in self.variables, mypy_sucks.name
+                    self.variables[mypy_sucks.name] = case_var
 
                 cases.extend(self.do_block(case.body))
                 cases.append(ir.Goto(done_label, ir.visible_builtins["true"]))
 
-                if case.type_and_varname is not None:
-                    assert self.variables[varname] is case_var
-                    del self.variables[varname]
+                if case.type_and_var is not None:
+                    assert self.variables[mypy_sucks.name] is case_var
+                    del self.variables[mypy_sucks.name]
 
                 for typ in nice_types:
                     self.code.append(ir.UnionMemberCheck(member_check, union_var, typ))
@@ -959,7 +959,9 @@ class _FileConverter:
             classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
 
             for method_def in top_declaration.body:
-                method_def.args.insert(0, (ast.NamedType(classtype.name), "self"))
+                method_def.args.insert(
+                    0, (ast.NamedType(classtype.name), ast.Variable("self"))
+                )
                 self._func_or_meth_step3(method_def, classtype)
 
     def _func_or_meth_step4(
@@ -975,7 +977,7 @@ class _FileConverter:
         local_vars = self.variables.copy()
         argvars = []
         body: List[ir.Instruction] = []
-        for (typename, argname), the_type in zip(funcdef.args, functype.argtypes):
+        for (typename, ast_argvar), the_type in zip(funcdef.args, functype.argtypes):
             argvar = ir.LocalVariable(the_type)
             argvars.append(argvar)
 
@@ -984,8 +986,8 @@ class _FileConverter:
             body.append(ir.VarCpy(copied_var, argvar))
             body.append(ir.IncRef(copied_var))
 
-            assert argname not in local_vars
-            local_vars[argname] = copied_var
+            assert ast_argvar.name not in local_vars
+            local_vars[ast_argvar.name] = copied_var
 
         converter = _FunctionOrMethodConverter(self, local_vars, functype.returntype)
         for statement in funcdef.body:

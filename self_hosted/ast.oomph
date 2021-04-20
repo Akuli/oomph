@@ -28,7 +28,7 @@ export typedef Expression = (
     | Constructor
     | FloatConstant
     | GetAttribute
-    | GetVar
+    | Variable
     | IntConstant
     | ListComprehension
     | ListLiteral
@@ -54,16 +54,22 @@ export typedef Statement = (
 # In ToplevelDeclaration, FuncOrMethodDef is always function definition
 export typedef ToplevelDeclaration = ClassDef | FuncOrMethodDef | Import | TypeDef
 
-export class TypeAndName(Type type, Str name, Location name_location)
+# Always use Variable when referring to variable. Several Variable objects may refer
+# to the same variable because the parser isn't responsible for figuring it out.
+export class Variable(Location location, Str name)
+
+# TODO: tuple
+export class TypeAndVar(Type type, Variable var)
+export class TypeAndName(Type type, Str name)
 
 # 'case *' means that type_and_varname is null
-export class Case(Location location, TypeAndName | null type_and_name, List[Statement] body)
+export class Case(Location location, TypeAndVar | null type_and_var, List[Statement] body)
 export class ConditionAndBody(Location location, Expression cond, List[Statement] body)
 
 export typedef LoopHeader = ForLoopHeader | ForeachLoopHeader
 # for init; cond; incr
 export class ForLoopHeader(Location keyword_location, List[Statement] init, Expression | null cond, List[Statement] incr)
-export class ForeachLoopHeader(Location keyword_location, Str varname, Expression list)
+export class ForeachLoopHeader(Location keyword_location, Variable var, Expression list)
 
 export class As(Location location, Expression expr, Type type, Bool as_not)
 export class BinaryOperator(Location location, Expression lhs, Str op, Expression rhs)
@@ -71,7 +77,6 @@ export class Call(Location location, Expression function, List[Expression] args)
 export class Constructor(Location location, Type type)
 export class FloatConstant(Location location, Str value)  # value not converted to float in case weirdness :D
 export class GetAttribute(Location attribute_location, Expression obj, Str attribute)
-export class GetVar(Location location, Str varname)
 export class IntConstant(Location location, Int value)
 export class ListComprehension(LoopHeader loop_header, Expression value)
 export class ListLiteral(Location location, List[Expression] content)
@@ -84,17 +89,17 @@ export class UnaryOperator(Location location, Str op, Expression obj)
 export class Break(Location location)
 export class Continue(Location location)
 export class If(List[ConditionAndBody] ifs_and_elifs, List[Statement] else_block)
-export class Let(Location location, Str varname, Expression value)
+export class Let(Location location, Variable var, Expression value)
 export class Loop(LoopHeader loop_header, List[Statement] body)
 export class Pass(Location location)
 export class Return(Location location, Expression | null value)
 export class SetAttribute(Location attribute_location, Expression obj, Str attribute, Expression value)
-export class SetVar(Location location, Str varname, Expression value)
+export class SetVar(Location location, Variable var, Expression value)
 export class Switch(Location location, Expression union_obj, List[Case] cases)
 
 export class NoReturn(Location location)
 
-export class FuncOrMethodDef(Location location, Str name, List[TypeAndName] args, Type | NoReturn | null returntype, List[Statement] body)
+export class FuncOrMethodDef(Location location, Str name, List[TypeAndVar] args, Type | NoReturn | null returntype, List[Statement] body)
 export class ClassDef(Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(Location location, Str path, Str name)
 export class TypeDef(Location location, Str name, Type type)
@@ -120,7 +125,7 @@ export func locate_expression(Expression expression) -> Location:
             return expr.location
         case GetAttribute expr:
             return locate_expression(expr.obj).combine(expr.attribute_location)
-        case GetVar expr:
+        case Variable expr:
             return expr.location
         case IntConstant expr:
             return expr.location

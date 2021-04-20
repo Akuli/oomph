@@ -344,10 +344,10 @@ class FunctionOrMethodConverter(
                     self_var, method.attribute, args, result_var, call.location
                 ))
 
-            case ast::GetVar ast_function:
-                if not self.variables.has_key(ast_function.varname):
-                    ast_function.location.error("variable not found: {ast_function.varname}")
-                let function = self.variables.get(ast_function.varname)
+            case ast::Variable ast_function:
+                if not self.variables.has_key(ast_function.name):
+                    ast_function.location.error("variable not found: {ast_function.name}")
+                let function = self.variables.get(ast_function.name)
                 let functype = ir::var_type(function) as ir::FunctionType
 
                 switch functype.returntype:
@@ -368,11 +368,7 @@ class FunctionOrMethodConverter(
                         let loc = ast_function.location
                         args.push(self.do_expression(new ast::StringConstant(loc, loc.path)))
                         args.push(self.do_expression(new ast::IntConstant(loc, loc.lineno)))
-                    args = self.do_args(
-                        args,
-                        functype.argtypes,
-                        ast_function.location,
-                    )
+                    args = self.do_args(args, functype.argtypes, ast_function.location)
                 self.code.push(new ir::FunctionCall(function, args, result_var))
 
             case ast::Constructor constructor:
@@ -575,12 +571,14 @@ class FunctionOrMethodConverter(
                 # TODO: error?
                 return self.do_call(call, true) as not null
 
-            case ast::GetVar getvar:
+            case ast::Variable variable:
+                let var = variable   # TODO: this sucks
+
                 # Don't return the same variable, otherwise 'a = a' decrefs too much
                 # Also ensure we always return LocalVariable
-                if not self.variables.has_key(getvar.varname):
-                    location.error("variable not found: {getvar.varname}")
-                let old_var = self.variables.get(getvar.varname)
+                if not self.variables.has_key(var.name):
+                    location.error("variable not found: {var.name}")
+                let old_var = self.variables.get(var.name)
                 let new_var = self.create_var(ir::var_type(old_var), location)
                 self.code.push(new ir::VarCpy(new_var, old_var))
                 self.code.push(new ir::IncRef(new_var))
@@ -677,12 +675,12 @@ class FunctionOrMethodConverter(
 
             case ast::Let leet:
                 # TODO: document the shadowing/replacing behaviour
-                self.variables.set(leet.varname, self.do_expression(leet.value))
+                self.variables.set(leet.var.name, self.do_expression(leet.value))
 
             case ast::SetVar setvar:
-                if not self.variables.has_key(setvar.varname):
-                    setvar.location.error("variable not found: {setvar.varname}")
-                let var = self.variables.get(setvar.varname) as ir::LocalVariable  # TODO: error
+                if not self.variables.has_key(setvar.var.name):
+                    setvar.location.error("variable not found: {setvar.var.name}")
+                let var = self.variables.get(setvar.var.name) as ir::LocalVariable  # TODO: error
                 let new_value_var = self.do_expression(setvar.value)
                 self.code.push(new ir::DecRef(var))
                 self.code.push(
@@ -784,8 +782,8 @@ class FunctionOrMethodConverter(
                 if header.init.length() == 1:
                     switch header.init.first():
                         case ast::Let leet:
-                            if self.variables.has_key(leet.varname):
-                                self.variables.delete(leet.varname)
+                            if self.variables.has_key(leet.var.name):
+                                self.variables.delete(leet.var.name)
                         case *:
                             pass
 
@@ -802,13 +800,13 @@ class FunctionOrMethodConverter(
                     let label = self.create_goto_label()
                     cases.push(label)
 
-                    if chase.type_and_name == null:
+                    if chase.type_and_var == null:
                         assert(types_to_do != [])
                         let nice_types = types_to_do
                         types_to_do = []
                     else:
-                        let varname = (chase.type_and_name as not null).name
-                        let case_type = self.get_type((chase.type_and_name as not null).type)
+                        let var = (chase.type_and_var as not null).var
+                        let case_type = self.get_type((chase.type_and_var as not null).type)
 
                         nice_types = get_type_members(case_type)
                         foreach t of nice_types:
@@ -833,15 +831,15 @@ class FunctionOrMethodConverter(
 
                         cases.push_all(case_code)
                         # TODO: error
-                        assert(not self.variables.has_key(varname))
-                        self.variables.set(varname, case_var)
+                        assert(not self.variables.has_key(var.name))
+                        self.variables.set(var.name, case_var)
 
                     cases.push_all(self.do_block(chase.body))
                     cases.push(new ir::GotoIf(done_label, self.bool_constant("true", chase.location)))
 
-                    if chase.type_and_name != null:
-                        assert(self.variables.get(varname) == case_var)
-                        self.variables.delete(varname)
+                    if chase.type_and_var != null:
+                        assert(self.variables.get(var.name) == case_var)
+                        self.variables.delete(var.name)
 
                     foreach type of nice_types:
                         self.code.push(new ir::UnionMemberCheck(member_check, union_var, type))
@@ -1152,10 +1150,9 @@ class FileConverter(
 
                 foreach method_def of classdef.body:
                     let self_location = classdef.location   # a bit weird
-                    method_def.args.insert(0, new ast::TypeAndName(
+                    method_def.args.insert(0, new ast::TypeAndVar(
                         new ast::NamedType(self_location, classtype.name),
-                        "self",
-                        self_location
+                        new ast::Variable(self_location, "self"),
                     ))
                     self.func_or_meth_step3(method_def, classtype)
 
@@ -1183,8 +1180,8 @@ class FileConverter(
         let local_var_counter = 0
         assert(def.args.length() == functype.argtypes.length())
         for let i = 0; i < def.args.length(); i = i+1:   # TODO: zip
-            let argname = def.args.get(i).name
-            let arg_location = def.args.get(i).name_location
+            let argname = def.args.get(i).var.name
+            let arg_location = def.args.get(i).var.location
             let type = functype.argtypes.get(i)
 
             local_var_counter = local_var_counter + 1

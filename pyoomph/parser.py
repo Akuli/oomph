@@ -135,9 +135,9 @@ class _Parser:
 
         if self.token_iter.peek() == ("keyword", "foreach"):
             self.get_token("keyword", "foreach")
-            varname = self.get_token("identifier")[1]
+            var = ast.Variable(self.get_token("identifier")[1])
             self.get_token("keyword", "of")
-            return ast.ForeachLoopHeader(varname, self.parse_expression())
+            return ast.ForeachLoopHeader(var, self.parse_expression())
 
         raise NotImplementedError(self.token_iter.peek())
 
@@ -152,14 +152,14 @@ class _Parser:
                 self.get_token("multiline_string")[1][3:-3]
             )
         elif self.token_iter.peek()[0] == "identifier":
-            result = ast.GetVar(self.get_token("identifier")[1])
+            result = ast.Variable(self.get_token("identifier")[1])
         elif self.token_iter.peek()[0] == "int":
             result = ast.IntConstant(int(self.get_token("int")[1]))
         elif self.token_iter.peek()[0] == "float":
             result = ast.FloatConstant(self.get_token("float")[1])
         elif self.token_iter.peek()[0].startswith("assert_"):  # TODO: is haxor
             lineno = int(self.token_iter.peek()[0].split("_")[1])
-            result = ast.GetVar(self.get_token()[1], lineno)
+            result = ast.Variable(self.get_token()[1], lineno)
         elif self.token_iter.peek() == ("keyword", "new"):
             self.get_token("keyword", "new")
             result = ast.Constructor(self.parse_type())
@@ -296,10 +296,10 @@ class _Parser:
     def parse_oneline_ish_statement(self) -> ast.Statement:
         if self.token_iter.peek() == ("keyword", "let"):
             self.get_token("keyword", "let")
-            varname = self.get_token("identifier")[1]
+            var = ast.Variable(self.get_token("identifier")[1])
             self.get_token("op", "=")
             value = self.parse_expression()
-            return ast.Let(varname, value)
+            return ast.Let(var, value)
 
         if self.token_iter.peek() == ("keyword", "return"):
             self.get_token("keyword", "return")
@@ -329,8 +329,8 @@ class _Parser:
         ):
             self.get_token("op", "=")
             value = self.parse_expression()
-            if isinstance(expr, ast.GetVar):
-                return ast.SetVar(expr.varname, value)
+            if isinstance(expr, ast.Variable):
+                return ast.SetVar(expr, value)
             if isinstance(expr, ast.GetAttribute):
                 return ast.SetAttribute(expr.obj, expr.attribute, value)
             raise RuntimeError(f"can't assign to {expr}")
@@ -342,11 +342,11 @@ class _Parser:
         self.get_token("keyword", "case")
         if self.token_iter.peek() == ("op", "*"):
             self.get_token("op", "*")
-            type_and_varname = None
+            type_and_var = None
         else:
-            type_and_varname = self.parse_funcdef_arg()
+            type_and_var = self.parse_funcdef_arg()
         body = self.parse_block_of_statements()
-        return ast.Case(type_and_varname, body)
+        return ast.Case(type_and_var, body)
 
     def parse_statement(self) -> List[ast.Statement]:
         if self.token_iter.peek() == ("keyword", "if"):
@@ -410,10 +410,14 @@ class _Parser:
             result.unioned.append(self.parse_type_without_unions())
         return result
 
-    def parse_funcdef_arg(self) -> Tuple[ast.Type, str]:
-        type_name = self.parse_type()
-        arg_name = self.get_token("identifier")[1]
-        return (type_name, arg_name)
+    def parse_class_member(self) -> Tuple[ast.Type, str]:
+        typee = self.parse_type()
+        varname = self.get_token("identifier")[1]
+        return (typee, varname)
+
+    def parse_funcdef_arg(self) -> Tuple[ast.Type, ast.Variable]:
+        typee, varname = self.parse_class_member()
+        return (typee, ast.Variable(varname))
 
     def parse_function_or_method(self) -> ast.FuncOrMethodDef:
         name = self.get_token("identifier")[1]
@@ -454,7 +458,7 @@ class _Parser:
         if self.token_iter.peek() == ("keyword", "class"):
             self.get_token("keyword", "class")
             name = self.get_token("identifier")[1]
-            args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
+            args = self.parse_commasep_in_parens(self.parse_class_member)
             if self.token_iter.peek(None) == ("begin_block", ":"):
                 body = self.parse_block(self.parse_method)
             else:
