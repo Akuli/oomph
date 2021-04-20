@@ -42,14 +42,14 @@ class Statement:
 
 
 @dataclass(eq=False)
-class GetVar(Expression):
-    varname: str
+class Variable(Expression):
+    name: str
     lineno: Optional[int] = None
 
 
 @dataclass(eq=False)
 class SetVar(Statement):
-    varname: str
+    var: Variable
     value: Expression
 
 
@@ -136,7 +136,7 @@ class Call(Expression, Statement):
 
 @dataclass(eq=False)
 class Let(Statement):
-    varname: str
+    var: Variable
     value: Expression
 
 
@@ -176,7 +176,7 @@ class ForLoopHeader:
 
 @dataclass(eq=False)
 class ForeachLoopHeader:
-    varname: str
+    var: Variable
     list: Expression
 
 
@@ -195,7 +195,7 @@ class ListComprehension(Expression):
 @dataclass(eq=False)
 class Case:
     # None means 'case *'
-    type_and_varname: Optional[Tuple[Type, str]]
+    type_and_var: Optional[Tuple[Type, Variable]]
     body: List[Statement]
 
 
@@ -219,7 +219,7 @@ class Import(ToplevelDeclaration):
 @dataclass(eq=False)
 class FuncOrMethodDef(ToplevelDeclaration):
     name: str
-    args: List[Tuple[Type, str]]
+    args: List[Tuple[Type, Variable]]
     returntype: Optional[Type]
     body: List[Statement]
     export: bool = False  # never true for methods

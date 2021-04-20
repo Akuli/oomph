@@ -9,22 +9,19 @@ class _AstTransformer:
     def __init__(self) -> None:
         self.varname_counter = 0
 
-    def get_var_name(self) -> str:
+    def get_var(self) -> ast.Variable:
         self.varname_counter += 1
         # Actally using this variable name would be invalid syntax, which is great
-        return f"<var{self.varname_counter}>"
+        return ast.Variable(f"<var{self.varname_counter}>")
 
     def foreach_loop_to_for_loop(self, loop: ast.Loop) -> ast.Loop:
         assert isinstance(loop.loop_header, ast.ForeachLoopHeader)
-        list_var = self.get_var_name()
-        index_var = self.get_var_name()
+        list_var = self.get_var()
+        index_var = self.get_var()
 
         let: ast.Statement = ast.Let(
-            loop.loop_header.varname,
-            ast.Call(
-                ast.GetAttribute(ast.GetVar(list_var), "get"),
-                [ast.GetVar(index_var)],
-            ),
+            loop.loop_header.var,
+            ast.Call(ast.GetAttribute(list_var, "get"), [index_var]),
         )
         return ast.Loop(
             ast.ForLoopHeader(
@@ -33,16 +30,12 @@ class _AstTransformer:
                     ast.Let(list_var, loop.loop_header.list),
                 ],
                 ast.BinaryOperator(
-                    ast.GetVar(index_var),
-                    "<",
-                    ast.Call(ast.GetAttribute(ast.GetVar(list_var), "length"), []),
+                    index_var, "<", ast.Call(ast.GetAttribute(list_var, "length"), [])
                 ),
                 [
                     ast.SetVar(
                         index_var,
-                        ast.BinaryOperator(
-                            ast.GetVar(index_var), "+", ast.IntConstant(1)
-                        ),
+                        ast.BinaryOperator(index_var, "+", ast.IntConstant(1)),
                     )
                 ],
             ),
@@ -51,21 +44,16 @@ class _AstTransformer:
 
     def visit(self, ast_thing: object) -> Any:
         if isinstance(ast_thing, ast.ListComprehension):
-            var = self.get_var_name()
+            var = self.get_var()
             ast_thing = ast.StatementsAndExpression(
                 [
                     ast.Let(var, ast.ListLiteral([])),
                     ast.Loop(
                         ast_thing.loop_header,
-                        [
-                            ast.Call(
-                                ast.GetAttribute(ast.GetVar(var), "push"),
-                                [ast_thing.value],
-                            )
-                        ],
+                        [ast.Call(ast.GetAttribute(var, "push"), [ast_thing.value])],
                     ),
                 ],
-                ast.GetVar(var),
+                var,
             )
 
         if isinstance(ast_thing, ast.Loop) and isinstance(
