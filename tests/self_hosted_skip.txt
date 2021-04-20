@@ -5,7 +5,6 @@ tests/autotype_not_enough_info_error.oomph
 tests/eq_error.oomph
 tests/int_eq_str_error.oomph
 tests/optional_compare_error.oomph
-tests/return_type_error.oomph
 
 # Union members are not sorted properly, it causes some problems
 tests/as_widening.oomph
