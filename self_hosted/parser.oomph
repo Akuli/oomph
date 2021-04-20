@@ -608,7 +608,6 @@ class Parser(List[tokenizer::Token] tokens):
             result.push(self.parse_type_without_unions())
         return new ast::UnionType(result)
 
-    # TODO: parse_type_and_var, parse_type_and_name: both needed?
     meth parse_type_and_var() -> ast::TypeAndVar:
         let type = self.parse_type()
         let arg = self.get_token_by_type("id")
