@@ -108,17 +108,16 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("op", ")")
         return result
 
-    # Weirdly returns location, can't easily return 2 values yet
-    meth parse_one_or_more_commasep_types_in_square_brackets(List[ast::Type] result) -> Location:
-        let start = self.get_token("op", "[")
-        result.push(self.parse_type())
+    meth parse_one_or_more_commasep_types_in_square_brackets() -> List[ast::Type]:
+        self.get_token("op", "[")
+        let result = [self.parse_type()]
         while self.peek().matches("op", ","):
             self.get_token("op", ",")
             if self.peek().matches("op", "]"):
                 break
             result.push(self.parse_type())
-        let end = self.get_token("op", "]")
-        return start.location.combine(end.location)
+        self.get_token("op", "]")
+        return result
 
     meth parse_block_of_statements() -> List[ast::Statement]:
         self.get_token("begin_block", ":")
@@ -591,9 +590,8 @@ class Parser(List[tokenizer::Token] tokens):
 
         let name_token = self.get_token_by_type("id")
         if self.peek().matches("op", "["):
-            let args = []
-            let location = self.parse_one_or_more_commasep_types_in_square_brackets(args)
-            return new ast::GenericType(location, name_token.value, args)
+            let args = self.parse_one_or_more_commasep_types_in_square_brackets()
+            return new ast::GenericType(name_token.location, name_token.value, args)
 
         return new ast::NamedType(name_token.location, name_token.value)
 

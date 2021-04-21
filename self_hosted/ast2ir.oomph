@@ -211,8 +211,8 @@ class FunctionOrMethodConverter(
                             self.do_the_autotype_thing(source1.args.get(i), source2.args.get(i), location)
                     ]
                     return new TypePair(
-                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first], location),
-                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second], location),
+                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first], null),
+                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second], null),
                     )
 
         return new TypePair(type1, type2)
@@ -548,7 +548,7 @@ class FunctionOrMethodConverter(
                         assert(member.type == content_type)  # TODO: error
 
                 let list_var = self.create_var(
-                    self.builtins.generic2type(self.builtins.LIST, [content_type], location), location
+                    self.builtins.generic2type(self.builtins.LIST, [content_type], null), location
                 )
                 self.code.push(new ir::ConstructorCall(list_var, []))
                 foreach item_var of content:
@@ -1036,7 +1036,13 @@ class FileConverter(
                 else:
                     args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
 
-                return self.builtins.generic2type(generics.get(generic_type.name), args, generic_type.location)
+                let arg_locations = new List[Location]()  # TODO: auto types not work
+                arg_locations.push_all([foreach a of generic_type.args: ast::locate_type(a)])
+                return self.builtins.generic2type(
+                    generics.get(generic_type.name),
+                    args,
+                    arg_locations,
+                )
 
     meth check_type_not_exists(Str name, Location location):
         if self.types.has_key(name) or self.typedef_laziness.has_key(name):

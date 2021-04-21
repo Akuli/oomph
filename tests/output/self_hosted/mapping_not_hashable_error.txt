@@ -1,5 +1,5 @@
 tests/mapping_not_hashable_error.oomph:2: error: mapping key type must be hashable, but List[Int] doesn't have a .hash() method
 
     let foo = new Mapping[List[Int], Int]()
-                         ^^^^^^^^^^^^^^^^
+                          ^^^^
 
