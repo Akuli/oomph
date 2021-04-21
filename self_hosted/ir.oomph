@@ -254,16 +254,15 @@ export class Builtins(
             assert(args.length() == 2)   # TODO: error
             let keytype = args.first()
             let valtype = args.last()
+            let itemlist = self.generic2type(
+                self.LIST, [self.generic2type(self.MAPPING_ITEM, args, null)], null
+            )
 
             if not get_methods(keytype, self).has_key("hash"):
                 (arg_locations as not null).first().error(
                     "mapping key type must be hashable, but "
                     + "{type_name(keytype)} doesn't have a .hash() method"
                 )
-
-            let itemlist = self.generic2type(
-                self.LIST, [self.generic2type(self.MAPPING_ITEM, args, null)], null
-            )
 
             result.methods.set("copy", new FunctionType([r], r))
             result.methods.set("delete", new FunctionType([r, keytype], null))
