@@ -841,7 +841,6 @@ class _FileConverter:
         self.path = path
         self.symbols = symbols
         self._types = builtin_types.copy()
-        self._generic_types = builtin_generic_types.copy()
         # https://github.com/python/typeshed/issues/5089
         self.variables: Dict[str, ir.Variable] = ir.visible_builtins.copy()  # type: ignore
 
@@ -875,7 +874,7 @@ class _FileConverter:
         elif isinstance(raw_type, ast.UnionType):
             return UnionType([recursing_callback(item) for item in raw_type.unioned])
         elif isinstance(raw_type, ast.GenericType):
-            return self._generic_types[raw_type.name].get_type(
+            return builtin_generic_types[raw_type.name].get_type(
                 [recursing_callback(arg) for arg in raw_type.args]
             )
         else:

@@ -194,8 +194,11 @@ export class Builtins(
     meth get_builtin_types() -> List[Type]:
         return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
 
-    meth get_builtin_generics() -> List[Generic]:
-        return [self.LIST, self.MAPPING]
+    meth get_builtin_generics() -> Mapping[Str, Generic]:
+        let result = new Mapping[Str, auto]()
+        result.set("List", self.LIST)
+        result.set("Mapping", self.MAPPING)
+        return result
 
     # TODO: this is in a weird place
     meth generic2type(Generic generik, List[Type] args, Location | null location) -> Type:
