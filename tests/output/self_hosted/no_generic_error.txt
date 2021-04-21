@@ -1,0 +1,5 @@
+tests/no_generic_error.oomph:1: error: no generic type named Asdf
+
+    func foo(Asdf[Int] bar):
+             ^^^^
+

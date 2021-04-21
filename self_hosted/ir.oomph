@@ -194,11 +194,17 @@ export class Builtins(
     meth get_builtin_types() -> List[Type]:
         return [self.BOOL, self.FLOAT, self.INT, self.NULL_TYPE, self.STR]
 
-    meth get_builtin_generics() -> List[Generic]:
-        return [self.LIST, self.MAPPING]
+    meth get_builtin_generics() -> Mapping[Str, Generic]:
+        let result = new Mapping[Str, auto]()
+        result.set("List", self.LIST)
+        result.set("Mapping", self.MAPPING)
+        return result
 
     # TODO: this is in a weird place
-    meth generic2type(Generic generik, List[Type] args, Location | null location) -> Type:
+    meth generic2type(Generic generik, List[Type] args, List[Location] | null arg_locations) -> Type:
+        if arg_locations != null:
+            assert((arg_locations as not null).length() == args.length())
+
         let source = new GenericSource(generik, args)
         let result = new BasicType(
             generik.name + "[" + [foreach arg of args: type_name(arg)].join(", ") + "]",
@@ -249,11 +255,11 @@ export class Builtins(
             let keytype = args.first()
             let valtype = args.last()
             let itemlist = self.generic2type(
-                self.LIST, [self.generic2type(self.MAPPING_ITEM, args, location)], location
+                self.LIST, [self.generic2type(self.MAPPING_ITEM, args, null)], null
             )
 
             if not get_methods(keytype, self).has_key("hash"):
-                (location as not null).error(
+                (arg_locations as not null).first().error(
                     "mapping key type must be hashable, but "
                     + "{type_name(keytype)} doesn't have a .hash() method"
                 )
@@ -264,11 +270,11 @@ export class Builtins(
             result.methods.set("get", new FunctionType([r, keytype], valtype))
             result.methods.set("has_key", new FunctionType([r, keytype], self.BOOL))
             result.methods.set("items", new FunctionType([r], itemlist))
-            result.methods.set("keys", new FunctionType([r], self.generic2type(self.LIST, [keytype], location)))
+            result.methods.set("keys", new FunctionType([r], self.generic2type(self.LIST, [keytype], null)))
             result.methods.set("length", new FunctionType([r], self.INT))
             result.methods.set("set", new FunctionType([r, keytype, valtype], null))
             result.methods.set("to_string", new FunctionType([r], self.STR))
-            result.methods.set("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], location)))
+            result.methods.set("values", new FunctionType([r], self.generic2type(self.LIST, [valtype], null)))
 
         elif generik == self.MAPPING_ITEM:
             assert(args.length() == 2)

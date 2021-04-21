@@ -11,6 +11,6 @@ export func main():
             print(varname)
     foreach var of builtins.get_builtin_types():
         print(ir::type_name(var))
-    foreach gen of builtins.get_builtin_generics():
-        print(gen.name)
+    foreach name of builtins.get_builtin_generics().keys():
+        print(name)
     builtins.destroy()

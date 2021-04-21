@@ -211,8 +211,8 @@ class FunctionOrMethodConverter(
                             self.do_the_autotype_thing(source1.args.get(i), source2.args.get(i), location)
                     ]
                     return new TypePair(
-                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first], location),
-                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second], location),
+                        self.builtins.generic2type(source1.generik, [foreach p of pairs: p.first], null),
+                        self.builtins.generic2type(source2.generik, [foreach p of pairs: p.second], null),
                     )
 
         return new TypePair(type1, type2)
@@ -548,7 +548,7 @@ class FunctionOrMethodConverter(
                         assert(member.type == content_type)  # TODO: error
 
                 let list_var = self.create_var(
-                    self.builtins.generic2type(self.builtins.LIST, [content_type], location), location
+                    self.builtins.generic2type(self.builtins.LIST, [content_type], null), location
                 )
                 self.code.push(new ir::ConstructorCall(list_var, []))
                 foreach item_var of content:
@@ -991,7 +991,6 @@ class FileConverter(
     Str path,
     List[ir::Symbol] symbols,
     Mapping[Str, ir::Type] types,
-    Mapping[Str, ir::Generic] generics,
     Mapping[Str, ir::Variable] variables,
     Mapping[Str, ast::Type] typedef_laziness,
 ):
@@ -1028,16 +1027,22 @@ class FileConverter(
                 return ir::make_union(self.builtins, types, ast::locate_type(union_type))
 
             case ast::GenericType generic_type:
-                if not self.generics.has_key(generic_type.name):
-                    print("no generic type named {generic_type.name}")
-                    assert(false)  # TODO: error
+                let generics = self.builtins.get_builtin_generics()
+                if not generics.has_key(generic_type.name):
+                    generic_type.location.error("no generic type named {generic_type.name}")
 
-                let generik = self.generics.get(generic_type.name)
                 if how2recurse == null:
                     let args = [foreach a of generic_type.args: self.get_type(a, null)]
                 else:
                     args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
-                return self.builtins.generic2type(generik, args, generic_type.location)
+
+                let arg_locations = new List[Location]()  # TODO: auto types not work
+                arg_locations.push_all([foreach a of generic_type.args: ast::locate_type(a)])
+                return self.builtins.generic2type(
+                    generics.get(generic_type.name),
+                    args,
+                    arg_locations,
+                )
 
     meth check_type_not_exists(Str name, Location location):
         if self.types.has_key(name) or self.typedef_laziness.has_key(name):
@@ -1262,11 +1267,7 @@ export func convert_program(
     foreach type of builtins.get_builtin_types():
         types.set(ir::type_name(type), type)
 
-    let generics = new Mapping[Str, ir::Generic]()
-    foreach generik of builtins.get_builtin_generics():
-        generics.set(generik.name, generik)
-
-    let converter = new FileConverter(builtins, path, symbols, types, generics, vars, new Mapping[Str, auto]())
+    let converter = new FileConverter(builtins, path, symbols, types, vars, new Mapping[Str, auto]())
 
     foreach top of program:
         converter.do_step1(top)
