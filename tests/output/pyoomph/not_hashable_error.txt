@@ -1,2 +1,2 @@
-RuntimeError: Foo has no method hash()
+KeyError: 'hash'
 

@@ -257,12 +257,6 @@ class _FunctionOrMethodConverter:
             self.implicit_conversion(var, typ) for var, typ in zip(args, target_types)
         ]
 
-    def _get_method_functype(self, the_type: Type, name: str) -> FunctionType:
-        try:
-            return the_type.methods[name]
-        except KeyError:
-            raise RuntimeError(f"{the_type.name} has no method {name}()")
-
     def do_call(
         self, call: ast.Call, must_return_value: bool
     ) -> Optional[ir.LocalVariable]:
@@ -278,7 +272,7 @@ class _FunctionOrMethodConverter:
                 else:
                     result_var = None
             else:
-                functype = self._get_method_functype(self_var.type, call.func.attribute)
+                functype = self_var.type.methods[call.func.attribute]
                 assert self_var.type == functype.argtypes[0]
                 if functype.returntype is None:
                     result_var = None
@@ -748,7 +742,7 @@ class _FunctionOrMethodConverter:
         for ins in self.code.copy():
             if isinstance(ins, ir.CallMethod):
                 self._get_rid_of_auto_in_var(ins.obj)
-                functype = self._get_method_functype(ins.obj.type, ins.method_name)
+                functype = ins.obj.type.methods[ins.method_name]
                 with self.code_to_separate_list() as front_code:
                     ins.args = self.do_args(
                         ins.args, functype.argtypes, ins.obj, ins.method_name
