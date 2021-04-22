@@ -1,2 +1,2 @@
-RuntimeError: Str has no attribute lolz
+KeyError: 'lolz'
 

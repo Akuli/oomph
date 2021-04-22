@@ -603,25 +603,25 @@ class _FilePair:
     def _define_simple_type(self, the_type: Type) -> None:
         struct_members = "".join(
             f"{self.emit_type(the_type)} memb_{name};\n"
-            for the_type, name in the_type.members
+            for name, the_type in the_type.members.items()
         )
         constructor_args = (
             ",".join(
                 f"{self.emit_type(the_type)} arg_{name}"
-                for the_type, name in the_type.members
+                for name, the_type in the_type.members.items()
             )
             or "void"
         )
         member_assignments = "".join(
-            f"obj->memb_{name} = arg_{name};\n" for the_type, name in the_type.members
+            f"obj->memb_{name} = arg_{name};\n" for name in the_type.members
         )
         member_increfs = "".join(
             self.session.emit_incref(f"arg_{name}", the_type) + ";\n"
-            for the_type, name in the_type.members
+            for name, the_type in the_type.members.items()
         )
         member_decrefs = "".join(
             self.session.emit_decref(f"obj->memb_{nam}", typ) + ";\n"
-            for typ, nam in the_type.members
+            for nam, typ in the_type.members.items()
         )
 
         assert self.struct is None
@@ -665,7 +665,7 @@ class _FilePair:
                     oomph_string_concat_inplace(&res, tmp);
                     decref_Str(tmp);
                     """
-                    for typ, nam in the_type.members
+                    for nam, typ in the_type.members.items()
                 ]
                 concat_comma = 'oomph_string_concat_inplace_cstr(&res, ", ");'
                 self.function_defs += f"""

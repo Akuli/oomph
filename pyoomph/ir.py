@@ -130,9 +130,6 @@ class SetAttribute(Instruction):
     attribute: str
     attribute_var: LocalVariable
 
-    def __post_init__(self) -> None:
-        assert (self.attribute_var.type, self.attribute) in self.obj.type.members
-
 
 # Currently you can't use a function, method or ctor without immediately calling it
 @dataclass(eq=False)

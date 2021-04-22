@@ -1,2 +1,2 @@
-ValueError: not enough values to unpack (expected 1, got 0)
+KeyError: 'lolz'
 

@@ -263,13 +263,6 @@ class _FunctionOrMethodConverter:
         except KeyError:
             raise RuntimeError(f"{the_type.name} has no method {name}()")
 
-    def _get_attribute_type(self, the_type: Type, attribute: str) -> Type:
-        matching_types = [typ for typ, nam in the_type.members if nam == attribute]
-        if not matching_types:
-            raise RuntimeError(f"{the_type.name} has no attribute {attribute}")
-        [result] = matching_types
-        return result
-
     def do_call(
         self, call: ast.Call, must_return_value: bool
     ) -> Optional[ir.LocalVariable]:
@@ -573,9 +566,7 @@ class _FunctionOrMethodConverter:
             if isinstance(obj.type, AutoType):
                 result = self.create_var(AutoType())
             else:
-                result = self.create_var(
-                    self._get_attribute_type(obj.type, expr.attribute)
-                )
+                result = self.create_var(obj.type.members[expr.attribute])
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
@@ -606,11 +597,8 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(stmt, ast.SetAttribute):
             obj = self.do_expression(stmt.obj)
-            [member_type] = [
-                typ for typ, name in obj.type.members if name == stmt.attribute
-            ]
             new_value_var = self.implicit_conversion(
-                self.do_expression(stmt.value), member_type
+                self.do_expression(stmt.value), obj.type.members[stmt.attribute]
             )
 
             # Copy old value into local var, so that it will be decreffed
@@ -783,8 +771,7 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.obj)
                 if isinstance(ins.attribute_var.type, AutoType):
                     self._resolve_autotype(
-                        ins.attribute_var.type,
-                        self._get_attribute_type(ins.obj.type, ins.attribute),
+                        ins.attribute_var.type, ins.obj.type.members[ins.attribute]
                     )
                 else:
                     self._get_rid_of_auto_in_var(ins.attribute_var)
@@ -953,10 +940,10 @@ class _FileConverter:
 
         elif isinstance(top_declaration, ast.ClassDef):
             classtype = self._types[top_declaration.name]
-            classtype.members.extend(
-                (self.get_type(typ), nam) for typ, nam in top_declaration.members
+            classtype.members.update(
+                {nam: self.get_type(typ) for typ, nam in top_declaration.members}
             )
-            classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+            classtype.constructor_argtypes = list(classtype.members.values())
 
             for method_def in top_declaration.body:
                 method_def.args.insert(
