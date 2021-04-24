@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set
 
 
 # Describes how exactly a type was created from a generic
@@ -24,7 +24,7 @@ class Type:
         self.refcounted = refcounted
         self.definition_path = definition_path
         self._methods: Dict[str, FunctionType] = {}
-        self.members: List[Tuple[Type, str]] = []
+        self.members: Dict[str, Type] = {}
         self.constructor_argtypes: Optional[List[Type]] = None
         self.generic_origin: Optional[GenericSource] = None
         self.methods_to_create = methods_to_create or set()
@@ -195,8 +195,8 @@ class Generic:
             result.methods["values"] = FunctionType([result], LIST.get_type([valtype]))
         elif self is MAPPING_ITEM:
             [keytype, valtype] = generic_args
-            result.members.append((keytype, "key"))
-            result.members.append((valtype, "value"))
+            result.members["key"] = keytype
+            result.members["value"] = valtype
             result.methods["equals"] = FunctionType([result], result)
             result.methods["to_string"] = FunctionType([result], STRING)
         else:

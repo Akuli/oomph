@@ -257,19 +257,6 @@ class _FunctionOrMethodConverter:
             self.implicit_conversion(var, typ) for var, typ in zip(args, target_types)
         ]
 
-    def _get_method_functype(self, the_type: Type, name: str) -> FunctionType:
-        try:
-            return the_type.methods[name]
-        except KeyError:
-            raise RuntimeError(f"{the_type.name} has no method {name}()")
-
-    def _get_attribute_type(self, the_type: Type, attribute: str) -> Type:
-        matching_types = [typ for typ, nam in the_type.members if nam == attribute]
-        if not matching_types:
-            raise RuntimeError(f"{the_type.name} has no attribute {attribute}")
-        [result] = matching_types
-        return result
-
     def do_call(
         self, call: ast.Call, must_return_value: bool
     ) -> Optional[ir.LocalVariable]:
@@ -285,7 +272,7 @@ class _FunctionOrMethodConverter:
                 else:
                     result_var = None
             else:
-                functype = self._get_method_functype(self_var.type, call.func.attribute)
+                functype = self_var.type.methods[call.func.attribute]
                 assert self_var.type == functype.argtypes[0]
                 if functype.returntype is None:
                     result_var = None
@@ -573,9 +560,7 @@ class _FunctionOrMethodConverter:
             if isinstance(obj.type, AutoType):
                 result = self.create_var(AutoType())
             else:
-                result = self.create_var(
-                    self._get_attribute_type(obj.type, expr.attribute)
-                )
+                result = self.create_var(obj.type.members[expr.attribute])
             self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
@@ -606,11 +591,8 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(stmt, ast.SetAttribute):
             obj = self.do_expression(stmt.obj)
-            [member_type] = [
-                typ for typ, name in obj.type.members if name == stmt.attribute
-            ]
             new_value_var = self.implicit_conversion(
-                self.do_expression(stmt.value), member_type
+                self.do_expression(stmt.value), obj.type.members[stmt.attribute]
             )
 
             # Copy old value into local var, so that it will be decreffed
@@ -760,7 +742,7 @@ class _FunctionOrMethodConverter:
         for ins in self.code.copy():
             if isinstance(ins, ir.CallMethod):
                 self._get_rid_of_auto_in_var(ins.obj)
-                functype = self._get_method_functype(ins.obj.type, ins.method_name)
+                functype = ins.obj.type.methods[ins.method_name]
                 with self.code_to_separate_list() as front_code:
                     ins.args = self.do_args(
                         ins.args, functype.argtypes, ins.obj, ins.method_name
@@ -783,8 +765,7 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.obj)
                 if isinstance(ins.attribute_var.type, AutoType):
                     self._resolve_autotype(
-                        ins.attribute_var.type,
-                        self._get_attribute_type(ins.obj.type, ins.attribute),
+                        ins.attribute_var.type, ins.obj.type.members[ins.attribute]
                     )
                 else:
                     self._get_rid_of_auto_in_var(ins.attribute_var)
@@ -953,10 +934,10 @@ class _FileConverter:
 
         elif isinstance(top_declaration, ast.ClassDef):
             classtype = self._types[top_declaration.name]
-            classtype.members.extend(
-                (self.get_type(typ), nam) for typ, nam in top_declaration.members
+            classtype.members.update(
+                {nam: self.get_type(typ) for typ, nam in top_declaration.members}
             )
-            classtype.constructor_argtypes = [typ for typ, nam in classtype.members]
+            classtype.constructor_argtypes = list(classtype.members.values())
 
             for method_def in top_declaration.body:
                 method_def.args.insert(
