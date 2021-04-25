@@ -682,7 +682,7 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
-            assert isinstance(union_var.type, UnionType)
+            assert isinstance(union_var.type, UnionType), union_var.type
             types_to_do = set(union_var.type.type_members)
 
             done_label = ir.GotoLabel()
@@ -802,7 +802,7 @@ class _FunctionOrMethodConverter:
                 ),
             ):
                 self._get_rid_of_auto_in_var(ins.var)
-            elif isinstance(ins, ir.CallMethod):
+            elif isinstance(ins, (ir.CallMethod, ir.GetMethod)):
                 pass  # done separately above
             elif isinstance(ins, (ir.CallConstructor, ir.CallFunction)):
                 if ins.result is not None:
@@ -826,9 +826,6 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.value)
             elif isinstance(ins, (ir.SetAttribute, ir.GetAttribute)):
                 self._get_rid_of_auto_in_var(ins.attribute_var)
-                self._get_rid_of_auto_in_var(ins.obj)
-            elif isinstance(ins, ir.GetMethod):
-                self._get_rid_of_auto_in_var(ins.method_var)
                 self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)

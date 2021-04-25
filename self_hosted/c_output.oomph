@@ -45,6 +45,18 @@ func create_function_emitter(FilePair file_pair) -> FunctionEmitter:
         "", "", [],
     )
 
+func copying_function_from_nonlocal_to_local(ir::VarCpy copy) -> Bool:
+    # TODO: this sucks
+    switch copy.dest.type:
+        case ir::FunctionType functype:
+            switch copy.source:
+                case ir::LocalVariable _:
+                    return false
+                case *:
+                    return true
+        case *:
+            return false
+
 class FunctionEmitter(
     FilePair file_pair,
     Mapping[ir::LocalVariable, Str] local_vars,
@@ -61,16 +73,30 @@ class FunctionEmitter(
         Str function,
         List[ir::LocalVariable] args,
         ir::LocalVariable | null result_var,
+        Bool wrapped_in_struct,
     ) -> Str:
-        let args_string = [foreach arg of args: self.emit_var(arg)].join(",")
+        let arg_strings = [foreach v of args: self.emit_var(v)]
+        if wrapped_in_struct:
+            arg_strings.insert(0, function + "->data")
+            function = function + "->func"
+
+        let call = function + "(" + arg_strings.join(",") + ")"
         switch result_var:
-            case ir::LocalVariable var:
-                return "{self.emit_var(var)} = {function}({args_string});\n"
             case null _:
-                return "{function}({args_string});\n"
+                return "{call};\n"
+            case ir::LocalVariable var:  # TODO: case not null
+                return "{self.emit_var(var)} = {call};\n"
 
     meth emit_body(List[ir::Instruction] body) -> Str:
         return [foreach ins of body: self.emit_instruction(ins)].join("")
+
+    meth wrap_function_in_struct(
+        ir::FunctionType functype,
+        Str c_funcname,
+        Str result_varname,
+        ir::LocalVariable | null data_var,
+    ) -> Str:
+        assert(false)   # TODO: port from pyoomph
 
     meth emit_instruction(ir::Instruction instruction) -> Str:
         switch instruction:
@@ -87,6 +113,10 @@ class FunctionEmitter(
                 return "{self.emit_var(cons.var)} = {cons.value};\n"
 
             case ir::VarCpy copy:
+                if copying_function_from_nonlocal_to_local(copy):
+                    return self.wrap_function_in_struct(
+                        copy.dest.type as ir::FunctionType, self.emit_var(copy.source), self.emit_var(copy.dest), null
+                    )
                 return "{self.emit_var(copy.dest)} = {self.emit_var(copy.source)};\n"
 
             case ir::IncRef inc:
@@ -96,18 +126,32 @@ class FunctionEmitter(
                 return self.file_pair.session.emit_decref(self.emit_var(dec.var), dec.var.type) + ";\n"
 
             case ir::FunctionCall call:
-                return self.emit_call(self.emit_var(call.function), call.args, call.result)
+                switch call.function:
+                    case ir::LocalVariable _:
+                        let wrapped_in_struct = true
+                    case *:
+                        wrapped_in_struct = false
+                return self.emit_call(self.emit_var(call.function), call.args, call.result, wrapped_in_struct)
 
             case ir::MethodCall call:
                 # TODO: list + list
                 let args = [call.obj]
                 args.push_all(call.args)
                 let name = "meth_{self.file_pair.session.get_type_c_name(call.obj.type)}_{call.method_name}"
-                return self.emit_call(name, args, call.result)
+                return self.emit_call(name, args, call.result, false)
+
+            case ir::GetMethod get:
+                # TODO: support non-pointer types
+                return self.wrap_function_in_struct(
+                    get.method_var.type as ir::FunctionType,
+                    "meth_{self.file_pair.session.get_type_c_name(get.obj.type)}_{get.method}",
+                    self.emit_var(get.method_var),
+                    get.obj,
+                )
 
             case ir::ConstructorCall call:
                 let name = "ctor_" + self.file_pair.session.get_type_c_name(call.result.type)
-                return self.emit_call(name, call.args, call.result)
+                return self.emit_call(name, call.args, call.result, false)
 
             case ir::Return ret:
                 switch ret.value:
@@ -281,6 +325,13 @@ func trim_leading_underscores(Str s) -> Str:
         s = s.remove_prefix("_")
     return s
 
+# TODO: + operator
+func concat_lists(List[Str] a, List[Str] b) -> List[Str]:
+    let result = []
+    result.push_all(a)
+    result.push_all(b)
+    return result
+
 
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
@@ -293,6 +344,8 @@ class FilePair(
     Str string_defs,
     Str function_decls,
     Str function_defs,
+    List[Str] wrapped_c_func_names,
+    Mapping[ir::Type, Str] decreffer_names,
     # When a FilePair is in h_includes, the corresponding h_fwd_decls are unnecessary
     List[FilePair] c_includes,
     List[FilePair] h_includes,
@@ -385,6 +438,15 @@ class FilePair(
                     return "meth_" + trim_leading_underscores(filevar.name)
                 return self.id + "_" + filevar.name
 
+    meth emit_returntype(ir::Type | ir::NoReturn | null returntype) -> Str:
+        switch returntype:
+            case ir::NoReturn _:
+                return "noreturn void"
+            case null _:
+                return "void"
+            case ir::Type type:
+                return self.emit_type(type)
+
     # If body is None, declares but does not actually define
     meth define_function(
         Str function_name,
@@ -407,15 +469,7 @@ class FilePair(
         if arg_decl_string == "":
             arg_decl_string = "void"
 
-        switch type.returntype:
-            case ir::NoReturn _:
-                let returntype = "noreturn void"
-            case null _:
-                returntype = "void"
-            case ir::Type an_actual_type:
-                returntype = self.emit_type(an_actual_type)
-
-        let decl = "{returntype} {function_name}({arg_decl_string})"
+        let decl = "{self.emit_returntype(type.returntype)} {function_name}({arg_decl_string})"
         self.function_decls = self.function_decls + decl + ";\n"
         if body != null:
             self.function_defs = self.function_defs + decl + "\{" + body as not null + "\}\n"
@@ -704,13 +758,52 @@ class FilePair(
             else:
                 assert(false)
 
+    meth define_functype(ir::FunctionType functype):
+        assert(self.struct == null)
+        let argtypes = concat_lists(["void *"], [foreach t of functype.argtypes: self.emit_type(t)]).join(",")
+        # TODO: make it not named class_Foo, it's not a class
+        self.struct = """
+        struct class_{self.id} \{
+            REFCOUNT_HEADER
+            {self.emit_returntype(functype.returntype)} (*func)({argtypes});
+            void *data;
+            struct DestroyCallback cblist[];  // NULL terminated
+        \};
+        """
+
+        # TODO: hash method?
+        self.function_decls = self.function_decls + """
+        void dtor_{self.id}(void *ptr);
+        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj);
+        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b);
+        """
+        self.function_defs = self.function_defs + """
+        void dtor_{self.id}(void *ptr)
+        \{
+            struct class_{self.id} *obj = ptr;
+            for (const struct DestroyCallback *cb = obj->cblist; cb->func; cb++)
+                cb->func(cb->arg);
+            free(obj);
+        \}
+        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj)
+        \{
+            return cstr_to_string("<function>");  // TODO
+        \}
+        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b)
+        \{
+            return (a == b);   // TODO
+        \}
+        """
+
     # Must not be called multiple times for the same FilePair
     meth define_type(ir::Type type):
         switch type:
-            case ir::AutoType | ir::FunctionType _:
+            case ir::AutoType _:
                 assert(false)
             case ir::UnionType union:
                 self.define_union(union)
+            case ir::FunctionType functype:
+                self.define_functype(functype)
             case ir::BasicType basictype:
                 if basictype.generic_source == null:
                     self.define_simple_type(basictype)
@@ -747,8 +840,7 @@ export class Session(
             self,
             create_id(ir::type_name(type), ir::type_id_string(type)),
             type,
-            new Mapping[Str, Str](),
-            null, "", "", "", [], [], "",
+            new Mapping[Str, Str](), null, "", "", "", [], new Mapping[ir::Type, Str](), [], [], "",
         )
         self.file_pairs.set(type, pair)
         pair.define_type(type)
@@ -785,8 +877,7 @@ export class Session(
                 source_path,
             ),
             source_path,
-            new Mapping[Str, Str](),
-            null, "", "", "", [], [], "",
+            new Mapping[Str, Str](), null, "", "", "", [], new Mapping[ir::Type, Str](), [], [], "",
         )
         self.file_pairs.set(source_path, pair)
 

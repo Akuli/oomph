@@ -610,12 +610,20 @@ class FunctionOrMethodConverter(
                         let result = self.create_var(
                             self.create_autotype(), location
                         )
+                        self.code.push(new ir::GetAttribute(obj, result, getattr.attribute))
                     case *:
-                        result = self.create_var(
-                            ir::get_member(obj.type, getattr.attribute, getattr.attribute_location),
-                            location
-                        )
-                self.code.push(new ir::GetAttribute(obj, result, getattr.attribute))
+                        if ir::get_methods(obj.type, self.builtins).has_key(getattr.attribute):
+                            result = self.create_var(
+                                ir::get_method(obj.type, getattr.attribute, self.builtins, getattr.attribute_location),
+                                location
+                            )
+                            self.code.push(new ir::GetMethod(obj, result, getattr.attribute))
+                        else:
+                            result = self.create_var(
+                                ir::get_member(obj.type, getattr.attribute, getattr.attribute_location),
+                                location
+                            )
+                            self.code.push(new ir::GetAttribute(obj, result, getattr.attribute))
                 self.code.push(new ir::IncRef(result))
                 return result
 
@@ -917,6 +925,11 @@ class FunctionOrMethodConverter(
                         case *:
                             self.get_rid_of_auto_in_var(getattr.attribute_var)
 
+                case ir::GetMethod getmeth:
+                    # TODO: make auto type work, longer comment in pyoomph
+                    self.get_rid_of_auto_in_var(getmeth.obj)
+                    self.get_rid_of_auto_in_var(getmeth.method_var)
+
                 case *:
                     pass
 
@@ -936,8 +949,8 @@ class FunctionOrMethodConverter(
                 case ir::StringConstant ins2:
                     self.get_rid_of_auto_in_var(ins2.var)
 
-                case ir::MethodCall call:
-                    pass  # done separately above
+                case ir::MethodCall | ir::GetMethod _:  # done separately above
+                    pass
 
                 case ir::ConstructorCall call:
                     self.get_rid_of_auto_in_var(call.result)
@@ -968,6 +981,7 @@ class FunctionOrMethodConverter(
 
                 # TODO: union attribs https://github.com/Akuli/oomph/issues/145
                 case ir::GetAttribute getattr:
+                    # TODO: this needed? seems to be handled above?
                     self.get_rid_of_auto_in_var(getattr.attribute_var)
                     self.get_rid_of_auto_in_var(getattr.obj)
                 case ir::SetAttribute setattr:

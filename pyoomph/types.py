@@ -233,7 +233,6 @@ class FunctionType(Type):
     def __hash__(self) -> int:
         return hash(tuple(self.argtypes)) ^ hash(self.returntype)
 
-    # TODO: use this more?
     def skip_self(self) -> FunctionType:
         assert self.argtypes
         return FunctionType(self.argtypes[1:], self.returntype)

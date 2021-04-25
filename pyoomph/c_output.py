@@ -165,10 +165,8 @@ class _FunctionEmitter:
             return f"{self.emit_var(ins.var)} = {ins.value};\n"
 
         if isinstance(ins, ir.VarCpy):
-            if (
-                isinstance(ins.dest, ir.LocalVariable)
-                and not isinstance(ins.source, ir.LocalVariable)
-                and isinstance(ins.dest.type, FunctionType)
+            if isinstance(ins.dest.type, FunctionType) and not isinstance(
+                ins.source, ir.LocalVariable
             ):
                 return self._wrap_function_in_struct(
                     ins.dest.type, self.emit_var(ins.source), self.emit_var(ins.dest)
