@@ -737,7 +737,7 @@ class _FilePair:
                 raise NotImplementedError(name)
 
     def _define_functype(self, functype: FunctionType) -> None:
-        # TODO: equals method
+        # TODO: hash method?
         self.function_decls += f"""
         struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj);
         bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b);
