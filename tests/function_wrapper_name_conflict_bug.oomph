@@ -1,8 +1,8 @@
 func foo():
-    let bar = print
+    let local_print = print
 
 func bar():
-    let bar = print
+    let local_print = print
 
 export func main():
     pass
