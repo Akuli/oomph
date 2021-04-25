@@ -287,7 +287,7 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(call.func, ast.Variable):
             func = self.variables[call.func.name]
-            assert isinstance(func.type, ir.FunctionType)
+            assert isinstance(func.type, ir.FunctionType), func.type
             result_type = func.type.returntype
             if result_type is None:
                 result_var = None
@@ -779,10 +779,13 @@ class _FunctionOrMethodConverter:
             elif isinstance(ins, ir.GetMethod):
                 self._get_rid_of_auto_in_var(ins.obj)
                 if isinstance(ins.method_var.type, AutoType):
-                    self._resolve_autotype(
-                        ins.method_var.type,
-                        ins.obj.type.methods[ins.method].remove_self(),
-                    )
+                    # TODO: make this work
+                    #
+                    #   let foo = something_with_auto_type
+                    #   let lol = foo.lol
+                    #   lol()
+                    #   foo = Foo()  # no longer auto type
+                    raise NotImplementedError
                 else:
                     self._get_rid_of_auto_in_var(ins.method_var)
 
