@@ -66,10 +66,10 @@ class _FunctionEmitter:
         args: List[ir.LocalVariable],
         result_var: Optional[ir.LocalVariable],
         *,
-        add_data: bool = False,
+        wrapped_in_struct: bool = False,
     ) -> str:
         arg_strings = [self.emit_var(v) for v in args]
-        if add_data:
+        if wrapped_in_struct:
             arg_strings.insert(0, func + "->data")
             func = func + "->func"
 
@@ -141,7 +141,7 @@ class _FunctionEmitter:
                 self.emit_var(ins.func),
                 ins.args,
                 ins.result,
-                add_data=isinstance(ins.func, ir.LocalVariable),
+                wrapped_in_struct=isinstance(ins.func, ir.LocalVariable),
             )
 
         if isinstance(ins, ir.CallMethod):
