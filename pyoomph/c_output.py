@@ -109,7 +109,7 @@ class _FunctionEmitter:
                     self.file_pair.emit_type(argtype) + " " + name
                     for argtype, name in zip(functype.argtypes, argnames)
                 ]
-                return_if_needed = "return" * (functype.returntype is not None)
+                return_if_needed = "return" if functype.returntype is None else ""
                 self.file_pair.function_defs += f"""
                 static {self.file_pair.emit_type(functype.returntype)} {source}_wrapper({','.join(argdefs)})
                 {{
