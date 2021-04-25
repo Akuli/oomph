@@ -103,7 +103,6 @@ class _FunctionEmitter:
                 source = self.emit_var(ins.source)
                 dest = self.emit_var(ins.dest)
 
-                # TODO: this is in the wrong place
                 # FIXME: avoid duplicates
                 argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
                 argdefs = ["void *nulldata"] + [
