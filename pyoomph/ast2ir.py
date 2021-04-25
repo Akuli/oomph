@@ -780,7 +780,8 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.obj)
                 if isinstance(ins.method_var.type, AutoType):
                     self._resolve_autotype(
-                        ins.method_var.type, ins.obj.type.methods[ins.method].remove_self()
+                        ins.method_var.type,
+                        ins.obj.type.methods[ins.method].remove_self(),
                     )
                 else:
                     self._get_rid_of_auto_in_var(ins.method_var)
