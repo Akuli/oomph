@@ -104,9 +104,10 @@ class _FunctionEmitter:
         self.file_pair.emit_type(functype, can_fwd_declare_in_header=False)
 
         return f"""
-        {result_varname} = calloc(1, sizeof(*{result_varname}));
+        {result_varname} = calloc(1, sizeof(*{result_varname}) + 1*sizeof({result_varname}->cblist[0]));
         assert({result_varname});
         // Should incref soon, no need to set nonzero refcount
+        // Data set to NULL, just one NULL-terminator in cblist
         {result_varname}->func = {c_funcname}_wrapper;
         """
 
@@ -752,12 +753,13 @@ class _FilePair:
     def _define_functype(self, functype: FunctionType) -> None:
         assert self.struct is None
         argtypes = ",".join(["void *"] + [self.emit_type(t) for t in functype.argtypes])
+        # TODO: make it not named class_Foo, it's not a class
         self.struct = f"""
         struct class_{self.id} {{
             REFCOUNT_HEADER
             {self.emit_type(functype.returntype)} (*func)({argtypes});
             void *data;
-            struct DestroyCallback *cblist;
+            struct DestroyCallback cblist[];  // NULL terminated
         }};
         """
 
@@ -770,7 +772,10 @@ class _FilePair:
         self.function_defs += f"""
         void dtor_{self.id}(void *ptr)
         {{
-            run_destroy_callbacks(((struct class_{self.id} *)ptr)->cblist);
+            struct class_{self.id} *obj = ptr;
+            for (const struct DestroyCallback *cb = obj->cblist; cb->func; cb++)
+                cb->func(cb->arg);
+            free(obj);
         }}
 
         struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj)
