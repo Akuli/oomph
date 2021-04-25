@@ -1,0 +1,7 @@
+import "<stdlib>/io.oomph" as io
+
+export func main():
+    let path = "test_out/io_testing_dir/yadda_yadda.txt"
+    io::write_file(path, "hello")
+    io::delete(path)
+    print(io::read_file(path))

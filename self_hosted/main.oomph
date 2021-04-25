@@ -107,6 +107,11 @@ func mkdir_with_parents(Str path):
     foreach parent of parents.reversed():
         io::mkdir(parent)
 
+# TODO: this java shit sucks
+class Deleter(Str path):
+    meth delete():
+        io::delete(self.path)
+
 func get_compilation_dir(Str parent_dir, Str name_hint) -> Str:
     for let i = 0; ; i = i+1:
         let path = "{parent_dir}/{name_hint}{i}"
@@ -114,7 +119,7 @@ func get_compilation_dir(Str parent_dir, Str name_hint) -> Str:
 
         # TODO: better way to create file if not exists and know whether that was done
         if process::run(["bash", "-c", "printf '' > '{path}/compiling'"]) == 0:
-            io::delete_at_exit(path + "/compiling")
+            run_at_exit(new Deleter(path).delete);
             return path
 
 func create_ast(Str source_path) -> List[ast::ToplevelDeclaration]:

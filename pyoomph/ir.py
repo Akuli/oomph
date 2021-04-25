@@ -56,7 +56,7 @@ visible_builtins = {
         BuiltinVariable("__get_first_char", FunctionType([STRING], STRING)),
         BuiltinVariable("__get_utf8_byte", FunctionType([STRING, INT], INT)),
         BuiltinVariable("__hash", FunctionType([STRING, STRING], STRING)),
-        BuiltinVariable("__io_delete_at_exit", FunctionType([STRING], None)),
+        BuiltinVariable("__io_delete", FunctionType([STRING], None)),
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
@@ -73,6 +73,7 @@ visible_builtins = {
         BuiltinVariable("false", BOOL),
         BuiltinVariable("null", NULL_TYPE),
         BuiltinVariable("print", FunctionType([STRING], None)),
+        BuiltinVariable("run_at_exit", FunctionType([FunctionType([], None)], None)),  # TODO: process.oomph
         BuiltinVariable("true", BOOL),
     ]
 }

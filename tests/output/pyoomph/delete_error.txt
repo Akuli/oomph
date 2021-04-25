@@ -1,0 +1,2 @@
+tests/.oomph-cache/.../delete_error: opening file "test_out/io_testing_dir/yadda_yadda.txt" failed (errno 2: No such file or directory)
+Program exited with status 1

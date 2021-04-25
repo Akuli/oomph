@@ -9,4 +9,4 @@ export func main():
     let path = "test_out/io_testing_dir/hello.txt"
     io::write_file(path, "Hello Files")
     print(io::read_file(path))
-    io::delete_at_exit(path)
+    io::delete(path)
