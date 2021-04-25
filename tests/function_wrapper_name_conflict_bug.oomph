@@ -1,0 +1,8 @@
+func foo():
+    let bar = print
+
+func bar():
+    let bar = print
+
+export func main():
+    pass

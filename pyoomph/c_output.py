@@ -84,20 +84,21 @@ class _FunctionEmitter:
     def _wrap_function_in_struct(
         self, functype: ir.FunctionType, c_funcname: str, result_varname: str
     ) -> str:
-        # FIXME: avoid duplicates
-        argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
-        argdefs = ["void *nulldata"] + [
-            self.file_pair.emit_type(argtype) + " " + name
-            for argtype, name in zip(functype.argtypes, argnames)
-        ]
-        return_if_needed = "return" if functype.returntype is None else ""
-        self.file_pair.function_defs += f"""
-        static {self.file_pair.emit_type(functype.returntype)}
-        {c_funcname}_wrapper({','.join(argdefs)})
-        {{
-            {return_if_needed} {c_funcname}({','.join(argnames)});
-        }}
-        """
+        if c_funcname not in self.file_pair.wrapped_c_func_names:
+            argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
+            argdefs = ["void *nulldata"] + [
+                self.file_pair.emit_type(argtype) + " " + name
+                for argtype, name in zip(functype.argtypes, argnames)
+            ]
+            return_if_needed = "return" if functype.returntype is None else ""
+            self.file_pair.function_defs += f"""
+            static {self.file_pair.emit_type(functype.returntype)}
+            {c_funcname}_wrapper({','.join(argdefs)})
+            {{
+                {return_if_needed} {c_funcname}({','.join(argnames)});
+            }}
+            """
+            self.file_pair.wrapped_c_func_names.add(c_funcname)
 
         # full struct needed for sizeof
         self.file_pair.emit_type(functype, can_fwd_declare_in_header=False)
@@ -328,6 +329,13 @@ class _FilePair:
         self.string_defs = ""
         self.function_decls = ""
         self.function_defs = ""
+
+        # Sometimes C functions need to be converted to structs that have
+        # function and data. This allows passing around data with a function.
+        # When the function is called, it's called with the data as first arg,
+        # and to allow that, we need to make a new function that ignores its
+        # first argument. This set avoids doing it twice for the same function.
+        self.wrapped_c_func_names: Set[str] = set()
 
         # When a _FilePair is in h_includes, the corresponding h_fwd_decls are unnecessary
         self.c_includes: Set[_FilePair] = set()
