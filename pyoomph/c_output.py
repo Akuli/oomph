@@ -750,26 +750,8 @@ class _FilePair:
                 raise NotImplementedError(name)
 
     def _define_functype(self, functype: FunctionType) -> None:
-        # TODO: hash method?
-        self.function_decls += f"""
-        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj);
-        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b);
-        """
-        self.function_defs += f"""
-        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj)
-        {{
-            return cstr_to_string("<function>");  // TODO
-        }}
-
-        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b)
-        {{
-            return (a == b);   // TODO
-        }}
-        """
-
-        argtypes = ",".join(["void *"] + [self.emit_type(t) for t in functype.argtypes])
-
         assert self.struct is None
+        argtypes = ",".join(["void *"] + [self.emit_type(t) for t in functype.argtypes])
         self.struct = f"""
         struct class_{self.id} {{
             REFCOUNT_HEADER
@@ -779,13 +761,26 @@ class _FilePair:
         }};
         """
 
+        # TODO: hash method?
         self.function_decls += f"""
         void dtor_{self.id}(void *ptr);
+        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj);
+        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b);
         """
         self.function_defs += f"""
         void dtor_{self.id}(void *ptr)
         {{
             run_destroy_callbacks(((struct class_{self.id} *)ptr)->cblist);
+        }}
+
+        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj)
+        {{
+            return cstr_to_string("<function>");  // TODO
+        }}
+
+        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b)
+        {{
+            return (a == b);   // TODO
         }}
         """
 
