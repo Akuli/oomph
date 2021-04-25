@@ -68,12 +68,12 @@ class _FunctionEmitter:
         *,
         add_data: bool = False,
     ) -> str:
-        arg_strings = [self.emit_var(v) for v in  args]
+        arg_strings = [self.emit_var(v) for v in args]
         if add_data:
-            arg_strings.insert(0, func + '->data')
-            func = func + '->func'
+            arg_strings.insert(0, func + "->data")
+            func = func + "->func"
 
-        call = func + '(' + ",".join(arg_strings) + ')'
+        call = func + "(" + ",".join(arg_strings) + ")"
         if result_var is None:
             return f"{call};\n"
         return f"{self.emit_var(result_var)} = {call};\n"
@@ -92,7 +92,11 @@ class _FunctionEmitter:
             return f"{self.emit_var(ins.var)} = {ins.value};\n"
 
         if isinstance(ins, ir.VarCpy):
-            if isinstance(ins.dest, ir.LocalVariable) and not isinstance(ins.source, ir.LocalVariable) and isinstance(ins.dest.type, FunctionType):
+            if (
+                isinstance(ins.dest, ir.LocalVariable)
+                and not isinstance(ins.source, ir.LocalVariable)
+                and isinstance(ins.dest.type, FunctionType)
+            ):
                 # Convert C function into a struct representing Oomph function
 
                 functype = ins.dest.type
@@ -101,9 +105,12 @@ class _FunctionEmitter:
 
                 # TODO: this is in the wrong place
                 # FIXME: avoid duplicates
-                argnames = [f'arg{i}' for i in range(len(functype.argtypes))]
-                argdefs = ['void *nulldata'] + [self.file_pair. emit_type(argtype) + ' ' + name for argtype, name in zip(functype.argtypes, argnames)]
-                return_if_needed = 'return' * (functype.returntype is not None)
+                argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
+                argdefs = ["void *nulldata"] + [
+                    self.file_pair.emit_type(argtype) + " " + name
+                    for argtype, name in zip(functype.argtypes, argnames)
+                ]
+                return_if_needed = "return" * (functype.returntype is not None)
                 self.file_pair.function_defs += f"""
                 static {self.file_pair.emit_type(functype.returntype)} {source}_wrapper({','.join(argdefs)})
                 {{
@@ -112,7 +119,7 @@ class _FunctionEmitter:
                 """
 
                 # full struct needed for sizeof(*dest)
-                self.file_pair.emit_type(ins.dest.type, can_fwd_declare_in_header=False)  
+                self.file_pair.emit_type(ins.dest.type, can_fwd_declare_in_header=False)
 
                 return f"""
                 {dest} = calloc(1, sizeof(*{dest}));
@@ -131,7 +138,12 @@ class _FunctionEmitter:
             )
 
         if isinstance(ins, ir.CallFunction):
-            return self.emit_call(self.emit_var(ins.func), ins.args, ins.result, add_data=isinstance(ins.func, ir.LocalVariable))
+            return self.emit_call(
+                self.emit_var(ins.func),
+                ins.args,
+                ins.result,
+                add_data=isinstance(ins.func, ir.LocalVariable),
+            )
 
         if isinstance(ins, ir.CallMethod):
             return self.emit_call(
@@ -751,7 +763,7 @@ class _FilePair:
         }}
         """
 
-        argtypes = ','.join(['void *'] + [self.emit_type(t) for t in functype.argtypes])
+        argtypes = ",".join(["void *"] + [self.emit_type(t) for t in functype.argtypes])
 
         assert self.struct is None
         self.struct = f"""
