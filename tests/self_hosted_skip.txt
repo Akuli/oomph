@@ -3,6 +3,7 @@ tests/autotype_list_eq_error.oomph
 tests/autotype_method_error.oomph
 tests/autotype_not_enough_info_error.oomph
 tests/eq_error.oomph
+tests/function_var.oomph
 tests/int_eq_str_error.oomph
 tests/optional_compare_error.oomph
 

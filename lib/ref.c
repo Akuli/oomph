@@ -20,3 +20,12 @@ void decref(void *ptr, void (*destructor)(void *ptr))
 			destructor(ptr);
 	}
 }
+
+void run_destroy_callbacks(struct DestroyCallback *cblist)
+{
+	if (cblist) {
+		for (size_t i = 0; cblist[i].func; i++)
+			cblist[i].func(cblist[i].arg);
+	}
+	free(cblist);
+}

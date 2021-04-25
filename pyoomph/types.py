@@ -218,7 +218,7 @@ class FunctionType(Type):
     returntype: Optional[Type]
 
     def __init__(self, argtypes: List[Type], returntype: Optional[Type]):
-        super().__init__("<function>", False)
+        super().__init__("<function>", True)
         self.argtypes = argtypes
         self.returntype = returntype
 

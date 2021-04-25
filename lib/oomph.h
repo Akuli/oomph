@@ -12,6 +12,15 @@
 
 #define REFCOUNT_HEADER int64_t refcount;
 
+// Used to decref objects with possibly different types
+struct DestroyCallback {
+	void (*func)(void *arg);
+	void *arg;
+};
+
+// cblist should be NULL or terminated with element having func==NULL, it will be free()d
+void run_destroy_callbacks(struct DestroyCallback *cblist);
+
 // Can be shared by multiple string for efficient substrings
 struct StringBuf {
 	REFCOUNT_HEADER

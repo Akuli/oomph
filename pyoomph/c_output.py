@@ -34,7 +34,7 @@ def _create_id(readable_part: str, identifying_part: str) -> str:
     return re.sub(r"[^A-Za-z0-9]", "_", readable_part) + "_" + md5[:10]
 
 
-def is_pointer(the_type: Type) -> bool:
+def _is_pointer(the_type: Type) -> bool:
     return (
         the_type.refcounted
         and not isinstance(the_type, UnionType)
@@ -65,11 +65,18 @@ class _FunctionEmitter:
         func: str,
         args: List[ir.LocalVariable],
         result_var: Optional[ir.LocalVariable],
+        *,
+        add_data: bool = False,
     ) -> str:
-        args_string = ",".join(map(self.emit_var, args))
+        arg_strings = [self.emit_var(v) for v in  args]
+        if add_data:
+            arg_strings.insert(0, func + '->data')
+            func = func + '->func'
+
+        call = func + '(' + ",".join(arg_strings) + ')'
         if result_var is None:
-            return f"{func}({args_string});\n"
-        return f"{self.emit_var(result_var)} = {func}({args_string});\n"
+            return f"{call};\n"
+        return f"{self.emit_var(result_var)} = {call};\n"
 
     def emit_body(self, body: List[ir.Instruction]) -> str:
         return "".join(map(self.emit_instruction, body))
@@ -85,6 +92,34 @@ class _FunctionEmitter:
             return f"{self.emit_var(ins.var)} = {ins.value};\n"
 
         if isinstance(ins, ir.VarCpy):
+            if isinstance(ins.dest, ir.LocalVariable) and not isinstance(ins.source, ir.LocalVariable) and isinstance(ins.dest.type, FunctionType):
+                # Convert C function into a struct representing Oomph function
+
+                functype = ins.dest.type
+                source = self.emit_var(ins.source)
+                dest = self.emit_var(ins.dest)
+
+                # TODO: this is in the wrong place
+                # FIXME: avoid duplicates
+                argnames = [f'arg{i}' for i in range(len(functype.argtypes))]
+                argdefs = ['void *nulldata'] + [self.file_pair. emit_type(argtype) + ' ' + name for argtype, name in zip(functype.argtypes, argnames)]
+                return_if_needed = 'return' * (functype.returntype is not None)
+                self.file_pair.function_defs += f"""
+                static {self.file_pair.emit_type(functype.returntype)} {source}_wrapper({','.join(argdefs)})
+                {{
+                    {return_if_needed} {source}({','.join(argnames)});
+                }}
+                """
+
+                # full struct needed for sizeof(*dest)
+                self.file_pair.emit_type(ins.dest.type, can_fwd_declare_in_header=False)  
+
+                return f"""
+                {dest} = calloc(1, sizeof(*{dest}));
+                assert({dest});
+                // Should incref soon, no need to set nonzero refcount
+                {dest}->func = {source}_wrapper;
+                """
             return f"{self.emit_var(ins.dest)} = {self.emit_var(ins.source)};\n"
 
         if isinstance(ins, ir.IncRef):
@@ -96,7 +131,7 @@ class _FunctionEmitter:
             )
 
         if isinstance(ins, ir.CallFunction):
-            return self.emit_call(self.emit_var(ins.func), ins.args, ins.result)
+            return self.emit_call(self.emit_var(ins.func), ins.args, ins.result, add_data=isinstance(ins.func, ir.LocalVariable))
 
         if isinstance(ins, ir.CallMethod):
             return self.emit_call(
@@ -118,7 +153,7 @@ class _FunctionEmitter:
             return "goto out;\n"
 
         if isinstance(ins, (ir.SetAttribute, ir.GetAttribute)):
-            op = "->" if is_pointer(ins.obj.type) else "."
+            op = "->" if _is_pointer(ins.obj.type) else "."
             var = self.emit_var(ins.attribute_var)
             attrib = self.emit_var(ins.obj) + op + "memb_" + ins.attribute
 
@@ -266,6 +301,14 @@ _generic_paths = {
 }
 
 
+# An Oomph function corresponds to C function and arbitrary data.
+# The data is used to implement partialled functions.
+# We need a struct to pass it around and a bunch of functions for increffing/decreffing.
+# TODO: actually implement everything
+class _FunctionHandler:
+    pass
+
+
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class _FilePair:
@@ -308,7 +351,7 @@ class _FilePair:
         defining_file_pair = self.session.get_file_pair_for_type(the_type)
         result = f"struct class_{defining_file_pair.id}"
 
-        if is_pointer(the_type):
+        if _is_pointer(the_type):
             result += "*"
         else:
             can_fwd_declare_in_header = False
@@ -690,10 +733,53 @@ class _FilePair:
             else:
                 raise NotImplementedError(name)
 
+    def _define_functype(self, functype: FunctionType) -> None:
+        # TODO: equals method
+        self.function_decls += f"""
+        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj);
+        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b);
+        """
+        self.function_defs += f"""
+        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj)
+        {{
+            return cstr_to_string("<function>");  // TODO
+        }}
+
+        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b)
+        {{
+            return (a == b);   // TODO
+        }}
+        """
+
+        argtypes = ','.join(['void *'] + [self.emit_type(t) for t in functype.argtypes])
+
+        assert self.struct is None
+        self.struct = f"""
+        struct class_{self.id} {{
+            REFCOUNT_HEADER
+            {self.emit_type(functype.returntype)} (*func)({argtypes});
+            void *data;
+            struct DestroyCallback *cblist;
+        }};
+        """
+
+        # TODO: equals and hash methods
+        self.function_decls += f"""
+        void dtor_{self.id}(void *ptr);
+        """
+        self.function_defs += f"""
+        void dtor_{self.id}(void *ptr)
+        {{
+            run_destroy_callbacks(((struct class_{self.id} *)ptr)->cblist);
+        }}
+        """
+
     # Must not be called multiple times for the same _FilePair
     def define_type(self, the_type: Type) -> None:
         if isinstance(the_type, UnionType):
             self._define_union(the_type)
+        elif isinstance(the_type, FunctionType):
+            self._define_functype(the_type)
         elif the_type.generic_origin is not None:
             self._define_generic_type(the_type)
         else:
@@ -743,14 +829,14 @@ class Session:
 
     # May evaluate c_expression several times
     def emit_incref(self, c_expression: str, the_type: Type) -> str:
-        if is_pointer(the_type):
+        if _is_pointer(the_type):
             return f"incref({c_expression})"
         if the_type.refcounted:
             return f"incref_{self.get_type_c_name(the_type)}({c_expression})"
         return "(void)0"
 
     def emit_decref(self, c_expression: str, the_type: Type) -> str:
-        if is_pointer(the_type):
+        if _is_pointer(the_type):
             return f"decref(({c_expression}), dtor_{self.get_type_c_name(the_type)})"
         if the_type.refcounted:
             return f"decref_{self.get_type_c_name(the_type)}({c_expression})"

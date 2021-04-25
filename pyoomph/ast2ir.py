@@ -287,7 +287,6 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(call.func, ast.Variable):
             func = self.variables[call.func.name]
-            assert not isinstance(func, ir.LocalVariable)
             assert isinstance(func.type, ir.FunctionType)
             result_type = func.type.returntype
             if result_type is None:

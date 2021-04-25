@@ -147,7 +147,6 @@ class CallFunction(Instruction):
     result: Optional[LocalVariable]
 
     def __post_init__(self) -> None:
-        assert not isinstance(self.func, LocalVariable)
         assert isinstance(self.func.type, FunctionType)
         if self.func.type.returntype is None:
             assert self.result is None
