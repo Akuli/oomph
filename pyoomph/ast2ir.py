@@ -558,9 +558,16 @@ class _FunctionOrMethodConverter:
             obj.type = self._substitute_autotypes(obj.type)
             if isinstance(obj.type, AutoType):
                 result = self.create_var(AutoType())
+                self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             else:
-                result = self.create_var(obj.type.members[expr.attribute])
-            self.code.append(ir.GetAttribute(obj, result, expr.attribute))
+                try:
+                    result = self.create_var(obj.type.members[expr.attribute])
+                    self.code.append(ir.GetAttribute(obj, result, expr.attribute))
+                except KeyError:
+                    result = self.create_var(
+                        obj.type.methods[expr.attribute].skip_self()
+                    )
+                    self.code.append(ir.GetMethod(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
 
@@ -769,6 +776,15 @@ class _FunctionOrMethodConverter:
                 else:
                     self._get_rid_of_auto_in_var(ins.attribute_var)
 
+            elif isinstance(ins, ir.GetMethod):
+                self._get_rid_of_auto_in_var(ins.obj)
+                if isinstance(ins.method_var.type, AutoType):
+                    self._resolve_autotype(
+                        ins.method_var.type, ins.obj.type.methods[ins.method].remove_self()
+                    )
+                else:
+                    self._get_rid_of_auto_in_var(ins.method_var)
+
         for ins in self.code:
             if isinstance(
                 ins,
@@ -806,6 +822,9 @@ class _FunctionOrMethodConverter:
                 self._get_rid_of_auto_in_var(ins.value)
             elif isinstance(ins, (ir.SetAttribute, ir.GetAttribute)):
                 self._get_rid_of_auto_in_var(ins.attribute_var)
+                self._get_rid_of_auto_in_var(ins.obj)
+            elif isinstance(ins, ir.GetMethod):
+                self._get_rid_of_auto_in_var(ins.method_var)
                 self._get_rid_of_auto_in_var(ins.obj)
             elif isinstance(ins, (ir.GetFromUnion, ir.UnionMemberCheck)):
                 self._get_rid_of_auto_in_var(ins.result)

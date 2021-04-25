@@ -124,6 +124,14 @@ class GetAttribute(Instruction):
     attribute: str
 
 
+# TODO: get rid of this when lambdas work, internally rewrite to lambda
+@dataclass(eq=False)
+class GetMethod(Instruction):
+    obj: LocalVariable
+    method_var: LocalVariable
+    method: str
+
+
 @dataclass(eq=False)
 class SetAttribute(Instruction):
     obj: LocalVariable
@@ -132,6 +140,7 @@ class SetAttribute(Instruction):
 
 
 # Currently you can't use a function, method or ctor without immediately calling it
+# TODO: no longer true, clean up? these are still useful for (pseudo-)optimization
 @dataclass(eq=False)
 class CallMethod(Instruction):
     obj: LocalVariable

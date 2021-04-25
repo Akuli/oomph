@@ -1,0 +1,8 @@
+class Foo(Str s):
+    meth lol(Str message):
+        print(self)
+        print(message)
+
+export func main():
+    let lol = new Foo("bleh").lol
+    lol("hello")
