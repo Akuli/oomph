@@ -766,7 +766,6 @@ class _FilePair:
         }};
         """
 
-        # TODO: equals and hash methods
         self.function_decls += f"""
         void dtor_{self.id}(void *ptr);
         """
