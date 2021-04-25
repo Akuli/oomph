@@ -81,9 +81,40 @@ class _FunctionEmitter:
     def emit_body(self, body: List[ir.Instruction]) -> str:
         return "".join(map(self.emit_instruction, body))
 
+    def _wrap_function_in_struct(
+        self, functype: ir.FunctionType, c_funcname: str, result_varname: str
+    ) -> str:
+        # FIXME: avoid duplicates
+        argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
+        argdefs = ["void *nulldata"] + [
+            self.file_pair.emit_type(argtype) + " " + name
+            for argtype, name in zip(functype.argtypes, argnames)
+        ]
+        return_if_needed = "return" if functype.returntype is None else ""
+        self.file_pair.function_defs += f"""
+        static {self.file_pair.emit_type(functype.returntype)}
+        {c_funcname}_wrapper({','.join(argdefs)})
+        {{
+            {return_if_needed} {c_funcname}({','.join(argnames)});
+        }}
+        """
+
+        # full struct needed for sizeof
+        self.file_pair.emit_type(functype, can_fwd_declare_in_header=False)
+
+        return f"""
+        {result_varname} = calloc(1, sizeof(*{result_varname}));
+        assert({result_varname});
+        // Should incref soon, no need to set nonzero refcount
+        {result_varname}->func = {c_funcname}_wrapper;
+        """
+
     def emit_instruction(self, ins: ir.Instruction) -> str:
         if isinstance(ins, ir.StringConstant):
-            return f"{self.emit_var(ins.var)} = {self.file_pair.emit_string(ins.value)}; {self.incref_var(ins.var)};\n"
+            return f"""
+            {self.emit_var(ins.var)} = {self.file_pair.emit_string(ins.value)};
+            {self.incref_var(ins.var)};
+            """
 
         if isinstance(ins, ir.IntConstant):
             return f"{self.emit_var(ins.var)} = {ins.value}LL;\n"
@@ -97,35 +128,9 @@ class _FunctionEmitter:
                 and not isinstance(ins.source, ir.LocalVariable)
                 and isinstance(ins.dest.type, FunctionType)
             ):
-                # Convert C function into a struct representing Oomph function
-
-                functype = ins.dest.type
-                source = self.emit_var(ins.source)
-                dest = self.emit_var(ins.dest)
-
-                # FIXME: avoid duplicates
-                argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
-                argdefs = ["void *nulldata"] + [
-                    self.file_pair.emit_type(argtype) + " " + name
-                    for argtype, name in zip(functype.argtypes, argnames)
-                ]
-                return_if_needed = "return" if functype.returntype is None else ""
-                self.file_pair.function_defs += f"""
-                static {self.file_pair.emit_type(functype.returntype)} {source}_wrapper({','.join(argdefs)})
-                {{
-                    {return_if_needed} {source}({','.join(argnames)});
-                }}
-                """
-
-                # full struct needed for sizeof(*dest)
-                self.file_pair.emit_type(ins.dest.type, can_fwd_declare_in_header=False)
-
-                return f"""
-                {dest} = calloc(1, sizeof(*{dest}));
-                assert({dest});
-                // Should incref soon, no need to set nonzero refcount
-                {dest}->func = {source}_wrapper;
-                """
+                return self._wrap_function_in_struct(
+                    ins.dest.type, self.emit_var(ins.source), self.emit_var(ins.dest)
+                )
             return f"{self.emit_var(ins.dest)} = {self.emit_var(ins.source)};\n"
 
         if isinstance(ins, ir.IncRef):
