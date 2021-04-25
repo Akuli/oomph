@@ -312,14 +312,6 @@ _generic_paths = {
 }
 
 
-# An Oomph function corresponds to C function and arbitrary data.
-# The data is used to implement partialled functions.
-# We need a struct to pass it around and a bunch of functions for increffing/decreffing.
-# TODO: actually implement everything
-class _FunctionHandler:
-    pass
-
-
 # Represents .c and .h file, and possibly *the* type defined in those.
 # That's right, each type goes to separate .c and .h file.
 class _FilePair:
