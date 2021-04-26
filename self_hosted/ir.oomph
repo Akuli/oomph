@@ -6,7 +6,11 @@ export typedef Type = AutoType | BasicType | FunctionType | UnionType
 export class AutoType(Int id)
 
 # TODO: better way to make constants similar to null, true, false
-export class NoReturn()
+export class NoReturn():
+    meth equals(NoReturn other) -> Bool:
+        return true
+    meth hash() -> Int:
+        return 123
 
 export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype):
     meth equals(FunctionType other) -> Bool:
