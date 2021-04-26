@@ -1040,7 +1040,6 @@ class FileConverter(
 
             case ast::FunctionType functype:
                 let args = [foreach t of functype.argtypes: recurse(t)]
-                # TODO: is this switch repeated elsewhere?
                 switch functype.returntype:
                     case ast::Type rettype:
                         let returntype = recurse(rettype) as ir::Type | ir::NoReturn | null
