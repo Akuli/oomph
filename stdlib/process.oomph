@@ -14,3 +14,6 @@ export func program_name() -> Str:
 
 export func exit(Int status) -> noreturn:
     __exit(status)
+
+export func run_at_exit(func() callback):
+    __run_at_exit(callback)

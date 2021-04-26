@@ -1,0 +1,7 @@
+import "<stdlib>/process.oomph" as process
+
+func foo():
+    print("Running")
+
+export func main():
+    process::run_at_exit(foo)

@@ -69,10 +69,11 @@ struct String oomph_hash(struct String data, struct String algname);
 struct String oomph_io_read_file(struct String path);
 struct String oomph_slice_until_substring(struct String s, struct String sep);
 void oomph_assert(bool cond, struct String path, int64_t lineno);
-void oomph_io_delete_at_exit(struct String path);
+void oomph_io_delete(struct String path);
 void oomph_io_mkdir(struct String path);
 void oomph_io_write_file(struct String path, struct String content);
 void oomph_print(struct String str);
+void oomph_run_at_exit(void *func);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
 #define meth_Bool_hash(a) (a)   // 0 or 1

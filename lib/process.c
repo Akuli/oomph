@@ -7,7 +7,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-// TODO: this is copy/pasted from generated c code, not ideal
+// TODO: copy/pasted from generated c code, not ideal
+// ------------ copy/pasta BEGIN
 struct StringList {
 	REFCOUNT_HEADER
 	int64_t len;
@@ -15,6 +16,20 @@ struct StringList {
 	struct String smalldata[8];
 	struct String *data;
 };
+struct AtExitFunction {
+	REFCOUNT_HEADER
+	void (*func)(void *);
+	void *data;
+	struct DestroyCallback cblist[];
+};
+static void at_exit_function_dtor(void *ptr)
+{
+	struct AtExitFunction *obj = ptr;
+	for (const struct DestroyCallback *cb = obj->cblist; cb->func; cb++)
+		cb->func(cb->arg);
+	free(obj);
+}
+// ------------ copy/pasta END
 
 extern char **environ;
 
@@ -97,10 +112,31 @@ struct String oomph_argv_get(int64_t i)
 	return cstr_to_string(global_argv[i]);
 }
 
+static struct AtExitFunction *atexit_callbacks[100] = {0};
+static size_t atexit_callbacks_len = 0;
+
+void oomph_run_at_exit(void *func)
+{
+	if (atexit_callbacks_len >= sizeof(atexit_callbacks)/sizeof(atexit_callbacks[0]))
+		panic_printf("too many run_at_exit() calls");
+	atexit_callbacks[atexit_callbacks_len++] = func;
+	incref(func);
+}
+
+static void atexit_callback(void)
+{
+	for (size_t i = 0; i < atexit_callbacks_len; i++) {
+		struct AtExitFunction *f = atexit_callbacks[i];
+		f->func(f->data);
+		at_exit_function_dtor(f);
+	}
+}
+
 void oomph_main(void);
 int main(int argc, char **argv) {
 	global_argc = argc;
 	global_argv = (const char*const*)argv;
+	atexit(atexit_callback);
 	oomph_main();
 	return 0;
 }

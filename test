@@ -103,18 +103,6 @@ function check()
     fi
 }
 
-function check_files_deleted()
-{
-    if [ -e test_out/io_testing_dir/hello.txt ]; then
-        echo "Error: tests/io.oomph didn't delete hello.txt"
-        exit 1
-    fi
-    if [ -e test_out/io_testing_dir/should_be_deleted.txt ]; then
-        echo "Error: tests/delete_at_exit_error.oomph didn't delete should_be_deleted.txt"
-        exit 1
-    fi
-}
-
 function run()
 {
     if [ $(jobs | wc -l) -ge $(nproc) ]; then
@@ -153,7 +141,6 @@ function run_tests_with_given_compiler()
         fi
     done
     wait
-    check_files_deleted
 }
 
 if [ $check_pyoomph == yes ]; then
