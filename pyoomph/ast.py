@@ -16,6 +16,12 @@ class AutoType(Type):
 
 
 @dataclass(eq=False)
+class FunctionType(Type):
+    argtypes: List[Type]
+    returntype: Optional[Type]
+
+
+@dataclass(eq=False)
 class GenericType(Type):
     name: str
     args: List[Type]
@@ -219,8 +225,8 @@ class Import(ToplevelDeclaration):
 @dataclass(eq=False)
 class FuncOrMethodDef(ToplevelDeclaration):
     name: str
-    args: List[Tuple[Type, Variable]]
-    returntype: Optional[Type]
+    functype: FunctionType
+    argvars: List[Variable]
     body: List[Statement]
 
 

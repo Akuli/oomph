@@ -1,0 +1,11 @@
+import "<stdlib>/process.oomph" as process
+
+func exit() -> noreturn:
+    print("Exiting")
+    process::exit(1)
+
+func run(func() -> noreturn f) -> noreturn:
+    f()
+
+export func main():
+    run(exit)

@@ -6,7 +6,11 @@ tests/eq_error.oomph
 tests/int_eq_str_error.oomph
 tests/optional_compare_error.oomph
 
+# https://github.com/Akuli/oomph/issues/259
+tests/noreturn_callback_bug_error.oomph
+
 # Union members are not sorted properly, it causes some problems
 tests/as_widening.oomph
+tests/callback_parens.oomph
 tests/case_union.oomph
 tests/nested_union.oomph

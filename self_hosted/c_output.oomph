@@ -73,7 +73,7 @@ class FuncStructWrapper(
                     return_if_needed = ""
 
             self.file_pair.function_defs = self.file_pair.function_defs + """
-            static {self.file_pair.emit_returntype(functype.returntype)} {wrapper_name}({argdefs.join(",")})
+            static {self.file_pair.emit_returntype(functype.returntype, false)} {wrapper_name}({argdefs.join(",")})
             \{
                 {return_if_needed} {c_name}({argnames.join(",")});
             \}
@@ -160,7 +160,7 @@ class FunctionEmitter(
             case ir::LocalVariable var:
                 cblist_length = 2
                 assert(is_pointer(var.type, self.file_pair.session.builtins))  # TODO
-                let returntype = self.file_pair.emit_returntype(functype.returntype)
+                let returntype = self.file_pair.emit_returntype(functype.returntype, true)
                 assigning_code = """
                 {result_varname}->data = {self.emit_var(var)};
                 {self.incref_var(var)};
@@ -523,9 +523,12 @@ class FilePair(
                     return "meth_" + trim_leading_underscores(filevar.name)
                 return self.id + "_" + filevar.name
 
-    meth emit_returntype(ir::Type | ir::NoReturn | null returntype) -> Str:
+    meth emit_returntype(ir::Type | ir::NoReturn | null returntype, Bool its_a_callback) -> Str:
         switch returntype:
             case ir::NoReturn _:
+                if its_a_callback:
+                    # with gcc, noreturn doesn't seem to work when declaring callback functions
+                    return "void"
                 return "noreturn void"
             case null _:
                 return "void"
@@ -554,7 +557,7 @@ class FilePair(
         if arg_decl_string == "":
             arg_decl_string = "void"
 
-        let decl = "{self.emit_returntype(type.returntype)} {function_name}({arg_decl_string})"
+        let decl = "{self.emit_returntype(type.returntype, false)} {function_name}({arg_decl_string})"
         self.function_decls = self.function_decls + decl + ";\n"
         if body != null:
             self.function_defs = self.function_defs + decl + "\{" + body as not null + "\}\n"
@@ -850,7 +853,7 @@ class FilePair(
         self.struct = """
         struct class_{self.id} \{
             REFCOUNT_HEADER
-            {self.emit_returntype(functype.returntype)} (*func)({argtypes});
+            {self.emit_returntype(functype.returntype, true)} (*func)({argtypes});
             void *data;
             struct DestroyCallback cblist[];  // NULL terminated
         \};

@@ -112,7 +112,7 @@ class FunctionOrMethodConverter(
             case ast::AutoType autotype:
                 return self.create_autotype()
             case *:
-                return self.file_converter.get_type(raw_type, self)
+                return self.file_converter.get_type(raw_type, self.get_type)
 
     # TODO: something like @contextlib.contextmanager in python?
     meth push_code():
@@ -1023,21 +1023,37 @@ class FileConverter(
         (location as not null).error("no type named '{name}'")
         assert(false)   # TODO: error
 
-    # TODO: simplify how2recurse stuff
-    meth get_type(ast::Type raw_type, FunctionOrMethodConverter | null how2recurse) -> ir::Type:
+    # TODO: lambdas
+    meth get_type_default_recurser(ast::Type type) -> ir::Type:
+        return self.get_type(type, null)
+
+    meth get_type(ast::Type raw_type, (func(ast::Type) -> ir::Type) | null how2recurse) -> ir::Type:
+        if how2recurse == null:
+            let recurse = self.get_type_default_recurser
+        else:
+            recurse = how2recurse as not null
+
         switch raw_type:
             case ast::AutoType autotype:
                 # TODO: test this
                 autotype.location.error("can't use auto type here")
 
+            case ast::FunctionType functype:
+                let args = [foreach t of functype.argtypes: recurse(t)]
+                switch functype.returntype:
+                    case ast::Type rettype:
+                        let returntype = recurse(rettype) as ir::Type | ir::NoReturn | null
+                    case null _:
+                        returntype = null
+                    case ast::NoReturn _:
+                        returntype = new ir::NoReturn()
+                return new ir::FunctionType(args, returntype)
+
             case ast::NamedType named_type:
                 return self.get_named_type(named_type.name, named_type.location)
 
             case ast::UnionType union_type:
-                if how2recurse == null:
-                    let types = [foreach t of union_type.unioned: self.get_type(t, null)]
-                else:
-                    types = [foreach t of union_type.unioned: (how2recurse as not null).get_type(t)]
+                let types = [foreach t of union_type.unioned: recurse(t)]
                 return ir::make_union(self.builtins, types, ast::locate_type(union_type))
 
             case ast::GenericType generic_type:
@@ -1045,11 +1061,7 @@ class FileConverter(
                 if not generics.has_key(generic_type.name):
                     generic_type.location.error("no generic type named {generic_type.name}")
 
-                if how2recurse == null:
-                    let args = [foreach a of generic_type.args: self.get_type(a, null)]
-                else:
-                    args = [foreach a of generic_type.args: (how2recurse as not null).get_type(a)]
-
+                let args = [foreach a of generic_type.args: recurse(a)]
                 let arg_locations = new List[Location]()  # TODO: auto types not work
                 arg_locations.push_all([foreach a of generic_type.args: ast::locate_type(a)])
                 return self.builtins.generic2type(
@@ -1131,18 +1143,7 @@ class FileConverter(
                 pass
 
     meth func_or_meth_step3(ast::FuncOrMethodDef def, ir::BasicType | null classtype):
-        switch def.returntype:
-            case ast::Type type:
-                let returntype = self.get_type(type, null) as ir::Type | ir::NoReturn | null
-            case ast::NoReturn _:
-                returntype = new ir::NoReturn()
-            case null _:
-                returntype = null
-
-        let functype = new ir::FunctionType(
-            [foreach arg of def.args: self.get_type(arg.type, null)],
-            returntype
-        )
+        let functype = self.get_type(def.functype, null) as ir::FunctionType
         if classtype == null:
             # TODO: use def.export
             let func_var = new ir::FileVariable(def.name, functype)
@@ -1173,10 +1174,8 @@ class FileConverter(
 
                 foreach method_def of classdef.body:
                     let self_location = classdef.location   # a bit weird
-                    method_def.args.insert(0, new ast::TypeAndVar(
-                        new ast::NamedType(self_location, classtype.name),
-                        new ast::Variable(self_location, "self"),
-                    ))
+                    method_def.argvars.insert(0, new ast::Variable(self_location, "self"))
+                    method_def.functype.argtypes.insert(0, new ast::NamedType(self_location, classtype.name))
                     self.func_or_meth_step3(method_def, classtype)
 
             case *:
@@ -1201,10 +1200,11 @@ class FileConverter(
         let body = []
 
         let local_var_counter = 0
-        assert(def.args.length() == functype.argtypes.length())
-        for let i = 0; i < def.args.length(); i = i+1:   # TODO: zip
-            let argname = def.args.get(i).var.name
-            let arg_location = def.args.get(i).var.location
+        assert(def.functype.argtypes.length() == def.argvars.length())
+        assert(def.functype.argtypes.length() == functype.argtypes.length())
+        for let i = 0; i < def.argvars.length(); i = i+1:   # TODO: zip
+            let argname = def.argvars.get(i).name
+            let arg_location = def.argvars.get(i).location
             let type = functype.argtypes.get(i)
 
             local_var_counter = local_var_counter + 1
