@@ -938,10 +938,9 @@ class _FileConverter:
     def _func_or_meth_step3(
         self, funcdef: ast.FuncOrMethodDef, classtype: Optional[Type]
     ) -> None:
-        functype = FunctionType(
-            [self.get_type(typ) for typ, nam in funcdef.args],
-            None if funcdef.returntype is None else self.get_type(funcdef.returntype),
-        )
+        functype = self.get_type(funcdef.functype)
+        assert isinstance(functype, FunctionType)
+
         if classtype is None:
             assert funcdef.name not in self.variables, (
                 funcdef.name,
@@ -968,9 +967,8 @@ class _FileConverter:
             classtype.constructor_argtypes = list(classtype.members.values())
 
             for method_def in top_declaration.body:
-                method_def.args.insert(
-                    0, (ast.NamedType(classtype.name), ast.Variable("self"))
-                )
+                method_def.argvars.insert(0, ast.Variable("self"))
+                method_def.functype.argtypes.insert(0, ast.NamedType(classtype.name))
                 self._func_or_meth_step3(method_def, classtype)
 
     def _func_or_meth_step4(
@@ -986,7 +984,7 @@ class _FileConverter:
         local_vars = self.variables.copy()
         argvars = []
         body: List[ir.Instruction] = []
-        for (typename, ast_argvar), the_type in zip(funcdef.args, functype.argtypes):
+        for ast_argvar, the_type in zip(funcdef.argvars, functype.argtypes):
             argvar = ir.LocalVariable(the_type)
             argvars.append(argvar)
 

@@ -655,13 +655,14 @@ class Parser(List[tokenizer::Token] tokens):
         let name = self.get_token_by_type("id")
         let args = self.parse_commasep_types_and_vars_in_parens()
         let returntype = self.parse_return_type()
+        let body = self.parse_block_of_statements()
 
         return new ast::FuncOrMethodDef(
             func_or_meth_location,
             name.value,
-            args,
-            returntype,
-            self.parse_block_of_statements()
+            new ast::FunctionType(func_or_meth_location, [foreach pair of args: pair.type], returntype),
+            [foreach pair of args: pair.var],
+            body,
         )
 
     meth parse_method() -> ast::FuncOrMethodDef:

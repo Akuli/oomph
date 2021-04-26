@@ -225,8 +225,8 @@ class Import(ToplevelDeclaration):
 @dataclass(eq=False)
 class FuncOrMethodDef(ToplevelDeclaration):
     name: str
-    args: List[Tuple[Type, Variable]]
-    returntype: Optional[Type]
+    functype: FunctionType
+    argvars: List[Variable]
     body: List[Statement]
     export: bool = False  # never true for methods
 

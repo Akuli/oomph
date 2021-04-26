@@ -446,8 +446,12 @@ class _Parser:
         name = self.get_token("identifier")[1]
         args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
         returntype = self.parse_return_type()
+        body = self.parse_block_of_statements()
         return ast.FuncOrMethodDef(
-            name, args, returntype, self.parse_block_of_statements()
+            name,
+            ast.FunctionType([arg[0] for arg in args], returntype),
+            [arg[1] for arg in args],
+            body,
         )
 
     def parse_method(self) -> ast.FuncOrMethodDef:

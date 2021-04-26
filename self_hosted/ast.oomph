@@ -102,9 +102,8 @@ export class Switch(Location location, Expression union_obj, List[Case] cases)
 
 export class NoReturn(Location location)
 
-# TODO: use FunctionType here?
-export class FuncOrMethodDef(Location location, Str name, List[TypeAndVar] args, Type | NoReturn | null returntype, List[Statement] body)
 export class ClassDef(Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
+export class FuncOrMethodDef(Location location, Str name, FunctionType functype, List[Variable] argvars, List[Statement] body)
 export class Import(Location location, Str path, Str name)
 export class TypeDef(Location location, Str name, Type type)
 
