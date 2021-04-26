@@ -864,11 +864,16 @@ class _FileConverter:
         *,
         recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
     ) -> ir.Type:
+        # TODO: convert corresponding code in self-hosted to use callbacks
         if recursing_callback is None:
             recursing_callback = self.get_type
 
         if isinstance(raw_type, ast.AutoType):
             raise RuntimeError("can't use auto type here")
+        elif isinstance(raw_type, ast.FunctionType):
+            args = [recursing_callback(arg) for arg in raw_type.argtypes]
+            returntype = None if raw_type.returntype is None else recursing_callback(raw_type.returntype)
+            return ir.FunctionType(args, returntype)
         elif isinstance(raw_type, ast.NamedType):
             return self.get_named_type(raw_type.name)
         elif isinstance(raw_type, ast.UnionType):

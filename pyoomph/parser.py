@@ -388,10 +388,27 @@ class _Parser:
         self.get_token("op", "\n")
         return [result]
 
+    def parse_return_type(self) -> Optional[ast.Type]:
+        if self.token_iter.peek() != ("op", "->"):
+            return None
+
+        self.get_token("op", "->")
+        # Don't really support 'noreturn', but make sure that programs compile
+        if self.token_iter.peek() == ("keyword", "noreturn"):
+            self.get_token("keyword", "noreturn")
+            return None
+        return self.parse_type()
+
     def parse_type_without_unions(self) -> ast.Type:
         if self.token_iter.peek() == ("keyword", "auto"):
             self.get_token("keyword", "auto")
             return ast.AutoType()
+
+        if self.token_iter.peek() == ("keyword", "func"):
+            self.get_token("keyword", "func")
+            argtypes = self.parse_commasep_in_parens(self.parse_type)
+            returntype = self.parse_return_type()
+            return ast.FunctionType(argtypes, returntype)
 
         name = self.get_token("identifier")[1]
         if self.token_iter.peek() == ("op", "["):
@@ -422,18 +439,7 @@ class _Parser:
     def parse_function_or_method(self) -> ast.FuncOrMethodDef:
         name = self.get_token("identifier")[1]
         args = self.parse_commasep_in_parens(self.parse_funcdef_arg)
-
-        if self.token_iter.peek() == ("op", "->"):
-            self.get_token("op", "->")
-            # Don't really support 'noreturn', but make sure that programs compile
-            if self.token_iter.peek() == ("keyword", "noreturn"):
-                self.get_token("keyword", "noreturn")
-                returntype: Optional[ast.Type] = None
-            else:
-                returntype = self.parse_type()
-        else:
-            returntype = None
-
+        returntype = self.parse_return_type()
         return ast.FuncOrMethodDef(
             name, args, returntype, self.parse_block_of_statements()
         )

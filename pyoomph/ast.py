@@ -16,6 +16,12 @@ class AutoType(Type):
 
 
 @dataclass(eq=False)
+class FunctionType(Type):
+    argtypes: List[Type]
+    returntype: Optional[Type]
+
+
+@dataclass(eq=False)
 class GenericType(Type):
     name: str
     args: List[Type]
