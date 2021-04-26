@@ -8,5 +8,6 @@ tests/optional_compare_error.oomph
 
 # Union members are not sorted properly, it causes some problems
 tests/as_widening.oomph
+tests/callback_parens.oomph
 tests/case_union.oomph
 tests/nested_union.oomph

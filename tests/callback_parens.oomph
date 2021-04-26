@@ -1,0 +1,24 @@
+func run_callbacks(
+    func() -> Int | Str foo,    # function returning union
+    (func() -> Int) | Str bar,  # union containing function
+    Str | func() -> Int baz,    # union containing function
+):
+    print(foo())
+
+    foreach thing of [bar, baz]:
+        switch thing:
+            case Str s:
+                print("Got string: {s}")
+            case func() -> Int f:
+                print("Got function: {f()}")
+
+
+func return_union() -> Int | Str:
+    return 1234
+
+func return_int() -> Int:
+    return 5678
+
+export func main():
+    run_callbacks(return_union, return_int, return_int)
+    run_callbacks(return_union, "lol", "lol2")

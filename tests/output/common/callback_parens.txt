@@ -1,0 +1,6 @@
+1234
+Got function: 5678
+Got function: 5678
+1234
+Got string: lol
+Got string: lol2
