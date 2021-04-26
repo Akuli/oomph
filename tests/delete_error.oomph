@@ -1,7 +1,11 @@
 import "<stdlib>/io.oomph" as io
 
 export func main():
+    io::mkdir("test_out/io_testing_dir")
     let path = "test_out/io_testing_dir/yadda_yadda.txt"
     io::write_file(path, "hello")
     io::delete(path)
+
+    print("Now trying to read it")
     print(io::read_file(path))
+    print("THIS SHOULD NOT RUN")

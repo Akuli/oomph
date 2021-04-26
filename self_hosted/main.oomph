@@ -118,8 +118,8 @@ func get_compilation_dir(Str parent_dir, Str name_hint) -> Str:
         mkdir_with_parents(path)
 
         # TODO: better way to create file if not exists and know whether that was done
-        if process::run(["bash", "-c", "printf '' > '{path}/compiling'"]) == 0:
-            run_at_exit(new Deleter(path).delete);
+        if process::run(["bash", "-c", "set -C; printf '' > '{path}/compiling'"]) == 0:
+            process::run_at_exit(new Deleter(path + "/compiling").delete)
             return path
 
 func create_ast(Str source_path) -> List[ast::ToplevelDeclaration]:
