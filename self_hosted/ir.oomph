@@ -142,8 +142,16 @@ export func type_id_string(Type type) -> Str:
             return source.generik.name + [foreach arg of source.args: type_id_string(arg)].join(",")
         case UnionType union:
             return [foreach m of union.type_members: type_id_string(m)].join("|")
-        case FunctionType _:
-            assert(false)   # TODO
+        case FunctionType functype:
+            switch functype.returntype:
+                case Type returntype:
+                    let return_id = type_id_string(returntype)
+                case null _:
+                    return_id = "null"
+                case NoReturn _:
+                    return_id = "noreturn"
+            let arg_string = [foreach arg of functype.argtypes: type_id_string(arg)].join(",")
+            return "({arg_string}->{return_id})"
 
 export func get_generic_source(Type type) -> GenericSource | null:
     switch type:

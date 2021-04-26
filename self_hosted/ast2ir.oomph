@@ -614,7 +614,7 @@ class FunctionOrMethodConverter(
                     case *:
                         if ir::get_methods(obj.type, self.builtins).has_key(getattr.attribute):
                             result = self.create_var(
-                                ir::get_method(obj.type, getattr.attribute, self.builtins, getattr.attribute_location),
+                                ir::get_method(obj.type, getattr.attribute, self.builtins, getattr.attribute_location).skip_self(),
                                 location
                             )
                             self.code.push(new ir::GetMethod(obj, result, getattr.attribute))

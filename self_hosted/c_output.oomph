@@ -45,6 +45,61 @@ func create_function_emitter(FilePair file_pair) -> FunctionEmitter:
         "", "", [],
     )
 
+# Sometimes C functions need to be converted to structs that have function and
+# data. This allows passing around data with a function.
+class FuncStructWrapper(
+    FilePair file_pair,
+    Mapping[Str, Str] arg_ignoring_wrappers,
+    Mapping[ir::Type, Str] decreffers,
+):
+    # When a function wrapped in a struct is called, the first arg is the data,
+    # even if it's not used. So we need to make new functions that ignore the
+    # first argument.
+    meth wrap_function(Str c_name, ir::FunctionType functype) -> Str:
+        if not self.arg_ignoring_wrappers.has_key(c_name):
+            let wrapper_name = c_name + "_wrapper"
+            self.arg_ignoring_wrappers.set(c_name, wrapper_name)
+
+            let argnames = [for let i = 0; i < functype.argtypes.length(); i = i+1: "arg{i}"]
+            let argdefs = ["void *data"]
+            # TODO: zip
+            for let i = 0; i < argnames.length(); i = i+1:
+                argdefs.push(self.file_pair.emit_type(functype.argtypes.get(i)) + " " + argnames.get(i))
+
+            switch functype.returntype:
+                case ir::Type _:
+                    let return_if_needed = "return"
+                case ir::NoReturn | null _:
+                    return_if_needed = ""
+
+            self.file_pair.function_defs = self.file_pair.function_defs + """
+            static {self.file_pair.emit_returntype(functype.returntype)} {wrapper_name}({argdefs.join(",")})
+            \{
+                {return_if_needed} {c_name}({argnames.join(",")});
+            \}
+            """
+
+        return self.arg_ignoring_wrappers.get(c_name)
+
+    # When the function is destroyed, it doesn't know what type the data is,
+    # but instead it has a list of functions and corresponding args to run.
+    # To make that work, the compiler needs to create functions that do the
+    # decreffing.
+    meth create_decreffer(ir::Type type) -> Str:
+        if not self.decreffers.has_key(type):
+            let name = "decreffer{self.decreffers.length()}"
+            self.decreffers.set(type, name)
+
+            self.file_pair.function_defs = self.file_pair.function_defs + """
+            static void {name}(void *ptr)
+            \{
+                {self.file_pair.emit_type(type)} obj = ptr;
+                {self.file_pair.session.emit_decref("obj", type)};
+            \}
+            """
+        return self.decreffers.get(type)
+
+
 func copying_function_from_nonlocal_to_local(ir::VarCpy copy) -> Bool:
     # TODO: this sucks
     switch copy.dest.type:
@@ -96,7 +151,38 @@ class FunctionEmitter(
         Str result_varname,
         ir::LocalVariable | null data_var,
     ) -> Str:
-        assert(false)   # TODO: port from pyoomph
+        let wrapper = self.file_pair.func_struct_wrapper as not null
+        switch data_var:
+            case null _:
+                let cblist_length = 1  # NULL terminator
+                let wrapped = wrapper.wrap_function(c_funcname, functype)
+                let assigning_code = "{result_varname}->func = {wrapped};\n"
+            case ir::LocalVariable var:
+                cblist_length = 2
+                assert(is_pointer(var.type, self.file_pair.session.builtins))  # TODO
+                let returntype = self.file_pair.emit_returntype(functype.returntype)
+                assigning_code = """
+                {result_varname}->data = {self.emit_var(var)};
+                {self.incref_var(var)};
+
+                // Need to cast because first argument differs (void pointer vs non-void pointer)
+                {result_varname}->func = ({returntype}(*)()) {c_funcname};
+
+                {result_varname}->cblist[0] = (struct DestroyCallback)\{
+                    .func = {wrapper.create_decreffer(var.type)},
+                    .arg = {result_varname}->data,
+                \};
+                """
+
+        # full struct needed for sizeof
+        self.file_pair.emit_type_custom(functype, false)
+
+        return """
+        {result_varname} = calloc(1, sizeof(*{result_varname}) + {cblist_length}*sizeof({result_varname}->cblist[0]));
+        assert({result_varname});
+        // Should incref soon, no need to set nonzero refcount
+        {assigning_code}
+        """
 
     meth emit_instruction(ir::Instruction instruction) -> Str:
         switch instruction:
@@ -344,8 +430,7 @@ class FilePair(
     Str string_defs,
     Str function_decls,
     Str function_defs,
-    List[Str] wrapped_c_func_names,
-    Mapping[ir::Type, Str] decreffer_names,
+    FuncStructWrapper | null func_struct_wrapper,
     # When a FilePair is in h_includes, the corresponding h_fwd_decls are unnecessary
     List[FilePair] c_includes,
     List[FilePair] h_includes,
@@ -830,6 +915,8 @@ export class Session(
 ):
     # Gets rid of reference cycles
     meth destroy():
+        foreach file_pair of self.file_pairs.values():
+            file_pair.func_struct_wrapper = null
         self.file_pairs = new Mapping[ir::Type | Str, FilePair]()
 
     meth type_to_file_pair(ir::Type type) -> FilePair:
@@ -840,8 +927,9 @@ export class Session(
             self,
             create_id(ir::type_name(type), ir::type_id_string(type)),
             type,
-            new Mapping[Str, Str](), null, "", "", "", [], new Mapping[ir::Type, Str](), [], [], "",
+            new Mapping[Str, Str](), null, "", "", "", null, [], [], "",
         )
+        pair.func_struct_wrapper = new FuncStructWrapper(pair, new Mapping[Str, Str](), new Mapping[ir::Type, Str]())
         self.file_pairs.set(type, pair)
         pair.define_type(type)
         return pair
@@ -877,8 +965,9 @@ export class Session(
                 source_path,
             ),
             source_path,
-            new Mapping[Str, Str](), null, "", "", "", [], new Mapping[ir::Type, Str](), [], [], "",
+            new Mapping[Str, Str](), null, "", "", "", null, [], [], "",
         )
+        pair.func_struct_wrapper = new FuncStructWrapper(pair, new Mapping[Str, Str](), new Mapping[ir::Type, Str]())
         self.file_pairs.set(source_path, pair)
 
         foreach top_declaration of top_decls:

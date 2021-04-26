@@ -6,11 +6,6 @@ tests/eq_error.oomph
 tests/int_eq_str_error.oomph
 tests/optional_compare_error.oomph
 
-# Temporary skips for #246
-tests/function_var.oomph
-tests/function_wrapper_name_conflict_bug.oomph
-tests/method_as_first_class.oomph
-
 # Union members are not sorted properly, it causes some problems
 tests/as_widening.oomph
 tests/case_union.oomph
