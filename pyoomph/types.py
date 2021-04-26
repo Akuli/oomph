@@ -238,7 +238,12 @@ class FunctionType(Type):
             return_id = ""
         else:
             return_id = "->" + self.returntype.get_id_string()
-        return "(" + ",".join(arg.get_id_string() for arg in self.argtypes) + return_id + ")"
+        return (
+            "("
+            + ",".join(arg.get_id_string() for arg in self.argtypes)
+            + return_id
+            + ")"
+        )
 
     def skip_self(self) -> FunctionType:
         assert self.argtypes
