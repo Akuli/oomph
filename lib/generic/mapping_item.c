@@ -19,12 +19,12 @@ bool ITEM_METHOD(equals)(ITEM a, ITEM b)
 	return a.hash == b.hash && KEY_METHOD(equals)(a.memb_key, b.memb_key) && VALUE_METHOD(equals)(a.memb_value, b.memb_value);
 }
 
-struct class_Str ITEM_METHOD(to_string)(ITEM it)
+struct String ITEM_METHOD(to_string)(ITEM it)
 {
-	struct class_Str keystr = KEY_METHOD(to_string)(it.memb_key);
-	struct class_Str valstr = VALUE_METHOD(to_string)(it.memb_value);
+	struct String keystr = KEY_METHOD(to_string)(it.memb_key);
+	struct String valstr = VALUE_METHOD(to_string)(it.memb_value);
 
-	struct class_Str res = cstr_to_string("MappingItem(");
+	struct String res = cstr_to_string("MappingItem(");
 	oomph_string_concat_inplace(&res, keystr);
 	oomph_string_concat_inplace_cstr(&res, ": ");
 	oomph_string_concat_inplace(&res, valstr);

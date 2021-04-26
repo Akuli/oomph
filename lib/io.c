@@ -5,14 +5,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-void oomph_print(struct class_Str str)
+void oomph_print(struct String str)
 {
 	fwrite(string_data(str), 1, str.nbytes, stdout);
 	putchar('\n');
 }
 
 // I wish there was a way to pass arguments to atexit()
-static struct class_Str global_delete_list[100];
+static struct String global_delete_list[100];
 static size_t global_delete_list_len = 0;
 
 static void atexit_callback(void)
@@ -27,7 +27,7 @@ static void atexit_callback(void)
 	}
 }
 
-void oomph_io_delete_at_exit(struct class_Str path)
+void oomph_io_delete_at_exit(struct String path)
 {
 	if (global_delete_list_len == 0)
 		atexit(atexit_callback);
@@ -40,7 +40,7 @@ void oomph_io_delete_at_exit(struct class_Str path)
 	incref_Str(path);
 }
 
-void oomph_io_mkdir(struct class_Str path)
+void oomph_io_mkdir(struct String path)
 {
 	char *s = string_to_cstr(path);
 	if (mkdir(s, 0777) == -1 && errno != EEXIST)
@@ -48,7 +48,7 @@ void oomph_io_mkdir(struct class_Str path)
 	free(s);
 }
 
-struct class_Str oomph_io_read_file(struct class_Str path)
+struct String oomph_io_read_file(struct String path)
 {
 	char *pathstr = string_to_cstr(path);
 	FILE *f = fopen(pathstr, "r");
@@ -76,13 +76,13 @@ struct class_Str oomph_io_read_file(struct class_Str path)
 	if (!string_validate_utf8(buf, len))
 		panic_printf("invalid utf-8 in \"%s\"", pathstr);
 
-	struct class_Str res = data_to_string(buf, len);
+	struct String res = data_to_string(buf, len);
 	free(pathstr);
 	free(buf);
 	return res;
 }
 
-void oomph_io_write_file(struct class_Str path, struct class_Str content)
+void oomph_io_write_file(struct String path, struct String content)
 {
 	char *pathstr = string_to_cstr(path);
 	FILE *f = fopen(pathstr, "w");

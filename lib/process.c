@@ -8,19 +8,19 @@
 #include <sys/wait.h>
 
 // TODO: this is copy/pasted from generated c code, not ideal
-struct class_List_Str {
+struct StringList {
 	REFCOUNT_HEADER
 	int64_t len;
 	int64_t alloc;
-	struct class_Str smalldata[8];
-	struct class_Str *data;
+	struct String smalldata[8];
+	struct String *data;
 };
 
 extern char **environ;
 
 int64_t oomph_run_subprocess(void *args)
 {
-	struct class_List_Str *arglst = args;
+	struct StringList *arglst = args;
 	assert(arglst->len != 0);
 
 	char **argarr = malloc(sizeof(argarr[0]) * (arglst->len + 1));
@@ -52,7 +52,7 @@ noreturn void oomph_exit(int64_t status)
 	exit((int)status);
 }
 
-void oomph_assert(bool cond, struct class_Str path, int64_t lineno)
+void oomph_assert(bool cond, struct String path, int64_t lineno)
 {
 	if (!cond)
 		panic_printf("assert() failed in \"%s\", line %d", string_to_cstr(path), (int)lineno);
@@ -90,7 +90,7 @@ int64_t oomph_argv_count(void)
 	return global_argc;
 }
 
-struct class_Str oomph_argv_get(int64_t i)
+struct String oomph_argv_get(int64_t i)
 {
 	assert(global_argv != NULL);
 	assert(0 <= i && i < global_argc);
