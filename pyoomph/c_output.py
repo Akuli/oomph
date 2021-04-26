@@ -46,6 +46,56 @@ def _is_pointer(the_type: Type) -> bool:
     )
 
 
+# Sometimes C functions need to be converted to structs that have function and
+# data. This allows passing around data with a function.
+class _FuncStructWrapper:
+    def __init__(self, file_pair: "_FilePair"):
+        self._file_pair = file_pair
+        self._wrapped_c_func_names: Set[str] = set()
+        self._decreffer_names: Dict[Type, str] = {}
+
+    # When a function wrapped in a struct is called, the first arg is the data,
+    # even if it's not used. So we need to make new functions that ignore the
+    # first argument.
+    def wrap_function(self, c_name: str, functype: FunctionType) -> str:
+        if c_name not in self._wrapped_c_func_names:
+            argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
+            argdefs = ["void *data"] + [
+                self._file_pair.emit_type(argtype) + " " + name
+                for argtype, name in zip(functype.argtypes, argnames)
+            ]
+            return_if_needed = "" if functype.returntype is None else "return"
+
+            self._file_pair.function_defs += f"""
+            static {self._file_pair.emit_type(functype.returntype)}
+            {c_name}_wrapper({','.join(argdefs)})
+            {{
+                {return_if_needed} {c_name}({','.join(argnames)});
+            }}
+            """
+            self._wrapped_c_func_names.add(c_name)
+
+        return c_name + "_wrapper"
+
+    # When the function is destroyed, it doesn't know what type the data is,
+    # but instead it has a list of functions and corresponding args to run.
+    # To make that work, the compiler needs to create functions that do the
+    # decreffing.
+    def create_decreffer(self, the_type: Type) -> str:
+        if the_type not in self._decreffer_names:
+            name = f"decreffer{len(self._decreffer_names)}"
+            self._decreffer_names[the_type] = name
+
+            self._file_pair.function_defs += f"""
+            static void {name}(void *ptr)
+            {{
+                {self._file_pair.emit_type(the_type)} obj = ptr;
+                {self._file_pair.session.emit_decref('obj', the_type)};
+            }}
+            """
+        return self._decreffer_names[the_type]
+
+
 class _FunctionEmitter:
     def __init__(self, file_pair: _FilePair) -> None:
         self.file_pair = file_pair
@@ -89,54 +139,25 @@ class _FunctionEmitter:
         *,
         data_var: Optional[ir.LocalVariable] = None,
     ) -> str:
-        if c_funcname not in self.file_pair.wrapped_c_func_names:
-            argnames = [f"arg{i}" for i in range(len(functype.argtypes))]
-            argdefs = ["void *data"] + [
-                self.file_pair.emit_type(argtype) + " " + name
-                for argtype, name in zip(functype.argtypes, argnames)
-            ]
-            return_if_needed = "" if functype.returntype is None else "return"
-
-            if data_var is not None:
-                # we have meaningful data, pass it to function
-                argnames.insert(0, "data")
-
-            self.file_pair.function_defs += f"""
-            static {self.file_pair.emit_type(functype.returntype)}
-            {c_funcname}_wrapper({','.join(argdefs)})
-            {{
-                {return_if_needed} {c_funcname}({','.join(argnames)});
-            }}
-            """
-            self.file_pair.wrapped_c_func_names.add(c_funcname)
-
+        wrapper = self.file_pair.func_struct_wrapper
         if data_var is None:
             cblist_length = 1  # NULL terminator
-            data_assigning_code = ""
+            wrapped = wrapper.wrap_function(c_funcname, functype)
+            assigning_code = f"{result_varname}->func = {wrapped};\n"
         else:
             cblist_length = 2
             assert _is_pointer(data_var.type)  # TODO
-
-            try:
-                decreffer_name = self.file_pair.decreffer_names[data_var.type]
-            except KeyError:
-                decreffer_name = f"decreffer{len(self.file_pair.decreffer_names)}"
-                self.file_pair.decreffer_names[data_var.type] = decreffer_name
-
-                self.file_pair.function_defs += f"""
-                static void {decreffer_name}(void *ptr)
-                {{
-                    {self.file_pair.emit_type(data_var.type)} obj = ptr;
-                    {self.session.emit_decref('obj', data_var.type)};
-                }}
-                """
-
-            data_assigning_code = f"""
+            returntype = self.file_pair.emit_type(functype.returntype)
+            assigning_code = f"""
             {result_varname}->data = {self.emit_var(data_var)};
             {self.incref_var(data_var)};
+
+            // Need to cast because first argument differs (void pointer vs non-void pointer)
+            {result_varname}->func = ({returntype}(*)()) {c_funcname};
+
             {result_varname}->cblist[0] = (struct DestroyCallback){{
-                .func = {decreffer_name},
-                .arg = {self.emit_var(data_var)},
+                .func = {wrapper.create_decreffer(data_var.type)},
+                .arg = {result_varname}->data,
             }};
             """
 
@@ -147,8 +168,7 @@ class _FunctionEmitter:
         {result_varname} = calloc(1, sizeof(*{result_varname}) + {cblist_length}*sizeof({result_varname}->cblist[0]));
         assert({result_varname});
         // Should incref soon, no need to set nonzero refcount
-        {result_varname}->func = {c_funcname}_wrapper;
-        {data_assigning_code}
+        {assigning_code}
         """
 
     def emit_instruction(self, ins: ir.Instruction) -> str:
@@ -380,14 +400,7 @@ class _FilePair:
         self.string_defs = ""
         self.function_decls = ""
         self.function_defs = ""
-
-        # Sometimes C functions need to be converted to structs that have
-        # function and data. This allows passing around data with a function.
-        # When the function is called, it's called with the data as first arg,
-        # and to allow that, we need to make a new function that ignores its
-        # first argument. This set avoids doing it twice for the same function.
-        self.wrapped_c_func_names: Set[str] = set()
-        self.decreffer_names: Dict[Type, str] = {}
+        self.func_struct_wrapper = _FuncStructWrapper(self)
 
         # When a _FilePair is in h_includes, the corresponding h_fwd_decls are unnecessary
         self.c_includes: Set[_FilePair] = set()
