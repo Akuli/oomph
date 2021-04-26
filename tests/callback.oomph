@@ -1,0 +1,10 @@
+func run(func(Int) -> Str foo):
+    let result = foo(69)
+    print("Return value: {result}")
+
+func callback(Int input) -> Str:
+    print("Running callback: {input}")
+    return "lol"
+
+export func main():
+    run(callback)

@@ -1,0 +1,2 @@
+Running callback: 69
+Return value: lol
