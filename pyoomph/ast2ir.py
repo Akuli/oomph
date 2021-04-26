@@ -864,7 +864,6 @@ class _FileConverter:
         *,
         recursing_callback: Optional[Callable[[ast.Type], Type]] = None,
     ) -> ir.Type:
-        # TODO: convert corresponding code in self-hosted to use callbacks
         if recursing_callback is None:
             recursing_callback = self.get_type
 
