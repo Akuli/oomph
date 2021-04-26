@@ -400,6 +400,12 @@ class _Parser:
         return self.parse_type()
 
     def parse_type_without_unions(self) -> ast.Type:
+        if self.token_iter.peek() == ("op", "("):
+            self.get_token("op", "(")
+            result = self.parse_type()
+            self.get_token("op", ")")
+            return result
+
         if self.token_iter.peek() == ("keyword", "auto"):
             self.get_token("keyword", "auto")
             return ast.AutoType()
@@ -477,14 +483,7 @@ class _Parser:
             name = self.get_token("identifier")[1]
             assert "::" not in name
             self.get_token("op", "=")
-
-            parens = self.token_iter.peek() == ("op", "(")
-            if parens:
-                self.get_token("op", "(")
             the_type = self.parse_type()
-            if parens:
-                self.get_token("op", ")")
-
             self.get_token("op", "\n")
             return ast.TypeDef(name, the_type)
 

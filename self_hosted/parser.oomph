@@ -608,6 +608,12 @@ class Parser(List[tokenizer::Token] tokens):
         return self.parse_type()
 
     meth parse_type_without_unions() -> ast::Type:
+        if self.peek().matches("op", "("):
+            self.get_token("op", "(")
+            let result = self.parse_type()
+            self.get_token("op", ")")
+            return result
+
         if self.peek().matches("keyword", "auto"):
             return new ast::AutoType(self.get_token("keyword", "auto").location)
 
@@ -686,14 +692,7 @@ class Parser(List[tokenizer::Token] tokens):
             if "::" in name_token.value:
                 name_token.location.error("typedef name must not contain '::'")
             self.get_token("op", "=")
-
-            let parens = self.peek().matches("op", "(")
-            if parens:
-                self.get_token("op", "(")
             let type = self.parse_type()
-            if parens:
-                self.get_token("op", ")")
-
             self.get_token("op", "\n")
             return new ast::TypeDef(location, name_token.value, type)
 
