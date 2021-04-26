@@ -9,7 +9,13 @@ export class AutoType(Int id)
 export class NoReturn()
 
 export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype):
-    # FIXME: missing equals and hash methods
+    meth equals(FunctionType other) -> Bool:
+        return self.argtypes == other.argtypes and self.returntype == other.returntype
+
+    meth hash() -> Int:
+        # TODO: this is not ideal
+        return self.returntype.hash()
+
     meth skip_self() -> FunctionType:
         assert(self.argtypes != [])
         return new FunctionType(self.argtypes.slice(1, self.argtypes.length()), self.returntype)

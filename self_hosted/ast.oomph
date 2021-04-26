@@ -1,8 +1,9 @@
 import "location.oomph" as location
 typedef Location = location::Location
 
-export typedef Type = AutoType | GenericType | NamedType | UnionType
+export typedef Type = AutoType | FunctionType | GenericType | NamedType | UnionType
 export class AutoType(Location location)
+export class FunctionType(Location location, List[Type] argtypes, Type | NoReturn | null returntype)
 export class GenericType(Location location, Str name, List[Type] args)
 export class NamedType(Location location, Str name)
 export class UnionType(List[Type] unioned)  # always 2 or more unioned types
@@ -11,6 +12,8 @@ export func locate_type(Type type) -> Location:
     switch type:
         case AutoType autotype:
             return autotype.location
+        case FunctionType functype:
+            return functype.location
         case GenericType generic_type:
             return generic_type.location
         case NamedType named_type:
@@ -99,6 +102,7 @@ export class Switch(Location location, Expression union_obj, List[Case] cases)
 
 export class NoReturn(Location location)
 
+# TODO: use FunctionType here?
 export class FuncOrMethodDef(Location location, Str name, List[TypeAndVar] args, Type | NoReturn | null returntype, List[Statement] body)
 export class ClassDef(Location location, Str name, List[TypeAndName] members, List[FuncOrMethodDef] body)
 export class Import(Location location, Str path, Str name)

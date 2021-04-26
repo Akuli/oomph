@@ -82,6 +82,19 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("op", right)
         return result
 
+    meth parse_commasep_types_in_parens() -> List[ast::Type]:
+        self.get_token("op", "(")
+        let result = []
+        if not self.peek().matches("op", ")"):
+            result.push(self.parse_type())
+            while self.peek().matches("op", ","):
+                self.get_token("op", ",")
+                if self.peek().matches("op", ")"):
+                    break
+                result.push(self.parse_type())
+        self.get_token("op", ")")
+        return result
+
     meth parse_commasep_types_and_names_in_parens() -> List[ast::TypeAndName]:
         self.get_token("op", "(")
         let result = []
@@ -584,9 +597,25 @@ class Parser(List[tokenizer::Token] tokens):
         self.get_token("op", "\n")
         return [result]
 
+    meth parse_return_type() -> ast::Type | ast::NoReturn | null:
+        if not self.peek().matches("op", "->"):
+            return null
+
+        self.get_token("op", "->")
+        if self.peek().matches("keyword", "noreturn"):
+            let location = self.get_token("keyword", "noreturn").location
+            return new ast::NoReturn(location)
+        return self.parse_type()
+
     meth parse_type_without_unions() -> ast::Type:
         if self.peek().matches("keyword", "auto"):
             return new ast::AutoType(self.get_token("keyword", "auto").location)
+
+        if self.peek().matches("keyword", "func"):
+            let location = self.get_token("keyword", "func").location
+            let argtypes = self.parse_commasep_types_in_parens()
+            let returntype = self.parse_return_type()
+            return new ast::FunctionType(location, argtypes, returntype)
 
         let name_token = self.get_token_by_type("id")
         if self.peek().matches("op", "["):
@@ -619,17 +648,7 @@ class Parser(List[tokenizer::Token] tokens):
     meth parse_function_or_method(Location func_or_meth_location) -> ast::FuncOrMethodDef:
         let name = self.get_token_by_type("id")
         let args = self.parse_commasep_types_and_vars_in_parens()
-
-        if self.peek().matches("op", "->"):
-            self.get_token("op", "->")
-            if self.peek().matches("keyword", "noreturn"):
-                # TODO: do something special with noreturn
-                let location = self.get_token("keyword", "noreturn").location
-                let returntype = new ast::NoReturn(location) as ast::Type | ast::NoReturn | null
-            else:
-                returntype = self.parse_type()
-        else:
-            returntype = null
+        let returntype = self.parse_return_type()
 
         return new ast::FuncOrMethodDef(
             func_or_meth_location,
