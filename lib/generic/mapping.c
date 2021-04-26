@@ -149,12 +149,12 @@ int64_t MAPPING_METHOD(length)(MAPPING map)
 	return map->items->len;
 }
 
-struct class_Str MAPPING_METHOD(to_string)(MAPPING map)
+struct String MAPPING_METHOD(to_string)(MAPPING map)
 {
-	struct class_Str res = cstr_to_string("Mapping{");
+	struct String res = cstr_to_string("Mapping{");
 	for (int64_t i = 0; i < map->items->len; i++) {
-		struct class_Str keystr = KEY_METHOD(to_string)(map->items->data[i].memb_key);
-		struct class_Str valstr = VALUE_METHOD(to_string)(map->items->data[i].memb_value);
+		struct String keystr = KEY_METHOD(to_string)(map->items->data[i].memb_key);
+		struct String valstr = VALUE_METHOD(to_string)(map->items->data[i].memb_value);
 
 		if (i)
 			oomph_string_concat_inplace_cstr(&res, ", ");

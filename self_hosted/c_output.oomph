@@ -455,13 +455,13 @@ class FilePair(
         if type == self.session.builtins.BOOL:
             return "bool"
         if type == self.session.builtins.STR:
-            return "struct class_Str"  # TODO: rename the struct?
+            return "struct String"  # TODO: rename the struct?
         if type == self.session.builtins.NULL_TYPE:
             return "char"  # always zero
         assert(type not in self.session.builtins.get_builtin_types())
 
         let defining_file_pair = self.session.type_to_file_pair(type)
-        let result = "struct class_{defining_file_pair.id}"
+        let result = "struct type_{defining_file_pair.id}"
 
         if is_pointer(type, self.session.builtins):
             result = result + "*"
@@ -473,7 +473,7 @@ class FilePair(
                 self.c_includes.push(defining_file_pair)
 
             if can_fwd_declare_in_header:
-                self.h_fwd_decls = self.h_fwd_decls + "struct class_{defining_file_pair.id};\n"
+                self.h_fwd_decls = self.h_fwd_decls + "struct type_{defining_file_pair.id};\n"
             else:
                 if defining_file_pair not in self.h_includes:
                     self.h_includes.push(defining_file_pair)
@@ -583,7 +583,7 @@ class FilePair(
             .malloced = false,
             .len = {value.get_utf8().length()},
         \};
-        static struct class_Str {varname} = \{
+        static struct String {varname} = \{
             .buf = &{varname}_buf,
             .nbytes = {value.get_utf8().length()},
             .offset = 0,
@@ -621,13 +621,13 @@ class FilePair(
 
         # TODO: can decls be emitted automatically?
         self.function_decls = self.function_decls + """
-        struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj);
-        bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b);
+        struct String meth_{self.id}_to_string(struct type_{self.id} obj);
+        bool meth_{self.id}_equals(struct type_{self.id} a, struct type_{self.id} b);
         """
 
         let type_name_code = self.emit_string(ir::type_name(union))
         self.function_defs = self.function_defs + """
-        struct class_Str meth_{self.id}_to_string(struct class_{self.id} obj)
+        struct String meth_{self.id}_to_string(struct type_{self.id} obj)
         \{
             switch(obj.membernum) \{
                 {to_string_cases}
@@ -638,7 +638,7 @@ class FilePair(
             \}
         \}
 
-        bool meth_{self.id}_equals(struct class_{self.id} a, struct class_{self.id} b)
+        bool meth_{self.id}_equals(struct type_{self.id} a, struct type_{self.id} b)
         \{
             if (a.membernum != b.membernum)
                 return false;
@@ -661,18 +661,18 @@ class FilePair(
         let decref_cases = [for let i = 0; i < n; i = i+1: "case {i}: {decrefs.get(i)}; break;\n"].join("")
 
         self.function_decls = self.function_decls + """
-        void incref_{self.id}(struct class_{self.id} obj);
-        void decref_{self.id}(struct class_{self.id} obj);
+        void incref_{self.id}(struct type_{self.id} obj);
+        void decref_{self.id}(struct type_{self.id} obj);
         """
         self.function_defs = self.function_defs + """
-        void incref_{self.id}(struct class_{self.id} obj) \{
+        void incref_{self.id}(struct type_{self.id} obj) \{
             switch(obj.membernum) \{
                 {incref_cases}
                 default:
                     assert(0);
             \}
         \}
-        void decref_{self.id}(struct class_{self.id} obj) \{
+        void decref_{self.id}(struct type_{self.id} obj) \{
             switch(obj.membernum) \{
                 case -1:   // variable not in use (see UnSet)
                     break;
@@ -685,10 +685,10 @@ class FilePair(
 
         if ir::get_methods(union, self.session.builtins).has_key("hash"):
             self.function_decls = self.function_decls + """
-            int64_t meth_{self.id}_hash(struct class_{self.id} obj);
+            int64_t meth_{self.id}_hash(struct type_{self.id} obj);
             """
             self.function_defs = self.function_defs + """
-            int64_t meth_{self.id}_hash(struct class_{self.id} obj) \{
+            int64_t meth_{self.id}_hash(struct type_{self.id} obj) \{
                 switch(obj.membernum) \{
                     {hash_cases}
                     default:
@@ -700,7 +700,7 @@ class FilePair(
         let union_members = [for let i = 0; i < n; i = i+1: "{self.emit_type(union.type_members.get(i))} item{i};\n"].join("")
         assert(self.struct == null)
         self.struct = """
-        struct class_{self.id} \{
+        struct type_{self.id} \{
             union \{
                 {union_members}
             \} val;
@@ -745,7 +745,7 @@ class FilePair(
         foreach item of macrotypes.items():
             let cname = self.session.get_type_c_name(item.value)
             macros.set(item.key, self.emit_type_custom(item.value, false))
-            macros.set("{item.key}_STRUCT", "class_{cname}")
+            macros.set("{item.key}_STRUCT", "type_{cname}")
             macros.set("{item.key}_CTOR", "ctor_{cname}")
             macros.set("{item.key}_DTOR", "dtor_{cname}")
             macros.set("{item.key}_METHOD(name)", "meth_{cname}_##name")
@@ -784,7 +784,7 @@ class FilePair(
 
         assert(self.struct == null)
         self.struct = """
-        struct class_{self.id} \{
+        struct type_{self.id} \{
             REFCOUNT_HEADER
             {struct_members}
         \};
@@ -806,7 +806,7 @@ class FilePair(
 
         void dtor_{self.id}(void *ptr)
         \{
-            struct class_{self.id} *obj = ptr;
+            struct type_{self.id} *obj = ptr;
             {member_decrefs}
             free(obj);
         \}
@@ -815,7 +815,7 @@ class FilePair(
         foreach name of type.methods_to_create:
             if name == "to_string":
                 self.function_decls = self.function_decls + """
-                struct class_Str meth_{self.id}_to_string({self.emit_type(type)} obj);
+                struct String meth_{self.id}_to_string({self.emit_type(type)} obj);
                 """
                 let concats = [
                     foreach item of type.members.items():
@@ -826,10 +826,10 @@ class FilePair(
                         """
                 ].join("oomph_string_concat_inplace_cstr(&res, \", \");")
                 self.function_defs = self.function_defs + """
-                struct class_Str meth_{self.id}_to_string({self.emit_type(type)} self)
+                struct String meth_{self.id}_to_string({self.emit_type(type)} self)
                 \{
-                    struct class_Str res = {self.emit_string(type.name)};
-                    struct class_Str tmp;
+                    struct String res = {self.emit_string(type.name)};
+                    struct String tmp;
                     oomph_string_concat_inplace_cstr(&res, "(");
                     {concats}
                     oomph_string_concat_inplace_cstr(&res, ")");
@@ -849,9 +849,9 @@ class FilePair(
     meth define_functype(ir::FunctionType functype):
         assert(self.struct == null)
         let argtypes = concat_lists(["void *"], [foreach t of functype.argtypes: self.emit_type(t)]).join(",")
-        # TODO: make it not named class_Foo, it's not a class
+        # TODO: make it not named type_Foo, it's not a class
         self.struct = """
-        struct class_{self.id} \{
+        struct type_{self.id} \{
             REFCOUNT_HEADER
             {self.emit_returntype(functype.returntype, true)} (*func)({argtypes});
             void *data;
@@ -862,22 +862,22 @@ class FilePair(
         # TODO: hash method?
         self.function_decls = self.function_decls + """
         void dtor_{self.id}(void *ptr);
-        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj);
-        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b);
+        struct String meth_{self.id}_to_string(const struct type_{self.id} *obj);
+        bool meth_{self.id}_equals(const struct type_{self.id} *a, const struct type_{self.id} *b);
         """
         self.function_defs = self.function_defs + """
         void dtor_{self.id}(void *ptr)
         \{
-            struct class_{self.id} *obj = ptr;
+            struct type_{self.id} *obj = ptr;
             for (const struct DestroyCallback *cb = obj->cblist; cb->func; cb++)
                 cb->func(cb->arg);
             free(obj);
         \}
-        struct class_Str meth_{self.id}_to_string(const struct class_{self.id} *obj)
+        struct String meth_{self.id}_to_string(const struct type_{self.id} *obj)
         \{
             return cstr_to_string("<function>");  // TODO
         \}
-        bool meth_{self.id}_equals(const struct class_{self.id} *a, const struct class_{self.id} *b)
+        bool meth_{self.id}_equals(const struct type_{self.id} *a, const struct type_{self.id} *b)
         \{
             return (a == b);   // TODO
         \}
