@@ -1,0 +1,5 @@
+func foo() -> noreturn:
+    pass
+
+export func main():
+    foo()

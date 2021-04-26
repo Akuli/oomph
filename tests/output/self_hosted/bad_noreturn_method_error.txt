@@ -1,0 +1,2 @@
+tests/.oomph-cache/.../bad_noreturn_method_error: noreturn was used, but Foo.bar() still returned
+Program exited with status 1
