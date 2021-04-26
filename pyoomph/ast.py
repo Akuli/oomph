@@ -222,7 +222,6 @@ class FuncOrMethodDef(ToplevelDeclaration):
     args: List[Tuple[Type, Variable]]
     returntype: Optional[Type]
     body: List[Statement]
-    export: bool = False  # never true for methods
 
 
 @dataclass(eq=False)
@@ -230,7 +229,6 @@ class ClassDef(ToplevelDeclaration):
     name: str
     members: List[Tuple[Type, str]]
     body: List[FuncOrMethodDef]
-    export: bool
 
 
 @dataclass(eq=False)

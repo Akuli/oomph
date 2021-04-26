@@ -939,7 +939,6 @@ class _FileConverter:
                 self.variables.keys(),
             )
 
-            # TODO: use funcdef.export
             func_var = ir.FileVariable(funcdef.name, functype, self.path)
             self.symbols.append(ir.Symbol(self.path, funcdef.name, func_var))
             self.add_var(func_var, funcdef.name)
@@ -999,7 +998,6 @@ class _FileConverter:
             assert isinstance(funcvar, ir.FileVariable)
             return ir.FuncDef(funcvar, argvars, body)
         else:
-            assert not funcdef.export
             return ir.MethodDef(funcdef.name, functype, argvars, body)
 
     def do_step4(
