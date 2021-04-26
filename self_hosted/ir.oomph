@@ -143,9 +143,7 @@ export func type_name(Type type) -> Str:
                     return "func({arg_string}) -> {type_name(returntype)}"
         case UnionType union:
             if union.custom_name == null:
-                return "(" + [
-                    foreach t of union.type_members: type_name(t)
-                ].join(" | ") + ")"
+                return [foreach t of union.type_members: type_name(t)].join(" | ")
             return union.custom_name as not null
 
 export func type_id_string(Type type) -> Str:

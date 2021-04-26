@@ -1,4 +1,4 @@
-tests/as_not_no_member_error.oomph:3: error: left side of 'as not' has union type '(Str | null)', which doesn't have member 'Int'
+tests/as_not_no_member_error.oomph:3: error: left side of 'as not' has union type 'Str | null', which doesn't have member 'Int'
 
     print(foo as not Int)
           ^^^
