@@ -443,16 +443,13 @@ class _Parser:
         return self.parse_function_or_method()
 
     def parse_toplevel(self) -> ast.ToplevelDeclaration:
+        # Always export, leave error reporting to self-hosted
         if self.token_iter.peek() == ("keyword", "export"):
             self.get_token("keyword", "export")
-            export = True
-        else:
-            export = False
 
         if self.token_iter.peek() == ("keyword", "func"):
             self.get_token("keyword", "func")
             result = self.parse_function_or_method()
-            result.export = export
             return result
 
         if self.token_iter.peek() == ("keyword", "class"):
@@ -464,7 +461,7 @@ class _Parser:
             else:
                 body = []
                 self.get_token("op", "\n")
-            return ast.ClassDef(name, args, body, export)
+            return ast.ClassDef(name, args, body)
 
         if self.token_iter.peek() == ("keyword", "typedef"):
             self.get_token("keyword", "typedef")
