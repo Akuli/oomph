@@ -3,7 +3,7 @@
 #include <openssl/evp.h>
 
 // TODO: accept arbitrary binary data instead of utf-8 strings
-struct class_Str oomph_hash(struct class_Str data, struct class_Str algname)
+struct String oomph_hash(struct String data, struct String algname)
 {
 	char *algnamestr = string_to_cstr(algname);
 	const EVP_MD *alg = EVP_get_digestbyname(algnamestr);

@@ -1,5 +1,5 @@
 #if ITEM_IS_STRING
-struct class_Str LIST_METHOD(join)(LIST self, struct class_Str sep)
+struct String LIST_METHOD(join)(LIST self, struct String sep)
 {
 	return meth_List_Str_join(self, sep);   // Implemented in oomph
 }
@@ -268,15 +268,15 @@ int64_t LIST_METHOD(length)(LIST self)
 }
 
 // TODO: rewrite better in the language itself?
-struct class_Str LIST_METHOD(to_string)(LIST self)
+struct String LIST_METHOD(to_string)(LIST self)
 {
-	struct class_Str res = cstr_to_string("[");
+	struct String res = cstr_to_string("[");
 
 	for (int64_t i = 0; i < self->len; i++) {
 		if (i != 0)
 			oomph_string_concat_inplace_cstr(&res, ", ");
 
-		struct class_Str s = ITEM_METHOD(to_string)(self->data[i]);
+		struct String s = ITEM_METHOD(to_string)(self->data[i]);
 		oomph_string_concat_inplace(&res, s);
 		decref_Str(s);
 	}

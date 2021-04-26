@@ -27,26 +27,26 @@ struct StringBuf {
 	char flex[];    // allows allocating StringBuf and data at once, not used otherwise
 };
 
-struct class_Str {
+struct String {
 	// don't try to change the buf of a string after creating string, is difficult
 	struct StringBuf *buf;
 	size_t nbytes;
 	size_t offset;
 };
 
-const char *string_data(struct class_Str s);
+const char *string_data(struct String s);
 void string_buf_destructor(void *ptr);
 #define incref_Str(s) incref((s).buf)
 #define decref_Str(s) decref((s).buf, string_buf_destructor)
 
 bool string_validate_utf8(const char *data, size_t len);
-struct class_Str data_to_string(const char *data, size_t len);
+struct String data_to_string(const char *data, size_t len);
 
-struct class_Str cstr_to_string(const char *s);
-char *string_to_cstr(struct class_Str s);
+struct String cstr_to_string(const char *s);
+char *string_to_cstr(struct String s);
 
-void oomph_string_concat_inplace(struct class_Str *res, struct class_Str suf);
-void oomph_string_concat_inplace_cstr(struct class_Str *res, const char *suf);
+void oomph_string_concat_inplace(struct String *res, struct String suf);
+void oomph_string_concat_inplace_cstr(struct String *res, const char *suf);
 
 // panic_printf_errno includes value of errno when nonzero
 noreturn void panic_printf_errno(const char *fmt, ...);
@@ -54,25 +54,25 @@ noreturn void panic_printf_errno(const char *fmt, ...);
 
 // Currently it's not easy to return a list of strings from C function
 int64_t oomph_argv_count(void);
-struct class_Str oomph_argv_get(int64_t i);
+struct String oomph_argv_get(int64_t i);
 
-bool meth_Str_ends_with(struct class_Str s, struct class_Str suf);
-bool meth_Str_starts_with(struct class_Str s, struct class_Str pre);
-int64_t oomph_get_utf8_byte(struct class_Str s, int64_t i);
+bool meth_Str_ends_with(struct String s, struct String suf);
+bool meth_Str_starts_with(struct String s, struct String pre);
+int64_t oomph_get_utf8_byte(struct String s, int64_t i);
 int64_t oomph_run_subprocess(void *args);
-int64_t oomph_utf8_len(struct class_Str s);
+int64_t oomph_utf8_len(struct String s);
 noreturn void oomph_exit(int64_t status);
-struct class_Str meth_Str_remove_prefix(struct class_Str s, struct class_Str pre);
-struct class_Str meth_Str_remove_suffix(struct class_Str s, struct class_Str suf);
-struct class_Str oomph_get_first_char(struct class_Str s);
-struct class_Str oomph_hash(struct class_Str data, struct class_Str algname);
-struct class_Str oomph_io_read_file(struct class_Str path);
-struct class_Str oomph_slice_until_substring(struct class_Str s, struct class_Str sep);
-void oomph_assert(bool cond, struct class_Str path, int64_t lineno);
-void oomph_io_delete(struct class_Str path);
-void oomph_io_mkdir(struct class_Str path);
-void oomph_io_write_file(struct class_Str path, struct class_Str content);
-void oomph_print(struct class_Str str);
+struct String meth_Str_remove_prefix(struct String s, struct String pre);
+struct String meth_Str_remove_suffix(struct String s, struct String suf);
+struct String oomph_get_first_char(struct String s);
+struct String oomph_hash(struct String data, struct String algname);
+struct String oomph_io_read_file(struct String path);
+struct String oomph_slice_until_substring(struct String s, struct String sep);
+void oomph_assert(bool cond, struct String path, int64_t lineno);
+void oomph_io_delete(struct String path);
+void oomph_io_mkdir(struct String path);
+void oomph_io_write_file(struct String path, struct String content);
+void oomph_print(struct String str);
 void oomph_run_at_exit(void *func);
 
 #define meth_Bool_equals(a, b) ((a)==(b))
@@ -83,18 +83,18 @@ void oomph_run_at_exit(void *func);
 #define meth_null_equals(a, b) true
 #define meth_null_hash(n) 69
 #define meth_null_to_string(n) cstr_to_string("null")
-bool meth_Str_equals(struct class_Str a, struct class_Str b);
-double meth_Str_to_float(struct class_Str s);
+bool meth_Str_equals(struct String a, struct String b);
+double meth_Str_to_float(struct String s);
 int64_t meth_Float_ceil(double d);
 int64_t meth_Float_floor(double d);
 int64_t meth_Float_round(double d);
 int64_t meth_Float_truncate(double d);
-int64_t meth_Str_hash(struct class_Str s);
-int64_t meth_Str_length(struct class_Str s);
-int64_t meth_Str_to_int(struct class_Str s);
-struct class_Str meth_Float_to_string(double d);
-struct class_Str meth_Int_to_string(int64_t n);
-struct class_Str meth_Str_to_string(struct class_Str s);
+int64_t meth_Str_hash(struct String s);
+int64_t meth_Str_length(struct String s);
+int64_t meth_Str_to_int(struct String s);
+struct String meth_Float_to_string(double d);
+struct String meth_Int_to_string(int64_t n);
+struct String meth_Str_to_string(struct String s);
 
 /*
 Can't be macros because of assumptions that compiler makes:
@@ -120,7 +120,7 @@ void decref(void *ptr, void (*destructor)(void *ptr));
 #define oomph_int_sub(a, b) ((a)-(b))
 double oomph_float_mod(double a, double b);
 int64_t oomph_int_mod(int64_t a, int64_t b);
-struct class_Str oomph_string_concat(struct class_Str str1, struct class_Str str2);
+struct String oomph_string_concat(struct String str1, struct String str2);
 
 #define oomph_false false
 #define oomph_null 0
