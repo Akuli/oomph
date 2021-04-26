@@ -12,6 +12,12 @@
 
 #define REFCOUNT_HEADER int64_t refcount;
 
+// Used to decref objects with possibly different types
+struct DestroyCallback {
+	void (*func)(void *arg);
+	void *arg;
+};
+
 // Can be shared by multiple string for efficient substrings
 struct StringBuf {
 	REFCOUNT_HEADER

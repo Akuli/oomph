@@ -8,8 +8,11 @@ export class AutoType(Int id)
 # TODO: better way to make constants similar to null, true, false
 export class NoReturn()
 
-# FIXME: missing equals and hash methods
-export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype)
+export class FunctionType(List[Type] argtypes, Type | null | NoReturn returntype):
+    # FIXME: missing equals and hash methods
+    meth skip_self() -> FunctionType:
+        assert(self.argtypes != [])
+        return new FunctionType(self.argtypes.slice(1, self.argtypes.length()), self.returntype)
 
 export class Generic(Str name)
 export class GenericSource(Generic generik, List[Type] args):
@@ -100,9 +103,7 @@ export func is_refcounted(Type type) -> Bool:
             assert(false)
         case BasicType basictype:
             return basictype.refcounted
-        case FunctionType _:
-            return false
-        case UnionType _:
+        case FunctionType | UnionType _:
             return true
 
 
@@ -141,8 +142,16 @@ export func type_id_string(Type type) -> Str:
             return source.generik.name + [foreach arg of source.args: type_id_string(arg)].join(",")
         case UnionType union:
             return [foreach m of union.type_members: type_id_string(m)].join("|")
-        case FunctionType _:
-            assert(false)   # TODO
+        case FunctionType functype:
+            switch functype.returntype:
+                case Type returntype:
+                    let return_id = type_id_string(returntype)
+                case null _:
+                    return_id = "null"
+                case NoReturn _:
+                    return_id = "noreturn"
+            let arg_string = [foreach arg of functype.argtypes: type_id_string(arg)].join(",")
+            return "({arg_string}->{return_id})"
 
 export func get_generic_source(Type type) -> GenericSource | null:
     switch type:
@@ -476,6 +485,7 @@ export typedef Instruction = (
     | FunctionCall
     | GetAttribute
     | GetFromUnion
+    | GetMethod
     | GotoIf
     | GotoLabel
     | IncRef
@@ -496,8 +506,9 @@ export class FloatConstant(Str value, LocalVariable var)
 export class FunctionCall(Variable function, List[LocalVariable] args, LocalVariable | null result)
 export class GetAttribute(LocalVariable obj, LocalVariable attribute_var, Str attribute)
 export class GetFromUnion(LocalVariable result, LocalVariable union_var)
-export class GotoLabel(Int id)
+export class GetMethod(LocalVariable obj, LocalVariable method_var, Str method)
 export class GotoIf(GotoLabel label, LocalVariable cond)
+export class GotoLabel(Int id)
 export class IncRef(LocalVariable var)
 export class InstantiateUnion(LocalVariable result, LocalVariable value)
 export class IntConstant(Int value, LocalVariable var)

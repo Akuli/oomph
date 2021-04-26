@@ -218,7 +218,7 @@ class FunctionType(Type):
     returntype: Optional[Type]
 
     def __init__(self, argtypes: List[Type], returntype: Optional[Type]):
-        super().__init__("<function>", False)
+        super().__init__("<function>", True)
         self.argtypes = argtypes
         self.returntype = returntype
 
@@ -232,6 +232,22 @@ class FunctionType(Type):
 
     def __hash__(self) -> int:
         return hash(tuple(self.argtypes)) ^ hash(self.returntype)
+
+    def get_id_string(self) -> str:
+        if self.returntype is None:
+            return_id = ""
+        else:
+            return_id = "->" + self.returntype.get_id_string()
+        return (
+            "("
+            + ",".join(arg.get_id_string() for arg in self.argtypes)
+            + return_id
+            + ")"
+        )
+
+    def skip_self(self) -> FunctionType:
+        assert self.argtypes
+        return FunctionType(self.argtypes[1:], self.returntype)
 
 
 BOOL = Type("Bool", False)

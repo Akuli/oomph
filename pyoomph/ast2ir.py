@@ -287,8 +287,7 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(call.func, ast.Variable):
             func = self.variables[call.func.name]
-            assert not isinstance(func, ir.LocalVariable)
-            assert isinstance(func.type, ir.FunctionType)
+            assert isinstance(func.type, ir.FunctionType), func.type
             result_type = func.type.returntype
             if result_type is None:
                 result_var = None
@@ -559,9 +558,16 @@ class _FunctionOrMethodConverter:
             obj.type = self._substitute_autotypes(obj.type)
             if isinstance(obj.type, AutoType):
                 result = self.create_var(AutoType())
+                self.code.append(ir.GetAttribute(obj, result, expr.attribute))
             else:
-                result = self.create_var(obj.type.members[expr.attribute])
-            self.code.append(ir.GetAttribute(obj, result, expr.attribute))
+                try:
+                    result = self.create_var(obj.type.members[expr.attribute])
+                    self.code.append(ir.GetAttribute(obj, result, expr.attribute))
+                except KeyError:
+                    result = self.create_var(
+                        obj.type.methods[expr.attribute].skip_self()
+                    )
+                    self.code.append(ir.GetMethod(obj, result, expr.attribute))
             self.code.append(ir.IncRef(result))
             return result
 
@@ -676,7 +682,7 @@ class _FunctionOrMethodConverter:
 
         elif isinstance(stmt, ast.Switch):
             union_var = self.do_expression(stmt.union_obj)
-            assert isinstance(union_var.type, UnionType)
+            assert isinstance(union_var.type, UnionType), union_var.type
             types_to_do = set(union_var.type.type_members)
 
             done_label = ir.GotoLabel()
@@ -770,6 +776,19 @@ class _FunctionOrMethodConverter:
                 else:
                     self._get_rid_of_auto_in_var(ins.attribute_var)
 
+            elif isinstance(ins, ir.GetMethod):
+                self._get_rid_of_auto_in_var(ins.obj)
+                if isinstance(ins.method_var.type, AutoType):
+                    # TODO: make this work
+                    #
+                    #   let foo = something_with_auto_type
+                    #   let lol = foo.lol
+                    #   lol()
+                    #   foo = Foo()  # no longer auto type
+                    raise NotImplementedError
+                else:
+                    self._get_rid_of_auto_in_var(ins.method_var)
+
         for ins in self.code:
             if isinstance(
                 ins,
@@ -783,7 +802,7 @@ class _FunctionOrMethodConverter:
                 ),
             ):
                 self._get_rid_of_auto_in_var(ins.var)
-            elif isinstance(ins, ir.CallMethod):
+            elif isinstance(ins, (ir.CallMethod, ir.GetMethod)):
                 pass  # done separately above
             elif isinstance(ins, (ir.CallConstructor, ir.CallFunction)):
                 if ins.result is not None:
