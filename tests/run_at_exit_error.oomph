@@ -4,5 +4,5 @@ func foo():
     print("Running")
 
 export func main():
-    run_at_exit(foo)
+    process::run_at_exit(foo)
     process::exit(1)

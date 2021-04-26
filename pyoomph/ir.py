@@ -50,6 +50,7 @@ Variable = Union[LocalVariable, FileVariable, BuiltinVariable]
 visible_builtins = {
     var.name: var
     for var in [
+        # fmt: off
         BuiltinVariable("__argv_count", FunctionType([], INT)),
         BuiltinVariable("__argv_get", FunctionType([INT], STRING)),
         BuiltinVariable("__exit", FunctionType([INT], None)),
@@ -62,19 +63,16 @@ visible_builtins = {
         BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
         BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
-        BuiltinVariable(
-            "__run_subprocess", FunctionType([LIST.get_type([STRING])], INT)
-        ),
-        BuiltinVariable(
-            "__slice_until_substring", FunctionType([STRING, STRING], STRING)
-        ),
+        BuiltinVariable("__run_at_exit", FunctionType([FunctionType([], None)], None)),
+        BuiltinVariable("__run_subprocess", FunctionType([LIST.get_type([STRING])], INT)),
+        BuiltinVariable("__slice_until_substring", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__utf8_len", FunctionType([STRING], INT)),
         BuiltinVariable("assert", FunctionType([BOOL, STRING, INT], None)),
         BuiltinVariable("false", BOOL),
         BuiltinVariable("null", NULL_TYPE),
         BuiltinVariable("print", FunctionType([STRING], None)),
-        BuiltinVariable("run_at_exit", FunctionType([FunctionType([], None)], None)),  # TODO: process.oomph
         BuiltinVariable("true", BOOL),
+        # fmt: on
     ]
 }
 
