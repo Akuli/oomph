@@ -133,7 +133,14 @@ export func type_name(Type type) -> Str:
         case BasicType basic:
             return basic.name
         case FunctionType functype:
-            return "<function type>"  # TODO
+            let arg_string = [foreach t of functype.argtypes: type_name(t)].join(", ")
+            switch functype.returntype:
+                case NoReturn _:
+                    return "func({arg_string}) -> noreturn"
+                case null _:
+                    return "func({arg_string})"
+                case Type returntype:
+                    return "func({arg_string}) -> {type_name(returntype)}"
         case UnionType union:
             if union.custom_name == null:
                 return "(" + [
