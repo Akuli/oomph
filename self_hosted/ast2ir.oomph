@@ -283,7 +283,7 @@ class FunctionOrMethodConverter(
         let result = self.implicit_conversion_if_possible(var, type)
         if result == null:
             var.location.error(
-                "wrong type: should be {ir::type_name(type)}, but it's {ir::type_name(var.type)}"
+                "wrong type: should be '{ir::type_name(type)}', but it's '{ir::type_name(var.type)}'"
             )
         return result as not null
 
@@ -655,12 +655,12 @@ class FunctionOrMethodConverter(
 
                         case *:
                             value.location.error(
-                                "left side of 'as not' must have union type, not {ir::type_name(value.type)}"
+                                "left side of 'as not' must have union type, not '{ir::type_name(value.type)}'"
                             )
 
                 elif value.type == target_type:
                     ass.location.error(
-                        "unnecessary 'as' conversion from {ir::type_name(value.type)} to {ir::type_name(target_type)}"
+                        "unnecessary 'as' conversion from '{ir::type_name(value.type)}' to '{ir::type_name(target_type)}'"
                     )
 
                 return self.union_conversion(value, target_type)
@@ -826,13 +826,13 @@ class FunctionOrMethodConverter(
                                 types_to_do.delete_only(t)
                             else:
                                 if t in union_type.type_members:
-                                    let message = "switch has multiple cases for {ir::type_name(t)}"
+                                    let message = "switch has multiple cases for '{ir::type_name(t)}'"
                                 else:
-                                    message = "{ir::type_name(union_type)} does not include {ir::type_name(t)}"
+                                    message = "{ir::type_name(union_type)} does not include '{ir::type_name(t)}'"
 
                                 switch case_type:
                                     case ir::UnionType _:
-                                        message = message + ", which is a member of {ir::type_name(case_type)}"
+                                        message = message + ", which is a member of '{ir::type_name(case_type)}'"
                                     case *:
                                         pass
                                 chase.location.error(message)

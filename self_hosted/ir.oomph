@@ -133,12 +133,25 @@ export func type_name(Type type) -> Str:
         case BasicType basic:
             return basic.name
         case FunctionType functype:
-            return "<function type>"  # TODO
+            let arg_string = [foreach t of functype.argtypes: type_name(t)].join(", ")
+            switch functype.returntype:
+                case NoReturn _:
+                    return "func({arg_string}) -> noreturn"
+                case null _:
+                    return "func({arg_string})"
+                case Type returntype:
+                    return "func({arg_string}) -> {type_name(returntype)}"
         case UnionType union:
             if union.custom_name == null:
-                return "(" + [
-                    foreach t of union.type_members: type_name(t)
-                ].join(" | ") + ")"
+                let parts = []
+                foreach member of union.type_members:
+                    # Parenthesize function types, e.g. (func() -> Int) | (func() -> Str)
+                    switch member:
+                        case FunctionType functype:
+                            parts.push("(" + type_name(functype) + ")")
+                        case *:
+                            parts.push(type_name(member))
+                return parts.join(" | ")
             return union.custom_name as not null
 
 export func type_id_string(Type type) -> Str:
@@ -472,7 +485,7 @@ export func get_method(Type type, Str name, Builtins builtins, Location | null l
     let methods = get_methods(type, builtins)
     if methods.has_key(name):
         return methods.get(name)
-    (location as not null).error("type {type_name(type)} has no method named {name}")
+    (location as not null).error("type '{type_name(type)}' has no method named '{name}'")
 
 export func get_member(Type type, Str name, Location | null location) -> Type:
     switch type:
@@ -485,7 +498,7 @@ export func get_member(Type type, Str name, Location | null location) -> Type:
 
     if members.has_key(name):
         return members.get(name)
-    (location as not null).error("type {type_name(type)} has no member named {name}")
+    (location as not null).error("type '{type_name(type)}' has no member named '{name}'")
 
 
 export typedef Instruction = (

@@ -1,0 +1,5 @@
+tests/functype_error.oomph:8: error: wrong type: should be 'func() -> Str', but it's 'func()'
+
+    run_function(bad_callback)
+                 ^^^^^^^^^^^^
+

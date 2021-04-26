@@ -1,4 +1,4 @@
-tests/not_hashable_error.oomph:8: error: type Foo has no method named hash
+tests/not_hashable_error.oomph:8: error: type 'Foo' has no method named 'hash'
 
     print(new Foo().hash())
                    ^^^^^

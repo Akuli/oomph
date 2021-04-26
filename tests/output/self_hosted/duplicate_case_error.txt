@@ -1,4 +1,4 @@
-tests/duplicate_case_error.oomph:5: error: switch has multiple cases for Str
+tests/duplicate_case_error.oomph:5: error: switch has multiple cases for 'Str'
 
     case Str _:
     ^^^^

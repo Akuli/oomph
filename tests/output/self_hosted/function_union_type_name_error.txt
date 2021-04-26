@@ -1,0 +1,5 @@
+tests/function_union_type_name_error.oomph:3: error: type '(func() -> Int) | (func() -> Str)' has no method named 'lolwat'
+
+    callback.lolwat()
+            ^^^^^^^
+

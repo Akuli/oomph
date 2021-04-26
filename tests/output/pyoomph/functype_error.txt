@@ -1,0 +1,2 @@
+pyoomph.ast2ir.ConversionError: can't implicitly convert from <function> to <function>
+
