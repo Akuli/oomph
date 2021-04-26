@@ -1,0 +1,8 @@
+import "<stdlib>/process.oomph" as process
+
+func foo():
+    pass
+
+export func main():
+    for let i = 0; i < 1000; i = i+1:
+        process::run_at_exit(foo)

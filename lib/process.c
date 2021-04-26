@@ -118,7 +118,7 @@ static size_t atexit_callbacks_len = 0;
 void oomph_run_at_exit(void *func)
 {
 	if (atexit_callbacks_len >= sizeof(atexit_callbacks)/sizeof(atexit_callbacks[0]))
-		panic_printf("too many run_at_exit() callbacks");
+		panic_printf("too many run_at_exit() calls");
 	atexit_callbacks[atexit_callbacks_len++] = func;
 	incref(func);
 }
