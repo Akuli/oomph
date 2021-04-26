@@ -363,10 +363,12 @@ class FunctionEmitter(
                 let argvars = fdef.argvars
                 let functype = fdef.var.type as ir::FunctionType
                 let body = fdef.body
+                let function_name = fdef.var.name
             case ir::MethodDef mdef:
                 argvars = mdef.argvars
                 functype = mdef.type
                 body = mdef.body
+                function_name = ir::type_name(mdef.type.argtypes.first()) + "." + mdef.name
 
         foreach var of argvars:
             self.add_local_var(var, false)
@@ -384,7 +386,12 @@ class FunctionEmitter(
                 {self.file_pair.emit_type(type)} retval;
                 """
                 self.after_body = self.after_body + "return retval;\n"
-            case *:
+            case ir::NoReturn _:
+                let name_string = self.file_pair.emit_string(function_name)
+                self.after_body = self.after_body + """
+                panic_printf("noreturn was used, but %s() still returned", string_to_cstr({name_string}));
+                """
+            case null _:
                 pass
 
         # TODO: couldn't get list comprehension to work

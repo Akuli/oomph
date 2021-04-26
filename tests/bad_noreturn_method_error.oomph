@@ -1,0 +1,6 @@
+class Foo():
+    meth bar() -> noreturn:
+        pass
+
+export func main():
+    new Foo().bar()
