@@ -8,7 +8,7 @@
 #include <sys/wait.h>
 
 // TODO: this is copy/pasted from generated c code, not ideal
-struct type_List_Str {
+struct StringList {
 	REFCOUNT_HEADER
 	int64_t len;
 	int64_t alloc;
@@ -20,7 +20,7 @@ extern char **environ;
 
 int64_t oomph_run_subprocess(void *args)
 {
-	struct type_List_Str *arglst = args;
+	struct StringList *arglst = args;
 	assert(arglst->len != 0);
 
 	char **argarr = malloc(sizeof(argarr[0]) * (arglst->len + 1));
