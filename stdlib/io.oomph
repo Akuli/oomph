@@ -4,6 +4,7 @@ export func read_file(Str path) -> Str:
 export func write_file(Str path, Str content):
     __io_write_file(path, content, false)
 
+# Returns whether file was actually written
 export func write_file_if_not_exists(Str path, Str content) -> Bool:
     return __io_write_file(path, content, true)
 
