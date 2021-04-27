@@ -106,9 +106,10 @@ Example code:
 - The `self_hosted/` directory is an Oomph compiler written in Oomph.
 
 Docs:
-- [Unions](docs/implicit-conversions.md)
+- [Unions](docs/union.md)
+- [Callbacks](docs/callback.md)
 - [Syntax](docs/syntax.md)
-- [Automatic Types](docs/auto.md)
+- [Automatic types](docs/auto.md)
 - [Implicit conversions](docs/implicit-conversions.md)
 
 
