@@ -1,0 +1,18 @@
+import "<stdlib>/process.oomph" as process
+
+export func main():
+    # Run 10 hello worlds concurrently
+    # TODO: can't do this in pure oomph yet
+    process::run(["bash", "-c", """
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    ./oomph tests/hello.oomph &
+    wait
+    """])
