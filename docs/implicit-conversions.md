@@ -1,4 +1,4 @@
-# Implicit Type Conversions
+# Implicit type conversions
 
 Implicit conversion rules are applied in these situations (and more is planned):
 - Arguments of all calls, including functions, methods, `new`, and so on.

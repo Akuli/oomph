@@ -1,4 +1,4 @@
-# Oomph Syntax
+# Oomph syntax
 
 This file describes oomph's syntax. You may find it useful if you want to work on the
 compiler or you want to know in detail how something works.
