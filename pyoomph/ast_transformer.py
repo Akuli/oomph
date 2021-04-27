@@ -1,5 +1,5 @@
 import dataclasses
-import pathlib
+from pathlib import Path
 from typing import Any, List
 
 from pyoomph import ast
@@ -72,7 +72,7 @@ class _AstTransformer:
         if isinstance(ast_thing, tuple):
             return tuple(self.visit(item) for item in ast_thing)
 
-        if ast_thing is None or isinstance(ast_thing, (str, int, float, pathlib.Path)):
+        if ast_thing is None or isinstance(ast_thing, (str, int, float, Path)):
             return ast_thing
 
         raise NotImplementedError(type(ast_thing))

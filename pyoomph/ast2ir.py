@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-import pathlib
+from pathlib import Path
 from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple, Union
 
 from pyoomph import ast, ir
@@ -304,7 +304,7 @@ class _FunctionOrMethodConverter:
                     # Why relative path:
                     #   - less noise, still enough information
                     #   - tests don't have to include paths like /home/akuli/oomph/...
-                    path = self.file_converter.path.relative_to(pathlib.Path.cwd())
+                    path = self.file_converter.path.relative_to(Path.cwd())
                     raw_args.append(ast.StringConstant(str(path)))
                     raw_args.append(ast.IntConstant(call.func.lineno))
                 args = self.do_args(
@@ -837,7 +837,7 @@ class _FunctionOrMethodConverter:
 
 
 class _FileConverter:
-    def __init__(self, path: pathlib.Path, symbols: List[ir.Symbol]) -> None:
+    def __init__(self, path: Path, symbols: List[ir.Symbol]) -> None:
         self.path = path
         self.symbols = symbols
         self._types = builtin_types.copy()
@@ -1026,7 +1026,7 @@ class _FileConverter:
 
 
 def convert_program(
-    program: List[ast.ToplevelDeclaration], path: pathlib.Path, symbols: List[ir.Symbol]
+    program: List[ast.ToplevelDeclaration], path: Path, symbols: List[ir.Symbol]
 ) -> List[ir.ToplevelDeclaration]:
     converter = _FileConverter(path, symbols)
 

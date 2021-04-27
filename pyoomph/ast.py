@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pathlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 
@@ -218,7 +218,7 @@ class ToplevelDeclaration:
 
 @dataclass(eq=False)
 class Import(ToplevelDeclaration):
-    path: pathlib.Path
+    path: Path
     name: str
 
 

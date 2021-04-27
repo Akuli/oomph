@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pathlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 
@@ -17,7 +17,7 @@ class Type:
         self,
         name: str,
         refcounted: bool,
-        definition_path: Optional[pathlib.Path] = None,
+        definition_path: Optional[Path] = None,
         methods_to_create: Optional[Set[str]] = None,
     ):
         self._name = name

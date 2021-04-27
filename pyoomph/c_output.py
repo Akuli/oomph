@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import os
-import pathlib
 import re
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
 
 from pyoomph import ir
@@ -381,7 +381,7 @@ class _FunctionEmitter:
         )
 
 
-_generic_dir = pathlib.Path(__file__).absolute().parent.parent / "lib" / "generic"
+_generic_dir = Path(__file__).absolute().parent.parent / "lib" / "generic"
 _generic_paths = {
     LIST: (_generic_dir / "list.c", _generic_dir / "list.h"),
     MAPPING: (_generic_dir / "mapping.c", _generic_dir / "mapping.h"),
@@ -886,11 +886,11 @@ class _FilePair:
 
 # This state is shared between different files
 class Session:
-    def __init__(self, compilation_dir: pathlib.Path) -> None:
+    def __init__(self, compilation_dir: Path) -> None:
         self.compilation_dir = compilation_dir
         self.symbols: List[ir.Symbol] = []
         self._type_to_file_pair: Dict[Type, _FilePair] = {}
-        self.source_path_to_file_pair: Dict[pathlib.Path, _FilePair] = {}
+        self.source_path_to_file_pair: Dict[Path, _FilePair] = {}
 
     def get_file_pair_for_type(self, the_type: Type) -> _FilePair:
         if the_type not in self._type_to_file_pair:
@@ -922,7 +922,7 @@ class Session:
         return "(void)0"
 
     def create_c_code(
-        self, top_decls: List[ir.ToplevelDeclaration], source_path: pathlib.Path
+        self, top_decls: List[ir.ToplevelDeclaration], source_path: Path
     ) -> None:
         pair = _FilePair(
             self,
@@ -937,10 +937,10 @@ class Session:
             pair.emit_toplevel_declaration(top_declaration)
 
     # TODO: don't keep stuff in memory so much
-    def write_everything(self, builtins_path: pathlib.Path) -> List[pathlib.Path]:
+    def write_everything(self, builtins_path: Path) -> List[Path]:
         builtins_pair = self.source_path_to_file_pair[builtins_path]
 
-        c_paths: List[pathlib.Path] = []
+        c_paths: List[Path] = []
         for file_pair in list(self._type_to_file_pair.values()) + list(
             self.source_path_to_file_pair.values()
         ):
