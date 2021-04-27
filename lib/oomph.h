@@ -58,6 +58,7 @@ struct String oomph_argv_get(int64_t i);
 
 bool meth_Str_ends_with(struct String s, struct String suf);
 bool meth_Str_starts_with(struct String s, struct String pre);
+bool oomph_io_write_file(struct String path, struct String content, bool must_create);
 int64_t oomph_get_utf8_byte(struct String s, int64_t i);
 int64_t oomph_run_subprocess(void *args);
 int64_t oomph_utf8_len(struct String s);
@@ -71,7 +72,6 @@ struct String oomph_slice_until_substring(struct String s, struct String sep);
 void oomph_assert(bool cond, struct String path, int64_t lineno);
 void oomph_io_delete(struct String path);
 void oomph_io_mkdir(struct String path);
-void oomph_io_write_file(struct String path, struct String content);
 void oomph_print(struct String str);
 void oomph_run_at_exit(void *func);
 

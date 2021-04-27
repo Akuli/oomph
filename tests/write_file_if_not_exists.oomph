@@ -1,0 +1,10 @@
+import "<stdlib>/io.oomph" as io
+
+export func main():
+    io::mkdir("test_out/io_testing_dir")
+    let path = "test_out/io_testing_dir/io_written_once.txt"
+
+    print(io::write_file_if_not_exists(path, "hello"))
+    print(io::read_file(path))
+    print(io::write_file_if_not_exists(path, "lolz"))
+    print(io::read_file(path))

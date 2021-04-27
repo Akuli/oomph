@@ -132,7 +132,7 @@ else
     rm -vf test_out/resume_skip
     touch test_out/resume_skip
 fi
-rm -rvf test_out/status test_out/io_testing_dir
+rm -vf test_out/status
 touch test_out/status
 
 function run_tests_with_given_compiler()
@@ -142,6 +142,7 @@ function run_tests_with_given_compiler()
     local failure_output_dir="$3"
     local skiplist="$4"
 
+    rm -rvf test_out/io_testing_dir
     for file in ${files_to_test[@]}; do
         if [[ $file == tests/*_lib.oomph ]]; then
             # The file is meant to be imported

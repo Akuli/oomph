@@ -60,7 +60,7 @@ visible_builtins = {
         BuiltinVariable("__io_delete", FunctionType([STRING], None)),
         BuiltinVariable("__io_mkdir", FunctionType([STRING], None)),
         BuiltinVariable("__io_read_file", FunctionType([STRING], STRING)),
-        BuiltinVariable("__io_write_file", FunctionType([STRING, STRING], None)),
+        BuiltinVariable("__io_write_file", FunctionType([STRING, STRING, BOOL], BOOL)),
         BuiltinVariable("__remove_prefix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__remove_suffix", FunctionType([STRING, STRING], STRING)),
         BuiltinVariable("__run_at_exit", FunctionType([FunctionType([], None)], None)),

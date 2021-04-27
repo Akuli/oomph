@@ -1,5 +1,7 @@
+#define _POSIX_C_SOURCE 1
 #include "oomph.h"
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -56,10 +58,20 @@ struct String oomph_io_read_file(struct String path)
 	return res;
 }
 
-void oomph_io_write_file(struct String path, struct String content)
+bool oomph_io_write_file(struct String path, struct String content, bool must_create)
 {
 	char *pathstr = string_to_cstr(path);
-	FILE *f = fopen(pathstr, "w");
+
+	int fd = open(pathstr, O_CREAT | O_WRONLY | O_TRUNC | (must_create?O_EXCL:0), 0777);
+	if (fd == -1) {
+		if (errno == EEXIST) {
+			free(pathstr);
+			return false;
+		}
+		panic_printf_errno("opening file \"%s\" failed", pathstr);
+	}
+
+	FILE *f = fdopen(fd, "w");
 	if (!f)
 		panic_printf_errno("opening file \"%s\" failed", pathstr);
 
@@ -69,4 +81,5 @@ void oomph_io_write_file(struct String path, struct String content)
 
 	free(pathstr);
 	fclose(f);
+	return true;
 }

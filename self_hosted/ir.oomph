@@ -385,7 +385,7 @@ export func create_builtins() -> Builtins:
         new BuiltinVariable("__io_delete", new FunctionType([STR], null)),
         new BuiltinVariable("__io_mkdir", new FunctionType([STR], null)),
         new BuiltinVariable("__io_read_file", new FunctionType([STR], STR)),
-        new BuiltinVariable("__io_write_file", new FunctionType([STR, STR], null)),
+        new BuiltinVariable("__io_write_file", new FunctionType([STR, STR, BOOL], BOOL)),
         new BuiltinVariable("__remove_prefix", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__remove_suffix", new FunctionType([STR, STR], STR)),
         new BuiltinVariable("__run_at_exit", new FunctionType([new FunctionType([], null) as Type], null)),
