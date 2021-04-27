@@ -41,6 +41,12 @@ while [[ "$1" == --* ]]; do
     esac
 done
 
+if [ $# == 0 ]; then
+    files_to_test=(tests/*.oomph)
+else
+    files_to_test=("$@")
+fi
+
 if [ $check_self_hosted == no ] && [ $check_pyoomph == no ]; then
     check_self_hosted=yes
     check_pyoomph=yes
@@ -136,7 +142,7 @@ function run_tests_with_given_compiler()
     local failure_output_dir="$3"
     local skiplist="$4"
 
-    for file in tests/*.oomph; do
+    for file in ${files_to_test[@]}; do
         if [[ $file == tests/*_lib.oomph ]]; then
             # The file is meant to be imported
             continue
