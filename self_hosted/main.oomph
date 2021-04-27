@@ -118,7 +118,7 @@ func get_compilation_dir(Str parent_dir, Str name_hint) -> Str:
         mkdir_with_parents(path)
 
         # TODO: better way to create file if not exists and know whether that was done
-        if process::run(["bash", "-c", "set -C; printf '' > '{path}/compiling'"]) == 0:
+        if process::run(["bash", "-c", "set -C; printf '' > \"$0\"", "{path}/compiling"]) == 0:
             process::run_at_exit(new Deleter(path + "/compiling").delete)
             return path
 
