@@ -34,18 +34,13 @@ struct String oomph_io_read_file(struct String path)
 	if (!f)
 		panic_printf_errno("opening file \"%s\" failed", pathstr);
 
-	size_t bufsz = BUFSIZ, len = 0;
-	char *buf = malloc(bufsz);
-	assert(buf);
+	char *buf = NULL;
+	size_t len = 0;
 
-	size_t n;
-	while (( n = fread(buf+len, 1, bufsz-len, f) )) {
-		// TODO: this looks like it can be simplified
-		len += n;
-		assert(len <= bufsz);
-		bufsz *= 2;
-		buf = realloc(buf, bufsz);
+	for (size_t alloced = BUFSIZ; !feof(f) && !ferror(f); alloced *= 2) {
+		buf = realloc(buf, alloced);
 		assert(buf);
+		len += fread(buf+len, 1, alloced-len, f);
 	}
 
 	if (ferror(f))
