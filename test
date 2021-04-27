@@ -3,6 +3,7 @@ set -e
 set -o pipefail
 
 keep_going=no
+resume=no
 fix=no
 check_self_hosted=no
 check_pyoomph=no
@@ -11,6 +12,10 @@ while [[ "$1" == --* ]]; do
     case "$1" in
         --keep-going)
             keep_going=yes
+            shift
+            ;;
+        --resume)
+            resume=yes
             shift
             ;;
         --fix)
@@ -36,6 +41,12 @@ while [[ "$1" == --* ]]; do
     esac
 done
 
+if [ $# == 0 ]; then
+    files_to_test=(tests/*.oomph)
+else
+    files_to_test=("$@")
+fi
+
 if [ $check_self_hosted == no ] && [ $check_pyoomph == no ]; then
     check_self_hosted=yes
     check_pyoomph=yes
@@ -59,7 +70,7 @@ function check()
         local outfile=$output_dir/$(basename $file | cut -d. -f1).txt
     fi
 
-    if [ $keep_going == no ] && grep -q '^fail:' test_out/status; then
+    if ([ $keep_going == no ] && grep -q '^fail:' test_out/status) || grep -qFx "success: $command" test_out/resume_skip; then
         echo "skip: $command" >> test_out/status
         return
     fi
@@ -115,6 +126,12 @@ trap wait EXIT
 
 make
 mkdir -vp test_out
+if [ $resume == yes ]; then
+    (grep '^success:' test_out/status || true) >> test_out/resume_skip
+else
+    rm -vf test_out/resume_skip
+    touch test_out/resume_skip
+fi
 rm -rvf test_out/status test_out/io_testing_dir
 touch test_out/status
 
@@ -125,7 +142,7 @@ function run_tests_with_given_compiler()
     local failure_output_dir="$3"
     local skiplist="$4"
 
-    for file in tests/*.oomph; do
+    for file in ${files_to_test[@]}; do
         if [[ $file == tests/*_lib.oomph ]]; then
             # The file is meant to be imported
             continue

@@ -2,6 +2,7 @@ import "<stdlib>/io.oomph" as io
 import "<stdlib>/process.oomph" as process
 
 export func main():
+    io::mkdir("test_out/io_testing_dir")
     io::write_file("test_out/io_testing_dir/truncated.txt", "hellø")
 
     # Remove last byte, reading should fail

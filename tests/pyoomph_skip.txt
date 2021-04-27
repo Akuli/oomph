@@ -2,6 +2,7 @@
 tests/andor_error.oomph
 tests/bad_noreturn_func_error.oomph    # pyoomph doesn't really support noreturn
 tests/bad_noreturn_method_error.oomph  # pyoomph doesn't really support noreturn
+tests/compiler_race_condition.oomph
 tests/equals_chain_error.oomph
 tests/mapping_not_hashable_error.oomph  # output depends on c compiler
 tests/mod_chain_error.oomph
