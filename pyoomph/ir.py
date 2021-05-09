@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import pathlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Union
 
 from pyoomph.types import (
@@ -35,7 +35,7 @@ class LocalVariable:
 class FileVariable:
     name: str
     type: Type
-    source_path: pathlib.Path
+    source_path: Path
 
 
 @dataclass(eq=False)
@@ -287,6 +287,6 @@ class MethodDef(ToplevelDeclaration):
 # Anything that might need to be shared between different .c files
 @dataclass(eq=False)
 class Symbol:
-    path: pathlib.Path
+    path: Path
     name: str
     value: Union[FileVariable, Type]  # Type includes UnionType

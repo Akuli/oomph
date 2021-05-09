@@ -1,5 +1,5 @@
-import pathlib
 import re
+from pathlib import Path
 from typing import Callable, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import more_itertools
@@ -35,9 +35,7 @@ class _Parser:
             )
         return (tokentype, value)
 
-    def parse_import(
-        self, path_of_this_file: pathlib.Path, stdlib: pathlib.Path
-    ) -> ast.Import:
+    def parse_import(self, path_of_this_file: Path, stdlib: Path) -> ast.Import:
         self.get_token("keyword", "import")
         string = self.get_token("oneline_string")[1]
         self.get_token("keyword", "as")
@@ -492,7 +490,7 @@ class _Parser:
 
 
 def parse_file(
-    code: str, path: pathlib.Path, stdlib: Optional[pathlib.Path]
+    code: str, path: Path, stdlib: Optional[Path]
 ) -> List[ast.ToplevelDeclaration]:
     parser = _Parser(tokenizer.tokenize(code))
 
